@@ -1,0 +1,118 @@
+{
+    "_comment": "building workflow #1 .. show image filter be part of processor or would all processors use same set of filters"
+    "workflows":[
+	{
+	    "type":"buldingInventory",
+	    "location":{
+		"classType":"boundngBox",
+		"appData":{
+		    "coordinates":"-122.2,55.6,-122.56,55.7"
+		}
+	    },
+	    "footprintSource":{
+		"classType":"Google",
+		"appData":{
+		    "gcpKey":"qg;lgqlgj"
+		}
+	    },
+	    "augmentFiles":[
+		{
+		    "classType": "basic",
+		    "appData": {
+			"fileName":"assessor.csv",
+			"colMapping":"mapAssessor.json"
+		    }
+		},
+		{
+		    "classType": "basic",		
+		    "appData":{
+			"fileName":"myData.csv",
+			"colMapping":"None"
+		    }
+		}
+	    ],
+	    "satelliteImageSource":{
+		"classType":"Google",
+		"appData":{
+		    "gcpKey":"qg;lgqlgj"
+		}
+	    },
+	    "streetImagesSource":{
+		"classType":"Google",
+		"appData":{
+		    "gcpKey":"qg;lgqlgj"
+		}
+	    }
+	    "streetFilters":[
+		"classType":"VanishingPoint",
+		"appData":{
+		},
+		"classType":"ClipVIT",
+		"appData":{
+		    "prompt":"There are no trees occluding this image of a house"
+		}
+		"classType":"RemoveBackgroundNoise",
+		"appData":{
+		    "model":"zenodo://blha.blah.blah"
+		}    
+	    ],
+	    "arielFilters":[
+		"classType":"",
+		"classType":"RemoveTrees",
+		"appData":{
+		},		
+	    ],
+	    "predictionsArial"=[
+		{
+		    "classType":"BrailsRoofType",
+		    "appData":{
+			"model"::"zenodo://blah/blah/blah"
+		    },
+		    "heading":"roofShape"
+		},
+		{
+		    "classType":"Clip",
+		    "appData":{
+			"prompts"::"this is a pricture of a roof, is it a gabled roof, hiiped roof or flat roof?"
+		    }
+		    "heading":"roofShapeClip"
+		},
+	    },
+	    "predictionsStreet"=[
+		{
+		    "classType":"BrailsNOS",
+		    "appData":{
+			"model"::"zenodo://blah/blah/blah"
+		    },
+		    "heading":"numberOfStories"
+		},
+		{
+		    "classType":"Clip_NumberOfFloors",
+		    "appData":{
+			"fileName"::"promptsForNumFloors.txt"
+			"segmenter": {
+			    "classType":"SAM",
+			    "appData":{
+			    }
+			}
+		    }
+		    "heading":"roofShape"
+		},		
+		{
+		    "classType":"FirstFloorElevation",
+		    "appData":{
+		    }
+		    "heading":"firstFloorElevation"
+		}  
+	    }
+	}
+    ]
+}
+    
+
+	
+	
+
+
+    
+

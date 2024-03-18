@@ -1,0 +1,137 @@
+
+BRAILS:
+
+    importBrails()
+
+
+    # load input file
+      input = load(inputFile)
+
+    foreach bldgWF workflow in input.workflows:
+
+         # determine footprintSource application
+         footPrintSourceClassName = bldgWF.footprintSource.className
+         pythonClass = this.getClass(footPrintSourceClassName)
+         pythonObject= pythonClass(bldgWF.location, bldgWF.footprintSource.appData)
+	 footPrints = pythonClass.getFootprints();
+
+         # augment footprintData
+         foreach augmentObject in bldgWF.augmentFiles:
+	          pythonClass = this.getClass(augmentObject.classType)
+		  pythonObject = pythonClass(augmentObject.appData)
+         	  footPrints = pythonObject(footPrints)	 
+
+         # create filter arrays
+         filterArrayStreet=[]
+         filterArrayArial=[]	 
+         foreach filter in bldgWF.streetFilters
+	          pythonClass = this.getClass(filter.classType)
+         	  filterArrayStreet.add(pythonClass(filter.appData)
+
+         foreach filter in bldgWF.arialFilters
+	          pythonClass = this.getClass(filter.classType)
+         	  filterArrayArial.add(pythonClass(filter.appData)
+			     
+	# 
+ 
+
+
+ 
+
+
+
+
+{
+    "location":{
+	"specType":"cityName",
+	"args":"Tiburon, CA"
+    },
+    "augmentFiles":[
+	{"fileName":"assessor.csv",
+	 "colMapping":"mapAssessor.json"
+	},
+	{"fileName":"myData.csv",
+	 "colMapping":"None"
+	}
+    ],
+    "footprintSource":{
+	"classType":"Google",
+	"appData":{
+	    "gcpKey":"qg;lgqlgj"
+	}
+    }
+    "satelliteImageSource":{
+	"classType":"Google",
+	"appData":{
+	    "gcpKey":"qg;lgqlgj"
+	}
+    },
+    "streetImagesSource":{
+	"classType":"Google",
+	"appData":{
+	    "gcpKey":"qg;lgqlgj"
+	}
+    }
+    "streetFilters":[
+	"classType":"VanishingLines",
+	"args":{
+	},
+	"classType":"Obstructed",
+	"args":{
+	}
+	"classType":"NearbyHouses",
+	"args":{
+	}    
+    ],
+    "arielFilters":[
+	"classType":"",
+	"args":{
+	}
+    ],
+    "predictionsArial"=[
+	{
+	    "classType":"BrailsRoofType",
+	    "args":{
+		"model"::"zenodo://blah/blah/blah"
+	    },
+	    "heading":"roofShape"
+	},
+	{
+	    "classType":"LLM",
+	    "args":{
+		"prompts"::"this is a pricture of a roof, is it a gabled roof, hiiped roof or flat roof?"
+            }
+	    "heading":"roofShapeLLM"
+	},
+    },
+    "predictionsStreet"=[
+	{
+	    "classType":"BrailsNOS",
+	    "args":{
+		"model"::"zenodo://blah/blah/blah"
+	    },
+	    "heading":"numberOfStories"
+	},
+	{
+	    "classType":"LLM_numberOfStories",
+	    "args":{
+		"prompts"::"This is a picture of a House, How many stories are there?"
+            }
+	    "heading":"nosLLM"
+	},
+	{
+	    "classType":"FirstFloorElevation",
+	    "args":{
+            }
+	    "heading":"firstFloorElevation"
+	}  
+    }
+}
+    
+
+	
+	
+
+
+    
+

@@ -1,0 +1,130 @@
+
+BRAILS:
+
+    # load input file
+      input = load(inputFile)
+
+    # determine footprintSource application
+      footPrintSourceClassName = input.footPrintSource.className
+      pythonClass = this.getClass(footPrintSourceClassName)
+      footPrints = pythonClass(input.location, input.footPtintSource,args)
+
+    # augment footprintData
+      foreach augmentObject in input.augmentFiles
+         footPrints = this.augment(footPrints,augmentObject) 
+
+    # create filter array for street images
+    filterArrayStreet=[]
+    foreach filter in input.streetFilters
+       pythonClass = this.getClass(filter)
+       filterArrayStreet.add(this.getClass(pythonClass)
+
+    # create filter array for arial images
+    filterArrayArial=[]
+    foreach filter in input.arialFilters
+       pythonClass = this.getClass(filter)
+       filterArrayArial.add(this.getClass(pythonClass)
+			     
+    # 
+ 
+
+
+ 
+
+
+
+
+{
+    "location":{
+	"specType":"cityName",
+	"args":"Tiburon, CA"
+    },
+    "augmentFiles":[
+	{"fileName":"assessor.csv",
+	 "colMapping":"mapAssessor.json"
+	},
+	{"fileName":"myData.csv",
+	 "colMapping":"None"
+	}
+    ],
+    "footprintSource":{
+	"classType":"Google",
+	"appData":{
+	    "gcpKey":"qg;lgqlgj"
+	}
+    }
+    "satelliteImageSource":{
+	"classType":"Google",
+	"appData":{
+	    "gcpKey":"qg;lgqlgj"
+	}
+    },
+    "streetImagesSource":{
+	"classType":"Google",
+	"appData":{
+	    "gcpKey":"qg;lgqlgj"
+	}
+    }
+    "streetFilters":[
+	"classType":"VanishingLines",
+	"args":{
+	},
+	"classType":"Obstructed",
+	"args":{
+	}
+	"classType":"NearbyHouses",
+	"args":{
+	}    
+    ],
+    "arielFilters":[
+	"classType":"",
+	"args":{
+	}
+    ],
+    "predictionsArial"=[
+	{
+	    "classType":"BrailsRoofType",
+	    "args":{
+		"model"::"zenodo://blah/blah/blah"
+	    },
+	    "heading":"roofShape"
+	},
+	{
+	    "classType":"LLM",
+	    "args":{
+		"prompts"::"this is a pricture of a roof, is it a gabled roof, hiiped roof or flat roof?"
+            }
+	    "heading":"roofShapeLLM"
+	},
+    },
+    "predictionsStreet"=[
+	{
+	    "classType":"BrailsNOS",
+	    "args":{
+		"model"::"zenodo://blah/blah/blah"
+	    },
+	    "heading":"numberOfStories"
+	},
+	{
+	    "classType":"LLM_numberOfStories",
+	    "args":{
+		"prompts"::"This is a picture of a House, How many stories are there?"
+            }
+	    "heading":"nosLLM"
+	},
+	{
+	    "classType":"FirstFloorElevation",
+	    "args":{
+            }
+	    "heading":"firstFloorElevation"
+	}  
+    }
+}
+    
+
+	
+	
+
+
+    
+
