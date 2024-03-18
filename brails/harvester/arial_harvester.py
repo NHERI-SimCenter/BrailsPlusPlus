@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class ImageHarvester(ABC):
+class ArialHarvester(ABC):
     def __init__(self, name):
         self.name = name
     
