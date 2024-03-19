@@ -21,9 +21,8 @@ class BrailsError(Exception):
 
 class Importer:
     """
-    Dynamically parses the files of a specified package (without
-    having to import anything) and provides access to the defined
-    classes therein. Classes are imported on an as-needed basis.
+    Dynamically parses the files of a specified package and provides
+    access to the defined classes.
 
     This class parses a given package directory, identifies all
     non-abstract classes, and makes them accessible through a dynamic
