@@ -137,9 +137,52 @@ class Importer:
         with open(file_path, 'r', encoding='utf-8') as file:
             node = ast.parse(file.read(), filename=file_path)
             for child in node.body:
-                if isinstance(child, ast.ClassDef):
+                if isinstance(child, ast.ClassDef) and (
+                    not self._is_abstract(child)
+                ):
                     class_name = child.name
                     self._add_class(class_name, module_path)
+
+    def _is_abstract(self, node):
+        """
+        Determine if a given AST class node represents an abstract
+        class.
+
+        Checks for inheritance from `abc.ABC` or usage of
+        `abc.ABCMeta` as the metaclass, and the presence of any
+        methods decorated with `@abstractmethod`.
+
+        Args
+        ----
+        node (ast.ClassDef):
+          The AST node representing a class definition.
+
+        Returns
+        -------
+        bool:
+          True if the class is abstract, False otherwise.
+
+        """
+        if isinstance(node, ast.ClassDef):
+            # Check if it inherits from ABC or has ABCMeta as metaclass
+            for base in node.bases:
+                if isinstance(base, ast.Name) and base.id == 'ABC':
+                    return True
+                if isinstance(base, ast.Attribute) and base.attr == 'ABCMeta':
+                    return True
+
+            # Check for any method with the @abstractmethod decorator
+            for body_item in node.body:
+                if isinstance(body_item, ast.FunctionDef) or isinstance(
+                    body_item, ast.AsyncFunctionDef
+                ):
+                    for decorator in body_item.decorator_list:
+                        if (
+                            isinstance(decorator, ast.Name)
+                            and decorator.id == 'abstractmethod'
+                        ):
+                            return True
+        return False
 
     def _add_class(self, class_name, module_path):
         """
