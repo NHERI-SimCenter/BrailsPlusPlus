@@ -4,7 +4,7 @@ Utility classes and methods for the brails module.
 """
 
 from pathlib import Path
-import importlib
+import importlib.util
 import ast
 import os
 
