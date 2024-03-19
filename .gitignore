@@ -1,1 +1,61 @@
+# Prerequisites
+*.d
+
+# old text editor files
+*~
+
+# Qt created files
+moc*
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
 *.pyc
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+*pycache*
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+EE_UQ
+StochasticGroundMotion
+
+# QT
+*.pro.user
+qcustomplot.h
+qcustomplot.cpp
+*.stash
+qrc_images.cpp
+qrc_images1.cpp
+qrc_styles.cpp
+
+# OTHER
+*.pyc
+*.autosave
+
+debug.log
+tmp.SimCenter
+build
+userID.sh
+.DS_Store
