@@ -1,9 +1,18 @@
+<p align="center">
+ <b>BRAILS++: Building Regional Asset Inventories at Large Scale</p>
+</p>
+
+## What is it?
+
+'Brails++' is an object-oriented framework for building applications that focus on generate asset inventories for large geographic regions.
+
 
 UNDER CONSTRUCTION!!
 
-Contents:
 
-brails: A dierctory containig the classes
+## How is the Repo laid out
+
+brails: A directory containing the classes
   brails/types: directory containing useful datatypes, e.g. ImageSet and AssetInventory
   brails/processors: directory containing classes that do image_processing to make predictions, e.g. RoofShape
   brails/segmenters: directory containingg classes that do image segmentation
@@ -12,4 +21,4 @@ brails: A dierctory containig the classes
   brails/imputaters: directory containing classes that fill in missing AssetInventory datasets
   brails/utils: directory containing misc classes that do usefule stuff, e.g. geometric conversions
   
-exampels: A directory containg examples
+examples: A directory containing examples
