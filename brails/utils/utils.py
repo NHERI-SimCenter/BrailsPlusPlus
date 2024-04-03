@@ -55,6 +55,26 @@ class Importer:
         self.classes = {}
         self._parse_package()
 
+    def get_object(self, json_object):
+
+        class_type = json_object.get('classType')
+        if class_type == None:
+            print('FATAL: json data contained no classType key', json_object);
+            exit();
+            
+        python_class = self.get_class(class_type)
+        if python_class == None:
+            print('FATAL: Could not find a class of type: ', class_type, ' in the framework');
+            exit();
+
+        object_data = json_object.get('objData')
+        if object_data == None:
+            print('FATAL: Could not find appData in input for : ', class_type, ' in the JSON input');
+            exit();
+
+        return python_class(object_data)
+            
+        
     def get_class(self, class_name):
         """
         Retrieve and import a class by its name.
