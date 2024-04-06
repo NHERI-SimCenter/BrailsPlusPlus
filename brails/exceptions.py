@@ -55,7 +55,7 @@ class NotFoundError(BrailsError):
             add = f' in {where}'
         else:
             add = ''
-        self.message = f'{type_of_thing.upper()} {name} is not found{add}.'
+        self.message = f'{type_of_thing.capitalize()} {name} is not found{add}.'
         if append:
             self.message += '\n' + append
         super().__init__(self.message)

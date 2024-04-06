@@ -54,18 +54,29 @@ class Importer:
 
         class_type = json_object.get('classType')
         if class_type == None:
-            print('FATAL: json data contained no classType key', json_object);
-            exit();
+            raise NotFoundError(
+                type_of_thing='key',
+                name='`classType`',
+                where='json data',
+                append=f'Existing data: {json_object}',
+            )
             
         python_class = self.get_class(class_type)
         if python_class == None:
-            print('FATAL: Could not find a class of type: ', class_type, ' in the framework');
-            exit();
+            raise NotFoundError(
+                type_of_thing='class of type',
+                name=f'`{class_type}`',
+                where='the framework',
+            )
 
         object_data = json_object.get('objData')
         if object_data == None:
-            print('FATAL: Could not find appData in input for : ', class_type, ' in the JSON input');
-            exit();
+            raise NotFoundError(
+                type_of_thing='key',
+                name='`objData`',
+                where='json data',
+                append=f'Existing data: {json_object}',
+            )
 
         return python_class(object_data)
             
