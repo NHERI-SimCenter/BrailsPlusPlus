@@ -1,8 +1,16 @@
+"""
+Test suite for `untils.py`
+"""
+
 import unittest
 from unittest import mock
 from brails import Importer
 from brails.exceptions import BrailsError
 from brails.exceptions import NotFoundError
+
+# We don't need docstrings for the test objects
+# pylint: disable=missing-function-docstring
+# pylint: disable=missing-class-docstring
 
 
 class TestImporter(unittest.TestCase):
@@ -74,7 +82,7 @@ class TestImporter(unittest.TestCase):
         mock_find_package_path.return_value = 'tests/utils/data/repr'
         self.importer = Importer('brails')  # replace previous Importer
 
-        assert self.importer.__repr__() == (
+        assert str(self.importer) == (
             'Importer at tests/utils/data/repr\n'
             '2 available classes:\n'
             '  ClassA: brails.file_A\n'
@@ -95,9 +103,7 @@ if __name__ == '__main__':
 
     # Debugging --- test a specific method
     suite = unittest.TestSuite()
-    suite.addTest(
-        TestImporter('test_get_object_invalid_class_type_raises_error')
-    )
+    suite.addTest(TestImporter('test_get_object_invalid_class_type_raises_error'))
     runner = unittest.TextTestRunner()
     runner.run(suite)
 
