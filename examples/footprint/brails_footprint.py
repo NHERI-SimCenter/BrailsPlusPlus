@@ -3,7 +3,7 @@
 
 import sys
 import inspect
-from brails.utils.utils import Importer
+from brails import Importer
 
 importer = Importer()
 
