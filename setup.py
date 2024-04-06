@@ -55,6 +55,12 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Topic :: Scientific/Engineering',
     ],
 )
+
+# devguide.python.org: Status of Python versions:
+# Use to determine when to drop/add  support
+# https://devguide.python.org/versions/
