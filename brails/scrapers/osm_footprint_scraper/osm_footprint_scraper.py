@@ -1,6 +1,6 @@
 # written Barbaros Cetiner 03/24
 
-from brails.scraper.footprint_scraper import FootprintScraper
+from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import AssetInventory
 

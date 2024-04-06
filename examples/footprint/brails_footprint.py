@@ -3,10 +3,6 @@
 
 import sys
 import inspect
-
-# to add brails to the path .. so can play like brails installed
-sys.path.insert(1,'../../')
-
 from brails.utils.utils import Importer
 
 importer = Importer()
