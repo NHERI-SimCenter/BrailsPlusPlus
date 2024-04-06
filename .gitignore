@@ -63,3 +63,6 @@ tmp
 /brails.egg-info/
 /.coverage
 /coverage.xml
+/docs/source/_autosummary/
+/docs/source/notebooks/*.ipynb
+docs/source/notebooks/.ipynb_checkpoints/

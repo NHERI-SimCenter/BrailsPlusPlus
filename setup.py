@@ -28,6 +28,8 @@ setup(
         'torchvision>0.13',
         'Pillow',
         'matplotlib',
+        'seaborn',
+        'plotly',
     ],
     extras_require={
         'development': [
@@ -36,6 +38,13 @@ setup(
             'black',
             'pytest',
             'pytest-cov',
+            'jupyter',
+            'jupytext',
+            'sphinx',
+            'sphinx-autoapi',
+            'nbsphinx',
+            'flake8-rst',
+            'flake8-rst-docstrings',
         ],
     },
     platforms='any',
