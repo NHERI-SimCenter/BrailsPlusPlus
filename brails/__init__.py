@@ -1,5 +1,4 @@
 from brails.utils.utils import Importer
-from brails.utils.utils import BrailsError
 
 name = "brails"
 

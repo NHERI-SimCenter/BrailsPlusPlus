@@ -7,16 +7,8 @@ from pathlib import Path
 import importlib.util
 import ast
 import os
-
-
-class BrailsError(Exception):
-    """
-    Custom exception for specific error cases in our application.
-    """
-
-    def __init__(self, message="An error occurred in the Brails application"):
-        self.message = message
-        super().__init__(self.message)
+from brails.exceptions import NotFoundError
+from brails.exceptions import BrailsError
 
 
 class Importer:
@@ -39,9 +31,12 @@ class Importer:
 
     Raises
     ------
+    NotFoundError:
+      If the specified package or class cannot be found.
+    NotFoundError:
+      If the specified package or class cannot be found.
     BrailsError:
-      If duplicate class names are found or if a specified class is
-      not available.
+      If duplicate class names are found in the code base.
 
     """
 
@@ -90,7 +85,7 @@ class Importer:
 
         Raises
         ------
-        BrailsError:
+        NotFoundError:
           If the class cannot be found.
 
         """
@@ -98,9 +93,10 @@ class Importer:
         if module_path:
             module = __import__(module_path, fromlist=[class_name])
             return getattr(module, class_name)
-        raise BrailsError(
-            f'Class name `{class_name}` is not found. '
-            f'These are the available classes: {self.classes}'
+        raise NotFoundError(
+            type_of_thing='class',
+            name=class_name,
+            append=f'These are the available classes: {self.classes}',
         )
 
     def _find_package_path(self, package_name):
@@ -119,14 +115,14 @@ class Importer:
 
         Raises
         ------
-        BrailsError:
+        NotFoundError:
           If the package cannot be found.
 
         """
         spec = importlib.util.find_spec(package_name)
         if spec and spec.origin:
             return Path(spec.origin).parent
-        raise BrailsError(f"Package {package_name} not found")
+        raise NotFoundError(type_of_thing='package', name=package_name)
 
     def _parse_package(self):
         """

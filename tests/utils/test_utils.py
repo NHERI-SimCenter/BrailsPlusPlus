@@ -2,7 +2,7 @@ import ast
 import unittest
 from unittest import mock
 from brails import Importer
-from brails import BrailsError
+from brails.exceptions import BrailsError
 
 
 class TestImporter(unittest.TestCase):
@@ -20,9 +20,9 @@ class TestImporter(unittest.TestCase):
         importer = Importer('brails')
         with self.assertRaises(BrailsError) as context:
             importer.get_class(r'¯\_(ツ)_/¯')
-        assert (
-            f'is not found. These are the available classes: '
-        ) in str(context.exception)
+        assert (f'is not found.\nThese are the available classes: ') in str(
+            context.exception
+        )
 
     @mock.patch('brails.Importer._find_package_path')
     def test_repr(self, mock_find_package_path):
