@@ -62,3 +62,4 @@ userID.sh
 tmp
 /brails.egg-info/
 /.coverage
+/coverage.xml
