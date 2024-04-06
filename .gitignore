@@ -60,3 +60,4 @@ build
 userID.sh
 .DS_Store
 tmp
+/brails.egg-info/
