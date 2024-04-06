@@ -13,10 +13,7 @@ with open('README.md', encoding='utf-8') as f:
 setup(
     name='brails',
     version=brails.__version__,
-    description=(
-        'BRAILS++: Building Regional Asset '
-        'Inventories at Large Scale'
-    ),
+    description='BRAILS++: Building Regional Asset Inventories at Large Scale',
     long_description=long_description,
     author='NHERI SimCenter',
     author_email='nheri-simcenter@berkeley.edu',
@@ -32,6 +29,15 @@ setup(
         'Pillow',
         'matplotlib',
     ],
+    extras_require={
+        'development': [
+            'flake8',
+            'pylint',
+            'black',
+            'pytest',
+            'pytest-cov',
+        ],
+    },
     platforms='any',
     classifiers=[
         'Programming Language :: Python',
