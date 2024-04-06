@@ -17,3 +17,17 @@
   - ```brails/imputaters```: directory containing classes that fill in missing ```AssetInventory``` datasets
   - ```brails/utils```: directory containing misc classes that do useful things, e.g. geometric conversions
 + ```examples```: A directory containing examples
++ ```tests```: A directory containing unit tests. The directory structure follows that of ```brails```
+
+## Documentation
+
+You can find the documentation for ```BRAILS++``` [here]().
+
+## Installation instructions
+
+```BRAILS++``` is available on PyPI under the name ```BRAILS```.
+
+```shell
+pip install BRAILS
+```
+Developers and contributors should read the [Contributing Code to Brails]() page of the documentation.
