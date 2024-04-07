@@ -1,5 +1,7 @@
-Examples
-========
+.. _usage-examples:
+
+Usage Examples
+==============
 
 .. toctree::
    :maxdepth: 3

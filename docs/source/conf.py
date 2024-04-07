@@ -20,6 +20,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
     'sphinx.ext.doctest',
+    'sphinx.ext.todo',
     'nbsphinx',
     # 'sphinx_rtd_theme'
 ]
@@ -32,6 +33,7 @@ intersphinx_mapping = {
 }
 
 autosummary_generate = True
+todo_include_todos = True
 
 html_show_sourcelink = False  # Remove 'view source code' from top of page (for html, not python)
 nbsphinx_allow_errors = True  # Continue through Jupyter errors
