@@ -1,6 +1,10 @@
 """
 Utility classes and methods for the brails module.
 
+.. autosummary::
+
+      BrailsError
+      Importer
 """
 
 from pathlib import Path
@@ -45,7 +49,7 @@ class Importer:
 
     """
 
-    def __init__(self, package_name='brails'):
+    def __init__(self, package_name="brails"):
         """
         Initialize the Importer, finding and parsing all classes in
         the 'brails' package.
@@ -57,24 +61,31 @@ class Importer:
 
     def get_object(self, json_object):
 
-        class_type = json_object.get('classType')
+        class_type = json_object.get("classType")
         if class_type == None:
-            print('FATAL: json data contained no classType key', json_object);
-            exit();
-            
+            print("FATAL: json data contained no classType key", json_object)
+            exit()
+
         python_class = self.get_class(class_type)
         if python_class == None:
-            print('FATAL: Could not find a class of type: ', class_type, ' in the framework');
-            exit();
+            print(
+                "FATAL: Could not find a class of type: ",
+                class_type,
+                " in the framework",
+            )
+            exit()
 
-        object_data = json_object.get('objData')
+        object_data = json_object.get("objData")
         if object_data == None:
-            print('FATAL: Could not find appData in input for : ', class_type, ' in the JSON input');
-            exit();
+            print(
+                "FATAL: Could not find appData in input for : ",
+                class_type,
+                " in the JSON input",
+            )
+            exit()
 
         return python_class(object_data)
-            
-        
+
     def get_class(self, class_name):
         """
         Retrieve and import a class by its name.
@@ -99,8 +110,8 @@ class Importer:
             module = __import__(module_path, fromlist=[class_name])
             return getattr(module, class_name)
         raise BrailsError(
-            f'Class name `{class_name}` is not found. '
-            f'These are the available classes: {self.classes}'
+            f"Class name `{class_name}` is not found. "
+            f"These are the available classes: {self.classes}"
         )
 
     def _find_package_path(self, package_name):
@@ -135,7 +146,7 @@ class Importer:
         """
         for root, _, files in os.walk(self.package_path):
             for file in files:
-                if file.endswith('.py'):
+                if file.endswith(".py"):
                     file_path = os.path.join(root, file)
                     self._parse_file(file_path)
 
@@ -149,16 +160,12 @@ class Importer:
           The path to the file to parse.
 
         """
-        relative_path = Path('brails') / os.path.relpath(
-            file_path, self.package_path
-        )
-        module_path = os.path.splitext(relative_path)[0].replace(os.sep, '.')
-        with open(file_path, 'r', encoding='utf-8') as file:
+        relative_path = Path("brails") / os.path.relpath(file_path, self.package_path)
+        module_path = os.path.splitext(relative_path)[0].replace(os.sep, ".")
+        with open(file_path, "r", encoding="utf-8") as file:
             node = ast.parse(file.read(), filename=file_path)
             for child in node.body:
-                if isinstance(child, ast.ClassDef) and (
-                    not self._is_abstract(child)
-                ):
+                if isinstance(child, ast.ClassDef) and (not self._is_abstract(child)):
                     class_name = child.name
                     self._add_class(class_name, module_path)
 
@@ -185,9 +192,9 @@ class Importer:
         if isinstance(node, ast.ClassDef):
             # Check if it inherits from ABC or has ABCMeta as metaclass
             for base in node.bases:
-                if isinstance(base, ast.Name) and base.id == 'ABC':
+                if isinstance(base, ast.Name) and base.id == "ABC":
                     return True
-                if isinstance(base, ast.Attribute) and base.attr == 'ABCMeta':
+                if isinstance(base, ast.Attribute) and base.attr == "ABCMeta":
                     return True
 
             # Check for any method with the @abstractmethod decorator
@@ -198,7 +205,7 @@ class Importer:
                     for decorator in body_item.decorator_list:
                         if (
                             isinstance(decorator, ast.Name)
-                            and decorator.id == 'abstractmethod'
+                            and decorator.id == "abstractmethod"
                         ):
                             return True
         return False
@@ -225,15 +232,15 @@ class Importer:
         # other sub module
         if class_name in self.classes:
             raise BrailsError(
-                f'Invalid module structure. '
-                f'In Brails, we enforce a policy of unique class names. '
-                f'Class name `{class_name}` is defined in both '
-                f'`{self.classes[class_name]}` and `{module_path}`. '
-                f'This is not allowed. '
-                f'If you recently introduced a class, make sure '
-                f'you specify a unique class name, no matter if '
-                f'the module path is different. '
-                f'Otherwise, please submit a bug report. '
+                f"Invalid module structure. "
+                f"In Brails, we enforce a policy of unique class names. "
+                f"Class name `{class_name}` is defined in both "
+                f"`{self.classes[class_name]}` and `{module_path}`. "
+                f"This is not allowed. "
+                f"If you recently introduced a class, make sure "
+                f"you specify a unique class name, no matter if "
+                f"the module path is different. "
+                f"Otherwise, please submit a bug report. "
             )
         # if all's good, add the class
         self.classes[class_name] = module_path
@@ -243,9 +250,7 @@ class Importer:
         Return a string representation of the Importer, listing
         available classes and their modules.
         """
-        class_list = '\n'.join(
-            f"  {cls}: {mod}" for cls, mod in self.classes.items()
-        )
+        class_list = "\n".join(f"  {cls}: {mod}" for cls, mod in self.classes.items())
         return (
             f"{self.__class__.__name__} at {self.package_path}"
             f"\n"

@@ -39,51 +39,70 @@
 # Last updated:
 # 03-15-2024
 
+"""
+This module defines clesses related to image sets
+
+.. autosummary::
+
+      haversine_dist
+      mesh_polygon
+      plot_polygon_cells
+      write_polygon2geojson(poly, outfile):
+"""
+
+import json
 from math import radians, sin, cos, atan2, sqrt
+import matplotlib.pyplot as plt
+
+
 from shapely import to_geojson
 from shapely.geometry import Polygon
-import matplotlib.pyplot as plt
-import json
 
-def haversine_dist(p1,p2):
+
+
+
+def haversine_dist(p1, p2):
     """
     Function that calculates the Haversine distance between two points.
-    
+
     Input: Two points with coordinates defined as latitude and longitude
            with each point defined as a list of two floating-point values
     Output: Distance between the input points in feet
     """
 
     # Define mean radius of the Earth in kilometers:
-    R = 6371.0 
-    
+    R = 6371.0
+
     # Convert coordinate values from degrees to radians
-    lat1 = radians(p1[0]); lon1 = radians(p1[1])
-    lat2 = radians(p2[0]); lon2 = radians(p2[1])
-    
+    lat1 = radians(p1[0])
+    lon1 = radians(p1[1])
+    lat2 = radians(p2[0])
+    lon2 = radians(p2[1])
+
     # Compute the difference between latitude and longitude values:
     dlon = lon2 - lon1
     dlat = lat2 - lat1
-    
+
     # Compute the distance between two points as a proportion of Earth's
     # mean radius:
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
-    
+
     # Compute distance between the two points in feet:
-    distance = R*c*3280.84
+    distance = R * c * 3280.84
     return distance
 
-def mesh_polygon(polygon, rows:int, cols:int):
+
+def mesh_polygon(polygon, rows: int, cols: int):
     """
     Function that splits a polygon into individual rectangular polygons.
-    
+
     Inputs: A Shapely polygon and number of rows and columns of rectangular
             cells requested to mesh the area of the polygon.
             with each point defined as a list of two floating-point values
     Output: Individual rectangular cells stored as Shapely polygons
     """
-    
+
     # Get bounds of the polygon:
     min_x, min_y, max_x, max_y = polygon.bounds
 
@@ -95,15 +114,15 @@ def mesh_polygon(polygon, rows:int, cols:int):
     # For each cell:
     for i in range(rows):
         for j in range(cols):
-            # Calculate coordinates of the cell vertices: 
+            # Calculate coordinates of the cell vertices:
             x1 = min_x + j * width
             y1 = min_y + i * height
             x2 = x1 + width
             y2 = y1 + height
-            
+
             # Convert the computed geometry into a polygon:
             poly = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
-            
+
             # Check if the obtained cell intersects with the polygon:
             if poly.intersects(polygon):
                 poly = poly.intersection(polygon)
@@ -113,53 +132,61 @@ def mesh_polygon(polygon, rows:int, cols:int):
                     rectangles.append(poly.envelope)
     return rectangles
 
+
 def plot_polygon_cells(bpoly, rectangles, fout=False):
     """
     Function that plots the mesh for a polygon and saves the plot into a PNG image
-    
+
     Inputs: A Shapely polygon and a list of rectangular mesh cells saved as
             Shapely polygons. Optional input is a string containing the name of the
             output file
     """
-    
-    if bpoly.geom_type == 'MultiPolygon':
+
+    if bpoly.geom_type == "MultiPolygon":
         for poly in bpoly.geoms:
-            plt.plot(*poly.exterior.xy,'k')
+            plt.plot(*poly.exterior.xy, "k")
     else:
-        plt.plot(*bpoly.exterior.xy,'k')
+        plt.plot(*bpoly.exterior.xy, "k")
     for rect in rectangles:
         try:
             plt.plot(*rect.exterior.xy)
         except:
-            pass        
+            pass
     if fout:
         plt.savefig(fout, dpi=600, bbox_inches="tight")
     plt.show()
 
-def write_polygon2geojson(poly,outfile):
+
+def write_polygon2geojson(poly, outfile):
     """
     Function that writes a single Shapely polygon into a GeoJSON file
-    
+
     Input: A Shapely polygon or multi polygon
     """
 
-    if 'geojson' not in outfile.lower():
-        outfile = outfile.replace(outfile.split('.')[-1],'geojson')
-    geojson = {'type':'FeatureCollection', 
-               "crs": {"type": "name", 
-                       "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
-               'features':[]}
-    if poly.geom_type == 'MultiPolygon':
-        polytype = 'MultiPolygon'
-    elif poly.geom_type == 'Polygon':
-        polytype = 'Polygon'
-        
-    feature = {'type':'Feature',
-               'properties':{},
-               'geometry':{'type': polytype,
-                           'coordinates':[]}}
-    feature['geometry']['coordinates'] = json.loads(
-        to_geojson(poly).split('"coordinates":')[-1][:-1])
-    geojson['features'].append(feature)
-    with open(outfile, 'w') as outputFile:
-        json.dump(geojson, outputFile, indent=2)    
+    if "geojson" not in outfile.lower():
+        outfile = outfile.replace(outfile.split(".")[-1], "geojson")
+    geojson = {
+        "type": "FeatureCollection",
+        "crs": {
+            "type": "name",
+            "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"},
+        },
+        "features": [],
+    }
+    if poly.geom_type == "MultiPolygon":
+        polytype = "MultiPolygon"
+    elif poly.geom_type == "Polygon":
+        polytype = "Polygon"
+
+    feature = {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {"type": polytype, "coordinates": []},
+    }
+    feature["geometry"]["coordinates"] = json.loads(
+        to_geojson(poly).split('"coordinates":')[-1][:-1]
+    )
+    geojson["features"].append(feature)
+    with open(outfile, "w") as output_file:
+        json.dump(geojson, output_file, indent=2)
