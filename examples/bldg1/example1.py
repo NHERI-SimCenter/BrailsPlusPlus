@@ -1,6 +1,6 @@
 
 import json
-from import Importer
+from brails import Importer
 
 importer = Importer()
 
@@ -24,48 +24,43 @@ with open('example1.json', 'r') as file:
     
     foot_print_data = data.get('footprint_app')
     if foot_print_data is None:
-        print('FATAL: A Building Inventory Generator needs a footprint_app key and data, None Provided)
+        print('FATAL: A Building Inventory Generator needs a footprint_app key and data, None Provided')
         exit(-1)
     
     footPrintSourceClassName = foor_print_data['classType']
     pythonClass = importer.getClass(footPrintSourceClassName)
-    footPrints = pythonClass(input.location, input.footPtintSource,args)
+    footPrints = pythonClass(input_file.location, input_file.footPtintSource,args)
     
 
         
     value = data['key']
-BRAILS:
+#BRAILS:
 
     # load input file2
-      input = load(inputFile)
+    input_file = load(inputFile)
 
     # determine footprintSource application
 
 
     # augment footprintData
-      foreach augmentObject in input.augmentFiles
-         footPrints = this.augment(footPrints,augmentObject) 
+    for augmentObject in input_file.augmentFiles:
+       footPrints = this.augment(footPrints,augmentObject) 
 
     # create filter array for street images
     filterArrayStreet=[]
-    foreach filter in input.streetFilters
-       pythonClass = this.getClass(filter)
-       filterArrayStreet.add(this.getClass(pythonClass)
+    for filter_object in input_file.streetFilters:
+       pythonClass = this.getClass(filter_object)
+       filterArrayStreet.add(getClass(pythonClass))
 
-    # create filter array for arial images
-    filterArrayArial=[]
-    foreach filter in input.arialFilters
-       pythonClass = this.getClass(filter)
-       filterArrayArial.add(this.getClass(pythonClass)
-			     
-    # 
-    filterArrayAriel = [self.getClass( self.getClass(filter) ) for filter in input.arielFilters] 
+    # create filter array for arial images 
+    filterArrayAeriel = [self.getClass( self.getClass(filter_object)) 
+                         for filter_object in input_file.aerialFilters] 
 
 
  
 
 
-
+"""
 
 {
     "location":{
@@ -109,12 +104,12 @@ BRAILS:
 	"args":{
 	}    
     ],
-    "arielFilters":[
+    "aerialFilters":[
 	"classType":"",
 	"args":{
 	}
     ],
-    "predictionsArial"=[
+    "predictionsAerial"=[
 	{
 	    "classType":"BrailsRoofType",
 	    "args":{
@@ -122,13 +117,13 @@ BRAILS:
 	    },
 	    "heading":"roofShape"
 	},
-	{
+	],
+    {
 	    "classType":"LLM",
 	    "args":{
 		"prompts"::"this is a pricture of a roof, is it a gabled roof, hiiped roof or flat roof?"
             }
 	    "heading":"roofShapeLLM"
-	},
     },
     "predictionsStreet"=[
 	{
@@ -138,7 +133,8 @@ BRAILS:
 	    },
 	    "heading":"numberOfStories"
 	},
-	{
+	],
+    {
 	    "classType":"LLM_numberOfStories",
 	    "args":{
 		"prompts"::"This is a picture of a House, How many stories are there?"
@@ -151,13 +147,5 @@ BRAILS:
             }
 	    "heading":"firstFloorElevation"
 	}  
-    }
 }
-    
-
-	
-	
-
-
-    
-
+"""
