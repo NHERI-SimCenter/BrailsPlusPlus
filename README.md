@@ -4,6 +4,7 @@
 [![Lint Code](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/lint_code.yml/badge.svg)](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/lint_code.yml/badge.svg)
 [![DOI](https://zenodo.org/badge/184673734.svg)](https://zenodo.org/badge/latestdoi/184673734)
 [![PyPi version](https://badgen.net/pypi/v/BRAILS/)](https://pypi.org/project/BRAILS/)
+[![PyPI download month](https://img.shields.io/pypi/dm/BRAILS.svg)](https://pypi.python.org/pypi/BRAILS/)
 
 ## What is it?
 
