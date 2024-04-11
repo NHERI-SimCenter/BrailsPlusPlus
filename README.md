@@ -2,6 +2,7 @@
 
 [![Tests](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/tests.yml/badge.svg)](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/tests.yml/badge.svg)  
 [![Lint Code](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/lint_code.yml/badge.svg)](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/lint_code.yml/badge.svg)
+[![DOI](https://zenodo.org/badge/184673734.svg)](https://zenodo.org/badge/latestdoi/184673734)
 
 
 ## What is it?
