@@ -34,8 +34,16 @@ You can find the documentation for ```BRAILS++``` [here]().
 ```shell
 pip install BRAILS
 ```
-Developers and contributors should read the [Contributing Code to Brails]() page of the documentation.
+Developers and contributors, please read the [Contributing to BRAILS++]() page of the documentation before you commit your code.
 
+## Acknowledgements
+
+This work is based on material supported by the National Science Foundation under grants CMMI 1612843 and CMMI 2131111.
+
+
+## Contact
+
+NHERI-SimCenter nheri-simcenter@berkeley.edu
 
 <!-- todo: instructions on how to lint the code, and specific subfolder or file. -->
 <!-- todo: example with the test suite. -->
