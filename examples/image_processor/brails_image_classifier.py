@@ -51,8 +51,7 @@ street_images = ImageSet();
 aerial_images.set_directory("./images/satellite", True)
 street_images.set_directory("./images/street", True)
 
-# Test importer and one of the aerial imagery classifiers:
-
+# Test importer and one of the aerial imagery classifiers, RoofShapeClassifier:
 my_class = importer.get_class('RoofShapeClassifier')
 my_classifier = my_class()
 predictions = my_classifier.predict(aerial_images)
@@ -63,8 +62,9 @@ my_classifier = my_class()
 predictions = my_classifier.predict(aerial_images)
 print(predictions)
 
-my_class = importer.get_class('FacadeParser')
+# Test importer and one of the street-level imagery classifiers, 
+# OccupancyClassifier:
+my_class = importer.get_class('OccupancyClassifier')
 my_classifier = my_class()
-# will need a new image set
 predictions = my_classifier.predict(street_images) 
 print(predictions)
