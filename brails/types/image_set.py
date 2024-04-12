@@ -46,7 +46,7 @@ class ImageSet:
             self.dir_path = path_to_dir
         else:
             print('ERROR: the supplied dir: ', path_to_dir, ' is not a valid directory')
-            return false
+            return False
         
         # if asked to include current images in dir,
         # get list of files and for each file, create full path
