@@ -30,6 +30,7 @@ setup(
         'matplotlib',
         'seaborn',
         'plotly',
+        'ftfy'
     ],
     extras_require={
         'development': [
