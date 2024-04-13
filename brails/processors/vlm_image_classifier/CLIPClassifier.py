@@ -73,20 +73,25 @@ class CLIPClassifier:
         self.lossHistory = None
         self.preds = None 
 
-    def predict(self, images: ImageSet, modelPath='tmp/models/trained_model.pth', 
+    def predict(self, images: ImageSet, modelPath='tmp/models/VIT-B-32.pth', 
                 classes=None, text_prompts = None):
         assert classes==None or (classes!=None and text_prompts!=None), 'customized classes provide customized prompts (text_prompts can not be None)'
+        if(classes != None):
+            assert len(text_prompts) % len(classes) == 0, "number of text prompts should be equal across classes (i.e. number of text prompts should be multiples of num classes)"
         if(classes!=None):
             self.classes, self.text_prompts = classes, text_prompts
         
-        modelPath = '/nfs/turbo/coe-stellayu/brianwang/clip/ckpt/ViT-B-32.pt'
         self.modelPath = modelPath
-        #self.classes = sorted(classes)
         
         def isImage(im):
             return im.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))
         
-        model, data_transforms = load(modelPath, self.device, modelPath) #load model, download model if not found
+        if(os.path.exists(modelPath)):
+            model, data_transforms = load(modelPath, self.device, modelPath) #load model
+        else:
+            download_root = os.path.dirname(modelPath)
+            os.makedirs(download_root, exist_ok = True)
+            model, data_transforms = load(self.modelArch, self.device, download_root = download_root) #download model if not found
         model.eval()
         text_input = torch.cat([tokenize("a photo of a {}".format(c)) for c in self.text_prompts]).to(self.device)
         prompts_per_class = len(self.text_prompts) // len(self.classes)
