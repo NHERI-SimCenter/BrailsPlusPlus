@@ -3,7 +3,6 @@ Utility classes and methods for the brails module.
 
 .. autosummary::
 
-      BrailsError
       Importer
 """
 
@@ -11,16 +10,8 @@ from pathlib import Path
 import importlib.util
 import ast
 import os
-
-
-class BrailsError(Exception):
-    """
-    Custom exception for specific error cases in our application.
-    """
-
-    def __init__(self, message="An error occurred in the Brails application"):
-        self.message = message
-        super().__init__(self.message)
+from brails.exceptions import NotFoundError
+from brails.exceptions import BrailsError
 
 
 class Importer:
@@ -43,9 +34,12 @@ class Importer:
 
     Raises
     ------
+    NotFoundError:
+      If the specified package or class cannot be found.
+    NotFoundError:
+      If the specified package or class cannot be found.
     BrailsError:
-      If duplicate class names are found or if a specified class is
-      not available.
+      If duplicate class names are found in the code base.
 
     """
 
@@ -63,26 +57,29 @@ class Importer:
 
         class_type = json_object.get("classType")
         if class_type == None:
-            print("FATAL: json data contained no classType key", json_object)
-            exit()
+            raise NotFoundError(
+                type_of_thing="key",
+                name="`classType`",
+                where="json data",
+                append=f"Existing data: {json_object}",
+            )
 
         python_class = self.get_class(class_type)
         if python_class == None:
-            print(
-                "FATAL: Could not find a class of type: ",
-                class_type,
-                " in the framework",
+            raise NotFoundError(
+                type_of_thing="class of type",
+                name=f"`{class_type}`",
+                where="the framework",
             )
-            exit()
 
         object_data = json_object.get("objData")
         if object_data == None:
-            print(
-                "FATAL: Could not find appData in input for : ",
-                class_type,
-                " in the JSON input",
+            raise NotFoundError(
+                type_of_thing="key",
+                name="`objData`",
+                where="json data",
+                append=f"Existing data: {json_object}",
             )
-            exit()
 
         return python_class(object_data)
 
@@ -101,7 +98,7 @@ class Importer:
 
         Raises
         ------
-        BrailsError:
+        NotFoundError:
           If the class cannot be found.
 
         """
@@ -109,9 +106,11 @@ class Importer:
         if module_path:
             module = __import__(module_path, fromlist=[class_name])
             return getattr(module, class_name)
-        raise BrailsError(
-            f"Class name `{class_name}` is not found. "
-            f"These are the available classes: {self.classes}"
+
+        raise NotFoundError(
+            type_of_thing="class",
+            name=class_name,
+            append=f"These are the available classes: {self.classes}",
         )
 
     def _find_package_path(self, package_name):
@@ -130,14 +129,14 @@ class Importer:
 
         Raises
         ------
-        BrailsError:
+        NotFoundError:
           If the package cannot be found.
 
         """
         spec = importlib.util.find_spec(package_name)
         if spec and spec.origin:
             return Path(spec.origin).parent
-        raise BrailsError(f"Package {package_name} not found")
+        raise NotFoundError(type_of_thing="package", name=package_name)
 
     def _parse_package(self):
         """

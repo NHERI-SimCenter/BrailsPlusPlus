@@ -1,5 +1,9 @@
 <h1 style="text-align: center;">BRAILS++: Building Regional Asset Inventories at Large Scale</h1>
 
+[![Tests](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/tests.yml/badge.svg)](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/tests.yml/badge.svg)  
+[![Lint Code](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/lint_code.yml/badge.svg)](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/lint_code.yml/badge.svg)
+
+
 ## What is it?
 
 ```BRAILS++``` is an object-oriented framework for building applications that focus on generating asset inventories for large geographic regions.
@@ -17,3 +21,24 @@
   - ```brails/imputaters```: directory containing classes that fill in missing ```AssetInventory``` datasets
   - ```brails/utils```: directory containing misc classes that do useful things, e.g. geometric conversions
 + ```examples```: A directory containing examples
++ ```tests```: A directory containing unit tests. The directory structure follows that of ```brails```
+
+## Documentation
+
+You can find the documentation for ```BRAILS++``` [here]().
+
+## Installation instructions
+
+```BRAILS++``` is available on PyPI under the name ```BRAILS```.
+
+```shell
+pip install BRAILS
+```
+Developers and contributors should read the [Contributing Code to Brails]() page of the documentation.
+
+
+<!-- todo: instructions on how to lint the code, and specific subfolder or file. -->
+<!-- todo: example with the test suite. -->
+<!-- todo: instructions on how to run the tests -->
+<!-- todo: instructions on how to check coverage -->
+<!-- python -m pytest tests --cov=brails --cov-report html -->

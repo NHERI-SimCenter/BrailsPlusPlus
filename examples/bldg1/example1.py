@@ -1,6 +1,6 @@
 
 import json
-from brails.utils.utils import Importer
+from import Importer
 
 importer = Importer()
 
