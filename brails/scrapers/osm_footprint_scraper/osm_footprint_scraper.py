@@ -1,4 +1,5 @@
 # written Barbaros Cetiner 03/24
+#license: BSD-2
 
 from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.types.region_boundary import RegionBoundary
