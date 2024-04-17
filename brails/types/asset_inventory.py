@@ -10,6 +10,66 @@ This module defines clesses related to aset ineventories
     Asset
 """
 
+import random
+
+class Asset:
+    """
+        A data structure for an asset that holds coordinates and features.
+    
+        Attributes:
+            coordinates (list):
+                  A two-dimensional array of coordinates [[x1, y1],[x2, y2],..[xn,yn]]
+            features (dict):
+                  The features (attributes) of an asset.
+    
+        Methods:
+        """
+
+    def __init__(self, asset_id, coordinates, features={}):
+        """
+            Initialize a Asset Inventory by setting inventory to an empty dict.
+        
+            Args:
+                asset_id (str):
+                    the id of the asset
+                coordinates (list):
+                    coordinates of the asset
+                features (dict):
+                    feature dict, if none provided empty dict assumed
+            """
+        
+        is_two_d = True
+        if not isinstance(coordinates, list):
+            is_two_d = False
+        else:
+            for item in coordinates:
+                if not isinstance(item, list):
+                    is_two_d = False
+
+        if is_two_d is True:
+            self.coordinates = coordinates
+        else:
+            print(
+                " Error Asset.__init__ cordinates passed for asset ",
+                asset_id,
+                " is not a 2d list",
+            )
+            self.coordinates = []
+
+        self.features = features
+
+    def add_features(self, additional_features: dict):
+        """
+            Update the existing features in an asset
+        
+            Args:
+               additional_features (dict):
+                   new features to merge into asset
+            """
+        
+        self.features.update(additional_features)
+
+
 
 class AssetInventory:
     """
@@ -20,10 +80,13 @@ class AssetInventory:
 
      Methods:
         __init__: Constructor that just creats an empty inventory
-        add_asset(id, coordinates): to add an asset to the inventory
+        print(): to print the inventory
+        add_asset(id, coordinates): to add an asset to the inventory with just a list of coordinates
+        add_asset(id, Asset): to add an asset to the inventory     
         add_asset_features(asset_id, features): to append new features to the asset
         get_asset_coordinates(asset_id): to get features of a particular assset
         get_asset_features(asset_id): to coordinatesof a particular assset
+        get_random_sample(size, seed): to get a smaller subset    
     """
 
     def __init__(self):
@@ -33,64 +96,7 @@ class AssetInventory:
 
         self.inventory = {}
 
-    class Asset:
-        """
-        A data structure for an asset that holds coordinates and features.
-
-        Attributes:
-            coordinates (list):
-                  A two-dimensional array of coordinates [[x1, y1],[x2, y2],..[xn,yn]]
-            features (dict):
-                  The features (attributes) of an asset.
-
-        Methods:
-        """
-
-        def __init__(self, asset_id, coordinates, features={}):
-            """
-            Initialize a Asset Inventory by setting inventory to an empty dict.
-
-            Args:
-                asset_id (str):
-                    the id of the asset
-                coordinates (list):
-                    coordinates of the asset
-                features (dict):
-                    feature dict, if none provided empty dict assumed
-            """
-
-            is_two_d = True
-            if not isinstance(coordinates, list):
-                is_two_d = False
-            else:
-                for item in coordinates:
-                    if not isinstance(item, list):
-                        is_two_d = False
-
-            if is_two_d is True:
-                self.coordinates = coordinates
-            else:
-                print(
-                    " Error Asset.__init__ cordinates passed for asset ",
-                    asset_id,
-                    " is not a 2d list",
-                )
-                self.coordinates = []
-
-            self.features = features
-
-        def add_features(self, additional_features: dict):
-            """
-            Update the existing features in an asset
-
-            Args:
-               additional_features (dict):
-                   new features to merge into asset
-            """
-
-            self.features.update(additional_features)
-
-    def print_inventory(self):
+    def print(self):
         """
         To print the asset inventory
         """
@@ -100,7 +106,7 @@ class AssetInventory:
         for key, value in self.inventory.items():
             print("key: ", key, " value: ", value)
 
-    def add_asset(self, asset_id: int, coordinates: list, features={}) -> bool:
+    def add_asset(self, asset_id: int, coordinates: list) -> bool:
         """
         To initialize an Asset and add to inventory
 
@@ -116,9 +122,9 @@ class AssetInventory:
                   True if asset was addded, False otherwise.
         """
 
-        asset = self.inventory.get(asset_id, None)
+        existing_asset = self.inventory.get(asset_id, None)
 
-        if asset is not None:
+        if existing_asset is not None:
             print(
                 "ERROR: AssetInventory.add_asset_feature: asset with id",
                 id,
@@ -127,10 +133,42 @@ class AssetInventory:
             return False
 
         # create asset and add using id as the key
-        asset = self.Asset(asset_id, coordinates, features)
-        self.inventory[id] = asset
+        asset = Asset(asset_id, coordinates, features)
+        self.inventory[asset_id] = asset
 
         return True
+
+
+    def add_asset(self, asset_id: int, asset: Asset) -> bool:
+        """
+        To initialize an Asset and add to inventory
+
+        Args:
+            asset_id (str):
+                  The unique asset id.
+            coordinates (list):
+                  A two-dimensional list representing the coordinates,
+                  [[x1, y1][x2, y2],..,[xN, yN]]
+
+        Returns:
+            bool:
+                  True if asset was addded, False otherwise.
+        """
+
+        existing_asset = self.inventory.get(asset_id, None)
+
+        if existing_asset is not None:
+            print(
+                "ERROR: AssetInventory.add_asset_feature: asset with id",
+                id,
+                " already exists",
+            )
+            return False
+
+        # create asset and add using id as the key
+        self.inventory[asset_id] = asset
+
+        return True    
 
     def add_asset_features(self, asset_id, new_features: dict):
         """
@@ -197,3 +235,28 @@ class AssetInventory:
             return False, []
 
         return True, asset.coordinates
+
+    def get_random_sample(self, number, seed=None): 
+        """
+        Method to return a smaller AssetInvenntory of randomly selected assets
+
+        Args:
+            number (int):
+                 The number of assets to be in smaller inventory
+            seed (int):
+                 The seed for generator, if None provided no seed.
+
+        Returns:
+           AssetInventory
+                 A smaller inventory of randomly selected assets
+        """
+
+        result = AssetInventory()
+        if (seed is not None):
+            random.seed(seed)
+
+        list_random_keys = random.sample(self.inventory.keys(), number)
+        for key in list_random_keys:
+            result.add_asset(key, self.inventory[key])
+            
+        return result

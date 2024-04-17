@@ -142,6 +142,28 @@ class ImageSet:
 
         return True
 
+    def add_image(self, key, file_name):
+        """
+        To add an image to the set
+
+        Args:
+
+            key:
+             the assets key, type could be string or int
+            file_name:
+             the name of the file
+
+        Returns:
+            bool:
+                 True if the file exists and not already there
+        """
+
+        #
+        # check exists and not there .. TO DO
+        #
+
+        self.images[key] = file_name
+
     def print(self):
         """
         To print the image set

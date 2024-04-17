@@ -14,12 +14,10 @@ This module defines abstract FootprintScraper class
 from abc import ABC, abstractmethod
 from shapely.geometry import Polygon
 
-from brails.types.asset_inventory import AssetInventory
+from brails.types.asset_inventory import Asset, AssetInventory
 from brails.types.region_boundary import RegionBoundary
 
 from numpy import arctan2, cos, sin, sqrt, pi, append, diff, deg2rad
-
-
 
 
 class FootprintScraper(ABC):
@@ -54,7 +52,22 @@ class FootprintScraper(ABC):
         pass
 
     def _polygon_area(self, lats, lons, length_unit):
+        """
+        Method to return area of a foorprint
 
+        Args:
+              lats (array):
+                   Array of latitudes
+              lons (array):
+                   Array of longitude
+              length_unit (str):
+                   Length unit, 'ft' by default, anything but 'm' is ignored in current code
+        
+        Returns:
+              area (double):
+                    The area
+
+        """
         radius = 20925721.784777  # Earth's radius in feet
 
         lats = deg2rad(lats)
@@ -140,8 +153,6 @@ class FootprintScraper(ABC):
         ind_remove = []
 
         for ind, footprint in enumerate(footprints):
-            if ind == 0:
-                print(footprint)
             try:
                 self.centroids.append(Polygon(footprint).centroid)
                 self.footprints.append(footprint)
@@ -158,7 +169,7 @@ class FootprintScraper(ABC):
             for key in attributes.keys():
                 del attributes[key][i]
 
-        # Write the footprint data into a GeoJSON file:
+        # Place the results into an AssetInventory
         inventory = AssetInventory()
 
         for ind, fp in enumerate(footprints):
@@ -168,6 +179,8 @@ class FootprintScraper(ABC):
                 attr = attributes[key][ind]
                 asset_features[key] = "NA" if attr is None else attr
 
-            inventory.add_asset(ind, fp, asset_features)
+            asset = Asset(ind, fp, asset_features)
+            inventory.add_asset(ind, asset)
 
+        # return the inventory
         return inventory
