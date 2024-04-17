@@ -156,8 +156,6 @@ class FootprintScraper(ABC):
             try:
                 self.centroids.append(Polygon(footprint).centroid)
                 self.footprints.append(footprint)
-                if ind == 0:
-                    print("adding", ind, footprint)
             except:
                 if ind == 0:
                     print("removing", ind, footprint)

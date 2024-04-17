@@ -1,6 +1,6 @@
 # written Barbaros Cetiner 03/24
 
-from brails.scraper.footprint_scraper import FootprintScraper
+from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import AssetInventory
 
@@ -22,6 +22,7 @@ import unicodedata
 
 
 class USA_FootprintScraper(FootprintScraper):
+    
     """
     A class to generate the foorprint data utilizing USA Structures
 
@@ -45,21 +46,8 @@ class USA_FootprintScraper(FootprintScraper):
         if self.lengthUnit == None:
             self.lengthUnit = "ft"
 
-    def get_footprints(self, region: RegionBoundary) -> AssetInventory:
-        """
-        This method will be used by the caller to obtain the footprints for builings in an area.
-
-        Args:
-            region (RegionBoundary): The region of interest.
-
-        Returns:
-            BuildingInventory: A building inventory for buildings in the region.
-
-        """
-
-        bpoly, queryarea_printname, osmid = region.get_boundary()
-
-    def get_usastruct_bldg_counts(bpoly):
+    def _get_usastruct_bldg_counts(self, bpoly):
+        
         # Get the coordinates of the bounding box for input polygon bpoly:
         bbox = bpoly.bounds
 
@@ -84,10 +72,11 @@ class USA_FootprintScraper(FootprintScraper):
 
         return totalbldgs
 
-    def get_polygon_cells(bpoly, totalbldgs=None, nfeaturesInCell=4000, plotfout=False):
+    def _get_polygon_cells(self, bpoly, totalbldgs=None, nfeaturesInCell=4000, plotfout=False):
+        
         if totalbldgs is None:
             # Get the number of buildings in the input polygon bpoly:
-            totalbldgs = get_usastruct_bldg_counts(bpoly)
+            totalbldgs = self._get_usastruct_bldg_counts(bpoly)
 
         if totalbldgs > nfeaturesInCell:
             # Calculate the number of cells required to cover the polygon area with
@@ -134,7 +123,8 @@ class USA_FootprintScraper(FootprintScraper):
 
         return rectangles
 
-    def refine_polygon_cells(premCells, nfeaturesInCell=4000):
+    def _refine_polygon_cells(self, premCells, nfeaturesInCell=4000):
+        
         # Download the building count for each cell:
         pbar = tqdm(
             total=len(premCells), desc="Obtaining the number of buildings in each cell"
@@ -142,7 +132,7 @@ class USA_FootprintScraper(FootprintScraper):
         results = {}
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future_to_url = {
-                executor.submit(get_usastruct_bldg_counts, rect): rect
+                executor.submit(self._get_usastruct_bldg_counts, rect): rect
                 for rect in premCells
             }
             for future in concurrent.futures.as_completed(future_to_url):
@@ -171,12 +161,12 @@ class USA_FootprintScraper(FootprintScraper):
 
         cellsSplit = []
         for rect in cells2split:
-            rectangles = get_polygon_cells(rect, totalbldgs=results[rect])
+            rectangles = self._get_polygon_cells(rect, totalbldgs=results[rect])
             cellsSplit += rectangles
 
         return cellsKeep, cellsSplit
 
-    def download_ustruct_bldgattr(cell):
+    def _download_ustruct_bldgattr(self, cell):
         rect = cell.bounds
         s = requests.Session()
         retries = Retry(
@@ -208,11 +198,12 @@ class USA_FootprintScraper(FootprintScraper):
                     height = float(height)
                 except:
                     height = None
-                    bldgheight.append(height)
+                    
+                bldgheight.append(height)
 
         return (ids, footprints, bldgheight)
 
-    def download_ustruct_bldgattr4region(cellsFinal, bpoly):
+    def _download_ustruct_bldgattr4region(self, cellsFinal, bpoly):
         # Download building attribute data for each cell:
         pbar = tqdm(
             total=len(cellsFinal),
@@ -221,7 +212,7 @@ class USA_FootprintScraper(FootprintScraper):
         results = {}
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future_to_url = {
-                executor.submit(download_ustruct_bldgattr, cell): cell
+                executor.submit(self._download_ustruct_bldgattr, cell): cell
                 for cell in cellsFinal
             }
             for future in concurrent.futures.as_completed(future_to_url):
@@ -252,7 +243,7 @@ class USA_FootprintScraper(FootprintScraper):
             data[bldgid] = [footprints[ind], bldgheight[ind]]
 
         # Define length unit conversion factor:
-        if lengthUnit == "ft":
+        if self.lengthUnit == "ft":
             convFactor = 3.28084
         else:
             convFactor = 1
@@ -297,19 +288,8 @@ class USA_FootprintScraper(FootprintScraper):
 
         return footprints, attributes
 
-    def __init__(self, input: dict):
-        """
-        Initialize the object
-
-        Args
-            input: a dict defining length units, if no ;length' ft is assumed
-        """
-
-        self.lengthUnit = input.get("length")
-        if self.lengthUnit == None:
-            self.lengthUnit = "ft"
-
     def get_footprints(self, region: RegionBoundary) -> AssetInventory:
+        
         """
         This method will be used by the caller to obtain the footprints for builings in an area.
 
@@ -321,24 +301,27 @@ class USA_FootprintScraper(FootprintScraper):
 
         """
 
-        bpoly, queryarea_printname, osmid = region.get_boundary()
-
-        plotCells = True
-
+        bpoly, queryarea_printname, osmid = region.get_boundary()        
+            
+        plotCells = False
+            
         if plotCells:
             meshInitialfout = (
                 queryarea_printname.replace(" ", "_") + "_Mesh_Initial.png"
             )
-            meshFinalfout = queryarea_printname.replace(" ", "_") + "_Mesh_Final.png"
+            meshFinalfout = (
+                queryarea_printname.replace(" ", "_") + "_Mesh_Final.png"
+            )
 
         print("\nMeshing the defined area...")
-        cellsPrem = get_polygon_cells(bpoly, plotfout=meshInitialfout)
+        #cellsPrem = self._get_polygon_cells(bpoly, plotfout=meshInitialfout)
+        cellsPrem = self._get_polygon_cells(bpoly)        
 
         if len(cellsPrem) > 1:
             cellsFinal = []
             cellsSplit = cellsPrem.copy()
             while len(cellsSplit) != 0:
-                cellsKeep, cellsSplit = refine_polygon_cells(cellsSplit)
+                cellsKeep, cellsSplit = self._refine_polygon_cells(cellsSplit)
                 cellsFinal += cellsKeep
             print(
                 f"\nMeshing complete. Split {queryarea_printname} into {len(cellsFinal)} cells"
@@ -352,9 +335,9 @@ class USA_FootprintScraper(FootprintScraper):
         if plotCells:
             plot_polygon_cells(bpoly, cellsFinal, meshFinalfout)
 
-        footprints, attributes = download_ustruct_bldgattr4region(cellsFinal, bpoly)
+        footprints, attributes = self._download_ustruct_bldgattr4region(cellsFinal, bpoly)
         print(
             f"\nFound a total of {len(footprints)} building footprints in {queryarea_printname}"
         )
-
+        
         return self._create_asset_inventory(footprints, attributes, self.lengthUnit)
