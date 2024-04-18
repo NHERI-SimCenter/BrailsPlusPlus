@@ -1,3 +1,5 @@
+
+
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2022 The Regents of the University of California
@@ -39,6 +41,10 @@
 # Last updated:
 # 03-08-2024   
 
+from brails.types.image_set import ImageSet
+from brails.types.asset_inventory import AssetInventory
+from brails.scrapers.image_scraper import ImageScraper
+
 import os
 import requests 
 import sys
@@ -50,22 +56,27 @@ import struct
 import json
 import matplotlib as mpl
 
+
 from PIL import Image
 from requests.adapters import HTTPAdapter, Retry
 from io import BytesIO
 from math import radians, sin, cos, atan2, sqrt, log, floor
 from shapely.geometry import Point, Polygon, MultiPoint
 from tqdm import tqdm
-from brails.types.asset_inventory import AssetInventory
+from pathlib import Path
 
-class GoogleStreetview:    
-    def __init__(self,apikey: str):        
+class GoogleStreetview:
+    
+    def __init__(self, input_data: dict):
+
+        api_key = input_data["apiKey"]
+        
         # Check if the provided Google API Key successfully obtains street view
         # imagery metadata for Doe Memorial Library of UC Berkeley:
         responseStreet = requests.get('https://maps.googleapis.com/maps/api/streetview/metadata?' + 
                                       'location=37.8725187407,-122.2596028649' +
                                       '&source=outdoor' + 
-                                      f'&key={apikey}')
+                                      f'&key={api_key}')
 
         # If the requested image cannot be downloaded, notify the user of the
         # error and stop program execution:
@@ -76,10 +87,11 @@ class GoogleStreetview:
                              + 'Static API enabled.')
             sys.exit(error_message)
             
-        self.apikey = apikey
+        self.apikey = api_key
 
 
-    def GetGoogleStreetImage(self,footprints,save_interim_images=False,save_all_cam_metadata=False):
+    def GetGoogleStreetImage(self, footprints, dir_path, save_interim_images=False,save_all_cam_metadata=False):
+        
         def get_bin(a):
             ba = bin(a)[2:]
             return "0"*(8 - len(ba)) + ba
@@ -181,6 +193,7 @@ class GoogleStreetview:
             return {"width": w, "height": h, "depthMap": depthMap}
 
         def get_depth_map(pano, saveim=False, imname='depthmap.jpg'):
+            
             # Decode depth map string:
             depthMapData = parse_dmap_str(pano['depthMapString'])
             
@@ -438,8 +451,9 @@ class GoogleStreetview:
  
         # Create a directory to save the street-level images and corresponding
         # depthmaps:
-        os.makedirs('tmp/images/street',exist_ok=True)
-        os.makedirs('tmp/images/depthmap',exist_ok=True)
+        
+        os.makedirs(f'{dir_path}',exist_ok=True)
+        os.makedirs(f'{dir_path}',exist_ok=True)
  
         # Compute building footprints, parse satellite image and depthmap file
         # names, and create the list of inputs required for obtaining 
@@ -454,8 +468,8 @@ class GoogleStreetview:
             self.centroids.append([fp_cent.x,fp_cent.y])
             imName = str(round(fp_cent.y,8))+str(round(fp_cent.x,8))
             imName.replace(".","")
-            im_name = f"tmp/images/street/imstreet_{imName}.jpg"
-            depthmap_name = f"tmp/images/depthmap/dmstreet_{imName}.txt"            
+            im_name = f"{dir_path}/imstreet_{imName}.jpg"
+            depthmap_name = f"{dir_path}/dmstreet_{imName}.txt"            
             street_images.append(im_name)
             inps.append((fp,(fp_cent.y,fp_cent.x),im_name,depthmap_name))
         
@@ -521,7 +535,7 @@ class GoogleStreetview:
         self.street_images = street_images.copy()
         
 
-    def get_images(self, inventory: AssetInventory, dir: string) -> ImageSet:
+    def get_images(self, inventory: AssetInventory, dir_path: str) -> ImageSet:
         """
         A method to obtain the images for assets in the inventory utilizing Foogle Streetview
 
@@ -535,5 +549,37 @@ class GoogleStreetview:
 
         """
 
+        # ensure consistance in dir_path, i.e remove ending / if given
         
-        #footprints,save_interim_images=False,save_all_cam_metadata=False):
+        dir_path = Path(dir_path)
+        
+        #
+        # create the footprints from the asset inventory assets
+        # keep the asset kets in a list for when done
+        #
+
+        result = ImageSet()
+        
+        result.dir_path = dir_path        
+
+        asset_footprints = []
+        asset_keys = []
+
+        for key, asset in inventory.inventory.items():
+            asset_footprints.append(asset.coordinates)
+            asset_keys.append(key)
+
+        #
+        # get the images
+        #
+
+        self.GetGoogleStreetImage(asset_footprints, dir_path)
+        
+        for key, im in zip(asset_keys, self.street_images):
+            # strip off dirpath
+            if (im is not None):
+                #im_stripped = im.replace(dir_path, "")
+                im_stripped = Path(im).name
+                result.add_image(key, im_stripped)
+            
+        return result

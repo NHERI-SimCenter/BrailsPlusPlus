@@ -19,14 +19,12 @@ from brails.utils.utils import Importer
 #   -- apiKey.txt is in .gitignore so you have work to do to get it uploaded
 
 apiKey = ""
-if os.path.exists('apiKey.txt'):
-    with open('apiKey.txt', 'r') as file:
+if os.path.exists("apiKey.txt"):
+    with open("apiKey.txt", "r") as file:
         apiKey = file.readline().strip()  # Read the first line and strip whitespace
 
 
-
-
-# 
+#
 # create the importer
 #
 
@@ -54,10 +52,10 @@ usa_inventory = instance2.get_footprints(region_boundary_object)
 print("num assets USA", len(usa_inventory.inventory))
 
 #
-# Make the Inventory smaller as we are pulling images 
+# Make the Inventory smaller as we are pulling images
 #    - (4 buildings with a seed of 200)
 
-small_inventory = usa_inventory.get_random_sample(4, 200)
+small_inventory = usa_inventory.get_random_sample(10, 40)
 print("num assets USA subset", len(small_inventory.inventory))
 
 #
@@ -68,3 +66,15 @@ google_satellite_class = importer.get_class("GoogleSatellite")
 google_input = {"apiKey": apiKey}
 google_satellite = google_satellite_class(google_input)
 images_satellite = google_satellite.get_images(small_inventory, "tmp/satellite/")
+
+images_satellite.print()
+
+#
+# Get street view images using GoogleStreetview
+#
+
+google_street_class = importer.get_class("GoogleStreetview")
+google_street = google_street_class(google_input)
+images_street = google_street.get_images(small_inventory, "tmp/street/")
+
+images_street.print()

@@ -60,7 +60,7 @@ from io import BytesIO
 from math import radians, sin, cos, atan2, sqrt, log, floor
 from shapely.geometry import Point, Polygon, MultiPoint
 from tqdm import tqdm
-
+from pathlib import Path
 
 class GoogleSatellite:
 
@@ -285,7 +285,7 @@ class GoogleSatellite:
             self.centroids.append([fp_cent.x, fp_cent.y])
             imName = str(round(fp_cent.y, 8)) + str(round(fp_cent.x, 8))
             imName.replace(".", "")
-            im_name = f"{self.dir_location}imsat_{imName}.jpg"
+            im_name = f"{self.dir_location}/imsat_{imName}.jpg"
             self.satellite_images.append(im_name)
             inps.append((fp, im_name))
 
@@ -323,6 +323,10 @@ class GoogleSatellite:
 
         """
 
+        # ensure consistance in dir_path, i.e remove ending / if given
+        
+        dir_path = Path(dir_path)
+
         #
         # create the footprints from the asset inventory assets
         # keep the asset kets in a list for when done
@@ -346,11 +350,11 @@ class GoogleSatellite:
         self.GetGoogleSatelliteImage(asset_footprints, dir_path)
 
         for key, im in zip(asset_keys, self.satellite_images):
-            # strip off dirpath
-            im_stripped = im.replace(dir_path, "")
-            print(key, im_stripped)
-            result.add_image(key, im_stripped)
-            #result.images[key]=im_stripped
+            if (im is not None):            
+                # strip off dirpath
+                #im_stripped = im.replace(dir_path, "")
+                im_stripped = Path(im).name      
+                result.add_image(key, im_stripped)
             
         return result
 
