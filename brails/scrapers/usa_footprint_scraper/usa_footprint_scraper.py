@@ -1,11 +1,13 @@
-# written Barbaros Cetiner 03/24
+# Written: Barbaros Cetiner(ImHandler in old BRAILS)
+#          minor edits for BRAILS++ by fmk
+# license: BSD-3 (see LICENSCE file: https://github.com/NHERI-SimCenter/BrailsPlusPlus)
 
 from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import AssetInventory
+from brails.utils.geo_tools import *
 
 import math
-import json
 import requests
 import sys
 import pandas as pd
@@ -15,14 +17,13 @@ from itertools import groupby
 from shapely.geometry import Point, Polygon, LineString, MultiPolygon, box
 from shapely.ops import linemerge, unary_union, polygonize
 from shapely.strtree import STRtree
-from brails.utils.geo_tools import *
+
 import concurrent.futures
 from requests.adapters import HTTPAdapter, Retry
 import unicodedata
 
 
 class USA_FootprintScraper(FootprintScraper):
-    
     """
     A class to generate the foorprint data utilizing USA Structures
 
@@ -47,7 +48,7 @@ class USA_FootprintScraper(FootprintScraper):
             self.lengthUnit = "ft"
 
     def _get_usastruct_bldg_counts(self, bpoly):
-        
+
         # Get the coordinates of the bounding box for input polygon bpoly:
         bbox = bpoly.bounds
 
@@ -72,8 +73,10 @@ class USA_FootprintScraper(FootprintScraper):
 
         return totalbldgs
 
-    def _get_polygon_cells(self, bpoly, totalbldgs=None, nfeaturesInCell=4000, plotfout=False):
-        
+    def _get_polygon_cells(
+        self, bpoly, totalbldgs=None, nfeaturesInCell=4000, plotfout=False
+    ):
+
         if totalbldgs is None:
             # Get the number of buildings in the input polygon bpoly:
             totalbldgs = self._get_usastruct_bldg_counts(bpoly)
@@ -124,7 +127,7 @@ class USA_FootprintScraper(FootprintScraper):
         return rectangles
 
     def _refine_polygon_cells(self, premCells, nfeaturesInCell=4000):
-        
+
         # Download the building count for each cell:
         pbar = tqdm(
             total=len(premCells), desc="Obtaining the number of buildings in each cell"
@@ -198,7 +201,7 @@ class USA_FootprintScraper(FootprintScraper):
                     height = float(height)
                 except:
                     height = None
-                    
+
                 bldgheight.append(height)
 
         return (ids, footprints, bldgheight)
@@ -289,7 +292,6 @@ class USA_FootprintScraper(FootprintScraper):
         return footprints, attributes
 
     def get_footprints(self, region: RegionBoundary) -> AssetInventory:
-        
         """
         This method will be used by the caller to obtain the footprints for builings in an area.
 
@@ -301,21 +303,19 @@ class USA_FootprintScraper(FootprintScraper):
 
         """
 
-        bpoly, queryarea_printname, osmid = region.get_boundary()        
-            
+        bpoly, queryarea_printname, osmid = region.get_boundary()
+
         plotCells = False
-            
+
         if plotCells:
             meshInitialfout = (
                 queryarea_printname.replace(" ", "_") + "_Mesh_Initial.png"
             )
-            meshFinalfout = (
-                queryarea_printname.replace(" ", "_") + "_Mesh_Final.png"
-            )
+            meshFinalfout = queryarea_printname.replace(" ", "_") + "_Mesh_Final.png"
 
         print("\nMeshing the defined area...")
-        #cellsPrem = self._get_polygon_cells(bpoly, plotfout=meshInitialfout)
-        cellsPrem = self._get_polygon_cells(bpoly)        
+        # cellsPrem = self._get_polygon_cells(bpoly, plotfout=meshInitialfout)
+        cellsPrem = self._get_polygon_cells(bpoly)
 
         if len(cellsPrem) > 1:
             cellsFinal = []
@@ -335,9 +335,11 @@ class USA_FootprintScraper(FootprintScraper):
         if plotCells:
             plot_polygon_cells(bpoly, cellsFinal, meshFinalfout)
 
-        footprints, attributes = self._download_ustruct_bldgattr4region(cellsFinal, bpoly)
+        footprints, attributes = self._download_ustruct_bldgattr4region(
+            cellsFinal, bpoly
+        )
         print(
             f"\nFound a total of {len(footprints)} building footprints in {queryarea_printname}"
         )
-        
+
         return self._create_asset_inventory(footprints, attributes, self.lengthUnit)

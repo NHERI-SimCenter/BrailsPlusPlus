@@ -1,7 +1,6 @@
-# Writtten:
-#    fmk (abstract class)  03/24
-#    Barbaros Cetiner (subclass needed methods: _polygon_area and create_asset_inventory)
-# Licensce: BSD-2
+# Writtten: Barbaros Cetiner (_polygon_area and create_asset_inventory from FootprintHandler in original BRAILS)
+#           minor edits for BRAIS++ making abstract class fmk 03/24
+# license: BSD-3 (see LICENSCE.txt file: https://github.com/NHERI-SimCenter/BrailsPlusPlus)
 
 """
 This module defines abstract FootprintScraper class
@@ -62,7 +61,7 @@ class FootprintScraper(ABC):
                    Array of longitude
               length_unit (str):
                    Length unit, 'ft' by default, anything but 'm' is ignored in current code
-        
+
         Returns:
               area (double):
                     The area

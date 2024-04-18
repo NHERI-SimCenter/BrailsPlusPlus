@@ -1,5 +1,7 @@
-# written Barbaros Cetiner 03/24
-#license: BSD-2
+
+# Written: Barbaros Cetiner(ImHandler in old BRAILS)
+#          minor edits for BRAILS++ by fmk 03/24
+# license: BSD-3 (see LICENSCE.txt file: https://github.com/NHERI-SimCenter/BrailsPlusPlus)
 
 from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.types.region_boundary import RegionBoundary

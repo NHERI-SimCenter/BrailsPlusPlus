@@ -12,7 +12,7 @@ class Imputation(ABC):
     """
 
     @abstractmethod
-    def imputate(self, inentory: AssetInventory):
+    def imputate(self, inventory: AssetInventory): 
         """
         Imputate an Asset Inventory
 
