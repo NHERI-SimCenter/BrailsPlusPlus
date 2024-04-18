@@ -67,3 +67,4 @@ tmp
 /docs/source/notebooks/*.ipynb
 docs/source/notebooks/.ipynb_checkpoints/
 apiKey.txt
+*#
