@@ -55,7 +55,7 @@ print("num assets USA", len(usa_inventory.inventory))
 # Make the Inventory smaller as we are pulling images
 #    - (4 buildings with a seed of 200)
 
-small_inventory = usa_inventory.get_random_sample(10, 40)
+small_inventory = usa_inventory.get_random_sample(20, 40)
 print("num assets USA subset", len(small_inventory.inventory))
 
 #

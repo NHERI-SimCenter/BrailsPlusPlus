@@ -46,16 +46,78 @@
 This module defines clesses related to image sets
 
 .. autosummary::
-
     ImageSet
 """
-
 
 import os
 
 # import sys  ERROR HANDLING NEED TO DISCUSSS
 
+class Image:
+    
+    """
+    A class to represent an image
+        
+    Attributes:
+          filename (str): filename of image
+          properties (dict): properties of image if known, i.e. camera location, depth map,
+        
+    Methods:
+        __init__:
+        set_image(self, filename: str)
+        update_properties(self, additional_properties: dict)
+        print(self)
+    """
+        
+    def __init__(self, filename:str, properties:dict = {}):
+        """
+            Initialize an Image set
+            
+            Args:
+            filename (str):
+              the name of file containing image
+            proprties (dict):
+              the image properties, by defaullt empty dict
+        """        
+            
+        self.filename = filename 
+        self.properties = properties
+        
+        
+    def set_image(self, filename:str):
+        """
+        To set the filename.
+                
+        Args:
+            filename (str):
+       """
+            
+        self.filename = filename
+            
+            
+    def update_propertiies(self, additional_properties: dict):
+        """
+            To update the properties
+            
+            Args:
+            additional_proprties (str):
+               additional properties ti update the current properties with
+        """
+            
+        self.properties.update(additional_properties)
 
+
+    def print(self):
+        """
+            To print the Image.
+        """
+        if not self.properties:
+            print('filename: ',self.filename)
+        else:
+            print('filename: ',self.filename, ' properties: ', self.properties)                        
+            
+
+                
 class ImageSet:
     """
     A class representing a set of images.
@@ -64,14 +126,16 @@ class ImageSet:
         dir_path (str):
               A path to image directory if images all in same location.
         images (dict):
-              A dict of all images, key is the id for the image, value is local file name
+              A dict of all images, key is the id for the image, value is an Image
 
      Methods:
         __init__:
         set_directory(self,path_to_dir, include_existing_images, limited_to_extensions)
-        add_image(self, id, file_name)
+        add_image(self, id, Image)
+        get_image(self, id)
         print(self)
     """
+
 
     def __init__(self):
         """
@@ -138,39 +202,76 @@ class ImageSet:
                     ):
 
                         count += 1
-                        self.images[count] = entry
+                        image = Image(entry)
+                        self.images[count] = image
 
         return True
 
-    def add_image(self, key, file_name):
+    def add_image(self, key, filename: str, properties: dict = {}):
         """
-        To add an image to the set
+        To create and add a new image too the set
 
         Args:
 
             key:
              the assets key, type could be string or int
-            file_name:
-             the name of the file
+            image:
+             the image to be added
 
         Returns:
             bool:
-                 True if the file exists and not already there
+                 True if the Image is added, False if already there
         """
 
+        #
+        # create a new image and add .. need to check if files there!
+        #
+
+        if key not in self.images:
+            image = Image(filename, properties)
+            self.images[key] = image
+            return True
+        
+        else:
+            
+            return False
+
+        
+    def get_image(self, key):
+        """
+        To get an image
+
+        Args:
+            key:
+               the key corresponding to the image to be returned
+
+        Returns:
+            Image:
+                 The image or None if no image with key
+        """
+
+        return self.images.get(key)
+    
         #
         # check exists and not there .. TO DO
         #
 
-        self.images[key] = file_name
+        self.images[key] = image        
 
     def print(self):
+        
         """
         To print the image set
 
         """
+        print("ImageSet : NAME WOULD BE NICE")        
         print("directory:", self.dir_path)
         if len(self.images) != 0:
             print("images (num images: ", len(self.images), ")\n")
-            for key, value in self.images.items():
-                print("\t", key, ":", value)
+            
+            for key, image in self.images.items():
+                if not image.properties:
+                    print('key: ', key, 'filename: ',image.filename)
+                else:
+                    print('key: ', key, 'filename: ',image.filename, ' properties: ', image.properties)                                        
+

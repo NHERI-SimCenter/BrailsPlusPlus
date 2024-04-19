@@ -41,7 +41,7 @@
 # Last updated:
 # 03-08-2024   
 
-from brails.types.image_set import ImageSet
+from brails.types.image_set import Image, ImageSet
 from brails.types.asset_inventory import AssetInventory
 from brails.scrapers.image_scraper import ImageScraper
 
@@ -495,6 +495,7 @@ class GoogleStreetview:
 
         # Save the depthmap and all other required camera metadata in
         # the class object:
+        
         if save_all_cam_metadata==False:
             self.cam_elevs = []
             self.depthmaps = [] 
@@ -570,16 +571,26 @@ class GoogleStreetview:
             asset_keys.append(key)
 
         #
-        # get the images
+        # get the imagee filenames and properties, and create a new image
         #
 
-        self.GetGoogleStreetImage(asset_footprints, dir_path)
-        
-        for key, im in zip(asset_keys, self.street_images):
-            # strip off dirpath
-            if (im is not None):
-                #im_stripped = im.replace(dir_path, "")
-                im_stripped = Path(im).name
-                result.add_image(key, im_stripped)
+        self.GetGoogleStreetImage(asset_footprints, dir_path, False, True)
+
+        num_images = len(asset_keys)
+        for i in range(len(asset_keys)):
+            filename = self.street_images[i]            
+            if filename is not None:
+                name_stripped = Path(filename).name                
+                properties = {}
+                key = asset_keys[i]
+                properties['elevs'] = self.cam_elevs[i]
+                properties['latlons'] = self.cam_latlons[i]
+                properties['depthmaps'] = Path(self.depthmaps[i][0]).name
+                properties['fov'] = self.fovs[i]
+                properties['heading'] = self.headings[i]
+                properties['pitch'] = self.pitch[i]
+                properties['zoomm_levels'] = self.zoom_levels[i]
+                
+                result.add_image(key, name_stripped, properties)
             
         return result

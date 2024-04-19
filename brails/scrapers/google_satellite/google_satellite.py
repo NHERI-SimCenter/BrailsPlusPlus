@@ -353,10 +353,8 @@ class GoogleSatellite:
             if (im is not None):            
                 # strip off dirpath
                 #im_stripped = im.replace(dir_path, "")
-                im_stripped = Path(im).name      
+                im_stripped = Path(im).name
                 result.add_image(key, im_stripped)
             
         return result
 
-
-1

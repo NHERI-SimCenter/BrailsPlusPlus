@@ -104,8 +104,8 @@ class CLIPClassifier:
             print('ImageClassifier fails as ', data_dir, ' is not a directory')
 
         for idx, (key, im) in enumerate(images.images.items()):
-            if isImage(im):
-                image = Image.open(os.path.join(data_dir, im)).convert("RGB")
+            if isImage(im.filename):
+                image = Image.open(os.path.join(data_dir, im.filename)).convert("RGB")
                 image = data_transforms(image).float()
                 image = image.unsqueeze(0)
                 batch_imgs.append(image)
