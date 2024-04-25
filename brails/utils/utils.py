@@ -29,6 +29,8 @@ class Importer:
     ----------
     package_path (Path):
       The file system path to the root of the package.
+    max_parse_levels (int):
+      An integer that limits parsing of class files to the fisrt max_parse)levels subdirectories
     classes (dict):
       A dictionary mapping class names to their module paths.
 
@@ -51,6 +53,7 @@ class Importer:
         """
         self.package_path = self._find_package_path(package_name)
         self.classes = {}
+        self.max_parse_levels = 2
         self._parse_package()
 
     def get_object(self, json_object):
@@ -143,11 +146,14 @@ class Importer:
         Walk the package directory and parse each Python file to find
         classes.
         """
-        for root, _, files in os.walk(self.package_path):
-            for file in files:
-                if file.endswith(".py"):
-                    file_path = os.path.join(root, file)
-                    self._parse_file(file_path)
+        #root_directory = Path(self.package_path)
+        for dirpath, _, files in os.walk(self.package_path):
+            depth = dirpath.count(os.path.sep) - str(self.package_path).count(os.path.sep)
+            if depth <= self.max_parse_levels:
+                for file in files:
+                    if file.endswith(".py"):
+                        file_path = os.path.join(dirpath, file)
+                        self._parse_file(file_path)
 
     def _parse_file(self, file_path):
         """
