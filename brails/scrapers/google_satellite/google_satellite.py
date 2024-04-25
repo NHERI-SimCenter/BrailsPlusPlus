@@ -62,7 +62,7 @@ from shapely.geometry import Point, Polygon, MultiPoint
 from tqdm import tqdm
 from pathlib import Path
 
-class GoogleSatellite:
+class GoogleSatellite(ImageScraper):
 
     def __init__(self, input_data: dict):
 
@@ -290,7 +290,7 @@ class GoogleSatellite:
             inps.append((fp, im_name))
 
         # Create a directory to save the satellite images:
-        os.makedirs(self.dir_location, exist_ok=True)
+        # os.makedirs(self.dir_location, exist_ok=True)
 
         # Download satellite images corresponding to each building footprint:
         pbar = tqdm(total=len(footprints), desc="Obtaining satellite imagery")
@@ -326,7 +326,8 @@ class GoogleSatellite:
         # ensure consistance in dir_path, i.e remove ending / if given
         
         dir_path = Path(dir_path)
-
+        os.makedirs(f'{dir_path}',exist_ok=True)
+        
         #
         # create the footprints from the asset inventory assets
         # keep the asset kets in a list for when done

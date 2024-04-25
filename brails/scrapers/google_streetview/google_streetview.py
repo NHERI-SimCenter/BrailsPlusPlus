@@ -1,5 +1,3 @@
-
-
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2022 The Regents of the University of California
@@ -65,7 +63,7 @@ from shapely.geometry import Point, Polygon, MultiPoint
 from tqdm import tqdm
 from pathlib import Path
 
-class GoogleStreetview:
+class GoogleStreetview(ImageScraper):
     
     def __init__(self, input_data: dict):
 
@@ -452,8 +450,8 @@ class GoogleStreetview:
         # Create a directory to save the street-level images and corresponding
         # depthmaps:
         
-        os.makedirs(f'{dir_path}',exist_ok=True)
-        os.makedirs(f'{dir_path}',exist_ok=True)
+        #os.makedirs(f'{dir_path}',exist_ok=True)
+        #os.makedirs(f'{dir_path}',exist_ok=True)
  
         # Compute building footprints, parse satellite image and depthmap file
         # names, and create the list of inputs required for obtaining 
@@ -553,6 +551,7 @@ class GoogleStreetview:
         # ensure consistance in dir_path, i.e remove ending / if given
         
         dir_path = Path(dir_path)
+        os.makedirs(f'{dir_path}',exist_ok=True)
         
         #
         # create the footprints from the asset inventory assets
