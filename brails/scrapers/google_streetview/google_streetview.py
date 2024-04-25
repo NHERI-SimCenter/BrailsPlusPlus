@@ -577,14 +577,29 @@ class GoogleStreetview(ImageScraper):
 
         num_images = len(asset_keys)
         for i in range(len(asset_keys)):
+            
             filename = self.street_images[i]            
             if filename is not None:
-                name_stripped = Path(filename).name                
-                properties = {}
                 key = asset_keys[i]
+
+                # going to rename image files to use key .. barbaros can fix in code so no rename
+                current_file_path = Path(filename)
+                new_name = f'gstrt_{key}{current_file_path.suffix}'
+                new_file_path = current_file_path.parent / new_name
+                current_file_path.rename(new_file_path)
+
+                # might as well do same for depthmap
+                current_depthfile_path = Path(self.depthmaps[i][0])
+                new_depthname = f'dmap_{key}{current_depthfile_path.suffix}'
+                new_depthfile_path = current_depthfile_path.parent / new_depthname                
+                current_depthfile_path.rename(new_depthfile_path)
+                
+                name_stripped = new_file_path.name
+                
+                properties = {}
                 properties['elevs'] = self.cam_elevs[i]
                 properties['latlons'] = self.cam_latlons[i]
-                properties['depthmaps'] = Path(self.depthmaps[i][0]).name
+                properties['depthmaps'] = current_depthfile_path.name
                 properties['fov'] = self.fovs[i]
                 properties['heading'] = self.headings[i]
                 properties['pitch'] = self.pitch[i]
