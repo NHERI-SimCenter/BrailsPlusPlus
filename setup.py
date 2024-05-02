@@ -30,7 +30,9 @@ setup(
         'matplotlib',
         'seaborn',
         'plotly',
-        'ftfy'
+        'ftfy',
+        'supervision'
+        'opencv-python'
     ],
     extras_require={
         'development': [
