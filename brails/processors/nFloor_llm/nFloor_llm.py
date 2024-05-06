@@ -31,10 +31,11 @@ class NFloorLLM(CLIPClassifier):
             self.text_prompts = self.args['prompts']
             self.classes = self.args['classes']
         else:
+            #each class should have equal amount of text prompts
             self.text_prompts = [
-                'one story house','bungalow','flat house', #one-story prompts
-                'two story house','two-story duplex','raised ranch', #two-story prompts
-                'three story house','three story house','three-decker' #three-story prompts
+                'one story house', 'bungalow', 'flat house', 'single-story side split house',
+                'two story house', 'two story townhouse', 'side split house', 'raised ranch', 
+                'three story house','three story house', 'three story house', 'three-decker'
             ]
             self.classes = [1, 2, 3]
         
