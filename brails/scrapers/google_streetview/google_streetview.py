@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2022 The Regents of the University of California
+# Copyright (c) 2024 The Regents of the University of California
 #
-# This file is part of BRAILS.
+# This file is part of BRAILS++.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -31,13 +31,13 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 # You should have received a copy of the BSD 3-Clause License along with
-# BRAILS. If not, see <http://www.opensource.org/licenses/>.
+# BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 #
 # Contributors:
 # Barbaros Cetiner
 #
 # Last updated:
-# 03-08-2024   
+# 05-06-2024   
 
 from brails.types.image_set import Image, ImageSet
 from brails.types.asset_inventory import AssetInventory
@@ -54,12 +54,10 @@ import struct
 import json
 import matplotlib as mpl
 
-
-from PIL import Image
+import PIL
 from requests.adapters import HTTPAdapter, Retry
 from io import BytesIO
-from math import radians, sin, cos, atan2, sqrt, log, floor
-from shapely.geometry import Point, Polygon, MultiPoint
+from shapely.geometry import Polygon
 from tqdm import tqdm
 from pathlib import Path
 
@@ -245,7 +243,7 @@ class GoogleStreetview(ImageScraper):
             tiles = []
             for url in urls:
                 response = s.get(url)
-                tiles.append(Image.open(BytesIO(response.content)))
+                tiles.append(PIL.Image.open(BytesIO(response.content)))
             return tiles
 
         def download_pano(pano, saveim=False, imname='pano.jpg'):
@@ -265,7 +263,7 @@ class GoogleStreetview(ImageScraper):
             images = download_tiles(urls)
             
             # Combine the downloaded tiles to get the uncropped pano:
-            combined_im = Image.new('RGB', imSize)
+            combined_im = PIL.Image.new('RGB', imSize)
             for (ind,im) in enumerate(images):
                combined_im.paste(im, offsets[ind])
             
@@ -548,34 +546,24 @@ class GoogleStreetview(ImageScraper):
 
         """
 
-        # ensure consistance in dir_path, i.e remove ending / if given
-        
+        # Ensure consistency in dir_path, i.e remove ending / if given:
         dir_path = Path(dir_path)
         os.makedirs(f'{dir_path}',exist_ok=True)
         
-        #
-        # create the footprints from the asset inventory assets
-        # keep the asset kets in a list for when done
-        #
-
+        # Create the footprints from the items in AssetInventory
+        # Keep the asset keys in a list for later use:
         result = ImageSet()
-        
         result.dir_path = dir_path        
 
         asset_footprints = []
         asset_keys = []
-
         for key, asset in inventory.inventory.items():
             asset_footprints.append(asset.coordinates)
             asset_keys.append(key)
 
-        #
-        # get the imagee filenames and properties, and create a new image
-        #
-
+        # Get the image filenames and properties, and create a new image:
         self.GetGoogleStreetImage(asset_footprints, dir_path, False, True)
 
-        num_images = len(asset_keys)
         for i in range(len(asset_keys)):
             
             filename = self.street_images[i]            
@@ -597,13 +585,13 @@ class GoogleStreetview(ImageScraper):
                 name_stripped = new_file_path.name
                 
                 properties = {}
-                properties['elevs'] = self.cam_elevs[i]
-                properties['latlons'] = self.cam_latlons[i]
-                properties['depthmaps'] = current_depthfile_path.name
+                properties['elev'] = self.cam_elevs[i]
+                properties['latlon'] = self.cam_latlons[i]
+                properties['depthmap'] = current_depthfile_path.name
                 properties['fov'] = self.fovs[i]
                 properties['heading'] = self.headings[i]
                 properties['pitch'] = self.pitch[i]
-                properties['zoomm_levels'] = self.zoom_levels[i]
+                properties['zoom_level'] = self.zoom_levels[i]
                 
                 result.add_image(key, name_stripped, properties)
             
