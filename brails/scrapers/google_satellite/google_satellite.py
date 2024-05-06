@@ -57,7 +57,7 @@ from pathlib import Path
 
 class GoogleSatellite(ImageScraper):
 
-    def __init__(self, input_data: dict):
+    def __init__(self):
         self.dir_location = ''
 
     def GetGoogleSatelliteImage(self, footprints, dir_location):
