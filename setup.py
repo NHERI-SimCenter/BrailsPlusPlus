@@ -31,7 +31,7 @@ setup(
         'seaborn',
         'plotly',
         'ftfy',
-        'supervision'
+        'supervision',
         'opencv-python'
     ],
     extras_require={
