@@ -534,15 +534,16 @@ class GoogleStreetview(ImageScraper):
 
     def get_images(self, inventory: AssetInventory, dir_path: str) -> ImageSet:
         """
-        A method to obtain the images for assets in the inventory utilizing Foogle Streetview
+        This method obtains street-level imagery of buildings given the 
+        footprintsin the asset inventory
 
         Args:
               inventory (AssetInventory):
-                   The AssetInventory.
+                   The AssetInventory
 
         Returns:
               Image_Set:
-                    An image_Set for the assets in the inventory.
+                    An image_Set for the assets in the inventory
 
         """
 
