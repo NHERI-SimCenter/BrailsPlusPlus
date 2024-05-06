@@ -38,7 +38,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 04-11-2024
+# 05-06-2024
 
 # Written: fmk, 3/24
 
@@ -256,7 +256,7 @@ class ImageSet:
         # check exists and not there .. TO DO
         #
 
-        self.images[key] = image        
+        # self.images[key] = image        
 
     def print(self):
         
@@ -264,7 +264,7 @@ class ImageSet:
         To print the image set
 
         """
-        print("ImageSet : NAME WOULD BE NICE")        
+        print("\nImageSet : NAME WOULD BE NICE")        
         print("directory:", self.dir_path)
         if len(self.images) != 0:
             print("images (num images: ", len(self.images), ")\n")
@@ -273,5 +273,5 @@ class ImageSet:
                 if not image.properties:
                     print('key: ', key, 'filename: ',image.filename)
                 else:
-                    print('key: ', key, 'filename: ',image.filename, ' properties: ', image.properties)                                        
-
+                    print('key: ', key, 'filename: ',image.filename, ' properties: ', image.properties)
+        print('\n')                                        
