@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2022 The Regents of the University of California
+# Copyright (c) 2024 The Regents of the University of California
 #
-# This file is part of BRAILS.
+# This file is part of BRAILS++.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -37,7 +37,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 03-08-2024
+# 05-06-2024
 
 from brails.types.image_set import ImageSet
 from brails.types.asset_inventory import AssetInventory
@@ -45,50 +45,20 @@ from brails.scrapers.image_scraper import ImageScraper
 
 import os
 import requests
-import sys
 import math
 import concurrent.futures
-import numpy as np
-import base64
-import struct
-import json
-import matplotlib as mpl
 
 from PIL import Image
 from requests.adapters import HTTPAdapter, Retry
 from io import BytesIO
-from math import radians, sin, cos, atan2, sqrt, log, floor
-from shapely.geometry import Point, Polygon, MultiPoint
+from shapely.geometry import Polygon
 from tqdm import tqdm
 from pathlib import Path
 
 class GoogleSatellite(ImageScraper):
 
-    def __init__(self, input_data: dict):
-
-        api_key = input_data["apiKey"]
-
-        # Check if the provided Google API Key successfully obtains street view
-        # imagery metadata for Doe Memorial Library of UC Berkeley:
-        responseStreet = requests.get(
-            "https://maps.googleapis.com/maps/api/streetview/metadata?"
-            + "location=37.8725187407,-122.2596028649"
-            + "&source=outdoor"
-            + f"&key={api_key}"
-        )
-
-        # If the requested image cannot be downloaded, notify the user of the
-        # error and stop program execution:
-        if "error" in responseStreet.text.lower():
-            error_message = (
-                "Google API key error. The entered API key is valid "
-                + "but does not have Street View Static API enabled. "
-                + "Please enter a key that has the Street View"
-                + "Static API enabled."
-            )
-            sys.exit(error_message)
-
-        self.apikey = api_key
+    def __init__(self):
+        self.dir_location = ''
 
     def GetGoogleSatelliteImage(self, footprints, dir_location):
 
@@ -309,7 +279,8 @@ class GoogleSatellite(ImageScraper):
 
     def get_images(self, inventory: AssetInventory, dir_path: str) -> ImageSet:
         """
-        This method obtaines images given the foorprints in the asset inventory. T
+        This method obtains aerial imagery of buildings given the footprints
+        in the asset inventory
 
         Args:
               inventory (AssetInventory):
@@ -323,31 +294,22 @@ class GoogleSatellite(ImageScraper):
 
         """
 
-        # ensure consistance in dir_path, i.e remove ending / if given
-        
+        # Ensure consistency in dir_path, i.e remove ending / if given:
         dir_path = Path(dir_path)
         os.makedirs(f'{dir_path}',exist_ok=True)
         
-        #
-        # create the footprints from the asset inventory assets
-        # keep the asset kets in a list for when done
-        #
-
+        # Create the footprints from the items in AssetInventory
+        # Keep the asset keys in a list for later use:
         result = ImageSet()
-
         result.dir_path = dir_path
 
         asset_footprints = []
         asset_keys = []
-
         for key, asset in inventory.inventory.items():
             asset_footprints.append(asset.coordinates)
             asset_keys.append(key)
 
-        #
-        # get the images
-        #
-
+        # Get the images:
         self.GetGoogleSatelliteImage(asset_footprints, dir_path)
 
         for key, im in zip(asset_keys, self.satellite_images):
@@ -358,4 +320,3 @@ class GoogleSatellite(ImageScraper):
                 result.add_image(key, im_stripped)
             
         return result
-
