@@ -69,6 +69,11 @@ class Asset:
         
         self.features.update(additional_features)
 
+    def print(self):
+        
+        print('\t coords: ' , self.coordinates);
+        print('\t features: ' , self.features);        
+
 
 
 class AssetInventory:
@@ -86,7 +91,9 @@ class AssetInventory:
         add_asset_features(asset_id, features): to append new features to the asset
         get_asset_coordinates(asset_id): to get features of a particular assset
         get_asset_features(asset_id): to coordinatesof a particular assset
-        get_random_sample(size, seed): to get a smaller subset    
+        get_random_sample(size, seed): to get a smaller subset
+        get_footprints(): to return a list of footprints
+        get_random_footprints(): to return a random sample of the footprints
     """
 
     def __init__(self):
@@ -103,8 +110,9 @@ class AssetInventory:
 
         print(self.__class__.__name__)
         print("Inventory stored in: ", self.inventory.__class__.__name__)
-        for key, value in self.inventory.items():
-            print("key: ", key, " value: ", value)
+        for key, asset in self.inventory.items():
+            print("key: ", key, "asset:")
+            asset.print()
 
     def add_asset(self, asset_id: int, coordinates: list) -> bool:
         """
@@ -260,3 +268,54 @@ class AssetInventory:
             result.add_asset(key, self.inventory[key])
             
         return result
+
+    def get_footprints(self) ->list:
+        
+        """
+        Method to return the footprints of the assets in the invetory
+
+        Args:
+        
+        Returns:
+           list
+                 The asset.coordinates of each asset
+           keys
+                 The asset keys
+        """
+        
+        result_footprints = []
+        result_keys = []
+        for key, asset in self.inventory.items():
+            result_footprints.append(asset.coordinates)
+            result_keys.append(key)
+
+        return result_footprints, result_keys
+
+    def get_random_footprints(self, number, seed=None) ->list:
+        """
+        Method to return the footprints of a number of randomly selected assets in the inventory.
+
+        Args:
+            number (int):
+                 The number of asset coordinates
+            seed (int):
+                 The seed for generator, if None provided no seed.
+        
+        Returns:
+           list
+                 The asset.coordinates of the random set of assets chosen
+        """                
+
+        result_footprints = []
+        result_keys = []        
+        if (seed is not None):
+            random.seed(seed)
+
+        list_random_keys = random.sample(self.inventory.keys(), number)
+        for key in list_random_keys:
+            asset = self.inventory[key]
+            result_footprints.append(asset.coordinates)
+            result_keys.append(key)
+
+        return result_footprints, result_keys
+        

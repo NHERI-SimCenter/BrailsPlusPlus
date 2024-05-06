@@ -57,8 +57,7 @@ import matplotlib.pyplot as plt
 
 from shapely import to_geojson
 from shapely.geometry import Polygon
-
-
+from shapely.strtree import STRtree
 
 
 def haversine_dist(p1, p2):
@@ -190,3 +189,39 @@ def write_polygon2geojson(poly, outfile):
     geojson["features"].append(feature)
     with open(outfile, "w") as output_file:
         json.dump(geojson, output_file, indent=2)
+
+
+def match_points2polygons(points:list,polygons:list)->list:
+    """
+    Function that finds the set of points that match a set of polygons 
+    
+    Inputs:  A list of Shapely points and a list of footprint data defined as a
+             list of lists of coordinates in EPSG 4326, i.e., [[vert1],....
+             [vertlast]]. Vertices are defined in [longitude,latitude] fashion.
+    Outputs: A list of Shapely points and a dictionary that maps each footprint
+             list of coordinates (converted to string) to the first matched 
+             Shapely point
+    """
+
+    # Create an STR tree for the input points: 
+    pttree = STRtree(points)
+    
+    # Find the data points that are enclosed in each polygon:
+    ptkeepind = []
+    other_index = []
+    fp2ptmap = {}
+    for ind, poly in enumerate(polygons):
+        res = pttree.query(Polygon(poly))
+        if res.size != 0:
+            ptkeepind.extend(res)
+            other_index.append(ind)
+            fp2ptmap[str(poly)] = points[res[0]]
+    ptkeepind = set(ptkeepind)
+    
+    # Create a list of points that include just the points that have a polygon
+    # match:
+    ptskeep = []
+    for ind in ptkeepind:
+        ptskeep.append(points[ind])
+
+    return ptskeep,fp2ptmap,other_index        

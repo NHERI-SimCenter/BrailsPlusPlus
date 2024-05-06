@@ -24,10 +24,9 @@ import unicodedata
 
 class RegionBoundary:
     """
-    A class representing to obtain the boounding polygon for a region.
+    A class representing to obtain the bounding polygon for a region.
 
     Attributes:
-
 
      Methods:
         __init__: Constructor validates input
@@ -186,6 +185,15 @@ class RegionBoundary:
 
     def get_boundary(self):
 
+        """
+        Method to return the current bouundary
+
+        Args:
+
+        Output: tuple
+                A tuple consisting of bpoly, query area and osmid
+
+        """
         queryarea = self.data
 
         if isinstance(queryarea, str):

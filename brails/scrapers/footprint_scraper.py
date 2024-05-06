@@ -171,7 +171,7 @@ class FootprintScraper(ABC):
 
         for ind, fp in enumerate(footprints):
 
-            asset_features = {}
+            asset_features = {'type':'Building'}
             for key in attributes.keys():
                 attr = attributes[key][ind]
                 asset_features[key] = "NA" if attr is None else attr
