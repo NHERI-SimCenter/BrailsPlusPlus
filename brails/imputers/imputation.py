@@ -12,11 +12,15 @@ class Imputation(ABC):
     """
 
     @abstractmethod
-    def imputate(self, inventory: AssetInventory): 
+    def imputate(self, input_inventory: AssetInventory) ->AssetInventory: 
         """
         Imputate an Asset Inventory
 
-            Args:
-                inventory (AssetInventory): the inventory
+        Args:
+          input_inventory (AssetInventory): the inventory
+
+        Returns:
+           AssetInventory: a new asset inventory with missing data imputed
+          
         """
         pass
