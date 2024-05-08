@@ -5,8 +5,10 @@
  Purpose: Testing Importer and get_footprints methods
 """
 
+import os
 import sys
 import copy
+import json
 
 sys.path.insert(1, "../../")
 
@@ -57,3 +59,14 @@ print('\n******** NSI FILTERED DATA FOR SMALL INVENTORY *********')
 copy_inventory = nsi.get_filtered_data_given_inventory(copy_inventory, 'ft')
 copy_inventory.print()
 
+geojson = copy_inventory.get_geojson()
+
+#pretty_geojson = json.dumps(geojson, indent=2)
+#print(pretty_geojson)
+
+filepath = 'tmp/smallinv.geojson'
+directory = os.path.dirname(filepath)
+if not os.path.exists(directory):
+    os.makedirs(directory)
+with open(filepath, "w") as f:
+    json.dump(geojson, f, indent=2)

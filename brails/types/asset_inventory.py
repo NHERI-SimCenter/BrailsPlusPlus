@@ -12,6 +12,7 @@ This module defines clesses related to aset ineventories
 
 import random
 
+
 class Asset:
     """
         A data structure for an asset that holds coordinates and features.
@@ -94,6 +95,7 @@ class AssetInventory:
         get_random_sample(size, seed): to get a smaller subset
         get_footprints(): to return a list of footprints
         get_random_footprints(): to return a random sample of the footprints
+        get_geojson(): To return the contents as a geojson dict
     """
 
     def __init__(self):
@@ -319,3 +321,53 @@ class AssetInventory:
 
         return result_footprints, result_keys
         
+
+    def get_geojson(self) ->dict:
+        
+        """
+        Method to return the assets in a GeoJSON dictionary
+
+        Args:
+        
+        Returns:
+           dict: GeoJSON dictionary
+        
+        """
+
+        geojson = {'type':'FeatureCollection', 
+                   "crs": {"type": "name", "properties": 
+                           {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
+                   'features':[]}
+        
+        for key, asset in self.inventory.items():
+            if len(asset.coordinates) == 1:
+                   point_feature = {
+                       "type": "Feature",
+                       "geometry": {
+                           "type": "Point",
+                           "coordinates": [lon, lat]
+                       },
+                    "properties": {
+                        "name": name
+                    }
+                   }
+                   
+                   geometry = {"type":"Point",
+                               "coordinates": [asset.coordinates[0][0], asset.ccordinates[0][1]]
+                               }
+            else:
+                geometry = {'type': 'Polygon',
+                            'coordinates': asset.coordinates
+                            }                
+                
+                feature = {'type':'Feature',
+                           'properties':asset.features,
+                           'geometry':geometry
+                           }
+                if 'type' in asset.features:
+                    feature['type'] = asset.features['type']
+
+                geojson['features'].append(feature)
+                # here we could put in NA! for imputation and ensure all features have same set of keys!!
+
+        return geojson    
