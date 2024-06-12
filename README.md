@@ -16,11 +16,12 @@
 
 + ```brails```: A directory containing the classes
   - ```brails/types```: directory containing useful datatypes, e.g., ```ImageSet``` and ```AssetInventory```
-  - ```brails/processors```: directory containing classes that do ```image_processing``` to make predictions, e.g. RoofShape</li>
-  - ```brails/segmenters```: directory containing classes that do image segmentation
-  - ```brails/scrapers```: directory containing classes that do internet downloads, e.g., footprint scrapers, image scrapers
-  - ```brails/filters```: directory containing image filters, e.g., classes that take images and revise or filter out
-  - ```brails/imputaters```: directory containing classes that fill in missing ```AssetInventory``` datasets
+  - ```brails/processors```: directory containing classes that do ```image_processing``` to make predictions, e.g. RoofShape
+  - ```brails/segmenters```: directory containing classes that do image segmentation.
+  - ```brails/scrapers```: directory containing classes that do internet downloads, e.g., footprint scrapers, image scrapers.
+  - ```brails/filters```: directory containing image filters, e.g., classes that take images and revise or filter out thiings not needed.
+  - ```brails/imputaters```: directory containing classes that fill in missing ```AssetInventory``` datasets, i.e. filling in features that are missing in certain Assets of the AssetInventory.
+  - ```brails/inferers```: directory containing classes that infer new asset features based on existing features in the Assets of ```AssetInventory```.
   - ```brails/utils```: directory containing misc classes that do useful things, e.g. geometric conversions
 + ```examples```: A directory containing examples
 + ```tests```: A directory containing unit tests. The directory structure follows that of ```brails```
