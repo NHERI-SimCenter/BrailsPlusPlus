@@ -5,10 +5,10 @@ from brails.processors.vlm_image_classifier.CLIPClassifier import CLIPClassifier
 from brails.types.image_set import ImageSet
 from typing import Optional, Dict
 
-class RoofMaterialLLM(CLIPClassifier):
+class BuildingMaterialLLM(CLIPClassifier):
 
     """
-    The RoofShapeLLM classifier attempts to predict roof shapes using large language models.
+    The BuildingMaterialLLM classifier attempts to predict building materials  using large language models.
 
     Variables
     

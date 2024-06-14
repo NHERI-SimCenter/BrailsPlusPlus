@@ -31,7 +31,7 @@ class RoofShapeLLM(CLIPClassifier):
             self.text_prompts = self.args['prompts']
             self.classes = self.args['classes']
         else:
-            self.text_prompts = ['gabled roof', 'flat roof', 'hip roof']
+            self.text_prompts = ['Identify rooftops with a ridge running along the top', 'flat roof, roof with one flat section', 'hip roof']
             self.classes = ['Gable', 'Flat', 'Hip']
         
     # inherit method from CLIPClassifier
