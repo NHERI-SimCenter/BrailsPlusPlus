@@ -71,7 +71,8 @@ class CLIPClassifier:
         self.trainDataDir = None
         self.imgDir = None
         self.lossHistory = None
-        self.preds = None 
+        self.preds = None
+        self.template = "a photo of a {}" 
 
     def predict(self, images: ImageSet, modelPath='tmp/models/VIT-B-32.pth', 
                 classes=None, text_prompts = None):
@@ -93,7 +94,7 @@ class CLIPClassifier:
             os.makedirs(download_root, exist_ok = True)
             model, data_transforms = load(self.modelArch, self.device, download_root = download_root) #download model if not found
         model.eval()
-        text_input = torch.cat([tokenize("a photo of a {}".format(c)) for c in self.text_prompts]).to(self.device)
+        text_input = torch.cat([tokenize(self.template.format(c)) for c in self.text_prompts]).to(self.device)
         prompts_per_class = len(self.text_prompts) // len(self.classes)
         
         preds = {}
