@@ -53,10 +53,11 @@ This module defines clesses related to image sets
 import json
 from math import radians, sin, cos, atan2, sqrt
 import matplotlib.pyplot as plt
+from array import array
 
-
-from shapely import to_geojson
-from shapely.geometry import Polygon
+from shapely import to_geojson, centroid
+from shapely.geometry import Polygon, Point, MultiPoint
+from shapely.ops import nearest_points
 from shapely.strtree import STRtree
 
 
@@ -212,7 +213,17 @@ def match_points2polygons(points:list,polygons:list)->list:
     fp2ptmap = {}
     for ind, poly in enumerate(polygons):
         res = pttree.query(Polygon(poly))
-        if res.size != 0:
+        
+        if res.size >1:
+            # sy - if multiple points exist in polygon, find the closest to the centroid
+            source1_points = pttree.geometries.take(res)
+            poly_centroid = centroid(Polygon(poly))
+
+            tree = STRtree(source1_points)
+            idx = tree.nearest(poly_centroid)            
+            res = res[idx:idx+1]# make res.size==1
+
+        if res.size == 1:
             ptkeepind.extend(res)
             other_index.append(ind)
             fp2ptmap[str(poly)] = points[res[0]]
