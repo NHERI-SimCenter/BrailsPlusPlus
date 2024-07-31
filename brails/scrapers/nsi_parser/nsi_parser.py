@@ -349,7 +349,7 @@ class NSI_Parser:
                    "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
                    'features':[]}
 
-        for ind,fp in enumerate(footprints):
+        for ind,fp in enumerate(self.footprints):
             feature = {'id': str(ind),
                        'type':'Feature',
                        'properties':{},

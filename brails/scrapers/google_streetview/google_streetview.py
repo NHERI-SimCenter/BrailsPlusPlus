@@ -575,14 +575,21 @@ class GoogleStreetview(ImageScraper):
                 current_file_path = Path(filename)
                 new_name = f'gstrt_{key}{current_file_path.suffix}'
                 new_file_path = current_file_path.parent / new_name
-                current_file_path.rename(new_file_path)
+
+                # sy - to prevent error : [WinError 183] Cannot create a file when that file already exists: 'tmp\\street\\imstreet_37.87343446-122.45684953.jpg' -> 'tmp\\street\\gstrt_596.jpg'
+                # we should not download the files
+                #current_file_path.rename(new_file_path)
+                current_file_path.replace(new_file_path)
+
+
 
                 # might as well do same for depthmap
                 current_depthfile_path = Path(self.depthmaps[i][0])
                 new_depthname = f'dmap_{key}{current_depthfile_path.suffix}'
                 new_depthfile_path = current_depthfile_path.parent / new_depthname                
-                current_depthfile_path.rename(new_depthfile_path)
-                
+                #current_depthfile_path.rename(new_depthfile_path) # sy - gave a permission error when file already exists
+                current_depthfile_path.replace(new_depthfile_path)
+
                 name_stripped = new_file_path.name
                 
                 properties = {}
