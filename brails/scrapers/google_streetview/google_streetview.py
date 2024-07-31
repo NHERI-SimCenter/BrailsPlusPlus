@@ -587,7 +587,7 @@ class GoogleStreetview(ImageScraper):
                 current_depthfile_path = Path(self.depthmaps[i][0])
                 new_depthname = f'dmap_{key}{current_depthfile_path.suffix}'
                 new_depthfile_path = current_depthfile_path.parent / new_depthname                
-                #current_depthfile_path.rename(new_depthfile_path) # sy - permissing error when file already exists
+                #current_depthfile_path.rename(new_depthfile_path) # sy - gave a permission error when file already exists
                 current_depthfile_path.replace(new_depthfile_path)
 
                 name_stripped = new_file_path.name
