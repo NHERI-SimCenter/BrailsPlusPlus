@@ -11,6 +11,7 @@ This module defines clesses related to aset ineventories
 """
 
 import random
+from collections import defaultdict
 
 
 class Asset:
@@ -67,7 +68,7 @@ class Asset:
                additional_features (dict):
                    new features to merge into asset
             """
-        
+
         self.features.update(additional_features)
 
     def print(self):
@@ -136,9 +137,7 @@ class AssetInventory:
 
         if existing_asset is not None:
             print(
-                "ERROR: AssetInventory.add_asset_feature: asset with id",
-                id,
-                " already exists",
+                "ERROR: AssetInventory.add_asset_feature: asset with id {} already exists".format(asset_id),
             )
             return False
 
@@ -170,7 +169,7 @@ class AssetInventory:
         if existing_asset is not None:
             print(
                 "ERROR: AssetInventory.add_asset_feature: asset with id",
-                id,
+                asset_id,
                 " already exists",
             )
             return False
@@ -341,20 +340,18 @@ class AssetInventory:
         
         for key, asset in self.inventory.items():
             if len(asset.coordinates) == 1:
-                   point_feature = {
-                       "type": "Feature",
-                       "geometry": {
-                           "type": "Point",
-                           "coordinates": [lon, lat]
-                       },
-                    "properties": {
-                        "name": name
-                    }
-                   }
-                   
-                   geometry = {"type":"Point",
-                               "coordinates": [asset.coordinates[0][0], asset.ccordinates[0][1]]
-                               }
+                # sy - completing incompete code
+                geometry = {"type":"Point",
+                            "coordinates": [asset.coordinates[0][0], asset.coordinates[0][1]]
+                           }
+
+                point_feature = {"type": "Feature",
+                                  "geometry": geometry,
+                                  "properties": asset.features
+                                }
+
+                geojson['features'].append(point_feature)
+
             else:
                 geometry = {'type': 'Polygon',
                             'coordinates': asset.coordinates
