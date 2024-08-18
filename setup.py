@@ -36,16 +36,17 @@ setup(
     ],
     extras_require={
         'development': [
-            'flake8',
-            'pylint',
-            'black',
+            'ruff',
             'pytest',
             'pytest-cov',
             'jupyter',
             'jupytext',
             'sphinx',
             'sphinx-autoapi',
+            'sphinx-design',
+            'sphinx_rtd_theme',
             'nbsphinx',
+            'numpydoc'
             'flake8-rst',
             'flake8-rst-docstrings',
         ],

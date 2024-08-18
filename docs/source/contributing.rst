@@ -120,36 +120,39 @@ Maintaining good code quality, comprehensive unit tests and documentation in par
 Linting and formatting
 ----------------------
 
-For linting, we use ``flake8`` and ``pylint`` because they complement each other by checking for different types of issues.
-``flake8`` is faster and focuses on style consistency and simple errors, adhering to PEP 8.
-``pylint`` offers more comprehensive code analysis, checks for additional errors, enforces a coding standard, checks docstring consistency, and offers refactoring suggestions.
-Both linters are installed in the environment when specifying the ``[development]`` argument when installing ``brails++``.
-The behavior of the linters is configurable using certain dotfiles (i.e., configuration files, whose name starts with a period) that reside on the package's root directory: ``.pylintrc`` for ``pylint``, and ``.flake8`` for ``flake8``.
+For linting, we use Ruff.
+It is installed in the environment when specifying the ``[development]`` argument when installing ``brails++``.
+The behavior of the linter is configured with ``pyproject.toml``.
 
 The following commands can be used to lint the code from the command line.
 
 .. code-block::
-   :caption: Linting. Replace {linter} with either flake8 or pylint
+   :caption: Linting the code
 
-   # Commands assume you are in package root (BrailsPlusPlus/).
-   # flake8 works when launched from elsewhere, but pylint needs
-   # to be called from package root to properly follow imports.
+   ruff check  # Default command
+   ruff check --output-format concise  # Concise output
+   ruff check help  # Learn more about ruff check.
 
-   # Lint an entire directory:
-   {linter} brails
-   {linter} tests
+Ruff can automatically fix certain issues.
 
-   # Lint a subdirectory:
-   {linter} brails/utils
+.. code-block::
+   :caption: Auto-fix
 
-   # Lint an individual file:
-   {linter} brails/utils/utils.py
+   ruff check --fix
 
-While this works, we recommend setting up linter integration with your text editor of choice.
-It is expected that any text editor with Python support should be able to be configured to recognize the dotfiles and provide the linter output in an interactive format, adhering to the configuration provided in the dotfiles.
+If needed, warnings can be silenced by adding ``# noqa`` directives at the offending lines.
+This can be done by hand, or automatically with the following command:
 
-We advise using ``black`` for code formatting.
-``black`` is more intrusive than linters, in the sense that it actually changes the source files and alters the formatting of code to a consistent style.
+.. code-block::
+   :caption: Add # noqa: ...
+
+   ruff check --add-noqa
+
+While the command-line approach definitely works, we recommend setting up linter integration with your text editor of choice.
+
+We also use Ruff for code formatting.
+
+Formatting enforces a consistent formatting style to the code.
 Using it on specific regions or entire files that you are working with can save you a lot of time addressing style-related linter warnings.
 Formatting of specific regions can be turned off with specific comments (``# fmt: off``, ``# fmt: on``).
 This can be useful if you believe that certain lines of code are more readable with your own formatting.
@@ -167,20 +170,12 @@ This can be useful if you believe that certain lines of code are more readable w
    {source code that will be formatted}
 
 
-To run the formatter, use the following commands:
+To run the formatter, use the following command:
    
 .. code-block::
-   :caption: Running `black`
+   :caption: Code formatting
 
-   # format an entire directory:
-   black brails
-   black tests
-
-   # format a subdirectory:
-   black brails/utils
-
-   # format an individual file:
-   black brails/utils/utils.py
+   ruff format
 
 Unit Testing
 ------------
