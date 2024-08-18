@@ -14,16 +14,7 @@ help:
 
 .PHONY: help Makefile
 
-# Convert all notebook .py files to jupyter notebooks using jupytext
-source/notebooks/%.ipynb: source/notebooks/%.py
-	@jupytext --to notebook $<
-
-# html target
-html: Makefile source/notebooks/doc_1_example.ipynb
+# Catch-all target: route all unknown targets to Sphinx using the new
+# "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
+%: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-
-# clear target, in case clean-build is required
-clear:
-	@rm -rf build  # remove the build directory
-	@rm -rf source/_autosummary  # remove the autosummary directory
-	@rm -rf source/notebooks/*.ipynb  # remove generated notebooks

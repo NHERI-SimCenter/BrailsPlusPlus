@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="35mm"
+   height="9mm"
+   viewBox="0 0 35 9"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25, custom)"
+   sodipodi:docname="brailsplusplus.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="1.8672278"
+     inkscape:cx="41.50538"
+     inkscape:cy="63.730841"
+     inkscape:window-width="2560"
+     inkscape:window-height="1392"
+     inkscape:window-x="0"
+     inkscape:window-y="24"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       style="fill:#ff0000;stroke:#ff0000;stroke-width:0.165;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+       d="M 1.0555677,0.65845631 34.385448,8.0087762"
+       id="path3" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.164757;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect3"
+       width="12.097891"
+       height="4.7786112"
+       x="11.287267"
+       y="-1.2963216"
+       transform="rotate(9.7875191)" />
+    <text
+       xml:space="preserve"
+       style="font-size:10.5833px;line-height:1.25;font-family:Palatino;-inkscape-font-specification:Palatino;stroke-width:0.264583"
+       x="0.85746694"
+       y="7.4911494"
+       id="text1"><tspan
+         sodipodi:role="line"
+         id="tspan1"
+         style="font-style:normal;stroke-width:0.264583"
+         x="0.85746694"
+         y="7.4911494">Brails<tspan
+   style="font-size:7.05556px"
+   id="tspan2">++</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:5.28387px;line-height:1.25;font-family:Palatino;-inkscape-font-specification:Palatino;stroke-width:0.0649042;stroke-dasharray:none"
+       x="11.673297"
+       y="3.0167534"
+       id="text3"
+       transform="matrix(0.99911642,0.14766345,-0.14380671,0.97963059,0,0)"><tspan
+         sodipodi:role="line"
+         id="tspan3"
+         style="font-size:5.28387px;fill:none;stroke:#ff0000;stroke-width:0.0649042;stroke-dasharray:none;stroke-opacity:1"
+         x="11.673297"
+         y="3.0167534">draft</tspan></text>
+  </g>
+</svg>
