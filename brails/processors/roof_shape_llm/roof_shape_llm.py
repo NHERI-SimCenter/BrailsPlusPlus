@@ -1,11 +1,11 @@
 
-# Written Kevin & Fei 03/24
+# Written Brian & Fei 03/24
 
-from brails.processors.image_processor import ImageProcessor
+from brails.processors.vlm_image_classifier.CLIPClassifier import CLIPClassifier
 from brails.types.image_set import ImageSet
 from typing import Optional, Dict
 
-class RoofShapeLLM(ImageProcessor):
+class RoofShapeLLM(CLIPClassifier):
 
     """
     The RoofShapeLLM classifier attempts to predict roof shapes using large language models.
@@ -25,21 +25,28 @@ class RoofShapeLLM(ImageProcessor):
         Args
             input_data: dict Optional. The init function looks into dict for values needed, e.g. path to promts
         """
-        
+        super().__init__(task = "roofshape", input_dict = input_dict)
         self.input_dict = input_dict
+        if(self.input_dict!=None):
+            self.text_prompts = self.args['prompts']
+            self.classes = self.args['classes']
+        else:
+            self.text_prompts = ['Identify rooftops with a ridge running along the top', 'flat roof, roof with one flat section', 'hip roof']
+            self.classes = ['Gable', 'Flat', 'Hip']
         
-    def predict(self, image: ImageSet):
+    # inherit method from CLIPClassifier
+    # def predict(self, image: ImageSet):
 
-        """
-        The method predicts the roof shape.
+    #     """
+    #     The method predicts the roof shape.
         
-        Args
-            images: ImageSet The set of images for which a prediction is required
+    #     Args
+    #         images: ImageSet The set of images for which a prediction is required
 
-        Returns
-            dict: The keys being the same keys used in ImageSet.images, the values being the predicted roof shape
-        """
+    #     Returns
+    #         dict: The keys being the same keys used in ImageSet.images, the values being the predicted roof shape
+    #     """
         
-        print('RoofShapeLLM: NOT YET IMPLEMENTD')
-        return {}
+        
+    #     return
         

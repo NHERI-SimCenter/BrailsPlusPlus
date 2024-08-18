@@ -1,9 +1,26 @@
 from abc import ABC, abstractmethod
+from brails.types.asset_inventory import AssetInventory
+
 
 class Imputation(ABC):
-    def __init__(self, name):
-        self.name = name
-    
+    """
+    Abstract base class representing a class that uses data imputation to fill in missing data
+
+      Methods:
+         imputate(inventory): An abstract method to fill in the missing features in an AssetInvetory
+
+    """
+
     @abstractmethod
-    def imputate(self, Footprint):
+    def imputate(self, input_inventory: AssetInventory) ->AssetInventory: 
+        """
+        Imputate an Asset Inventory
+
+        Args:
+          input_inventory (AssetInventory): the inventory
+
+        Returns:
+           AssetInventory: a new asset inventory with missing data imputed
+          
+        """
         pass
