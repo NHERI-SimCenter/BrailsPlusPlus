@@ -5,10 +5,10 @@ from brails.processors.vlm_image_classifier.CLIPClassifier import CLIPClassifier
 from brails.types.image_set import ImageSet
 from typing import Optional, Dict
 
-class NFloorLLM(CLIPClassifier):
+class RoofShapeVLM(CLIPClassifier):
 
     """
-    The NFLoorLLM classifier attempts to predict number of floors using large language models.
+    The RoofShapeVLM classifier attempts to predict roof shapes using large language models.
 
     Variables
     
@@ -28,16 +28,11 @@ class NFloorLLM(CLIPClassifier):
         super().__init__(task = "roofshape", input_dict = input_dict)
         self.input_dict = input_dict
         if(self.input_dict!=None):
-            self.text_prompts = self.args['prompts']
-            self.classes = self.args['classes']
+            self.text_prompts = self.input_dict['prompts']
+            self.classes = self.input_dict['classes']
         else:
-            #each class should have equal amount of text prompts
-            self.text_prompts = [
-                'one story house', 'bungalow', 'flat house', 'single-story side split house',
-                'two story house', 'two story townhouse', 'side split house', 'raised ranch', 
-                'three story house','three story house', 'three story house', 'three-decker'
-            ]
-            self.classes = [1, 2, 3]
+            self.text_prompts = ['Identify rooftops with a ridge running along the top', 'flat roof, roof with one flat section', 'hip roof']
+            self.classes = ['Gable', 'Flat', 'Hip']
         
     # inherit method from CLIPClassifier
     # def predict(self, image: ImageSet):
