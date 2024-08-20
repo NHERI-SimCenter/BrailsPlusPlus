@@ -32,10 +32,10 @@ You can find the documentation for ```BRAILS++``` [here]().
 
 ## Installation instructions
 
-```BRAILS++``` is available on PyPI under the name ```BRAILS```.
+```BRAILS++``` is NOT YET available on PyPI.
 
 ```shell
-pip install BRAILS
+pip install COMING_SOON!!
 ```
 Developers and contributors, please read the [Contributing to BRAILS++]() page of the documentation before you commit your code.
 
