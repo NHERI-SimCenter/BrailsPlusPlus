@@ -11,10 +11,10 @@ class ImageProcessor(ABC):
        predict(ImageSet): To return the predictions for the set of images provided
 
     """    
-# OTHER POTENTIAL ABSTRATCT METHODS:
-#    train(TrainingImageSet): ->model
-#    retrain(TrainingImageSet, model): ->model
-#  ??? does predict get passed the model .. if so what is Model classes API
+    # OTHER POTENTIAL ABSTRATCT METHODS:
+    #    train(TrainingImageSet): ->model
+    #    retrain(TrainingImageSet, model): ->model
+    #  ??? does predict get passed the model .. if so what is Model classes API
 
     
     @abstractmethod

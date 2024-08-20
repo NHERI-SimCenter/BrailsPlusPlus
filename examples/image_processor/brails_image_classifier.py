@@ -1,34 +1,44 @@
-# Written: fmk 03/24
-# Purpose: to test ImageSet, Importer and some satellite classifier
+'''
+Purpose: Testing ImageSet, Importer and an aerial image classifier
+'''
+
+# Written: fmk 04/24
+# Copyright BSD2
 
 import sys
-import inspect
-from brails import Importer
-from brails.types.image_set import ImageSet
+import importlib.util
+
+#if importlib.util.find_spec("brails") is None:
+sys.path.insert(1,'../../')
+
+from brails.types.image_set import ImageSet    
+from brails.utils.utils import Importer
 
 importer = Importer()
-arial_images = ImageSet();
+aerial_images = ImageSet();
 street_images = ImageSet();
-arial_images.set_directory("./images/satellite", True)
+aerial_images.set_directory("./images/satellite_easy", True)
 street_images.set_directory("./images/street", True)
 
-#
-# test importer and one of satellite classifiers
-#
+aerial_images.print()
 
+# Test importer and one of the aerial imagery classifiers, RoofShapeClassifier:
+print('ROOF_SHAPE_CLASSICAL PREDICTIONS')
 my_class = importer.get_class('RoofShapeClassifier')
 my_classifier = my_class()
-predictions = my_classifier.predict(arial_images)
+predictions = my_classifier.predict(aerial_images)
 print(predictions)
 
+print('ROOF_SHAPE_LLM PREDICTIONS')
 my_class = importer.get_class('RoofShapeLLM')
 my_classifier = my_class()
-predictions = my_classifier.predict(arial_images)
+predictions = my_classifier.predict(aerial_images)
 print(predictions)
 
-my_class = importer.get_class('FacadeParser')
+# Test importer and one of the street-level imagery classifiers, 
+# OccupancyClassifier:
+print('OCCUPANCY_CLASS_CLASSICAL PREDICTIONS')
+my_class = importer.get_class('OccupancyClassifier')
 my_classifier = my_class()
-# will need a new image set
 predictions = my_classifier.predict(street_images) 
 print(predictions)
-

@@ -597,8 +597,8 @@ class ImageClassifier():
             print('ImageClassifier fails as ', data_dir, ' is not a directory')
 
         for key, im in images.images.items():
-            if isImage(im):
-                image = image_loader(os.path.join(data_dir, im))
+            if isImage(im.filename):
+                image = image_loader(os.path.join(data_dir, im.filename))
                 _, pred = torch.max(model(image),1)
             preds[key]=classes[pred.item()]
             

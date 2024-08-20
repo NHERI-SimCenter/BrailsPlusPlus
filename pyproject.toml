@@ -1,0 +1,21 @@
+[tool.ruff]
+line-length = 85
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["ANN", "D211", "D212", "Q000", "Q003", "COM812", "D203", "ISC001", "E501", "ERA001", "PGH003", "FIX002", "TD003", "S101", "N801", "S311", "G004", "SIM102", "SIM108", "NPY002", "F401"]
+preview = false
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.pylint]
+max-args=15
+max-locals=50
+max-returns=11
+max-branches=50
+max-statements=150
+max-bool-expr=5
+
+[tool.ruff.format]
+quote-style = "single"
