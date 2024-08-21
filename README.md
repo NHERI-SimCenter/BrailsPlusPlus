@@ -29,7 +29,7 @@ You can find the documentation for ```BRAILS++``` [here]().
 
 ## Installation instructions
 
-```BRAILS++``` is NOT YET available on PyPI. For now, please install BRAILS++ following the syntax:
+```BRAILS++``` is NOT YET available on PyPI. For now, please install ```BRAILS++``` following the syntax:
 
 ```shell
 pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
