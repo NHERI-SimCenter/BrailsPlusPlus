@@ -36,7 +36,7 @@
 # Contributors:
 # Barbaros Cetiner
 # Last updated:
-# 08-20-2024
+# 08-21-2024
 
 import time
 import os
@@ -141,29 +141,35 @@ class ImageClassifier():
         This is a private method and is not intended to be accessed directly.
         Implement this method to handle dataset downloading and setup.
         """
-        print('Downloading default dataset...')
-
         # URL of the default dataset
         url = 'https://download.pytorch.org/tutorial/hymenoptera_data.zip'
-
-        # Send an HTTP GET request to download the dataset
-        req = requests.get(url)
 
         # Define the path where the downloaded zip file will be saved
         zipdir = os.path.join('tmp', url.split('/')[-1])
 
-        # Create the 'tmp' directory if it does not exist
-        os.makedirs('tmp', exist_ok=True)
+        datadir = 'tmp/hymenoptera_data'
 
-        # Write the content of the response (dataset) to a file
-        with open(zipdir, 'wb') as output_file:
-            output_file.write(req.content)
+        if not (os.path.exists(zipdir) and os.path.exists(datadir)):
+            print('Downloading default dataset...')
 
-        print('Download complete.')
+            # Send an HTTP GET request to download the dataset
+            req = requests.get(url)
 
-        # Extract the contents of the zip file to the 'tmp' directory
-        with zipfile.ZipFile(zipdir, 'r') as zip_ref:
-            zip_ref.extractall('tmp')
+            # Create the 'tmp' directory if it does not exist
+            os.makedirs('tmp', exist_ok=True)
+
+            # Write the content of the response (dataset) to a file
+            with open(zipdir, 'wb') as output_file:
+                output_file.write(req.content)
+
+            # Extract the contents of the zip file to the 'tmp' directory
+            with zipfile.ZipFile(zipdir, 'r') as zip_ref:
+                zip_ref.extractall('tmp')
+
+            print(f'Default dataset is available in {datadir}')
+
+        else:
+            print(f'Default dataset found in {datadir}')
 
     def _train_model(self,
                      model: nn.Module,
@@ -356,6 +362,7 @@ class ImageClassifier():
         data_transforms = {
             'train': transforms.Compose([
                 transforms.Resize(model_inp_size),
+                transforms.CenterCrop(model_inp_size),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [
@@ -363,6 +370,7 @@ class ImageClassifier():
             ]),
             'val': transforms.Compose([
                 transforms.Resize(model_inp_size),
+                transforms.CenterCrop(model_inp_size),
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [
                                      0.229, 0.224, 0.225])
@@ -425,8 +433,8 @@ class ImageClassifier():
             # Load model:
             # modelname = ''.join(filter(str.isalnum, model_name.lower()))
             model_ft = eval(MODEL_PROPERTIES[modelname]['model'])
-            model_ft = self.set_parameter_requires_grad(model_ft,
-                                                        feature_extract)
+            model_ft = self._set_parameter_requires_grad(model_ft,
+                                                         feature_extract)
 
             if "resnet" in modelname or "regnet" in modelname:
                 num_ftrs = model_ft.fc.in_features
@@ -452,7 +460,7 @@ class ImageClassifier():
 
         # Check if the training data directory is set to the default value
         if self.train_data_dir == 'tmp/hymenoptera_data':
-            self.download_default_dataset()
+            self._download_default_dataset()
         classes = os.listdir(os.path.join(self.train_data_dir, 'train'))
         self.classes = sorted(classes)
         num_classes = len(self.classes)
@@ -479,7 +487,7 @@ class ImageClassifier():
 
         # Data augmentation & normalization for training and normalization for
         # validation:
-        data_transforms = self.data_augmenter(self.model_inp_size)
+        data_transforms = self._data_augmenter(self.model_inp_size)
 
         # Create training and validation datasets
         image_datasets = {x: datasets.ImageFolder(os.path.join(
@@ -502,29 +510,31 @@ class ImageClassifier():
         params_to_update = model_ft.parameters()
 
         # Observe that all parameters are being optimized
-        optimizer_ft = optim.Adam(params_to_update, lr=0.001, momentum=0.9)
+        optimizer_ft = optim.Adam(params_to_update, lr=0.001)
 
         # Setup the loss fxn
         criterion = nn.CrossEntropyLoss()
 
         # Train and evaluate
-        model_ft, hist = self.train_model(model_ft, self.device,
-                                          dataloaders_dict, criterion,
-                                          optimizer_ft, num_epochs=nepochs_it)
+        model_ft, hist = self._train_model(model_ft, self.device,
+                                           dataloaders_dict, criterion,
+                                           optimizer_ft, num_epochs=nepochs_it,
+                                           es_tolerance=self.es_tolerance)
         print('New classifier head trained using transfer learning.')
 
         # Initialize the non-pretrained version of the model used for this run
         print('\nFine-tuning the model...')
-        model_ft = self.set_parameter_requires_grad(model_ft,
-                                                    feature_extracting=False)
+        model_ft = self._set_parameter_requires_grad(model_ft,
+                                                     feature_extracting=False)
         final_model = model_ft.to(self.device)
         final_optimizer = optim.Adam(
-            final_model.parameters(), lr=0.0001, momentum=0.9)
+            final_model.parameters(), lr=0.0001)
         final_criterion = nn.CrossEntropyLoss()
-        _, final_hist = self.train_model(final_model, self.device,
-                                         dataloaders_dict, final_criterion,
-                                         final_optimizer,
-                                         num_epochs=nepochs_ft)
+        _, final_hist = self._train_model(final_model, self.device,
+                                          dataloaders_dict, final_criterion,
+                                          final_optimizer,
+                                          num_epochs=nepochs_ft,
+                                          es_tolerance=self.es_tolerance)
         print('Training complete.')
         os.makedirs('tmp/models', exist_ok=True)
         torch.save(final_model, 'tmp/models/trained_model.pth')
@@ -547,7 +557,7 @@ class ImageClassifier():
             plt.show()
 
     def retrain(self,
-                model_arch,
+                model_arch: str = 'efficientnetv2_s',
                 model_path: str = 'tmp/models/trained_model.pth',
                 train_data_dir: str = 'tmp/hymenoptera_data',
                 batch_size: int = 32,
@@ -613,11 +623,11 @@ class ImageClassifier():
 
         # Data augmentation & normalization for training and normalization for
         # validation:
-        data_transforms = self.data_augmenter(self.model_inp_size)
+        data_transforms = self._data_augmenter(self.model_inp_size)
 
         # Check if the training data directory is set to the default value
         if self.train_data_dir == 'tmp/hymenoptera_data':
-            self.download_default_dataset()
+            self._download_default_dataset()
         classes = os.listdir(os.path.join(self.train_data_dir, 'train'))
         self.classes = sorted(classes)
 
@@ -638,7 +648,7 @@ class ImageClassifier():
 
         # Send the model to GPU
         model_init = torch.load(self.model_path)
-        model = self.set_parameter_requires_grad(
+        model = self._set_parameter_requires_grad(
             model_init, feature_extracting=False)
         final_model = model.to(self.device)
         final_optimizer = optim.SGD(
@@ -646,10 +656,11 @@ class ImageClassifier():
         final_criterion = nn.CrossEntropyLoss()
         print(
             '\nRetraining the model using the data located in '
-            f'{self.trainDataDir} folder...')
-        _, final_hist = self.train_model(
+            f'{self.train_data_dir} folder...')
+        _, final_hist = self._train_model(
             final_model, self.device, dataloaders_dict, final_criterion,
-            final_optimizer, num_epochs=nepochs)
+            final_optimizer, num_epochs=nepochs,
+            es_tolerance=self.es_tolerance)
         print('Training complete.')
         torch.save(final_model, self.model_path)
 
@@ -670,7 +681,7 @@ class ImageClassifier():
 
     def predict(self,
                 images: ImageSet,
-                model_arch: str,
+                model_arch: str = 'efficientnetv2_s',
                 model_path: str = 'tmp/models/trained_model.pth',
                 classes: List[str] = ['Ants', 'Bees']
                 ) -> Dict[str, str]:
