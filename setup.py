@@ -32,7 +32,9 @@ setup(
         'opencv-python',
         'addict',
         'yapf',
-        'timm'
+        'timm',
+        'transformers',
+        'pycocotools'
     ],
     extras_require={
         'development': [
