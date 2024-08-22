@@ -1,7 +1,4 @@
-"""
-setup.py file of the `brails` package.
-
-"""
+"""Setup file for the `BRAILS++` package."""
 
 from setuptools import setup, find_packages
 import brails
@@ -32,7 +29,10 @@ setup(
         'plotly',
         'ftfy',
         'supervision',
-        'opencv-python'
+        'opencv-python',
+        'addict',
+        'yapf',
+        'timm'
     ],
     extras_require={
         'development': [
