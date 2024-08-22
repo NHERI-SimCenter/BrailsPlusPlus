@@ -13,8 +13,40 @@ import torchvision
 
 import brails
 
+from typing import List, Optional, Dict, Any
 from .groundingdino.util.inference import Model
 from .segment_anything import sam_model_registry, SamPredictor
+from transformers import AutoModelForMaskGeneration, AutoProcessor, pipeline
+from dataclasses import dataclass
+
+
+@dataclass
+class BoundingBox:
+    xmin: int
+    ymin: int
+    xmax: int
+    ymax: int
+
+    @property
+    def xyxy(self) -> List[float]:
+        return [self.xmin, self.ymin, self.xmax, self.ymax]
+
+
+@dataclass
+class DetectionResult:
+    score: float
+    label: str
+    box: BoundingBox
+    mask: Optional[np.array] = None
+
+    @classmethod
+    def from_dict(cls, detection_dict: Dict) -> 'DetectionResult':
+        return cls(score=detection_dict['score'],
+                   label=detection_dict['label'],
+                   box=BoundingBox(xmin=detection_dict['box']['xmin'],
+                                   ymin=detection_dict['box']['ymin'],
+                                   xmax=detection_dict['box']['xmax'],
+                                   ymax=detection_dict['box']['ymax']))
 
 
 def verify_and_download_models(download_url, filepath):
@@ -104,7 +136,29 @@ def show_box(box, ax):
                  facecolor=(0, 0, 0, 0), lw=2))
 
 
+def detect(image: Image.Image, labels: List[str], threshold: float = 0.3,
+           detector_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Use Grounding DINO to detect a set of labels in an image in a zero-shot fashion.
+    """
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    detector_id = detector_id if detector_id is not None else "IDEA-Research/grounding-dino-tiny"
+    object_detector = pipeline(
+        model=detector_id, task="zero-shot-object-detection", device=device)
+
+    labels = [label if label.endswith(
+        ".") else label+"." for label in labels]
+
+    results = object_detector(
+        image,  candidate_labels=labels, threshold=threshold)
+    results = [DetectionResult.from_dict(result) for result in results]
+
+    return results
+
+
 def run_on_one_image(
+
+
     img_source, output_dir, grounding_dino_model, sam_predictor, CLASSES,
     BOX_THRESHOLD=0.35, TEXT_THRESHOLD=0.25, NMS_THRESHOLD=0.8, visualize=False
 ):
@@ -114,9 +168,27 @@ def run_on_one_image(
                      curr_class in enumerate(CLASSES)}
 
     # load image
+    im = Image.open(SOURCE_IMAGE_PATH)
     image = cv2.imread(SOURCE_IMAGE_PATH)
 
     # detect objects
+    detections_raw = detect(im, CLASSES, BOX_THRESHOLD, None)
+    xyxy = []
+    confidence = []
+    class_ids = []
+    mask_labels = []
+    classes = [cl + '.' if not cl.endswith('.') else cl for cl in CLASSES]
+    for det in detections_raw:
+        xyxy.append(det.box.xyxy)
+        confidence.append(det.score)
+        class_ids.append(classes.index(det.label))
+        mask_labels.append(det.label[:-1])
+    detections = sv.Detections.empty()
+    detections.xyxy = np.array(xyxy, dtype=np.float32)
+    detections.confidence = np.array(confidence, dtype=np.float32)
+    detections.class_id = np.array(class_ids)
+
+    """
     detections = grounding_dino_model.predict_with_classes(
         image=image,
         classes=CLASSES,
@@ -124,6 +196,7 @@ def run_on_one_image(
         text_threshold=BOX_THRESHOLD
     )
     mask_labels = [CLASSES[class_id] for _, _, _, class_id, _, _ in detections]
+    """
 
     # NMS post process
     nms_idx = torchvision.ops.nms(
@@ -136,7 +209,8 @@ def run_on_one_image(
     detections.confidence = detections.confidence[nms_idx]
     detections.class_id = detections.class_id[nms_idx]
     output_dict = {"coord": detections.xyxy,
-                   "confidence": detections.confidence, "class": detections.class_id}
+                   "confidence": detections.confidence,
+                   "class": detections.class_id}
 
     # convert detections to masks
     masks = segment(
