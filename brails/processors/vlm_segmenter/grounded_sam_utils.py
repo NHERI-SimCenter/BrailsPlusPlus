@@ -167,6 +167,8 @@ def run_on_one_image(
     CLASS_TO_CODE = {curr_class: idx+1 for idx,
                      curr_class in enumerate(CLASSES)}
 
+    os.makedirs(output_dir, exist_ok=True)
+
     # load image
     im = Image.open(SOURCE_IMAGE_PATH)
     image = cv2.imread(SOURCE_IMAGE_PATH)
