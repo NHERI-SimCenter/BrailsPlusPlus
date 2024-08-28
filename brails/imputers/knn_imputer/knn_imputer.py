@@ -59,8 +59,21 @@ class KnnImputer(Imputation):
     Imputes dataset based on k-nearest neighbors in the feature-agmented space. Sequentially generate inventory
 
     Attributes:
+        n_pw (int):
+                The number of possible worlds (i.e. samples or realizations)
+                batch_size (int):
+                        The number of batches for sequential generation. If non-sequential, this variable is not used
+                gen_method (str):
+                        Select "sequential" or "non-sequential" (one-shot). The latter is faster but does not generate the spatial correlation
+                seed (int):
+                        For reproducibility
 
     Methods:
+
+
+
+
+
     """
 
     def __init__(self):
@@ -73,15 +86,23 @@ class KnnImputer(Imputation):
         create_correlation=True,
         exclude_features=[],
         seed=1,
-        batchsize=50,
+        batch_size=50,
         k_nn=5,
     ) -> AssetInventory:
-        # set seed
-        self.n_pw = n_possible_worlds  # numb possible worlds
-        self.batch_size = batchsize  # perform sequential generation
-        self.seed = seed  # seed
-        np.random.seed(self.seed)
+        self.n_pw = n_possible_worlds
+        self.batch_size = batch_size
+        self.seed = seed
         self.k_nn = k_nn  # knn
+        if create_correlation:
+            self.gen_method = "sequential"
+        else:
+            self.gen_method = "non-sequential"
+
+        #
+        # set seed
+        #
+
+        np.random.seed(self.seed)
 
         #
         # convert inventory to df
@@ -90,20 +111,15 @@ class KnnImputer(Imputation):
         bldg_properties_df, bldg_geometries_df, nbldg = input_inventory.get_dataframe()
         column_names = bldg_properties_df.columns
 
-        if create_correlation:
-            self.gen_method = "sequential"
-        else:
-            self.gen_method = "batch"
-
         #
-        # drop features to exclude
+        # drop features to exclude, if specified by the user
         #
 
         if len(exclude_features) > 0:
             for feature in exclude_features:
                 if feature not in column_names:
                     print(
-                        "The feature {} does not exist in inventory. ignoring it from the exclude list.".format(
+                        "The feature {} does not exist in inventory. Ignoring it from the exclude list.".format(
                             feature
                         )
                     )
@@ -113,7 +129,7 @@ class KnnImputer(Imputation):
             column_names = bldg_properties_df.columns
 
         #
-        # replace empty with nan & drop missing columns
+        # replace empty or "NA" with nan & drop entirely missing columns
         #
 
         pd.set_option("future.no_silent_downcasting", True)
@@ -127,7 +143,7 @@ class KnnImputer(Imputation):
 
         if len(column_entirely_missing) > 1:
             print(
-                "Features with no reference data cannot be imputed: "
+                "Features with no reference data cannot be imputed. Removing them from the imputation target: "
                 + ", ".join(list(column_entirely_missing))
             )
 
@@ -137,7 +153,7 @@ class KnnImputer(Imputation):
             return output_inventory
 
         #
-        # transform category variabes into integers
+        # transform category variables into integers
         #
 
         bldg_properties_encoded, label_encoders, is_category = (
@@ -145,7 +161,7 @@ class KnnImputer(Imputation):
         )
 
         #
-        # Primative imputation
+        # Primitive imputation
         #
 
         bldg_properties_preliminary, nbrs_G, trainY_G_list = self.geospatial_knn(
@@ -171,7 +187,7 @@ class KnnImputer(Imputation):
 
         bldg_encoded_np = bldg_properties_encoded.values  # table with nan
         bldg_inde_np = bldg_properties_encoded.index  # table of building indices
-        bldg_prel_np = bldg_properties_preliminary.values  # table of primative
+        bldg_prel_np = bldg_properties_preliminary.values  # table of Primitive
         bldg_geom_np = bldg_geometries_df.values  # table of (lat,lon)
 
         mask_impu_np = mask.values
@@ -193,10 +209,10 @@ class KnnImputer(Imputation):
 
         elapseStart = time.time()
 
-        print("Running the main imputation. This may take some time.")
+        print("Running the main imputation. This may take a while.")
         for ci in range(n_cluster):
             if np.mod(ci, 20) == 19:
-                print("Enuerating clusters: {} among {}".format(ci + 1, n_cluster))
+                print("Enumerating clusters: {} among {}".format(ci + 1, n_cluster))
 
             #
             # Compute correlation matrix to select important features
@@ -211,10 +227,10 @@ class KnnImputer(Imputation):
             corrMat[const_idx, :] = 0
 
             #
-            # The primative values will be used as train_X
+            # The Primitive values will be used as train_X
             #
 
-            bldg_prel_subset = bldg_prel_np[cluster_idx, :]  # primative
+            bldg_prel_subset = bldg_prel_np[cluster_idx, :]  # Primitive
             bldg_inde_subset = bldg_inde_np[cluster_idx]  # building indices
 
             for npp in range(self.n_pw):
@@ -355,7 +371,7 @@ class KnnImputer(Imputation):
         nbrs_G = {}
         trainY_G_list = {}
         print(
-            "missing percentages among {} assets".format(len(bldg_properties_encoded))
+            "Missing percentages among {} assets".format(len(bldg_properties_encoded))
         )
         for column in column_names[mask.any(axis=0)]:
             colLoc = int(column_names.get_loc(column))
@@ -384,7 +400,7 @@ class KnnImputer(Imputation):
             for i, t_id in enumerate(np.where(test_id)[0]):
                 bldg_properties_preliminary.iat[t_id, colLoc] = trainY_G[indices[i][0]]
 
-        print("Primative imputation done.")
+        print("Primitive imputation done.")
         return bldg_properties_preliminary, nbrs_G, trainY_G_list
 
     def clustering(
@@ -541,7 +557,7 @@ class KnnImputer(Imputation):
 
                     if not mask_impu_subset[missing_idx[nb], colLoc]:
                         raise Exception(
-                            "Something went wrong internally. Please report the bug."
+                            "Something went wrong internally. Please report the bug. (SY01)"
                         )
 
                     # save for iteration
