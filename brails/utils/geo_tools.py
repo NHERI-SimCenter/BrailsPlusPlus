@@ -53,11 +53,9 @@ This module defines clesses related to image sets
 import json
 from math import radians, sin, cos, atan2, sqrt
 import matplotlib.pyplot as plt
-from array import array
 
 from shapely import to_geojson, centroid
-from shapely.geometry import Polygon, Point, MultiPoint
-from shapely.ops import nearest_points
+from shapely.geometry import Polygon
 from shapely.strtree import STRtree
 
 
@@ -192,10 +190,10 @@ def write_polygon2geojson(poly, outfile):
         json.dump(geojson, output_file, indent=2)
 
 
-def match_points2polygons(points:list,polygons:list)->list:
+def match_points2polygons(points: list, polygons: list) -> list:
     """
     Function that finds the set of points that match a set of polygons 
-    
+
     Inputs:  A list of Shapely points and a list of footprint data defined as a
              list of lists of coordinates in EPSG 4326, i.e., [[vert1],....
              [vertlast]]. Vertices are defined in [longitude,latitude] fashion.
@@ -204,35 +202,35 @@ def match_points2polygons(points:list,polygons:list)->list:
              Shapely point
     """
 
-    # Create an STR tree for the input points: 
+    # Create an STR tree for the input points:
     pttree = STRtree(points)
-    
+
     # Find the data points that are enclosed in each polygon:
     ptkeepind = []
     other_index = []
     fp2ptmap = {}
     for ind, poly in enumerate(polygons):
         res = pttree.query(Polygon(poly))
-        
-        if res.size >1:
+
+        if res.size > 1:
             # sy - if multiple points exist in polygon, find the closest to the centroid
             source1_points = pttree.geometries.take(res)
             poly_centroid = centroid(Polygon(poly))
 
             tree = STRtree(source1_points)
-            idx = tree.nearest(poly_centroid)            
-            res = res[idx:idx+1]# make res.size==1
+            idx = tree.nearest(poly_centroid)
+            res = res[idx:idx+1]  # make res.size==1
 
         if res.size == 1:
             ptkeepind.extend(res)
             other_index.append(ind)
             fp2ptmap[str(poly)] = points[res[0]]
     ptkeepind = set(ptkeepind)
-    
+
     # Create a list of points that include just the points that have a polygon
     # match:
     ptskeep = []
     for ind in ptkeepind:
         ptskeep.append(points[ind])
 
-    return ptskeep,fp2ptmap,other_index        
+    return ptskeep, fp2ptmap, other_index

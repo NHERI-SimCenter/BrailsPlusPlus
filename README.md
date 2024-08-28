@@ -1,7 +1,6 @@
 <h1 style="text-align: center;">BRAILS++: Building Regional Asset Inventories at Large Scale</h1>
 
 [![Tests](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/tests.yml/badge.svg)](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/tests.yml/badge.svg)
-[![Lint Code](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/lint_code.yml/badge.svg)](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/lint_code.yml/badge.svg)
 [![DOI](https://zenodo.org/badge/184673734.svg)](https://zenodo.org/badge/latestdoi/184673734)
 [![PyPi version](https://badgen.net/pypi/v/BRAILS/)](https://pypi.org/project/BRAILS/)
 [![PyPI download month](https://img.shields.io/pypi/dm/BRAILS.svg)](https://pypi.python.org/pypi/BRAILS/)
@@ -11,8 +10,6 @@
 ```BRAILS++``` is an object-oriented framework for building applications that focus on generating asset inventories for large geographic regions.
 
 ## How is the repo laid out?
-
-#### :building_construction:UNDER CONSTRUCTION!! :building_construction: 
 
 + ```brails```: A directory containing the classes
   - ```brails/types```: directory containing useful datatypes, e.g., ```ImageSet``` and ```AssetInventory```
@@ -32,10 +29,10 @@ You can find the documentation for ```BRAILS++``` [here]().
 
 ## Installation instructions
 
-```BRAILS++``` is available on PyPI under the name ```BRAILS```.
+```BRAILS++``` is NOT YET available on PyPI. For now, please install ```BRAILS++``` by issuing the following command.
 
 ```shell
-pip install BRAILS
+pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
 ```
 Developers and contributors, please read the [Contributing to BRAILS++]() page of the documentation before you commit your code.
 

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) The Regents of the University of California
+# Copyright (c) 2024 The Regents of the University of California
 #
-# This file is part of BRAILS.
+# This file is part of BRAILS++.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -32,9 +32,3 @@
 #
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
-#
-# Author:
-# NHERI SimCenter, nheri-simcenter@berkeley.edu
-
-
-from .groundingdino import build_groundingdino
