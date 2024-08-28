@@ -40,14 +40,14 @@
 import os
 import copy
 import sys
+import json
 import glob
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional,Dict
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from .grounded_sam_utils import run_on_one_image, build_models 
 from brails.types.image_set import ImageSet
-from typing import Optional, Dict      
 
 class VLMSegmenter:  
     def __init__(self, input_dict: Optional[dict] = None):        
@@ -63,7 +63,8 @@ class VLMSegmenter:
         if(input_dict!=None):
             self.classes = input_dict['classes']
         else:
-            self.classes = ["terrain", "road", "tree", "door", "window", "facade"]
+            self.classes = ["door", "window", "roof", "facade"]
+            # self.classes = ["terrain", "road", "tree", "door", "window", "facade"]
     def predict(self, images: ImageSet, modelPath=None, classes = None, output_dir = "tmp/images/street", visualize = True):
 
         """
@@ -80,6 +81,8 @@ class VLMSegmenter:
 
         assert modelPath==None or len(modelPath)==2, "both GroundingDINO and SAM checkpoint should be provided"
         self.classes = classes if classes != None else self.classes
+        
+        #load groundedDINO & SAM
         if(modelPath!=None):
             try:
                 dino_state_dict = torch.load(modelPath[0])
@@ -95,16 +98,22 @@ class VLMSegmenter:
 
         saved_paths = {}
         data_dir = images.dir_path
+        CLASS_TO_CODE = {curr_class: idx+1 for idx, curr_class in enumerate(self.classes)}
         for idx, (key, im) in enumerate(images.images.items()):
             if isImage(im.filename):
                 img_path = os.path.join(data_dir, im.filename)
                 mask, mask_path = run_on_one_image(
-                    img_path, output_dir, self.grounding_dino_model, self.sam_predictor, self.classes, visualize = visualize)
+                    img_path, output_dir, self.grounding_dino_model, self.sam_predictor, CLASS_TO_CODE, visualize = visualize)
                 saved_paths[key] = mask_path
                 im.mask = mask
 
         print(f'mask saved at {output_dir} as png')
+        self.write_dict(CLASS_TO_CODE, os.path.join(output_dir, 'seg_code.json'))
         return saved_paths
+
+    def write_dict(self, d, output_path):
+        with open(output_path, 'w') as fp:
+            json.dump(d, fp)
 
 if __name__ == '__main__':
     pass

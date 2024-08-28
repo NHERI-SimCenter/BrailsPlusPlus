@@ -114,7 +114,7 @@ class RoofShapeClassifier(ImageClassifier):
         """
         
         imageClassifier = ImageClassifier()
-        return imageClassifier.predict(images, self.model_path, self.classes)
+        return imageClassifier.predict(images, model_path = self.model_path, classes = self.classes)
         
     def retrain(self, dataDir, batchSize=8, nepochs=100, plotLoss=True):
         imageClassifier = ImageClassifier()
