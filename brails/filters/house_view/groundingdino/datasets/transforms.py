@@ -10,8 +10,8 @@ import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
 
-from groundingdino.util.box_ops import box_xyxy_to_cxcywh
-from groundingdino.util.misc import interpolate
+from ..util.box_ops import box_xyxy_to_cxcywh
+from ..util.misc import interpolate
 
 
 def crop(image, target, region):
@@ -38,7 +38,7 @@ def crop(image, target, region):
 
     if "masks" in target:
         # FIXME should we update the area here if there are no boxes?
-        target["masks"] = target["masks"][:, i : i + h, j : j + w]
+        target["masks"] = target["masks"][:, i: i + h, j: j + w]
         fields.append("masks")
 
     # remove elements for which the boxes or masks that have zero area
@@ -47,7 +47,8 @@ def crop(image, target, region):
         # this is compatible with previous implementation
         if "boxes" in target:
             cropped_boxes = target["boxes"].reshape(-1, 2, 2)
-            keep = torch.all(cropped_boxes[:, 1, :] > cropped_boxes[:, 0, :], dim=1)
+            keep = torch.all(
+                cropped_boxes[:, 1, :] > cropped_boxes[:, 0, :], dim=1)
         else:
             keep = target["masks"].flatten(1).any(1)
 
@@ -93,7 +94,8 @@ def resize(image, target, size, max_size=None):
             min_original_size = float(min((w, h)))
             max_original_size = float(max((w, h)))
             if max_original_size / min_original_size * size > max_size:
-                size = int(round(max_size * min_original_size / max_original_size))
+                size = int(
+                    round(max_size * min_original_size / max_original_size))
 
         if (w <= h and w == size) or (h <= w and h == size):
             return (h, w)
@@ -119,7 +121,8 @@ def resize(image, target, size, max_size=None):
     if target is None:
         return rescaled_image, None
 
-    ratios = tuple(float(s) / float(s_orig) for s, s_orig in zip(rescaled_image.size, image.size))
+    ratios = tuple(float(s) / float(s_orig)
+                   for s, s_orig in zip(rescaled_image.size, image.size))
     ratio_width, ratio_height = ratios
 
     target = target.copy()
@@ -140,7 +143,8 @@ def resize(image, target, size, max_size=None):
 
     if "masks" in target:
         target["masks"] = (
-            interpolate(target["masks"][:, None].float(), size, mode="nearest")[:, 0] > 0.5
+            interpolate(target["masks"][:, None].float(),
+                        size, mode="nearest")[:, 0] > 0.5
         )
 
     return rescaled_image, target
@@ -155,7 +159,8 @@ def pad(image, target, padding):
     # should we do something wrt the original size?
     target["size"] = torch.tensor(padded_image.size[::-1])
     if "masks" in target:
-        target["masks"] = torch.nn.functional.pad(target["masks"], (0, padding[0], 0, padding[1]))
+        target["masks"] = torch.nn.functional.pad(
+            target["masks"], (0, padding[0], 0, padding[1]))
     return padded_image, target
 
 

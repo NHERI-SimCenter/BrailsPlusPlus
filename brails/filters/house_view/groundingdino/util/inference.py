@@ -8,11 +8,11 @@ import torch
 from PIL import Image
 from torchvision.ops import box_convert
 
-from groundingdino.datasets import transforms as T
-from groundingdino.models import build_model
-from groundingdino.util.misc import clean_state_dict
-from groundingdino.util.slconfig import SLConfig
-from groundingdino.util.utils import get_phrases_from_posmap
+from ..datasets import transforms as T
+from ..models import build_model
+from ..util.misc import clean_state_dict
+from ..util.slconfig import SLConfig
+from ..util.utils import get_phrases_from_posmap
 
 # ----------------------------------------------------------------------------------------------------------------------
 # OLD API
@@ -66,8 +66,10 @@ def predict(
     with torch.no_grad():
         outputs = model(image[None], captions=[caption])
 
-    prediction_logits = outputs["pred_logits"].cpu().sigmoid()[0]  # prediction_logits.shape = (nq, 256)
-    prediction_boxes = outputs["pred_boxes"].cpu()[0]  # prediction_boxes.shape = (nq, 4)
+    # prediction_logits.shape = (nq, 256)
+    prediction_logits = outputs["pred_logits"].cpu().sigmoid()[0]
+    # prediction_boxes.shape = (nq, 4)
+    prediction_boxes = outputs["pred_boxes"].cpu()[0]
 
     mask = prediction_logits.max(dim=1)[0] > box_threshold
     logits = prediction_logits[mask]  # logits.shape = (n, 256)
@@ -77,7 +79,8 @@ def predict(
     tokenized = tokenizer(caption)
 
     phrases = [
-        get_phrases_from_posmap(logit > text_threshold, tokenized, tokenizer).replace('.', '')
+        get_phrases_from_posmap(logit > text_threshold,
+                                tokenized, tokenizer).replace('.', '')
         for logit
         in logits
     ]
@@ -99,7 +102,8 @@ def annotate(image_source: np.ndarray, boxes: torch.Tensor, logits: torch.Tensor
 
     box_annotator = sv.BoxAnnotator()
     annotated_frame = cv2.cvtColor(image_source, cv2.COLOR_RGB2BGR)
-    annotated_frame = box_annotator.annotate(scene=annotated_frame, detections=detections, labels=labels)
+    annotated_frame = box_annotator.annotate(
+        scene=annotated_frame, detections=detections, labels=labels)
     return annotated_frame
 
 
@@ -148,13 +152,14 @@ class Model:
         box_annotator = sv.BoxAnnotator()
         annotated_image = box_annotator.annotate(scene=image, detections=detections, labels=labels)
         """
-        processed_image = Model.preprocess_image(image_bgr=image).to(self.device)
+        processed_image = Model.preprocess_image(
+            image_bgr=image).to(self.device)
         boxes, logits, phrases = predict(
             model=self.model,
             image=processed_image,
             caption=caption,
             box_threshold=box_threshold,
-            text_threshold=text_threshold, 
+            text_threshold=text_threshold,
             device=self.device)
         source_h, source_w, _ = image.shape
         detections = Model.post_process_result(
@@ -191,7 +196,8 @@ class Model:
         annotated_image = box_annotator.annotate(scene=image, detections=detections)
         """
         caption = ". ".join(classes)
-        processed_image = Model.preprocess_image(image_bgr=image).to(self.device)
+        processed_image = Model.preprocess_image(
+            image_bgr=image).to(self.device)
         boxes, logits, phrases = predict(
             model=self.model,
             image=processed_image,
@@ -218,7 +224,8 @@ class Model:
                 T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
         )
-        image_pillow = Image.fromarray(cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB))
+        image_pillow = Image.fromarray(
+            cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB))
         image_transformed, _ = transform(image_pillow, None)
         return image_transformed
 
@@ -230,7 +237,8 @@ class Model:
             logits: torch.Tensor
     ) -> sv.Detections:
         boxes = boxes * torch.Tensor([source_w, source_h, source_w, source_h])
-        xyxy = box_convert(boxes=boxes, in_fmt="cxcywh", out_fmt="xyxy").numpy()
+        xyxy = box_convert(boxes=boxes, in_fmt="cxcywh",
+                           out_fmt="xyxy").numpy()
         confidence = logits.numpy()
         return sv.Detections(xyxy=xyxy, confidence=confidence)
 

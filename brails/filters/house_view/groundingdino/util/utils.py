@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from transformers import AutoTokenizer
 
-from groundingdino.util.slconfig import SLConfig
+from .slconfig import SLConfig
 
 
 def slprint(x, name="x"):
@@ -147,8 +147,10 @@ class CocoClassMapper:
             "89": 79,
             "90": 80,
         }
-        self.origin2compact_mapper = {int(k): v - 1 for k, v in self.category_map_str.items()}
-        self.compact2origin_mapper = {int(v - 1): int(k) for k, v in self.category_map_str.items()}
+        self.origin2compact_mapper = {
+            int(k): v - 1 for k, v in self.category_map_str.items()}
+        self.compact2origin_mapper = {
+            int(v - 1): int(k) for k, v in self.category_map_str.items()}
 
     def origin2compact(self, idx):
         return self.origin2compact_mapper[int(idx)]
@@ -166,7 +168,8 @@ def to_device(item, device):
         return {k: to_device(v, device) for k, v in item.items()}
     else:
         raise NotImplementedError(
-            "Call Shilong if you use other containers! type: {}".format(type(item))
+            "Call Shilong if you use other containers! type: {}".format(
+                type(item))
         )
 
 
@@ -242,7 +245,8 @@ class Embedder:
 
         for freq in freq_bands:
             for p_fn in self.kwargs["periodic_fns"]:
-                embed_fns.append(lambda x, p_fn=p_fn, freq=freq: p_fn(x * freq))
+                embed_fns.append(lambda x, p_fn=p_fn,
+                                 freq=freq: p_fn(x * freq))
                 out_dim += d
 
         self.embed_fns = embed_fns
@@ -268,7 +272,7 @@ def get_embedder(multires, i=0):
     }
 
     embedder_obj = Embedder(**embed_kwargs)
-    embed = lambda x, eo=embedder_obj: eo.embed(x)
+    def embed(x, eo=embedder_obj): return eo.embed(x)
     return embed, embedder_obj.out_dim
 
 
@@ -379,7 +383,8 @@ class NiceRepr:
             return str(len(self))
         else:
             # In all other cases force the subclass to overload __nice__
-            raise NotImplementedError(f"Define the __nice__ method for {self.__class__!r}")
+            raise NotImplementedError(
+                f"Define the __nice__ method for {self.__class__!r}")
 
     def __repr__(self):
         """str: the string of the module"""
@@ -494,7 +499,8 @@ class ModelEma(torch.nn.Module):
                 ema_v.copy_(update_fn(ema_v, model_v))
 
     def update(self, model):
-        self._update(model, update_fn=lambda e, m: self.decay * e + (1.0 - self.decay) * m)
+        self._update(model, update_fn=lambda e,
+                     m: self.decay * e + (1.0 - self.decay) * m)
 
     def set(self, model):
         self._update(model, update_fn=lambda e, m: m)
@@ -563,7 +569,8 @@ class BestMetricHolder:
 
         res = {}
         res.update({f"all_{k}": v for k, v in self.best_all.summary().items()})
-        res.update({f"regular_{k}": v for k, v in self.best_regular.summary().items()})
+        res.update({f"regular_{k}": v for k,
+                   v in self.best_regular.summary().items()})
         res.update({f"ema_{k}": v for k, v in self.best_ema.summary().items()})
         return res
 

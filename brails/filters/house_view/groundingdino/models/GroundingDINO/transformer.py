@@ -22,7 +22,7 @@ import torch
 import torch.utils.checkpoint as checkpoint
 from torch import Tensor, nn
 
-from groundingdino.util.misc import inverse_sigmoid
+from ...util.misc import inverse_sigmoid
 
 from .fuse_modules import BiAttentionBlock
 from .ms_deform_attn import MultiScaleDeformableAttention as MSDeformAttn
@@ -60,7 +60,8 @@ class Transformer(nn.Module):
         # init query
         learnable_tgt_init=False,
         # two stage
-        two_stage_type="no",  # ['no', 'standard', 'early', 'combine', 'enceachlayer', 'enclayer1']
+        # ['no', 'standard', 'early', 'combine', 'enceachlayer', 'enclayer1']
+        two_stage_type="no",
         embed_init_tgt=False,
         # for text
         use_text_enhancer=False,
@@ -149,12 +150,14 @@ class Transformer(nn.Module):
         self.num_queries = num_queries  # useful for single stage model only
         self.num_patterns = num_patterns
         if not isinstance(num_patterns, int):
-            Warning("num_patterns should be int but {}".format(type(num_patterns)))
+            Warning("num_patterns should be int but {}".format(
+                type(num_patterns)))
             self.num_patterns = 0
 
         if num_feature_levels > 1:
             if self.num_encoder_layers > 0:
-                self.level_embed = nn.Parameter(torch.Tensor(num_feature_levels, d_model))
+                self.level_embed = nn.Parameter(
+                    torch.Tensor(num_feature_levels, d_model))
             else:
                 self.level_embed = None
 
@@ -232,7 +235,8 @@ class Transformer(nn.Module):
             mask = mask.flatten(1)  # bs, hw
             pos_embed = pos_embed.flatten(2).transpose(1, 2)  # bs, hw, c
             if self.num_feature_levels > 1 and self.level_embed is not None:
-                lvl_pos_embed = pos_embed + self.level_embed[lvl].view(1, 1, -1)
+                lvl_pos_embed = pos_embed + \
+                    self.level_embed[lvl].view(1, 1, -1)
             else:
                 lvl_pos_embed = pos_embed
             lvl_pos_embed_flatten.append(lvl_pos_embed)
@@ -240,12 +244,14 @@ class Transformer(nn.Module):
             mask_flatten.append(mask)
         src_flatten = torch.cat(src_flatten, 1)  # bs, \sum{hxw}, c
         mask_flatten = torch.cat(mask_flatten, 1)  # bs, \sum{hxw}
-        lvl_pos_embed_flatten = torch.cat(lvl_pos_embed_flatten, 1)  # bs, \sum{hxw}, c
+        lvl_pos_embed_flatten = torch.cat(
+            lvl_pos_embed_flatten, 1)  # bs, \sum{hxw}, c
         spatial_shapes = torch.as_tensor(
             spatial_shapes, dtype=torch.long, device=src_flatten.device
         )
         level_start_index = torch.cat(
-            (spatial_shapes.new_zeros((1,)), spatial_shapes.prod(1).cumsum(0)[:-1])
+            (spatial_shapes.new_zeros((1,)),
+             spatial_shapes.prod(1).cumsum(0)[:-1])
         )
         valid_ratios = torch.stack([self.get_valid_ratio(m) for m in masks], 1)
 
@@ -285,12 +291,15 @@ class Transformer(nn.Module):
             output_memory, output_proposals = gen_encoder_output_proposals(
                 memory, mask_flatten, spatial_shapes
             )
-            output_memory = self.enc_output_norm(self.enc_output(output_memory))
+            output_memory = self.enc_output_norm(
+                self.enc_output(output_memory))
 
             if text_dict is not None:
-                enc_outputs_class_unselected = self.enc_out_class_embed(output_memory, text_dict)
+                enc_outputs_class_unselected = self.enc_out_class_embed(
+                    output_memory, text_dict)
             else:
-                enc_outputs_class_unselected = self.enc_out_class_embed(output_memory)
+                enc_outputs_class_unselected = self.enc_out_class_embed(
+                    output_memory)
 
             topk_logits = enc_outputs_class_unselected.max(-1)[0]
             enc_outputs_coord_unselected = (
@@ -302,40 +311,48 @@ class Transformer(nn.Module):
 
             # gather boxes
             refpoint_embed_undetach = torch.gather(
-                enc_outputs_coord_unselected, 1, topk_proposals.unsqueeze(-1).repeat(1, 1, 4)
+                enc_outputs_coord_unselected, 1, topk_proposals.unsqueeze(
+                    -1).repeat(1, 1, 4)
             )  # unsigmoid
             refpoint_embed_ = refpoint_embed_undetach.detach()
             init_box_proposal = torch.gather(
-                output_proposals, 1, topk_proposals.unsqueeze(-1).repeat(1, 1, 4)
+                output_proposals, 1, topk_proposals.unsqueeze(
+                    -1).repeat(1, 1, 4)
             ).sigmoid()  # sigmoid
 
             # gather tgt
             tgt_undetach = torch.gather(
-                output_memory, 1, topk_proposals.unsqueeze(-1).repeat(1, 1, self.d_model)
+                output_memory, 1, topk_proposals.unsqueeze(
+                    -1).repeat(1, 1, self.d_model)
             )
             if self.embed_init_tgt:
                 tgt_ = (
-                    self.tgt_embed.weight[:, None, :].repeat(1, bs, 1).transpose(0, 1)
+                    self.tgt_embed.weight[:, None, :].repeat(
+                        1, bs, 1).transpose(0, 1)
                 )  # nq, bs, d_model
             else:
                 tgt_ = tgt_undetach.detach()
 
             if refpoint_embed is not None:
-                refpoint_embed = torch.cat([refpoint_embed, refpoint_embed_], dim=1)
+                refpoint_embed = torch.cat(
+                    [refpoint_embed, refpoint_embed_], dim=1)
                 tgt = torch.cat([tgt, tgt_], dim=1)
             else:
                 refpoint_embed, tgt = refpoint_embed_, tgt_
 
         elif self.two_stage_type == "no":
             tgt_ = (
-                self.tgt_embed.weight[:, None, :].repeat(1, bs, 1).transpose(0, 1)
+                self.tgt_embed.weight[:, None, :].repeat(
+                    1, bs, 1).transpose(0, 1)
             )  # nq, bs, d_model
             refpoint_embed_ = (
-                self.refpoint_embed.weight[:, None, :].repeat(1, bs, 1).transpose(0, 1)
+                self.refpoint_embed.weight[:, None, :].repeat(
+                    1, bs, 1).transpose(0, 1)
             )  # nq, bs, 4
 
             if refpoint_embed is not None:
-                refpoint_embed = torch.cat([refpoint_embed, refpoint_embed_], dim=1)
+                refpoint_embed = torch.cat(
+                    [refpoint_embed, refpoint_embed_], dim=1)
                 tgt = torch.cat([tgt, tgt_], dim=1)
             else:
                 refpoint_embed, tgt = refpoint_embed_, tgt_
@@ -351,7 +368,8 @@ class Transformer(nn.Module):
             init_box_proposal = refpoint_embed_.sigmoid()
 
         else:
-            raise NotImplementedError("unknown two_stage_type {}".format(self.two_stage_type))
+            raise NotImplementedError(
+                "unknown two_stage_type {}".format(self.two_stage_type))
         #########################################################
         # End preparing tgt
         # - tgt: bs, NQ, d_model
@@ -433,7 +451,8 @@ class TransformerEncoder(nn.Module):
         self.text_layers = []
         self.fusion_layers = []
         if num_layers > 0:
-            self.layers = _get_clones(encoder_layer, num_layers, layer_share=enc_layer_share)
+            self.layers = _get_clones(
+                encoder_layer, num_layers, layer_share=enc_layer_share)
 
             if text_enhance_layer is not None:
                 self.text_layers = _get_clones(
@@ -468,11 +487,15 @@ class TransformerEncoder(nn.Module):
         for lvl, (H_, W_) in enumerate(spatial_shapes):
 
             ref_y, ref_x = torch.meshgrid(
-                torch.linspace(0.5, H_ - 0.5, H_, dtype=torch.float32, device=device),
-                torch.linspace(0.5, W_ - 0.5, W_, dtype=torch.float32, device=device),
+                torch.linspace(0.5, H_ - 0.5, H_,
+                               dtype=torch.float32, device=device),
+                torch.linspace(0.5, W_ - 0.5, W_,
+                               dtype=torch.float32, device=device),
             )
-            ref_y = ref_y.reshape(-1)[None] / (valid_ratios[:, None, lvl, 1] * H_)
-            ref_x = ref_x.reshape(-1)[None] / (valid_ratios[:, None, lvl, 0] * W_)
+            ref_y = ref_y.reshape(-1)[None] / \
+                (valid_ratios[:, None, lvl, 1] * H_)
+            ref_x = ref_x.reshape(-1)[None] / \
+                (valid_ratios[:, None, lvl, 0] * W_)
             ref = torch.stack((ref_x, ref_y), -1)
             reference_points_list.append(ref)
         reference_points = torch.cat(reference_points_list, 1)
@@ -535,7 +558,8 @@ class TransformerEncoder(nn.Module):
                     .unsqueeze(-1)
                     .repeat(bs, 1, 1)
                 )
-                pos_text = get_sine_pos_embed(pos_text, num_pos_feats=256, exchange_xy=False)
+                pos_text = get_sine_pos_embed(
+                    pos_text, num_pos_feats=256, exchange_xy=False)
             if position_ids is not None:
                 pos_text = get_sine_pos_embed(
                     position_ids[..., None], num_pos_feats=256, exchange_xy=False
@@ -568,7 +592,8 @@ class TransformerEncoder(nn.Module):
                     src=memory_text.transpose(0, 1),
                     src_mask=~text_self_attention_masks,  # note we use ~ for mask here
                     src_key_padding_mask=text_attention_mask,
-                    pos=(pos_text.transpose(0, 1) if pos_text is not None else None),
+                    pos=(pos_text.transpose(0, 1)
+                         if pos_text is not None else None),
                 ).transpose(0, 1)
 
             # main process
@@ -616,10 +641,12 @@ class TransformerDecoder(nn.Module):
         self.return_intermediate = return_intermediate
         assert return_intermediate, "support return_intermediate only"
         self.query_dim = query_dim
-        assert query_dim in [2, 4], "query_dim should be 2/4 but {}".format(query_dim)
+        assert query_dim in [
+            2, 4], "query_dim should be 2/4 but {}".format(query_dim)
         self.num_feature_levels = num_feature_levels
 
-        self.ref_point_head = MLP(query_dim // 2 * d_model, d_model, d_model, 2)
+        self.ref_point_head = MLP(
+            query_dim // 2 * d_model, d_model, d_model, 2)
         self.query_pos_sine_scale = None
 
         self.query_scale = None
@@ -671,14 +698,17 @@ class TransformerDecoder(nn.Module):
                 )  # nq, bs, nlevel, 4
             else:
                 assert reference_points.shape[-1] == 2
-                reference_points_input = reference_points[:, :, None] * valid_ratios[None, :]
+                reference_points_input = reference_points[:,
+                                                          :, None] * valid_ratios[None, :]
             query_sine_embed = gen_sineembed_for_position(
                 reference_points_input[:, :, 0, :]
             )  # nq, bs, 256*2
 
             # conditional query
-            raw_query_pos = self.ref_point_head(query_sine_embed)  # nq, bs, 256
-            pos_scale = self.query_scale(output) if self.query_scale is not None else 1
+            raw_query_pos = self.ref_point_head(
+                query_sine_embed)  # nq, bs, 256
+            pos_scale = self.query_scale(
+                output) if self.query_scale is not None else 1
             query_pos = pos_scale * raw_query_pos
             # if os.environ.get("SHILONG_AMP_INFNAN_DEBUG") == '1':
             #     if query_pos.isnan().any() | query_pos.isinf().any():
@@ -827,18 +857,22 @@ class DeformableTransformerDecoderLayer(nn.Module):
 
         # cross attention text
         if use_text_cross_attention:
-            self.ca_text = nn.MultiheadAttention(d_model, n_heads, dropout=dropout)
-            self.catext_dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
+            self.ca_text = nn.MultiheadAttention(
+                d_model, n_heads, dropout=dropout)
+            self.catext_dropout = nn.Dropout(
+                dropout) if dropout > 0 else nn.Identity()
             self.catext_norm = nn.LayerNorm(d_model)
 
         # self attention
-        self.self_attn = nn.MultiheadAttention(d_model, n_heads, dropout=dropout)
+        self.self_attn = nn.MultiheadAttention(
+            d_model, n_heads, dropout=dropout)
         self.dropout2 = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
         self.norm2 = nn.LayerNorm(d_model)
 
         # ffn
         self.linear1 = nn.Linear(d_model, d_ffn)
-        self.activation = _get_activation_fn(activation, d_model=d_ffn, batch_dim=1)
+        self.activation = _get_activation_fn(
+            activation, d_model=d_ffn, batch_dim=1)
         self.dropout3 = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
         self.linear2 = nn.Linear(d_ffn, d_model)
         self.dropout4 = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
@@ -860,7 +894,8 @@ class DeformableTransformerDecoderLayer(nn.Module):
 
     def forward_ffn(self, tgt):
         with torch.cuda.amp.autocast(enabled=False):
-            tgt2 = self.linear2(self.dropout3(self.activation(self.linear1(tgt))))
+            tgt2 = self.linear2(self.dropout3(
+                self.activation(self.linear1(tgt))))
         tgt = tgt + self.dropout4(tgt2)
         tgt = self.norm3(tgt)
         return tgt
@@ -869,8 +904,10 @@ class DeformableTransformerDecoderLayer(nn.Module):
         self,
         # for tgt
         tgt: Optional[Tensor],  # nq, bs, d_model
-        tgt_query_pos: Optional[Tensor] = None,  # pos for query. MLP(Sine(pos))
-        tgt_query_sine_embed: Optional[Tensor] = None,  # pos for query. Sine(pos)
+        # pos for query. MLP(Sine(pos))
+        tgt_query_pos: Optional[Tensor] = None,
+        # pos for query. Sine(pos)
+        tgt_query_sine_embed: Optional[Tensor] = None,
         tgt_key_padding_mask: Optional[Tensor] = None,
         tgt_reference_points: Optional[Tensor] = None,  # nq, bs, 4
         memory_text: Optional[Tensor] = None,  # bs, num_token, d_model
@@ -882,8 +919,10 @@ class DeformableTransformerDecoderLayer(nn.Module):
         memory_spatial_shapes: Optional[Tensor] = None,  # bs, num_levels, 2
         memory_pos: Optional[Tensor] = None,  # pos for memory
         # sa
-        self_attn_mask: Optional[Tensor] = None,  # mask used for self-attention
-        cross_attn_mask: Optional[Tensor] = None,  # mask used for cross-attention
+        # mask used for self-attention
+        self_attn_mask: Optional[Tensor] = None,
+        # mask used for cross-attention
+        cross_attn_mask: Optional[Tensor] = None,
     ):
         """
         Input:

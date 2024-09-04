@@ -24,7 +24,7 @@ import torchvision
 from torch import nn
 from torchvision.models._utils import IntermediateLayerGetter
 
-from groundingdino.util.misc import NestedTensor, clean_state_dict, is_main_process
+from ....util.misc import NestedTensor, clean_state_dict, is_main_process
 
 from .position_encoding import build_position_encoding
 from .swin_transformer import build_swin_transformer
@@ -91,7 +91,8 @@ class BackboneBase(nn.Module):
         return_layers = {}
         for idx, layer_index in enumerate(return_interm_indices):
             return_layers.update(
-                {"layer{}".format(5 - len(return_interm_indices) + idx): "{}".format(layer_index)}
+                {"layer{}".format(
+                    5 - len(return_interm_indices) + idx): "{}".format(layer_index)}
             )
 
         # if len:
@@ -101,7 +102,8 @@ class BackboneBase(nn.Module):
         #         return_layers = {"layer2": "0", "layer3": "1", "layer4": "2"}
         # else:
         #     return_layers = {'layer4': "0"}
-        self.body = IntermediateLayerGetter(backbone, return_layers=return_layers)
+        self.body = IntermediateLayerGetter(
+            backbone, return_layers=return_layers)
         self.num_channels = num_channels
 
     def forward(self, tensor_list: NestedTensor):
@@ -110,7 +112,8 @@ class BackboneBase(nn.Module):
         for name, x in xs.items():
             m = tensor_list.mask
             assert m is not None
-            mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(torch.bool)[0]
+            mask = F.interpolate(
+                m[None].float(), size=x.shape[-2:]).to(torch.bool)[0]
             out[name] = NestedTensor(x, mask)
         # import ipdb; ipdb.set_trace()
         return out
@@ -134,12 +137,14 @@ class Backbone(BackboneBase):
                 norm_layer=batch_norm,
             )
         else:
-            raise NotImplementedError("Why you can get here with name {}".format(name))
+            raise NotImplementedError(
+                "Why you can get here with name {}".format(name))
         # num_channels = 512 if name in ('resnet18', 'resnet34') else 2048
-        assert name not in ("resnet18", "resnet34"), "Only resnet50 and resnet101 are available."
+        assert name not in (
+            "resnet18", "resnet34"), "Only resnet50 and resnet101 are available."
         assert return_interm_indices in [[0, 1, 2, 3], [1, 2, 3], [3]]
         num_channels_all = [256, 512, 1024, 2048]
-        num_channels = num_channels_all[4 - len(return_interm_indices) :]
+        num_channels = num_channels_all[4 - len(return_interm_indices):]
         super().__init__(backbone, train_backbone, num_channels, return_interm_indices)
 
 
@@ -204,7 +209,8 @@ def build_backbone(args):
             use_checkpoint=use_checkpoint,
         )
 
-        bb_num_channels = backbone.num_features[4 - len(return_interm_indices) :]
+        bb_num_channels = backbone.num_features[4 -
+                                                len(return_interm_indices):]
     else:
         raise NotImplementedError("Unknown backbone {}".format(args.backbone))
 
