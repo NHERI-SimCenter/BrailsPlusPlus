@@ -61,7 +61,17 @@ class HouseView(Filter):
         self.WEIGHTS_PATH = "./tmp/groundingdino_swint_ogc.pth"
         # self.CONFIG_PATH = os.path.join(os.path.abspath(__file__), "groundingdino/config/GroundingDINO_SwinT_OGC.py")
         # path_groundingdino = os.path.dirname(groundingdino.__file__)
-        self.CONFIG_PATH = './groundingdino/config/GroundingDINO_SwinT_OGC.py'
+        curr_dir = os.path.dirname(os.path.abspath(__file__))
+        self.CONFIG_PATH = os.path.join(curr_dir, 'groundingdino/config/GroundingDINO_SwinT_OGC.py')
+        self.verify_and_download_models()
+
+    def verify_and_download_models(self):
+        GROUNDING_DINO_CHECKPOINT_PATH = "tmp/groundingdino_swint_ogc.pth"
+        GROUNDING_DINO_CHECKPOINT_URL = 'https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth'
+        if (not os.path.isfile(GROUNDING_DINO_CHECKPOINT_PATH)):
+            print('Loading houseview filter model checkpoint...')
+            torch.hub.download_url_to_file(GROUNDING_DINO_CHECKPOINT_URL,
+                                        GROUNDING_DINO_CHECKPOINT_PATH, progress=False)
 
     def _bound_multiple_images(self, IMAGE_PATH_LIST, TEXT_PROMPT, BOX_TRESHOLD, TEXT_TRESHOLD, model, device):
         '''
