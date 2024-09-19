@@ -45,6 +45,7 @@ import torch
 import numpy as np
 import os
 from PIL import Image
+
 from pathlib import Path
 from transformers import AutoModelForMaskGeneration, AutoProcessor, pipeline
 from dataclasses import dataclass
@@ -99,7 +100,9 @@ def detect(image: Image.Image, labels: List[str], threshold: float = 0.3,
     return results
 
 
+
 class HouseView(Filter):
+
 
   def __init__(self, input_data: dict):
     
@@ -226,3 +229,4 @@ class HouseView(Filter):
     return output_images
 
       
+

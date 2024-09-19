@@ -29,10 +29,16 @@ my_classifier = my_class()
 predictions = my_classifier.predict(aerial_images)
 print(predictions)
 
-print('ROOF_SHAPE_LLM PREDICTIONS')
-my_class = importer.get_class('RoofShapeLLM')
+print('ROOF_SHAPE_VLM PREDICTIONS')
+my_class = importer.get_class('RoofShapeVLM')
 my_classifier = my_class()
 predictions = my_classifier.predict(aerial_images)
+print(predictions)
+
+print('NFLOORS_VLM PREDICTIONS')
+my_class = importer.get_class('NFloorVLM')
+my_classifier = my_class()
+predictions = my_classifier.predict(street_images)
 print(predictions)
 
 # Test importer and one of the street-level imagery classifiers, 
@@ -42,3 +48,7 @@ my_class = importer.get_class('OccupancyClassifier')
 my_classifier = my_class()
 predictions = my_classifier.predict(street_images) 
 print(predictions)
+
+my_class = importer.get_class('VLMSegmenter')
+my_segmenter = my_class()
+my_segmenter.predict(street_images)
