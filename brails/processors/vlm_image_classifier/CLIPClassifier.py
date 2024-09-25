@@ -58,7 +58,6 @@ from typing import Optional, Dict
 #import utils
 class CLIPClassifier:
     def __init__(self, task, input_dict: Optional[dict] =None):
-        #import ipdb;ipdb.set_trace()
         #initializr model, predict, retrain() -> don't support train() (from scratch) for now
         if(input_dict != None):
             self.modelArch = input_dict['model_arch']
@@ -66,12 +65,8 @@ class CLIPClassifier:
             self.modelArch = "ViT-B/32"
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")   
-        self.batchSize = None
-        self.nepochs = None
-        self.trainDataDir = None
-        self.imgDir = None
-        self.lossHistory = None
         self.preds = None
+        self.batch_size = 20
         self.template = "a photo of a {}" 
 
     def predict(self, images: ImageSet, modelPath='tmp/models/VIT-B-32.pth', 
@@ -87,6 +82,7 @@ class CLIPClassifier:
         def isImage(im):
             return im.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))
         
+        #download CLIP model & load to device
         if(os.path.exists(modelPath)):
             model, data_transforms = load(modelPath, self.device, modelPath) #load model
         else:
@@ -94,6 +90,8 @@ class CLIPClassifier:
             os.makedirs(download_root, exist_ok = True)
             model, data_transforms = load(self.modelArch, self.device, download_root = download_root) #download model if not found
         model.eval()
+
+        #tokenize text prompts
         text_input = torch.cat([tokenize(self.template.format(c)) for c in self.text_prompts]).to(self.device)
         prompts_per_class = len(self.text_prompts) // len(self.classes)
         
@@ -108,20 +106,20 @@ class CLIPClassifier:
             if isImage(im.filename):
                 image = Image.open(os.path.join(data_dir, im.filename)).convert("RGB")
                 image = data_transforms(image).float()
+                image = image.to(self.device)
                 image = image.unsqueeze(0)
                 batch_imgs.append(image)
                 batch_keys.append(key)  
-                # _, pred = torch.max(model(image),1)
-                # preds[key]=classes[pred.item()]
 
-            #batch processing
-            if((idx != 0 and idx % 20 == 0) or idx == len(images.images)-1):
+            #batch processing (batch size = 20)
+            if((idx != 0 and idx % self.batch_size == 0) or idx == len(images.images)-1):
                 image_input = torch.cat(batch_imgs)
                 with torch.no_grad():
                     image_features = model.encode_image(image_input)
                     text_features = model.encode_text(text_input)
-
+                #For k prompts/class, C classes, N images, compute matrix of dimension N x (kC)
                 similarity = compute_similarity(image_features, text_features)
+                #aggregate matrix of Nxkc into N x C matrix, then select the label with largest score as prediction
                 batch_preds, _ = aggregate_predictions(similarity, agg_method = "max", gap = prompts_per_class)
                 for (k, p) in zip(batch_keys, batch_preds):
                     preds[k]=self.classes[p.item()]
