@@ -68,3 +68,5 @@ tmp
 docs/source/notebooks/.ipynb_checkpoints/
 apiKey.txt
 *#
+build
+rst-code
