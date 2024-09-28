@@ -23,9 +23,9 @@
 + ```examples```: A directory containing examples
 + ```tests```: A directory containing unit tests. The directory structure follows that of ```brails```
 
-## Documentation
+## Quick Links
 
-You can find the documentation for ```BRAILS++``` [here]().
+- [Documentation & Guides] (https://nheri-simcenter.github.io/BrailsPlusPlus/).
 
 ## Installation instructions
 
@@ -34,7 +34,6 @@ You can find the documentation for ```BRAILS++``` [here]().
 ```shell
 pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
 ```
-Developers and contributors, please read the [Contributing to BRAILS++]() page of the documentation before you commit your code.
 
 ## Acknowledgements
 
