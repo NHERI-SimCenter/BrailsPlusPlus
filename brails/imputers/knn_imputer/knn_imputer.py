@@ -132,7 +132,7 @@ class KnnImputer(Imputation):
         # replace empty or "NA" with nan & drop entirely missing columns
         #
 
-        pd.set_option("future.no_silent_downcasting", True)
+        #pd.set_option("future.no_silent_downcasting", True)
         bldg_properties_df = bldg_properties_df.replace("NA", np.nan, inplace=False)
         bldg_properties_df = bldg_properties_df.replace("", np.nan, inplace=False)
         mask = bldg_properties_df.isnull()  # for missing
@@ -219,7 +219,8 @@ class KnnImputer(Imputation):
             #
 
             cluster_idx = np.where(cluster_ids == ci)[0]
-            corrMat = np.array(bldg_properties_encoded.iloc[cluster_idx].corr())
+
+            corrMat = np.array(bldg_properties_encoded.iloc[cluster_idx].corr(numeric_only=False))
             const_idx = np.where(bldg_properties_encoded.iloc[cluster_idx].var() == 0)[
                 0
             ]
