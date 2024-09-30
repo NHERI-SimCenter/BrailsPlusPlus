@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
 import supervision as sv
@@ -52,7 +51,7 @@ class DetectionResult:
 def verify_and_download_models(download_url, filepath):
     if (not os.path.isfile(filepath)):
         model_path = filepath
-        print('Loading default segmentation model file to the pretrained folder...')
+        print('Loading default model file to the pretrained folder...')
         torch.hub.download_url_to_file(download_url,
                                        model_path, progress=False)
 
@@ -89,8 +88,6 @@ def build_models(device="cuda:0"):
     return grounding_dino_model, sam_predictor
 
 # Prompting SAM with detected boxes
-
-
 def segment(sam_predictor: SamPredictor, image: np.ndarray, xyxy: np.ndarray) -> np.ndarray:
     sam_predictor.set_image(image)
     result_masks = []
@@ -99,19 +96,10 @@ def segment(sam_predictor: SamPredictor, image: np.ndarray, xyxy: np.ndarray) ->
             box=box,
             multimask_output=True
         )
+        #choose the mask with largest condifent score
         index = np.argmax(scores)
         result_masks.append(masks[index])
     return np.array(result_masks)
-
-# def combine_mask_by_label(labels, masks, label_options):
-#     unique_labels = np.unique(label_options)
-#     class_masks = np.zeros((len(unique_labels), masks.shape[-2], masks.shape[-1]))
-#     for label, mask in zip(labels, masks):
-#         mask = np.sum(np.array(mask), axis = 0)
-#         class_idx = np.argwhere(unique_labels == label).item()
-#         class_masks[class_idx] += mask
-#         class_masks[class_idx] = np.clip(class_masks[class_idx], a_min = 0, a_max = 1)
-#     return class_masks
 
 
 def show_binary_mask(mask, ax, label_code):
@@ -157,15 +145,12 @@ def detect(image: Image.Image, labels: List[str], threshold: float = 0.3,
 
 
 def run_on_one_image(
-
-
-    img_source, output_dir, grounding_dino_model, sam_predictor, CLASSES,
+    img_source, output_dir, grounding_dino_model, sam_predictor, CLASS_TO_CODE,
     BOX_THRESHOLD=0.35, TEXT_THRESHOLD=0.25, NMS_THRESHOLD=0.8, visualize=False
 ):
     SOURCE_IMAGE_PATH = img_source
     img_name = SOURCE_IMAGE_PATH.split("/")[-1][:-4]
-    CLASS_TO_CODE = {curr_class: idx+1 for idx,
-                     curr_class in enumerate(CLASSES)}
+    CLASSES = list(CLASS_TO_CODE.keys())
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -214,7 +199,7 @@ def run_on_one_image(
                    "confidence": detections.confidence,
                    "class": detections.class_id}
 
-    # convert detections to masks
+    # convert detections to masks, feed bounding box prompts into SAM
     masks = segment(
         sam_predictor=sam_predictor,
         image=cv2.cvtColor(image, cv2.COLOR_BGR2RGB),
@@ -222,21 +207,22 @@ def run_on_one_image(
     )
     detections.mask = masks
 
+    # overlap masks based on area (in descending order)
     pixel_mask = np.zeros(image.shape[:2], dtype=int)
-    # sort by area of mask in descending order
-    sorted_idx = np.argsort(np.sum(masks, axis=(1, 2)))[::-1]
-    for idx in sorted_idx:
-        mask = masks[idx]
-        class_label = mask_labels[idx]
+    for detection_idx in np.flip(np.argsort(detections.area)):
+        mask = detections.mask[detection_idx]
+        class_label = mask_labels[detection_idx]
         pixel_mask[mask] = CLASS_TO_CODE[class_label]
-
+    #save mask as obj and png
     output_mask = Image.fromarray(pixel_mask.astype(np.uint8))
-    output_mask.save(os.path.join(output_dir, f"{img_name}_mask.png"))
+    mask_path = os.path.join(output_dir, f"{img_name}_mask.png")
+    output_mask.save(mask_path)
 
-    mask_path = os.path.join(output_dir, f"{img_name}_mask.obj")
-    with open(mask_path, "wb") as fp:
-        pickle.dump({"mask": pixel_mask, "code": CLASS_TO_CODE}, fp)
-        fp.close()
+    # optional way to store masks(more memory?)
+    # mask_path = os.path.join(output_dir, f"{img_name}_mask.obj")
+    # with open(mask_path, "wb") as fp:
+    #     pickle.dump({"mask": pixel_mask, "code": CLASS_TO_CODE}, fp)
+    #     fp.close()
 
     if (visualize):
         mask_annotator = sv.MaskAnnotator()

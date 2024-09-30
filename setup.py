@@ -34,7 +34,8 @@ setup(
         'yapf',
         'timm',
         'transformers',
-        'pycocotools'
+        'pycocotools',
+        'Cython'
     ],
     extras_require={
         'development': [
