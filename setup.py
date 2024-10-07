@@ -35,7 +35,9 @@ setup(
         'timm',
         'transformers',
         'pycocotools',
-        'Cython'
+        'Cython',
+        'webcolors',
+        'typing'
     ],
     extras_require={
         'development': [
