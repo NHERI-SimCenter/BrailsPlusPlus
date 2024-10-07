@@ -10,16 +10,12 @@ from brails.utils.utils import Importer
 import os
 import sys
 
-
-sys.path.insert(1, "../../")
-
-
 #
 # This script needs an Google API Key to run
 #   -- suggest placing in file, here apiKey.txt, if you plan to commit as you don't want to make a mistake
 #   -- apiKey.txt is in .gitignore so you have work to do to get it uploaded
 
-apiKey = "AIzaSyBJoY6tFIBZHjthJqOqdJPi1XsFzoP5nLo"
+apiKey = ""
 if os.path.exists("apiKey.txt"):
     with open("apiKey.txt", "r") as file:
         apiKey = file.readline().strip()  # Read the first line and strip whitespace
