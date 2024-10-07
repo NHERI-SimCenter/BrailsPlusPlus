@@ -5,14 +5,10 @@
  Purpose: Testing Importer and get_footprints methods
 """
 
+from brails.types.image_set import ImageSet
+from brails.utils.utils import Importer
 import os
 import sys
-
-
-sys.path.insert(1, "../../")
-
-from brails.utils.utils import Importer
-from brails.types.image_set import ImageSet
 
 #
 # This script needs an Google API Key to run
@@ -76,14 +72,14 @@ images_street.print()
 #
 
 filter_house = importer.get_class("HouseView")
-filter_data={}
+filter_data = {}
 filter1 = filter_house(filter_data)
 filter1.filter(images_street, "filtered_images")
 
 
-#input_images = ImageSet();
-#input_images.set_directory("./images/", True)
-#filter_house = importer.get_class("HouseView")
-#filter_data={}
-#filter1 = filter_house(filter_data)
-#filter1.filter(input_images, "filtered_images")
+# input_images = ImageSet();
+# input_images.set_directory("./images/", True)
+# filter_house = importer.get_class("HouseView")
+# filter_data={}
+# filter1 = filter_house(filter_data)
+# filter1.filter(input_images, "filtered_images")

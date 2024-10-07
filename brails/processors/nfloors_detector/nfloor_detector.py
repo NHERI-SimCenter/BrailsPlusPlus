@@ -232,10 +232,14 @@ class NFloorDetector():
                   save_interval=self.system_dict["train"]["model"]["saveInterval"])
 
     # Take these out, automate GPU detection
-    def predict(self, images: ImageSet)
-                modelPath = 'tmp/models/efficientdet-d4_nfloorDetector.pth',
-                gpuEnabled = useGPU):
-        self.system_dict["infer"]["images"] = images
+    def predict(self,
+                images: ImageSet,
+                modelPath='tmp/models/efficientdet-d4_nfloorDetector.pth',
+                gpuEnabled=useGPU):
+        image_list = [os.path.join(images.dir_path, image.filename)
+                      for _, image in images.images.items()]
+
+        self.system_dict["infer"]["images"] = image_list
         self.system_dict["infer"]["modelPath"] = modelPath
         self.system_dict["infer"]["gpuEnabled"] = gpuEnabled
         self.system_dict["infer"]['predictions'] = []
@@ -250,7 +254,7 @@ class NFloorDetector():
                     print(
                         'Loading default floor detector model file to tmp/models folder...')
                     torch.hub.download_url_to_file('https://zenodo.org/record/4421613/files/efficientdet-d4_trained.pth',
-                                                   model_path, progress = False)
+                                                   model_path, progress=False)
                     print('Default floor detector model loaded')
                 else:
                     print(
@@ -417,8 +421,10 @@ class NFloorDetector():
                     [(lBound, 0), (lBound, len(img)), (uBound, len(img)), (uBound, 0)])
                 overlapRatio = np.empty(len(uniqueStacks))
                 for k in range(len(uniqueStacks)):
-                    poly = unary_union([boxesPoly[x] for x in uniqueStacks[k]])
-                    overlapRatio[k] = (intersect_polygons(poly, middlePoly))
+                    poly = unary_union([boxesPoly[x]
+                                       for x in uniqueStacks[k]])
+                    overlapRatio[k] = (
+                        intersect_polygons(poly, middlePoly))
 
                 indKeep = np.argsort(-overlapRatio)[0:2]
                 stack4Address = []
