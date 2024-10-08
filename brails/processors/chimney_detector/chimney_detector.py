@@ -230,7 +230,7 @@ class ChimneyDetector():
         self.system_dict["train"]["model"]["compCoeff"] = 4
         self.system_dict["train"]["model"]["topOnly"] = False
 
-        # Create the Object Detector Object
+        # Initialize the Object Detector class:
         gtf = Detector()
 
         classes_list = self.system_dict["train"]["data"]["classes"]
@@ -270,7 +270,7 @@ class ChimneyDetector():
         self.system_dict["train"]["model"]["numEpochs"] = nepochs
         self.system_dict["train"]["model"]["nGPU"] = ngpu
 
-        # Set Model Hyperparameters
+        # Set model hyperparameters:
         es_min_delta = self.system_dict["train"]["model"]["esMinDelta"]
         es_patience = self.system_dict["train"]["model"]["esPatience"]
         gtf.set_hyperparams(optimizer=optim,
