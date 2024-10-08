@@ -47,12 +47,11 @@ import cv2
 import numpy as np
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
-from lib.infer_detector import Infer
 import torch
 
 from brails.types.image_set import ImageSet
+from lib.infer_detector import Infer
 from .lib.train_detector import Detector
-
 
 warnings.filterwarnings("ignore")
 
@@ -293,7 +292,6 @@ class NFloorDetector():
                   val_interval=val_interval,
                   save_interval=save_interval)
 
-    # Take these out, automate GPU detection
     def predict(
         self,
         images: ImageSet,
@@ -471,10 +469,10 @@ class NFloorDetector():
 
         install_default_model(self.system_dict["infer"]["modelPath"])
 
-        # Start Program Timer
+        # Start program timer:
         start_time = time.time()
 
-        # Create and Define the Inference Model
+        # Create and define the inference model:
         classes = ["floor"]
 
         print("\nPerforming floor detections...")
@@ -485,7 +483,7 @@ class NFloorDetector():
 
         predictions = {}
         for img_no, im_path in enumerate(tqdm(image_list)):
-            # Perform Iterative Inference:
+            # Perform iterative inference:
             img = cv2.imread(im_path)
             img = cv2.resize(img, (640, 640))
             cv2.imwrite("input.jpg", img)
@@ -507,7 +505,7 @@ class NFloorDetector():
                 multiplier += 1
                 boxes_poly = [create_polygon(bbox) for bbox in boxes]
 
-            # Postprocessing
+            # Postprocessing:
             boxes_poly = [create_polygon(bbox) for bbox in boxes]
 
             nested_boxes = np.zeros((10*len(boxes)), dtype=int)
@@ -596,14 +594,14 @@ class NFloorDetector():
 
         self.system_dict["infer"]['predictions'] = predictions
 
-        # End Program Timer and Display Execution Time
+        # End program timer and display execution time:
         end_time = time.time()
         hours, rem = divmod(end_time-start_time, 3600)
         minutes, seconds = divmod(rem, 60)
         print(f"\nTotal execution time: {int(hours):02}:{int(minutes):02}:"
               f"{seconds:05.2f}")
 
-        # Cleanup the Root Folder
+        # Cleanup the root folder:
         if os.path.isfile("input.jpg"):
             os.remove("input.jpg")
         if os.path.isfile("output.jpg"):
