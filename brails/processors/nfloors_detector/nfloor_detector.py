@@ -36,27 +36,25 @@
 # Contributors:
 # Barbaros Cetiner
 # Last updated:
-# 08-29-2024
+# 10-08-2024
 
-from .lib.train_detector import Detector
 import os
+import time
+import warnings
+from tqdm import tqdm
+
 import cv2
 import numpy as np
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from lib.infer_detector import Infer
 import torch
-import time
-from tqdm import tqdm
-import warnings
-from Typing import Optional
+
 from brails.types.image_set import ImageSet
+from .lib.train_detector import Detector
+
 
 warnings.filterwarnings("ignore")
-if torch.cuda.is_available():
-    useGPU = True
-else:
-    useGPU = False
 
 
 class NFloorDetector():
@@ -87,7 +85,7 @@ class NFloorDetector():
             Sets up parameters for training the floor detection model.
     """
 
-    def __init__(self, input_data: Optional[dict] = None) -> None:
+    def __init__(self, input_data: dict = None) -> None:
         """
         Initialize the NFloorDetector instance.
 
@@ -109,9 +107,30 @@ class NFloorDetector():
         self.system_dict["infer"] = {}
         self.system_dict["infer"]["params"] = {}
 
-        self._set_fixed_params(self)
+        self._set_fixed_params()
 
     def _set_fixed_params(self) -> None:
+        """
+        Set fixed parameters for training and model configuration.
+
+        This method initializes predefined values in the system dictionary for
+        training data and model parameters. It sets the training and validation
+        dataset names, the class labels, and specific model hyperparameters
+        such as validation interval, save interval, early stopping minimum
+        delta, and early stopping patience.
+
+        The following parameters are set:
+            - Training dataset name: "train"
+            - Validation dataset name: "valid"
+            - Class labels: ["floor"]
+            - Validation interval: 1
+            - Save interval: 5
+            - Early stopping minimum delta: 0.0
+            - Early stopping patience: 0
+
+        This method does not return any values; it modifies the instance's
+        `system_dict` in place.
+        """
         self.system_dict["train"]["data"]["trainSet"] = "train"
         self.system_dict["train"]["data"]["validSet"] = "valid"
         self.system_dict["train"]["data"]["classes"] = ["floor"]
@@ -124,13 +143,11 @@ class NFloorDetector():
               comp_coeff: int = 3,
               top_only: bool = False,
               optim: str = "adamw",
-              lr: float = 1e-4,
+              learning_rate: float = 1e-4,
               nepochs: int = 25,
               ngpu: int = 1) -> None:
-
-        # Add an input
         """
-        Training a floor detection model.
+        Train a floor detection model.
 
         Args__
             comp_coeff (int): Coefficient for comparison, default is 3.
@@ -145,59 +162,91 @@ class NFloorDetector():
             self.system_dict (Dict[str, Dict[str, Any]]): Updates the model
             configuration parameters for training in the system dictionary.
         """
-        # Create the Object Detector Object
+        # Initialize the Object Detector:
         gtf = Detector()
+
+        classes_list = self.system_dict["train"]["data"]["classes"]
+        batch_size = self.system_dict["train"]["data"]["batchSize"]
+        num_workers = self.system_dict["train"]["data"]["nWorkers"]
 
         gtf.set_train_dataset(self.system_dict["train"]["data"]["rootDir"],
                               "",
                               "",
                               self.system_dict["train"]["data"]["trainSet"],
-                              classes_list=self.system_dict["train"]["data"]["classes"],
-                              batch_size=self.system_dict["train"]["data"]["batchSize"],
-                              num_workers=self.system_dict["train"]["data"]["nWorkers"])
+                              classes_list=classes_list,
+                              batch_size=batch_size,
+                              num_workers=num_workers)
 
         gtf.set_val_dataset(self.system_dict["train"]["data"]["rootDir"],
                             "",
                             "",
                             self.system_dict["train"]["data"]["validSet"])
 
-        # Define the Model Architecture
-        coeff = self.system_dict["train"]["model"]["compCoeff"]
-        modelArchitecture = f"efficientdet-d{coeff}.pth"
+        # Define the model architecture:
+        model_architecture = f"efficientdet-d{comp_coeff}.pth"
+        self.system_dict["train"]["model"]["compCoeff"] = comp_coeff
 
-        gtf.set_model(model_name=modelArchitecture,
-                      num_gpus=self.system_dict["train"]["model"]["nGPU"],
-                      freeze_head=self.system_dict["train"]["model"]["topOnly"])
+        gtf.set_model(model_name=model_architecture,
+                      num_gpus=ngpu,
+                      freeze_head=top_only)
+        self.system_dict["train"]["model"]["topOnly"] = top_only
+        self.system_dict["train"]["model"]["nGPU"] = ngpu
 
-        # Set Model Hyperparameters
-        gtf.set_hyperparams(optimizer=self.system_dict["train"]["model"]["optim"],
-                            lr=self.system_dict["train"]["model"]["lr"],
-                            es_min_delta=self.system_dict["train"]["model"]["esMinDelta"],
-                            es_patience=self.system_dict["train"]["model"]["esPatience"])
+        # Set model hyperparameters:
+        es_min_delta = self.system_dict["train"]["model"]["esMinDelta"]
+        es_patience = self.system_dict["train"]["model"]["esPatience"]
 
-        # Train
-        gtf.train(num_epochs=self.system_dict["train"]["model"]["numEpochs"],
-                  val_interval=self.system_dict["train"]["model"]["valInterval"],
-                  save_interval=self.system_dict["train"]["model"]["saveInterval"])
+        gtf.set_hyperparams(optimizer=optim,
+                            lr=learning_rate,
+                            es_min_delta=es_min_delta,
+                            es_patience=es_patience)
+        self.system_dict["train"]["model"]["optim"] = optim
+        self.system_dict["train"]["model"]["lr"] = learning_rate
 
-    def retrain(self, optim="adamw", lr=1e-4, numEpochs=25, nGPU=1):
+        # Train the model:
+        val_interval = self.system_dict["train"]["model"]["valInterval"]
+        save_interval = self.system_dict["train"]["model"]["saveInterval"]
+
+        gtf.train(num_epochs=nepochs,
+                  val_interval=val_interval,
+                  save_interval=save_interval)
+        self.system_dict["train"]["model"]["numEpochs"] = nepochs
+
+    def retrain(self,
+                optim: str = "adamw",
+                learning_rate: float = 1e-4,
+                nepochs: int = 25,
+                ngpu: int = 1) -> None:
+        """
+        Retrain the object detection model with specified parameters.
+
+        Args__
+            optim (str): Optimizer to use for training (default is "adamw").
+            lr (float): The learning rate for the optimizer (default is 1e-4).
+            nepochs (int): Number of epochs to train the model (default is 25).
+            ngpu (int): The number of GPUs to use for training (default is 1).
+
+        This method configures the training parameters, sets the training and
+        validation datasets, initializes the model architecture, and starts
+        the re-training process for the default number of floors predictor in
+        BRAILS++.
+        """
         self.system_dict["train"]["model"]["compCoeff"] = 4
         self.system_dict["train"]["model"]["topOnly"] = False
-        self.system_dict["train"]["model"]["optim"] = optim
-        self.system_dict["train"]["model"]["lr"] = lr
-        self.system_dict["train"]["model"]["numEpochs"] = numEpochs
-        self.system_dict["train"]["model"]["nGPU"] = nGPU
 
         # Create the Object Detector Object
         gtf = Detector()
 
+        classes_list = self.system_dict["train"]["data"]["classes"]
+        batch_size = self.system_dict["train"]["data"]["batchSize"]
+        num_workers = self.system_dict["train"]["data"]["nWorkers"]
         gtf.set_train_dataset(self.system_dict["train"]["data"]["rootDir"],
                               "",
                               "",
                               self.system_dict["train"]["data"]["trainSet"],
-                              classes_list=self.system_dict["train"]["data"]["classes"],
-                              batch_size=self.system_dict["train"]["data"]["batchSize"],
-                              num_workers=self.system_dict["train"]["data"]["nWorkers"])
+                              classes_list=classes_list,
+                              batch_size=batch_size,
+                              num_workers=num_workers)
 
         gtf.set_val_dataset(self.system_dict["train"]["data"]["rootDir"],
                             "",
@@ -212,245 +261,352 @@ class NFloorDetector():
 
         os.makedirs('pretrained_weights', exist_ok=True)
         if not os.path.isfile(model_path):
-            print('Loading default floor detector model file to the pretrained folder...')
-            torch.hub.download_url_to_file('https://zenodo.org/record/4421613/files/efficientdet-d4_trained.pth',
-                                           model_path, progress=False)
+            print('Loading default floor detector model file to the pretrained'
+                  ' folder...')
+            torch.hub.download_url_to_file(
+                'https://zenodo.org/record/4421613'
+                '/files/efficientdet-d4_trained.pth',
+                model_path,
+                progress=False)
 
+        freeze_head = self.system_dict["train"]["model"]["topOnly"]
         gtf.set_model(model_name=f"efficientdet-d{coeff}.pth",
-                      num_gpus=self.system_dict["train"]["model"]["nGPU"],
-                      freeze_head=self.system_dict["train"]["model"]["topOnly"])
+                      num_gpus=ngpu,
+                      freeze_head=freeze_head)
+        self.system_dict["train"]["model"]["numEpochs"] = nepochs
+        self.system_dict["train"]["model"]["nGPU"] = ngpu
 
         # Set Model Hyperparameters
-        gtf.set_hyperparams(optimizer=self.system_dict["train"]["model"]["optim"],
-                            lr=self.system_dict["train"]["model"]["lr"],
-                            es_min_delta=self.system_dict["train"]["model"]["esMinDelta"],
-                            es_patience=self.system_dict["train"]["model"]["esPatience"])
+        es_min_delta = self.system_dict["train"]["model"]["esMinDelta"]
+        es_patience = self.system_dict["train"]["model"]["esPatience"]
+        gtf.set_hyperparams(optimizer=optim,
+                            lr=learning_rate,
+                            es_min_delta=es_min_delta,
+                            es_patience=es_patience)
+        self.system_dict["train"]["model"]["optim"] = optim
+        self.system_dict["train"]["model"]["lr"] = learning_rate
 
-        # Train
-        gtf.train(num_epochs=self.system_dict["train"]["model"]["numEpochs"],
-                  val_interval=self.system_dict["train"]["model"]["valInterval"],
-                  save_interval=self.system_dict["train"]["model"]["saveInterval"])
+        # Train the model:
+        val_interval = self.system_dict["train"]["model"]["valInterval"]
+        save_interval = self.system_dict["train"]["model"]["saveInterval"]
+        gtf.train(num_epochs=nepochs,
+                  val_interval=val_interval,
+                  save_interval=save_interval)
 
     # Take these out, automate GPU detection
-    def predict(self,
-                images: ImageSet,
-                modelPath='tmp/models/efficientdet-d4_nfloorDetector.pth',
-                gpuEnabled=useGPU):
+    def predict(
+        self,
+        images: ImageSet,
+        model_path: str = 'tmp/models/efficientdet-d4_nfloorDetector.pth'
+    ) -> dict:
+        """
+        Predict the number of floors in buildings from the given images.
+
+        Args__
+            images (ImageSet): ImageSet object containing the collection of
+                images to be analyzed.
+            modelPath (str): The file path to the pre-trained model. If the
+                default path is used, the model will be downloaded (default is
+                'tmp/models/efficientdet-d4_nfloorDetector.pth').
+
+        Returns__
+            predictions (dict): Number of floors predictions with the keys
+                being the same keys used in ImageSet.images.
+
+        This method processes the images provided, loads the specified model,
+        and performs inference to determine the number of floors in each
+        building. It handles the setup of the inference environment, manages
+        model loading, and provides a report on the execution time.
+
+        It also includes functions for polygon creation, intersection checks,
+        and managing thresholds during inference to ensure accurate
+        predictions.
+
+        The results of the predictions are also stored in the instance's system
+        dictionary under the key 'predictions'.
+        """
+        gpu_enabled = torch.cuda.is_available()
+
         image_list = [os.path.join(images.dir_path, image.filename)
                       for _, image in images.images.items()]
+        image_keys = list(images.images.keys())
 
         self.system_dict["infer"]["images"] = image_list
-        self.system_dict["infer"]["modelPath"] = modelPath
-        self.system_dict["infer"]["gpuEnabled"] = gpuEnabled
+        self.system_dict["infer"]["modelPath"] = model_path
+        self.system_dict["infer"]["gpuEnabled"] = gpu_enabled
         self.system_dict["infer"]['predictions'] = []
 
         print('\nDetermining the number of floors for each building...')
 
-        def install_default_model(model_path):
+        def install_default_model(model_path: str) -> None:
             if model_path == 'tmp/models/efficientdet-d4_nfloorDetector.pth':
                 os.makedirs('tmp/models', exist_ok=True)
 
                 if not os.path.isfile(model_path):
-                    print(
-                        'Loading default floor detector model file to tmp/models folder...')
-                    torch.hub.download_url_to_file('https://zenodo.org/record/4421613/files/efficientdet-d4_trained.pth',
-                                                   model_path, progress=False)
+                    print('Loading default floor detector model file to '
+                          'tmp/models folder...')
+                    torch.hub.download_url_to_file(
+                        'https://zenodo.org/record/4421613/files'
+                        '/efficientdet-d4_trained.pth',
+                        model_path,
+                        progress=False)
                     print('Default floor detector model loaded')
                 else:
                     print(
-                        f"Default floor detector model at {model_path} loaded")
+                        f"Default floor detector model in {model_path} loaded")
             else:
-                print(
-                    f'Inferences will be performed using the custom model at {model_path}')
+                print('Inferences will be performed using the custom model at '
+                      f'{model_path}')
 
-        def create_polygon(bb):
-            polygon = Polygon([(bb[0], bb[1]), (bb[0], bb[3]),
-                               (bb[2], bb[3]), (bb[2], bb[1])])
+        def create_polygon(bounding_box: list) -> Polygon:
+            """
+            Create a polygon from the given bounding box coordinates.
+
+            Args__
+                bounding_box (list): A sequence of four coordinates
+                    representing the bounding box in the format
+                    [x1, y1, x2, y2].
+
+            Returns__
+                Polygon: A polygon object created from the bounding box
+                    coordinates.
+            """
+            polygon = Polygon([(bounding_box[0], bounding_box[1]),
+                               (bounding_box[0], bounding_box[3]),
+                               (bounding_box[2], bounding_box[3]),
+                               (bounding_box[2], bounding_box[1])
+                               ])
             return polygon
 
-        def intersect_polygons(poly1, poly2):
+        def intersect_polygons(poly1: Polygon, poly2: Polygon) -> float:
+            """
+            Calculate the overlap ratio between two polygons.
+
+            This function determines the intersection area between two polygons
+            and calculates the overlap ratio as a percentage of the area of the
+            first polygon.
+
+            Args__
+                poly1 (Polygon): The first polygon to compare.
+                poly2 (Polygon): The second polygon to compare.
+
+            Returns__
+                float: The overlap ratio as a percentage of the area of poly1.
+                       Returns 0 if there is no intersection or if either
+                       polygon has an area of zero.
+            """
             if poly1.intersects(poly2):
-                polyArea = poly1.intersection(poly2).area
+                poly_area = poly1.intersection(poly2).area
                 if poly1.area != 0 and poly2.area != 0:
-                    overlapRatio = polyArea/poly1.area*100
+                    overlap_ratio = poly_area/poly1.area*100
                 else:
-                    overlapRatio = 0
+                    overlap_ratio = 0
             else:
-                overlapRatio = 0
-            return overlapRatio
+                overlap_ratio = 0
+            return overlap_ratio
 
-        def check_threshold_level(boxesPoly):
-            thresholdChange = False
-            thresholdIncrease = False
-            if not boxesPoly:
-                thresholdChange = True
-                thresholdIncrease = False
+        def check_threshold_level(boxes_poly: list) -> tuple:
+            """
+            Check if threshold level needs changing from poly overlap ratios.
+
+            Args__
+                boxes_poly (list): A list of polygon objects.
+
+            Returns__
+                tuple: A tuple containing two boolean values:
+                    - threshold_change (bool): Indicates if a change in the
+                        threshold has occurred.
+                    - threshold_increase (bool): Indicates if the threshold
+                        has increased.
+            """
+            threshold_change = False
+            threshold_increase = False
+
+            if not boxes_poly:
+                threshold_change = True
             else:
-                falseDetect = np.zeros(len(boxesPoly))
-                for k in range(len(boxesPoly)):
-                    overlapRatio = np.array(
-                        [intersect_polygons(p, boxesPoly[k]) for p in boxesPoly], dtype=float)
-                    falseDetect[k] = len(
-                        [idx for idx, val in enumerate(overlapRatio) if val > 75][1:])
-                thresholdChange = any(falseDetect > 2)
-                if thresholdChange:
-                    thresholdIncrease = True
-            return thresholdChange, thresholdIncrease
+                false_detect = np.zeros(len(boxes_poly))
+                for k in range(len(boxes_poly)):
+                    overlap_ratio = np.array(
+                        [intersect_polygons(p, boxes_poly[k])
+                         for p in boxes_poly], dtype=float
+                    )
+                    false_detections = [
+                        idx for idx, val in enumerate(overlap_ratio)
+                        if val > 75
+                    ]
 
-        def compute_derivative(centBoxes):
-            nBoxes = centBoxes.shape[0]
-            dyOverdx = np.zeros((nBoxes, nBoxes)) + 10
-            for k in range(nBoxes):
-                for m in range(nBoxes):
-                    dx = abs(centBoxes[k, 0]-centBoxes[m, 0])
-                    dy = abs(centBoxes[k, 1]-centBoxes[m, 1])
+                    false_detect[k] = len(false_detections[1:])
+
+                threshold_change = any(false_detect > 2)
+                if threshold_change:
+                    threshold_increase = True
+
+            return threshold_change, threshold_increase
+
+        def compute_derivative(cent_boxes: np.ndarray) -> np.ndarray:
+            """
+            Compute the derivative of the center boxes.
+
+            Args__
+                cent_boxes (np.ndarray): An array of shape (n, 2) where n is
+                    the number of boxes and each row represents the (x, y)
+                    coordinates of the box centers.
+
+            Returns__
+                dy_over_dx (np.ndarray): A 2D array containing the derivatives
+                between each pair of boxes.
+            """
+            n_boxes = cent_boxes.shape[0]
+            dy_over_dx = np.zeros((n_boxes, n_boxes)) + 10
+
+            for k in range(n_boxes):
+                for m in range(n_boxes):
+                    dx = abs(cent_boxes[k, 0] - cent_boxes[m, 0])
+                    dy = abs(cent_boxes[k, 1] - cent_boxes[m, 1])
                     if k != m:
-                        dyOverdx[k, m] = dy/dx
-            return dyOverdx
+                        dy_over_dx[k, m] = dy / dx
+
+            return dy_over_dx
 
         install_default_model(self.system_dict["infer"]["modelPath"])
 
         # Start Program Timer
-        startTime = time.time()
-
-        # Get the Image List
-        try:
-            imgList = os.listdir(self.system_dict["infer"]["images"])
-            for imgno in range(len(imgList)):
-                imgList[imgno] = os.path.join(
-                    self.system_dict["infer"]["images"], imgList[imgno])
-        except:
-            imgList = self.system_dict["infer"]["images"]
-
-        nImages = len(imgList)
+        start_time = time.time()
 
         # Create and Define the Inference Model
         classes = ["floor"]
 
-        print("Performing floor detections...")
-        gtfInfer = Infer()
-        gtfInfer.load_model(self.system_dict["infer"]["modelPath"],
-                            classes, use_gpu=self.system_dict["infer"]["gpuEnabled"])
-        predictions = []
-        for imgno in tqdm(range(nImages)):
-            # Perform Iterative Inference
-            imgPath = str(imgList[imgno])
-            img = cv2.imread(imgPath)
+        print("\nPerforming floor detections...")
+        gtf_infer = Infer()
+        gtf_infer.load_model(self.system_dict["infer"]["modelPath"],
+                             classes,
+                             use_gpu=self.system_dict["infer"]["gpuEnabled"])
+
+        predictions = {}
+        for img_no, im_path in enumerate(tqdm(image_list)):
+            # Perform Iterative Inference:
+            img = cv2.imread(im_path)
             img = cv2.resize(img, (640, 640))
             cv2.imwrite("input.jpg", img)
-            _, _, boxes = gtfInfer.predict("input.jpg", threshold=0.2)
-            boxesPoly = [create_polygon(bb) for bb in boxes]
+            _, _, boxes = gtf_infer.predict("input.jpg", threshold=0.2)
+            boxes_poly = [create_polygon(bbox) for bbox in boxes]
 
             multiplier = 1
-            while check_threshold_level(boxesPoly)[0]:
-                if check_threshold_level(boxesPoly)[1]:
-                    confThreshold = 0.2 + multiplier*0.1
-                    if confThreshold > 1:
+            while check_threshold_level(boxes_poly)[0]:
+                if check_threshold_level(boxes_poly)[1]:
+                    conf_threshold = 0.2 + multiplier*0.1
+                    if conf_threshold > 1:
                         break
                 else:
-                    confThreshold = 0.2 - multiplier*0.02
-                    if confThreshold == 0:
+                    conf_threshold = 0.2 - multiplier*0.02
+                    if conf_threshold == 0:
                         break
-                _, _, boxes = gtfInfer.predict(
-                    "input.jpg", threshold=confThreshold)
+                _, _, boxes = gtf_infer.predict(
+                    "input.jpg", threshold=conf_threshold)
                 multiplier += 1
-                boxesPoly = [create_polygon(bb) for bb in boxes]
+                boxes_poly = [create_polygon(bbox) for bbox in boxes]
 
             # Postprocessing
-            boxesPoly = [create_polygon(bb) for bb in boxes]
+            boxes_poly = [create_polygon(bbox) for bbox in boxes]
 
-            nestedBoxes = np.zeros((10*len(boxes)), dtype=int)
+            nested_boxes = np.zeros((10*len(boxes)), dtype=int)
             counter = 0
-            for bbPoly in boxesPoly:
-                overlapRatio = np.array(
-                    [intersect_polygons(p, bbPoly) for p in boxesPoly], dtype=float)
+            for bbox_poly in boxes_poly:
+                overlap_ratio = np.array(
+                    [intersect_polygons(p, bbox_poly)
+                     for p in boxes_poly], dtype=float)
                 ind = [idx for idx, val in enumerate(
-                    overlapRatio) if val > 75][1:]
-                nestedBoxes[counter:counter+len(ind)] = ind
+                    overlap_ratio) if val > 75][1:]
+                nested_boxes[counter:counter+len(ind)] = ind
                 counter += len(ind)
-            nestedBoxes = np.unique(nestedBoxes[:counter])
+            nested_boxes = np.unique(nested_boxes[:counter])
 
             counter = 0
-            for x in nestedBoxes:
-                del boxes[x-counter]
+            for box_ind in nested_boxes:
+                del boxes[box_ind-counter]
                 counter += 1
 
-            nBoxes = len(boxes)
+            n_boxes = len(boxes)
 
-            boxesPoly = []
-            boxesExtendedPoly = []
-            centBoxes = np.zeros((nBoxes, 2))
-            for k in range(nBoxes):
-                bb = boxes[k]
-                tempPoly = create_polygon(bb)
-                boxesPoly.append(tempPoly)
-                x, y = tempPoly.centroid.xy
-                centBoxes[k, :] = np.array([x[0], y[0]])
-                boxesExtendedPoly.append(create_polygon(
-                    [0.9*bb[0], 0, 1.1*bb[2], len(img)-1]))
+            boxes_poly = []
+            boxes_extended_poly = []
+            cent_boxes = np.zeros((n_boxes, 2))
+            for k in range(n_boxes):
+                bbox = boxes[k]
+                temp_poly = create_polygon(bbox)
+                boxes_poly.append(temp_poly)
+                xcoord, ycoord = temp_poly.centroid.xy
+                cent_boxes[k, :] = np.array([xcoord[0],
+                                             ycoord[0]])
+                boxes_extended_poly.append(create_polygon(
+                    [0.9*bbox[0], 0, 1.1*bbox[2], len(img)-1]))
 
-            stackedInd = []
-            for bb in boxesExtendedPoly:
-                overlapRatio = np.array(
-                    [intersect_polygons(p, bb) for p in boxesExtendedPoly], dtype=float)
-                stackedInd.append(
-                    [idx for idx, val in enumerate(overlapRatio) if val > 10])
+            stacked_ind = []
+            for bbox in boxes_extended_poly:
+                overlap_ratio = np.array(
+                    [intersect_polygons(p, bbox)
+                     for p in boxes_extended_poly], dtype=float)
+                stacked_ind.append(
+                    [idx for idx, val in enumerate(overlap_ratio) if val > 10])
 
-            uniqueStacks0 = [list(x) for x in set(tuple(x)
-                                                  for x in stackedInd)]
+            unique_stacks0 = [list(x) for x in set(tuple(x)
+                                                   for x in stacked_ind)]
 
-            dyOverdx = compute_derivative(centBoxes)
-            stacks = np.where(dyOverdx > 1.3)
+            dy_over_dx = compute_derivative(cent_boxes)
+            stacks = np.where(dy_over_dx > 1.3)
 
             counter = 0
-            uniqueStacks = [[] for i in range(nBoxes)]
-            for k in range(nBoxes):
+            unique_stacks0 = [[] for i in range(n_boxes)]
+            for k in range(n_boxes):
                 while counter < len(stacks[0]) and k == stacks[0][counter]:
-                    uniqueStacks[k].append(stacks[1][counter])
+                    unique_stacks0[k].append(stacks[1][counter])
                     counter += 1
 
-            uniqueStacks = [list(x) for x in set(tuple(x)
-                                                 for x in uniqueStacks)]
+            unique_stacks0 = [list(x) for x in set(tuple(x)
+                                                   for x in unique_stacks0)]
 
-            if len(uniqueStacks0) == 1 or len(uniqueStacks) == 1:
-                nFloors = len(uniqueStacks0[0])
+            if len(unique_stacks0) == 1 or len(unique_stacks0) == 1:
+                nfloors = len(unique_stacks0[0])
             else:
-                lBound = len(img)/5
-                uBound = 4*len(img)/5
-                middlePoly = Polygon(
-                    [(lBound, 0), (lBound, len(img)), (uBound, len(img)), (uBound, 0)])
-                overlapRatio = np.empty(len(uniqueStacks))
-                for k in range(len(uniqueStacks)):
-                    poly = unary_union([boxesPoly[x]
-                                       for x in uniqueStacks[k]])
-                    overlapRatio[k] = (
-                        intersect_polygons(poly, middlePoly))
+                lbound = len(img)/5
+                ubound = 4*len(img)/5
+                middle_poly = Polygon(
+                    [(lbound, 0), (lbound, len(img)),
+                     (ubound, len(img)), (ubound, 0)])
+                overlap_ratio = np.empty(len(unique_stacks0))
+                for k in range(len(unique_stacks0)):
+                    poly = unary_union([boxes_poly[x]
+                                       for x in unique_stacks0[k]])
+                    overlap_ratio[k] = (
+                        intersect_polygons(poly, middle_poly))
 
-                indKeep = np.argsort(-overlapRatio)[0:2]
-                stack4Address = []
+                ind_keep = np.argsort(-overlap_ratio)[0:2]
+                stack4address = []
                 for k in range(2):
-                    if overlapRatio[indKeep[k]] > 10:
-                        stack4Address.append(indKeep[k])
-                if len(stack4Address) != 0:
-                    nFloors = max([len(uniqueStacks[x])
-                                  for x in stack4Address])
+                    if overlap_ratio[ind_keep[k]] > 10:
+                        stack4address.append(ind_keep[k])
+                if len(stack4address) != 0:
+                    nfloors = max(len(unique_stacks0[x])
+                                  for x in stack4address)
                 else:
-                    nFloors = len(uniqueStacks[0])
+                    nfloors = len(unique_stacks0[0])
 
-            predictions.append(nFloors)
+            predictions[image_keys[img_no]] = nfloors
 
         self.system_dict["infer"]['predictions'] = predictions
-        self.system_dict["infer"]["images"] = imgList
 
         # End Program Timer and Display Execution Time
-        endTime = time.time()
-        hours, rem = divmod(endTime-startTime, 3600)
+        end_time = time.time()
+        hours, rem = divmod(end_time-start_time, 3600)
         minutes, seconds = divmod(rem, 60)
-        print("\nTotal execution time: {:0>2}:{:0>2}:{:05.2f}".format(
-            int(hours), int(minutes), seconds))
+        print(f"\nTotal execution time: {int(hours):02}:{int(minutes):02}:"
+              f"{seconds:05.2f}")
 
         # Cleanup the Root Folder
         if os.path.isfile("input.jpg"):
             os.remove("input.jpg")
         if os.path.isfile("output.jpg"):
             os.remove("output.jpg")
+
+        return predictions
