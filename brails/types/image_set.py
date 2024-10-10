@@ -38,7 +38,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-08-2024
+# 10-09-2024
 
 # Written: fmk, 3/24
 
@@ -46,9 +46,14 @@ import os
 # import sys  ERROR HANDLING NEED TO DISCUSSS
 
 """
-This module defines classes related to image sets
+This module contains classes for managing and manipulating image sets.
+
+Classes__
+    - Image: A class to represent an individual image.
+    - ImageSet: A class for handling collections of images.
 
 .. autosummary::
+    Image
     ImageSet
 """
 
@@ -63,29 +68,28 @@ class Image:
               location, depth map
 
     Methods__
-        __init__:
-        set_image(self, filename: str)
-        update_properties(self, additional_properties: dict)
-        print(self)
+        set_image: Set the filename for an Image.
+        update_properties: Update image properties.
+        print_info: Print Image properties.
     """
 
-    def __init__(self, filename: str, properties: dict = {}):
+    def __init__(self, filename: str, properties: dict = None):
         """
         Initialize an Image.
 
         Args__
             filename (str): the name of file containing image
-            properties (dict): image properties (default empty dict)
+            properties (dict): image properties (default is an empty dict)
         """
         self.filename = filename
-        self.properties = properties
+        self.properties = properties if properties is not None else {}
 
     def set_image(self, filename: str):
         """
         Set the filename for an Image.
 
         Args__
-            filename (str):
+            filename (str): New filename.
         """
         self.filename = filename
 
@@ -99,7 +103,7 @@ class Image:
         """
         self.properties.update(additional_properties)
 
-    def print(self):
+    def print_info(self):
         """Print Image properties."""
         if not self.properties:
             print('filename: ', self.filename)
@@ -120,12 +124,10 @@ class ImageSet:
               Image
 
      Methods__
-        set_directory(self,path_to_dir,
-                      include_existing_images,
-                      limited_to_extensions)
-        add_image(self, id, Image)
-        get_image(self, id)
-        print(self)
+        set_directory: Set the directory path and load existing images.
+        add_image: Create and add a new image to the ImageSet.
+        get_image: Retrieve an image by its key.
+        print_info: Print details of the image set.
     """
 
     def __init__(self):
@@ -199,30 +201,27 @@ class ImageSet:
 
         return True
 
-    def add_image(self, key, filename: str, properties: dict = {}):
+    def add_image(self, key, filename: str, properties: dict = None):
         """
         Create and add a new image to the ImageSet.
 
         Args__
             key: The identifier for the image, could be a string or an int.
             filename (str): The name of the file containing the image.
+            properties (dict): Image properties (default is an empty dict).
 
         Returns__
-            bool:
-                 True if the Image is added, False if already there
+            bool: True if Image is added, False if Image already exists.
         """
-        #
-        # create a new image and add .. need to check if files there!
-        #
+        if properties is None:
+            properties = {}
 
         if key not in self.images:
             image = Image(filename, properties)
             self.images[key] = image
             return True
 
-        else:
-
-            return False
+        return False
 
     def get_image(self, key):
         """
@@ -243,7 +242,7 @@ class ImageSet:
 
         # self.images[key] = image
 
-    def print(self):
+    def print_info(self):
         """Print the image set."""
         # print("\nImageSet : NAME WOULD BE NICE")
         print("directory:", self.dir_path)

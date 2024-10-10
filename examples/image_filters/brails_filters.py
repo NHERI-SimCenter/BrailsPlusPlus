@@ -65,7 +65,7 @@ google_street_class = importer.get_class("GoogleStreetview")
 google_street = google_street_class(google_input)
 images_street = google_street.get_images(small_inventory, "tmp/street/")
 
-images_street.print()
+images_street.print_info()
 
 #
 # now filter
@@ -76,10 +76,3 @@ filter_data = {}
 filter1 = filter_house(filter_data)
 filter1.filter(images_street, "filtered_images")
 
-
-# input_images = ImageSet();
-# input_images.set_directory("./images/", True)
-# filter_house = importer.get_class("HouseView")
-# filter_data={}
-# filter1 = filter_house(filter_data)
-# filter1.filter(input_images, "filtered_images")

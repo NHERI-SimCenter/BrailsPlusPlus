@@ -12,7 +12,7 @@ street_images = ImageSet()
 aerial_images.set_directory("./images/satellite_easy", True)
 street_images.set_directory("./images/street", True)
 
-aerial_images.print()
+aerial_images.print_info()
 
 # Test importer and one of the aerial imagery classifiers, RoofShapeClassifier:
 print('ROOF_SHAPE_CLASSICAL PREDICTIONS')
