@@ -15,6 +15,11 @@ setup(
     author='NHERI SimCenter',
     author_email='nheri-simcenter@berkeley.edu',
     packages=find_packages(),
+    include_package_data=True,
+    package_data={
+        'brails': ['processors/vlm_image_classifier/clip/'
+                   'bpe_simple_vocab_16e6.txt.gz'],
+    },    
     install_requires=[
         'pandas',
         'requests',
