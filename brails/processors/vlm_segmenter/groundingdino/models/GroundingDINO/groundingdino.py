@@ -221,8 +221,8 @@ class GroundingDINO(nn.Module):
                            (center_x, center_y, width, height). These values are normalized in [0, 1],
                            relative to the size of each individual image (disregarding possible padding).
                            See PostProcess for information on how to retrieve the unnormalized bounding box.
-           - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
-                            dictionnaries containing the two above keys for each decoder layer.
+           - "aux_outputs": Optional, only returned when auxiliary losses are activated. It is a list of
+                            dictionaries containing the two above keys for each decoder layer.
         """
         if targets is None:
             captions = kw["captions"]

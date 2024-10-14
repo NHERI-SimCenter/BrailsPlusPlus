@@ -145,7 +145,7 @@ class MultiScaleDeformableAttention(nn.Module):
         num_levels (int): The number of feature map used in Attention. Default: 4.
         num_points (int): The number of sampling points for each query
             in each head. Default: 4.
-        img2col_steps (int): The step used in image_to_column. Defualt: 64.
+        img2col_steps (int): The step used in image_to_column. Default: 64.
             dropout (float): Dropout layer used in output. Default: 0.1.
         batch_first (bool): if ``True``, then the input and output tensor will be
             provided as `(bs, n, embed_dim)`. Default: False. `(n, bs, embed_dim)`
