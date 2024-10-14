@@ -25,7 +25,7 @@ class NCEFunction(Function):
         # sample positives & negatives
         idx.select(1,0).copy_(y.data)
 
-        # sample correspoinding weights
+        # sample corresponding weights
         weight = torch.index_select(memory, 0, idx.view(-1))
         weight.resize_(batchSize, K+1, inputSize)
 

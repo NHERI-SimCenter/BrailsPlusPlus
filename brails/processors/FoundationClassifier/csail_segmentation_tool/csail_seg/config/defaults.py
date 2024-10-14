@@ -19,7 +19,7 @@ _C.DATASET.num_class = 150
 _C.DATASET.imgSizes = (300, 375, 450, 525, 600)
 # maximum input image size of long edge
 _C.DATASET.imgMaxSize = 1000
-# maxmimum downsampling rate of the network
+# maximum downsampling rate of the network
 _C.DATASET.padding_constant = 8
 # downsampling rate of the segmentation label
 _C.DATASET.segm_downsampling_rate = 8

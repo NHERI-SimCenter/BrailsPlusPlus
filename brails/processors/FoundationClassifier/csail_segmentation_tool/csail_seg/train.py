@@ -243,7 +243,7 @@ if __name__ == '__main__':
     # Output directory
     if not os.path.isdir(cfg.DIR):
         os.makedirs(cfg.DIR)
-    logger.info("Outputing checkpoints to: {}".format(cfg.DIR))
+    logger.info("Outputting checkpoints to: {}".format(cfg.DIR))
     with open(os.path.join(cfg.DIR, 'config.yaml'), 'w') as f:
         f.write("{}".format(cfg))
 

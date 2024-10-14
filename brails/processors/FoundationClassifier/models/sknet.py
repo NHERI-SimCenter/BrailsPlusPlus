@@ -9,7 +9,7 @@ class SKConv(nn.Module):
         """ Constructor
         Args:
             features: input channel dimensionality.
-            M: the number of branchs.
+            M: the number of branches.
             G: num of convolution groups.
             r: the ratio for compute d, the length of z.
             stride: stride, default 1.
@@ -65,10 +65,10 @@ class SKUnit(nn.Module):
         Args:
             in_features: input channel dimensionality.
             out_features: output channel dimensionality.
-            M: the number of branchs.
+            M: the number of branches.
             G: num of convolution groups.
             r: the ratio for compute d, the length of z.
-            mid_features: the channle dim of the middle conv with stride not 1, default out_features/2.
+            mid_features: the channel dim of the middle conv with stride not 1, default out_features/2.
             stride: stride.
             L: the minimum dim of the vector z in paper.
         """
@@ -88,7 +88,7 @@ class SKUnit(nn.Module):
             )
         
 
-        if in_features == out_features: # when dim not change, input_features could be added diectly to out
+        if in_features == out_features: # when dim not change, input_features could be added directly to out
             self.shortcut = nn.Sequential()
         else: # when dim not change, input_features should also change dim to be added to out
             self.shortcut = nn.Sequential(
