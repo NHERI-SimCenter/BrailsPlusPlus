@@ -85,7 +85,7 @@ class Sam(nn.Module):
           (list(dict)): A list over input images, where each element is
             as dictionary with the following keys.
               'masks': (torch.Tensor) Batched binary mask predictions,
-                with shape BxCxHxW, where B is the number of input promts,
+                with shape BxCxHxW, where B is the number of input prompts,
                 C is determiend by multimask_output, and (H, W) is the
                 original size of the image.
               'iou_predictions': (torch.Tensor) The model's predictions

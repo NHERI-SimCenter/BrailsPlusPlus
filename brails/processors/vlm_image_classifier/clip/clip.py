@@ -137,7 +137,7 @@ def load(name: str, device: Union[str, torch.device] = "cuda" if torch.cuda.is_a
 
     if not jit:
         model = build_model(state_dict or model.state_dict()).to(device)
-        # remove file after state_dict has been loaded inot model
+        # remove file after state_dict has been loaded into model
         #os.remove(model_path)
         if str(device) == "cpu":
             model.float()
