@@ -293,7 +293,7 @@ class ChimneyDetector():
         model_path: str = 'tmp/models/efficientdet-d4_chimneyDetector.pth'
     ) -> dict:
         """
-        Predict the exsitence of chimneys in buildings from the given images.
+        Predict the existence of chimneys in buildings from the given images.
 
         Args__
             images (ImageSet): ImageSet object containing the collection of
@@ -307,7 +307,7 @@ class ChimneyDetector():
                 being the same keys used in ImageSet.images.
 
         This method processes the images provided, loads the specified model,
-        and performs inference to determine the exsitence of chimneys in each
+        and performs inference to determine the existence of chimneys in each
         building. It handles the setup of the inference environment, manages
         model loading, and provides a report on the execution time.
 
