@@ -176,5 +176,5 @@ All parameters can be seen by just parsing the -h parameter. The command to trai
 
 This will create a folder with the experiment name and save epoch-wise training results in it, along
 with the checkpoints containing the weights. Note that this does only evaluate the results on the
-training set, with and without random pertubations. That means to investigate the 
+training set, with and without random perturbations. That means to investigate the 
 validation and test performance, the detect script with activated --calc-perf option has to be used.
