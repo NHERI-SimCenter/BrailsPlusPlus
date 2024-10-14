@@ -179,7 +179,7 @@ class RandomCrop(object):
 class RandomSizeCrop(object):
     def __init__(self, min_size: int, max_size: int, respect_boxes: bool = False):
         # respect_boxes:    True to keep all boxes
-        #                   False to tolerence box filter
+        #                   False to tolerance box filter
         self.min_size = min_size
         self.max_size = max_size
         self.respect_boxes = respect_boxes

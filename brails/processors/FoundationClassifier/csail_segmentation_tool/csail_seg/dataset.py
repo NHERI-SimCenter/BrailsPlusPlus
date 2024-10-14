@@ -78,7 +78,7 @@ class TrainDataset(BaseDataset):
         # classify images into two classes: 1. h > w and 2. h <= w
         self.batch_record_list = [[], []]
 
-        # override dataset length when trainig with batch_per_gpu > 1
+        # override dataset length when training with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
 

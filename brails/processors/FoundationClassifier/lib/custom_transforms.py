@@ -97,7 +97,7 @@ class Merge(object):
 
 
 class Split(object):
-    """Split images into individual arraies
+    """Split images into individual arrays
     """
 
     def __init__(self, *slices, **kwargs):

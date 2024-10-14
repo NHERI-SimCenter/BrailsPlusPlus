@@ -26,7 +26,7 @@ def renorm(
     # return: same as img
     assert img.dim() == 3 or img.dim() == 4, "img.dim() should be 3 or 4 but %d" % img.dim()
     if img.dim() == 3:
-        assert img.size(0) == 3, 'img.size(0) shoule be 3 but "%d". (%s)' % (
+        assert img.size(0) == 3, 'img.size(0) should be 3 but "%d". (%s)' % (
             img.size(0),
             str(img.size()),
         )
@@ -36,7 +36,7 @@ def renorm(
         img_res = img_perm * std + mean
         return img_res.permute(2, 0, 1)
     else:  # img.dim() == 4
-        assert img.size(1) == 3, 'img.size(1) shoule be 3 but "%d". (%s)' % (
+        assert img.size(1) == 3, 'img.size(1) should be 3 but "%d". (%s)' % (
             img.size(1),
             str(img.size()),
         )

@@ -35,7 +35,7 @@ class MaskFolderInstance(datasets.ImageFolder):
         else:
             self.mask_images = False
         super().__init__(*args, **kwargs)
-        # Another hackish thing to get rid of a problem with missin masks.
+        # Another hackish thing to get rid of a problem with missing masks.
         # This class has to be redesigned from scratch
 
         # The following lines can be used to remove images without mask. This is only relevant

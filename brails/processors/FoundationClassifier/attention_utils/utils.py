@@ -30,7 +30,7 @@ def sliding_window(data, size, stepsize=1, padded=False, axis=-1, copy=True):
     Notes
     -----
     - Be wary of setting `copy` to `False` as undesired sideffects with the
-      output values may occurr.
+      output values may occur.
     Examples
     --------
     >>> a = numpy.array([1, 2, 3, 4, 5])
