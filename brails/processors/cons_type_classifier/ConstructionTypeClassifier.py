@@ -40,7 +40,7 @@
 # 08-29-2024
 
 import os
-from brails.modules.ImageClassifier.ImageClassifier import ImageClassifier
+from brails.processors.image_classifier.image_classifier import ImageClassifier
 import torch
 
 

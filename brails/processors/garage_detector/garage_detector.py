@@ -293,7 +293,7 @@ class GarageDetector():
         model_path: str = 'tmp/models/efficientdet-d4_garageDetector.pth'
     ) -> dict:
         """
-        Predict the exsitence of garages in buildings from the given images.
+        Predict the existence of garages in buildings from the given images.
 
         Args__
             images (ImageSet): ImageSet object containing the collection of
@@ -307,7 +307,7 @@ class GarageDetector():
                 being the same keys used in ImageSet.images.
 
         This method processes the images provided, loads the specified model,
-        and performs inference to determine the exsitence of garages in each
+        and performs inference to determine the existence of garages in each
         building. It handles the setup of the inference environment, manages
         model loading, and provides a report on the execution time.
 

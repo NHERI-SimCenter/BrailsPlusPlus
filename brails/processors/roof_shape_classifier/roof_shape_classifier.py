@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
+"""Class object to use and retrain the roof type classifier model."""
 #
-# Copyright (c) 2022 The Regents of the University of California
+# Copyright (c) 2024 The Regents of the University of California
 #
-# This file is part of BRAILS.
+# This file is part of BRAILS++.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -35,90 +35,117 @@
 #
 # Contributors:
 # Barbaros Cetiner
+# Last updated:
+# 10-11-2024
 
-#
-# NOTE: Originally this was the RoofClassifier class in brails--
-#
-
+import os
+from typing import Optional
+import torch
 from brails.processors.image_classifier.image_classifier import ImageClassifier
 from brails.types.image_set import ImageSet
-from typing import Optional, Dict
 
-import torch
-import os
 
 class RoofShapeClassifier(ImageClassifier):
-
     """
-    The RoofShape classifier attempts to predict roof shapes into 1 of 3 types: Flat, Hip, or Gable. The classification is done
-    by the ImageClassifier class. This class is a wrapper that just sets up the inputs for that class.
+    RoofShapeClassifier predicts roof shapes from aerial imagery.
 
-    Variables
-       model_path: str Path to the model file
-    
-    Methods:
-       predict(ImageSet): To return the predictions for the set of images provided
+    This classifier serves as a wrapper around the ImageClassifier class,
+    setting up the necessary inputs for roof type classification.
 
+    Attributes__
+        model_path (str): Path to the model file.
+        classes (List[str]): List of roof type classes that will be predicted.
+
+    Methods__
+        predict(images: ImageSet) -> Dict[str, str]:
+            Returns predictions for the set of images provided.
+        retrain(data_dir, batch_size=8, nepochs=100, plot_loss=True)
+            Retrains the roof type classifier model with the provided data.
     """
-    
-    def __init__(self, input_data: Optional[dict] =None): 
 
+    def __init__(self, input_data: Optional[dict] = None):
         """
-        The class constructor sets up the path to the trained model file. If no model is provided, the class downloads a default
-        from the web for this and subseqyet use.
-        
-        Args
-            input_data: dict Optional. The init function looks for a 'model_path' key to set model_path.
-        """
+        Initialize the RoofShapeClassifier.
 
-        #
-        # if input_data, check if it contains 'modelPath' key and also pass on to base class
-        #
-        
-        if not input_data == None:
+        If no model path is provided in input_data, the class downloads a
+        default model. If prediction classes are not provided om input_data,
+        roof type precitions are made for flat, galble, and hip roofs.
+
+        Args__
+            input_data (Optional[dict]): A dictionary containing initialization
+            parameters.
+        """
+        # If input_data is provided, check if it contains 'modelPath' key:
+
+        if input_data is not None:
             super().__init__(input_data)
             model_path = input_data['modelPath']
         else:
             model_path = None
 
-        #
-        # if no model_file provided, use one previosuly downloaded or got get if if not existing
-        #
-        
-        if model_path == None:
-            os.makedirs('tmp/models',exist_ok=True)
+        # if no model_file provided, use the one previously downloaded or
+        # download it if not existing:
+        if model_path is None:
+            os.makedirs('tmp/models', exist_ok=True)
             model_path = 'tmp/models/roofTypeClassifier_v1.pth'
             if not os.path.isfile(model_path):
-                print('\n\nLoading default roof classifier model file to tmp/models folder...')
-                torch.hub.download_url_to_file('https://zenodo.org/record/7271554/files/trained_model_rooftype.pth',
-                                               model_path, progress=True)
+                print(
+                    '\n\nLoading default roof classifier model file to '
+                    'tmp/models folder...')
+                torch.hub.download_url_to_file(
+                    'https://zenodo.org/record/7271554/files/'
+                    'trained_model_rooftype.pth',
+                    model_path,
+                    progress=True)
                 print('Default roof classifier model loaded')
-            else: 
-                print(f"\nDefault roof classifier model at {model_path} loaded")
+            else:
+                print(
+                    f"\nDefault roof classifier model in {model_path} loaded")
         else:
-            print(f'\nInferences will be performed using the custom model at {model_path}')
-        
+            print(
+                '\nInferences will be performed using the custom model in'
+                f' {model_path}')
+
         self.model_path = model_path
-        self.classes = ['Flat','Gable','Hip']      
-        
-    def predict(self, images: ImageSet) ->dict:
+        self.classes = ['Flat', 'Gable', 'Hip']
 
+    def predict(self, images: ImageSet) -> dict:
         """
-        The method predicts the roof shape.
-        
-        Args
-            images: ImageSet The set of images for which a prediction is required
+        Predict the roof shape for the given images.
 
-        Returns
-            dict: The keys being the same keys used in ImageSet.images, the values being the predicted roof shape
+        Args__
+            images (ImageSet): The set of images for which predictions are
+                required.
+
+        Returns__
+            dict: A dictionary mapping image keys to their predicted roof
+                shapes. The keys correspond to the same keys used in
+                ImageSet.images, and the values are the predicted roof shape
+                (Flat, Gable, or Hip).
         """
-        
         imageClassifier = ImageClassifier()
-        return imageClassifier.predict(images, model_path = self.model_path, classes = self.classes)
-        
-    def retrain(self, dataDir, batchSize=8, nepochs=100, plotLoss=True):
+        return imageClassifier.predict(images,
+                                       model_path=self.model_path,
+                                       classes=self.classes)
+
+    def retrain(self, data_dir, batch_size=8, nepochs=100, plot_loss=True):
+        """
+        Retrains the roof type classifier model with the provided data.
+
+        Args__
+            data_dir (str): The directory containing training data.
+            batch_size (int): The number of samples per batch. Default is 8.
+            nepochs (int): The number of epochs for training. Default is 100.
+            plot_loss (bool): Whether to plot the loss during training. Default
+                is True.
+        """
         imageClassifier = ImageClassifier()
-        imageClassifier.retrain(self.model_path, dataDir, batchSize, nepochs, plotLoss)
-        
+        imageClassifier.retrain(self.model_path,
+                                data_dir,
+                                batch_size,
+                                nepochs,
+                                plot_loss)
+
+
 if __name__ == '__main__':
-    pass        
+    pass

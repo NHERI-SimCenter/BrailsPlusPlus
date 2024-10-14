@@ -35,7 +35,7 @@ __all__ = [
 
 
 def _sum_ft(tensor):
-    """sum over the first and last dimention"""
+    """sum over the first and last dimension"""
     return tensor.sum(dim=0).sum(dim=-1)
 
 

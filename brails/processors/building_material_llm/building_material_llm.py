@@ -23,7 +23,7 @@ class BuildingMaterialLLM(CLIPClassifier):
         The class constructor sets up the path prompts or whatever.
         
         Args
-            input_data: dict Optional. The init function looks into dict for values needed, e.g. path to promts
+            input_data: dict Optional. The init function looks into dict for values needed, e.g. path to prompts
         """
         super().__init__(task = "roofshape", input_dict = input_dict)
         self.input_dict = input_dict
