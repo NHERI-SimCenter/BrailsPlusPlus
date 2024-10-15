@@ -1,36 +1,72 @@
-# Written: fmk, 3/24
-# Majority of actual code (fetch_roi and bbox_poly) provided bacentinar 3/24
 #
+# Copyright (c) 2024 The Regents of the University of California
+#
+# This file is part of BRAILS++.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# You should have received a copy of the BSD 3-Clause License along with
+# BRAILS. If not, see <http://www.opensource.org/licenses/>.
+#
+# Contributors:
+# Barbaros Cetiner
+# Frank McKenna
+#
+# Last updated:
+# 10-14-2024
 
 """
-This module defines clesses related to regional boundaries
+This module defines RegionBoundary class to store region boundary polygons.
 
 .. autosummary::
 
-    RegionalBoundary
+    RegionBoundary
 """
 
 import requests
 import sys
 from itertools import groupby
-from shapely.geometry import Point, Polygon, LineString, MultiPolygon, box
+from shapely.geometry import Polygon, LineString, MultiPolygon, box
 from shapely.ops import linemerge, unary_union, polygonize
-from shapely.strtree import STRtree
 from brails.utils.geo_tools import *
-import concurrent.futures
-from requests.adapters import HTTPAdapter, Retry
 import unicodedata
 
 
 class RegionBoundary:
     """
-    A class representing to obtain the bounding polygon for a region.
+    A class for obtaining the bounding polygon for a specified region.
 
     Attributes:
+        input (dict): The input data for the region.
 
-     Methods:
-        __init__: Constructor validates input
-        get_boundary(): returns the boundary polygon of the region provided
+    Methods:
+        __init__(input): Initializes the RegionBoundary instance and validates
+            input.
+        get_boundary(): Returns the boundary polygon of the region provided.
     """
 
     def __init__(self, input: dict = None):
@@ -86,7 +122,7 @@ class RegionBoundary:
         r = requests.get(nominatimquery, headers=headers)
         datalist = r.json()
         '''
-        
+
         nominatim_endpoint = 'https://nominatim.openstreetmap.org/search'
 
         params = {'q': queryarea_formatted,
@@ -102,8 +138,6 @@ class RegionBoundary:
 
         r = requests.get(nominatim_endpoint, params=params, headers=headers)
         datalist = r.json()
-
-
 
         areafound = False
         for data in datalist:
@@ -205,7 +239,6 @@ class RegionBoundary:
         return bpoly, queryarea_printname, None
 
     def get_boundary(self):
-
         """
         Method to return the current bouundary
 
