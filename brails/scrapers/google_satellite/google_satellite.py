@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright (c) 2024 The Regents of the University of California
 #
 # This file is part of BRAILS++.
@@ -37,271 +35,101 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 05-06-2024
+# 10-15-2024
 
-from brails.types.image_set import ImageSet
-from brails.types.asset_inventory import AssetInventory
-from brails.scrapers.image_scraper import ImageScraper
+"""
+This module defines GoogleSatellite class downloading Google satellite imagery.
 
-import os
-import requests
+.. autosummary::
+
+    GoogleSatellite
+"""
+
 import math
-import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from io import BytesIO
+from pathlib import Path
+import logging
 
+import requests
 from PIL import Image
 from requests.adapters import HTTPAdapter, Retry
-from io import BytesIO
 from shapely.geometry import Polygon
 from tqdm import tqdm
-from pathlib import Path
+
+from brails.types.asset_inventory import AssetInventory
+from brails.types.image_set import ImageSet
+from brails.scrapers.image_scraper import ImageScraper
+
+
+# Configure logging:
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Constants:
+GOOGLE_TILE_URL = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+ZOOM_LEVEL = 20
+TILE_SIZE = 256
+RESIZED_IMAGE_SIZE = (640, 640)
+
+FOOTPRINT_BUFFER_RATIO = 0.1
+
+REQUESTS_RETRY_STRATEGY = Retry(
+    total=5,
+    backoff_factor=0.1,
+    status_forcelist=[500, 502, 503, 504],
+)
+SESSION = requests.Session()
+SESSION.mount("https://", HTTPAdapter(max_retries=REQUESTS_RETRY_STRATEGY))
+
 
 class GoogleSatellite(ImageScraper):
+    """
+    A class for downloading satellite imagery from Google tilemaps.
 
-    def __init__(self):
-        self.dir_location = ''
+    This class is a subclass to the `ImageScraper` and provides functionality
+    to obtain satellite images for assets defined in an AssetInventory. The
+    images are retrieved based on the coordinates of the assets and saved to a
+    specified directory.
 
-    def GetGoogleSatelliteImage(self, footprints, dir_location):
+    Methods:
+        get_images(inventory: AssetInventory, save_directory: str) -> ImageSet:
+            Retrieves satellite images for the assets in the given inventory
+            and saves them to the specified save_directory.
+    """
 
-        self.dir_location = dir_location
-
-        def download_satellite_image(footprint, impath):
-
-            bbox_buffered = bufferedfp(footprint)
-            (xlist, ylist) = determine_tile_coords(bbox_buffered)
-
-            imname = impath.split("/")[-1]
-            imname = imname.replace("." + imname.split(".")[-1], "")
-
-            base_url = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-
-            # Define a retry stratey fgor common error codes to use when
-            # downloading tiles:
-            s = requests.Session()
-            retries = Retry(
-                total=5, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504]
-            )
-            s.mount("https://", HTTPAdapter(max_retries=retries))
-
-            # Get the tiles for the satellite image:
-            tiles = []
-            offsets = []
-            imbnds = []
-            ntiles = (len(xlist), len(ylist))
-            for yind, y in enumerate(ylist):
-                for xind, x in enumerate(xlist):
-                    url = base_url.format(x=x, y=y, z=20)
-
-                    # Download tile using the defined retry strategy:
-                    response = s.get(url)
-
-                    # Save downloaded tile as a PIL image in tiles and calculate
-                    # tile offsets and bounds:
-                    tiles.append(Image.open(BytesIO(response.content)))
-                    offsets.append((xind * 256, yind * 256))
-                    tilebnds = tile_bbox(zoom=20, x=x, y=y)
-
-                    # If the number of tiles both in x and y directions are greater than 1:
-                    if ntiles[0] > 1 and ntiles[1] > 1:
-                        if xind == 0 and yind == 0:
-                            imbnds.append(tilebnds[2])
-                            imbnds.append(tilebnds[0])
-                        elif xind == ntiles[0] - 1 and yind == 0:
-                            imbnds.append(tilebnds[3])
-                        elif xind == 0 and yind == ntiles[1] - 1:
-                            imbnds.append(tilebnds[1])
-                    # If the total number of tiles is 1:
-                    elif ntiles[0] == 1 and ntiles[1] == 1:
-                        imbnds = [tilebnds[2], tilebnds[0], tilebnds[3], tilebnds[1]]
-                    # If the total number of tiles is 1 in x-direction and greater than 1 in y-direction:
-                    elif ntiles[0] == 1:
-                        if yind == 0:
-                            imbnds.append(tilebnds[2])
-                            imbnds.append(tilebnds[0])
-                            imbnds.append(tilebnds[3])
-                        elif yind == ntiles[1] - 1:
-                            imbnds.append(tilebnds[1])
-                    # If the total number of tiles is greater than 1 in x-direction and 1 in y-direction:
-                    elif ntiles[1] == 1:
-                        if xind == 0:
-                            imbnds.append(tilebnds[2])
-                            imbnds.append(tilebnds[0])
-                        elif xind == ntiles[0] - 1:
-                            imbnds.append(tilebnds[3])
-                            imbnds.append(tilebnds[1])
-
-            # Combine tiles into a single image using the calculated offsets:
-            combined_im = Image.new("RGB", (256 * ntiles[0], 256 * ntiles[1]))
-            for ind, im in enumerate(tiles):
-                combined_im.paste(im, offsets[ind])
-
-            # Crop combined image around the footprint of the building:
-            lonrange = imbnds[2] - imbnds[0]
-            latrange = imbnds[3] - imbnds[1]
-
-            left = math.floor(
-                (bbox_buffered[0][0] - imbnds[0]) / lonrange * 256 * ntiles[0]
-            )
-            right = math.ceil(
-                (bbox_buffered[0][-1] - imbnds[0]) / lonrange * 256 * ntiles[0]
-            )
-            bottom = math.ceil(
-                (bbox_buffered[1][0] - imbnds[1]) / latrange * 256 * ntiles[1]
-            )
-            top = math.floor(
-                (bbox_buffered[1][1] - imbnds[1]) / latrange * 256 * ntiles[1]
-            )
-
-            cropped_im = combined_im.crop((left, top, right, bottom))
-
-            # Pad the image in horizontal or vertical directions to make it
-            # square:
-            (newdim, indmax, mindim, _) = maxmin_and_ind(cropped_im.size)
-            padded_im = Image.new("RGB", (newdim, newdim))
-            buffer = round((newdim - mindim) / 2)
-
-            if indmax == 1:
-                padded_im.paste(cropped_im, (buffer, 0))
-            else:
-                padded_im.paste(cropped_im, (0, buffer))
-
-            # Resize the image to 640x640 and save it to impath:
-            resized_im = padded_im.resize((640, 640))
-            resized_im.save(impath)
-
-        def determine_tile_coords(bbox_buffered):
-            # Determine the tile x,y coordinates covering the area the bounding
-            # box:
-            xlist = []
-            ylist = []
-            for ind in range(4):
-                (lat, lon) = (bbox_buffered[1][ind], bbox_buffered[0][ind])
-                x, y = deg2num(lat, lon, 20)
-                xlist.append(x)
-                ylist.append(y)
-
-            xlist = list(range(min(xlist), max(xlist) + 1))
-            ylist = list(range(min(ylist), max(ylist) + 1))
-            return (xlist, ylist)
-
-        def bufferedfp(footprint):
-            # Place a buffer around the footprint to account for footprint
-            # inaccuracies with tall buildings:
-            lon = [coord[0] for coord in footprint]
-            lat = [coord[1] for coord in footprint]
-
-            minlon = min(lon)
-            maxlon = max(lon)
-            minlat = min(lat)
-            maxlat = max(lat)
-
-            londiff = maxlon - minlon
-            latdiff = maxlat - minlat
-
-            minlon_buff = minlon - londiff * 0.1
-            maxlon_buff = maxlon + londiff * 0.1
-            minlat_buff = minlat - latdiff * 0.1
-            maxlat_buff = maxlat + latdiff * 0.1
-
-            bbox_buffered = (
-                [minlon_buff, minlon_buff, maxlon_buff, maxlon_buff],
-                [minlat_buff, maxlat_buff, maxlat_buff, minlat_buff],
-            )
-            return bbox_buffered
-
-        def deg2num(lat, lon, zoom):
-            # Calculate the x,y coordinates corresponding to a lot/lon pair
-            # in degrees for a given zoom value:
-            lat_rad = math.radians(lat)
-            n = 2**zoom
-            xtile = int((lon + 180) / 360 * n)
-            ytile = int((1 - math.asinh(math.tan(lat_rad)) / math.pi) / 2 * n)
-            return (xtile, ytile)
-
-        def tile_bbox(zoom: int, x: int, y: int):
-            # [south,north,west,east]
-            return [
-                tile_lat(y, zoom),
-                tile_lat(y + 1, zoom),
-                tile_lon(x, zoom),
-                tile_lon(x + 1, zoom),
-            ]
-
-        def tile_lon(x: int, z: int) -> float:
-            return x / math.pow(2.0, z) * 360.0 - 180
-
-        def tile_lat(y: int, z: int) -> float:
-            return math.degrees(
-                math.atan(math.sinh(math.pi - (2.0 * math.pi * y) / math.pow(2.0, z)))
-            )
-
-        def maxmin_and_ind(sizelist):
-            maxval = max(sizelist)
-            indmax = sizelist.index(maxval)
-            minval = min(sizelist)
-            indmin = sizelist.index(minval)
-            return (maxval, indmax, minval, indmin)
-
-        # Save footprints in the class object:
-        self.footprints = footprints[:]
-
-        # Compute building footprints, parse satellite image names, and save
-        # them in the class object. Also, create the list of inputs required
-        # for downloading satellite images in parallel:
-        self.centroids = []
-        self.satellite_images = []
-        inps = []
-        for fp in footprints:
-            fp_cent = Polygon(fp).centroid
-            self.centroids.append([fp_cent.x, fp_cent.y])
-            imName = str(round(fp_cent.y, 8)) + str(round(fp_cent.x, 8))
-            imName.replace(".", "")
-            im_name = f"{self.dir_location}/imsat_{imName}.jpg"
-            self.satellite_images.append(im_name)
-            inps.append((fp, im_name))
-
-        # Create a directory to save the satellite images:
-        # os.makedirs(self.dir_location, exist_ok=True)
-
-        # Download satellite images corresponding to each building footprint:
-        pbar = tqdm(total=len(footprints), desc="Obtaining satellite imagery")
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_url = {
-                executor.submit(download_satellite_image, fp, fout): fp
-                for fp, fout in inps
-            }
-            for future in concurrent.futures.as_completed(future_to_url):
-                url = future_to_url[future]
-                pbar.update(n=1)
-                try:
-                    future.result()
-                except Exception as exc:
-                    print("%r generated an exception: %s" % (url, exc))
-
-    def get_images(self, inventory: AssetInventory, dir_path: str) -> ImageSet:
+    def get_images(self,
+                   inventory: AssetInventory,
+                   save_directory: str) -> ImageSet:
         """
-        This method obtains aerial imagery of buildings given the footprints
-        in the asset inventory
+        Get satellite images of buildings given footprints in AssetInventory.
 
         Args:
-              inventory (AssetInventory):
-                   The AssetInventory.
-              dir_location (string):
-                   The directory in which to place the images.
+              inventory (AssetInventory): AssetInventory for which the images
+                  will be retrieved.
+            save_directory (str): Path to the folder where the retrieved images
+                will be saved
 
         Returns:
-              Image_Set:
-                    An image_Set for the assets in the inventory.
+              ImageSet: An ImageSet for the assets in the inventory.
 
+        Raises:
+            ValueError: If the provided inventory is not an instance of
+                AssetInventory.
         """
+        # Validate inputs:
+        if not isinstance(inventory, AssetInventory):
+            raise ValueError('Invalid AssetInventory provided.')
 
         # Ensure consistency in dir_path, i.e remove ending / if given:
-        dir_path = Path(dir_path)
-        os.makedirs(f'{dir_path}',exist_ok=True)
-        
+        dir_path = Path(save_directory)
+        dir_path.mkdir(parents=True, exist_ok=True)
+        logger.info('Images will be saved to: %s', dir_path.resolve())
+
         # Create the footprints from the items in AssetInventory
         # Keep the asset keys in a list for later use:
-        result = ImageSet()
-        result.dir_path = dir_path
+        image_set = ImageSet()
+        image_set.dir_path = str(dir_path)
 
         asset_footprints = []
         asset_keys = []
@@ -310,13 +138,400 @@ class GoogleSatellite(ImageScraper):
             asset_keys.append(key)
 
         # Get the images:
-        self.GetGoogleSatelliteImage(asset_footprints, dir_path)
+        satellite_images = self._download_images(asset_footprints,
+                                                 dir_path)
 
-        for key, im in zip(asset_keys, self.satellite_images):
-            if (im is not None):            
-                # strip off dirpath
-                #im_stripped = im.replace(dir_path, "")
-                im_stripped = Path(im).name
-                result.add_image(key, im_stripped)
-            
-        return result
+        for index, image_path in enumerate(satellite_images):
+            if image_path.exists():
+                image_set.add_image(asset_keys[index], image_path.name)
+            else:
+                logger.warning('Image for asset %s was not successfully '
+                               'downloaded.', asset_keys[index])
+
+        return image_set
+
+    def _download_images(self,
+                         footprints: list[list[tuple[float, float]]],
+                         save_dir: Path) -> list[Path]:
+        """
+        Download satellite images for a list of footprints.
+
+        Args:
+            footprints (List[List[Tuple[float, float]]]): List of asset
+                footprints.
+            save_dir (Path): Directory to save images.
+
+        Returns:
+            List[Path]: List of paths to the downloaded images.
+        """
+        # Compute building footprints, parse satellite image names, and
+        # save them in the class object. Also, create the list of inputs
+        # required for downloading satellite images in parallel:
+        satellite_image_paths = []
+        inps = []
+
+        for footprint in footprints:
+            centroid = Polygon(footprint).centroid
+            image_name = str(round(centroid.y, 8)) + str(round(centroid.x, 8))
+            image_name.replace('.', '')
+            image_path = save_dir / f'imsat_{image_name}.jpg'
+            satellite_image_paths.append(image_path)
+            inps.append((footprint, image_path))
+
+        # Download satellite images corresponding to each building
+        # footprint:
+        pbar = tqdm(total=len(footprints),
+                    desc='Obtaining satellite imagery')
+        with ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(self._download_satellite_image,
+                                footprint, path): footprint
+                for footprint, path in inps
+            }
+
+            for future in as_completed(futures):
+                footprint = futures[future]
+                pbar.update(n=1)
+                try:
+                    future.result()
+                except Exception as exc:
+                    logger.error('Error downloading image for footprint %s: '
+                                 '%s', footprint, exc)
+
+        return satellite_image_paths
+
+    def _download_satellite_image(self,
+                                  footprint: list[tuple[float, float]],
+                                  impath: Path):
+        """
+        Download and process the satellite image for a single footprint.
+
+        Args:
+            footprint (List[Tuple[float, float]]): Asset footprint coordinates.
+            impath (Path): Path to save the processed image.
+        """
+        bbox_buffered = self._buffer_footprint(footprint)
+        x_list, y_list = self._determine_tile_coords(bbox_buffered)
+
+        # Get the tiles for the satellite image:
+        tiles, offsets, imbnds = self._fetch_tiles(x_list, y_list)
+
+        # Combine tiles into a single image using the calculated
+        # offsets:
+        combined_image = self._combine_tiles(tiles,
+                                             (len(x_list), len(y_list)),
+                                             offsets)
+
+        # Crop combined image around the footprint of the building and
+        # pad the resulting image image in horizontal or vertical
+        # directions to make it square:
+        cropped_padded_image = self._crop_and_pad_image(combined_image,
+                                                        bbox_buffered,
+                                                        imbnds)
+
+        resized_image = cropped_padded_image.resize(RESIZED_IMAGE_SIZE)
+        resized_image.save(impath)
+        logger.debug('Saved image to %s', impath)
+
+    def _buffer_footprint(self,
+                          footprint: list[tuple[float, float]]
+                          ) -> tuple[list[float], list[float]]:
+        """
+        Buffer the footprint to account for inaccuracies.
+
+        Args:
+            footprint (List[Tuple[float, float]]): Original footprint.
+
+        Returns:
+            Tuple[List[float], List[float]]: Buffered bounding box coordinates.
+        """
+        lon, lat = zip(*footprint)
+        minlon, maxlon = min(lon), max(lon)
+        minlat, maxlat = min(lat), max(lat)
+
+        londiff = maxlon - minlon
+        latdiff = maxlat - minlat
+
+        minlon_buff = minlon - londiff * FOOTPRINT_BUFFER_RATIO
+        maxlon_buff = maxlon + londiff * FOOTPRINT_BUFFER_RATIO
+        minlat_buff = minlat - latdiff * FOOTPRINT_BUFFER_RATIO
+        maxlat_buff = maxlat + latdiff * FOOTPRINT_BUFFER_RATIO
+
+        return ([minlon_buff, minlon_buff, maxlon_buff, maxlon_buff],
+                [minlat_buff, maxlat_buff, maxlat_buff, minlat_buff])
+
+    def _determine_tile_coords(self,
+                               bbox_buffered: tuple[list[float],
+                                                    list[float]]
+                               ) -> tuple[list[int], list[int]]:
+        """
+        Determine tile x,y coordinates containing the buffered bounding box.
+
+        Args:
+            bbox_buffered (Tuple[List[float], List[float]]): Buffered bounding
+                box.
+
+        Returns:
+            Tuple[List[int], List[int]]: Lists of x and y tile coordinates.
+        """
+        x_coords, y_coords = [], []
+        for lon, lat in zip(bbox_buffered[0], bbox_buffered[1]):
+            x, y = self._deg2num(lat, lon, ZOOM_LEVEL)
+            x_coords.append(x)
+            y_coords.append(y)
+
+        x_list = list(range(min(x_coords), max(x_coords) + 1))
+        y_list = list(range(min(y_coords), max(y_coords) + 1))
+        return x_list, y_list
+
+    @staticmethod
+    def _deg2num(lat: float, lon: float, zoom: int) -> tuple[int, int]:
+        """
+        Convert latitude and longitude to tile numbers.
+
+        Args:
+            lat (float): Latitude in degrees.
+            lon (float): Longitude in degrees.
+            zoom (int): Zoom level.
+
+        Returns:
+            Tuple[int, int]: Tile x and y numbers.
+        """
+        lat_rad = math.radians(lat)
+        n = 2 ** zoom
+        xtile = int((lon + 180.0) / 360.0 * n)
+        ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+        return xtile, ytile
+
+    def _fetch_tiles(self, x_list: list[int], y_list: list[int]
+                     ) -> tuple[list[Image.Image],
+                                list[tuple[int, int]],
+                                list[float]]:
+        """
+        Fetch all tiles for the given x and y coordinates.
+
+        Args:
+            x_list (List[int]): List of x tile coordinates.
+            y_list (List[int]): List of y tile coordinates.
+
+        Returns:
+            Tuple[List[Image.Image], List[Tuple[int, int]], List[float]]:
+                List of tile images, their offsets, and image bounds.
+        """
+        # Get the tiles for the satellite image:
+        tiles, offsets, imbnds = [], [], []
+        ntiles = (len(x_list), len(y_list))
+
+        for y_idx, ycoord in enumerate(y_list):
+            for x_idx, xcoord in enumerate(x_list):
+                url = GOOGLE_TILE_URL.format(x=xcoord, y=ycoord, z=ZOOM_LEVEL)
+
+                # Download tile using the defined retry strategy:
+                response = SESSION.get(url)
+                response.raise_for_status()
+
+                # Save downloaded tile as a PIL image in tiles and calculate
+                # tile offsets and bounds:
+                tile_image = Image.open(BytesIO(response.content))
+                tiles.append(tile_image)
+                offsets.append((x_idx * TILE_SIZE, y_idx * TILE_SIZE))
+                tile_bounds = self._tile_bbox(ZOOM_LEVEL, xcoord, ycoord)
+                imbnds = self._update_image_bounds(imbnds,
+                                                   tile_bounds,
+                                                   ntiles,
+                                                   x_idx,
+                                                   y_idx)
+
+        return tiles, offsets, imbnds
+
+    @staticmethod
+    def _tile_bbox(zoom: int, x_coord: int, y_coord: int) -> list[float]:
+        """
+        Get the bounding box of a tile.
+
+        Args:
+            zoom (int): Zoom level.
+            x_coord (int): Tile x number.
+            y_coord (int): Tile y number.
+
+        Returns:
+            List[float]: [south, north, west, east]
+        """
+        return [
+            GoogleSatellite._tile_lat(y_coord, zoom),
+            GoogleSatellite._tile_lat(y_coord + 1, zoom),
+            GoogleSatellite._tile_lon(x_coord, zoom),
+            GoogleSatellite._tile_lon(x_coord + 1, zoom),
+        ]
+
+    @staticmethod
+    def _tile_lat(y_coord: int, z_coord: int) -> float:
+        """
+        Calculate latitude from tile y number.
+
+        Args:
+            y_coord (int): Tile y number.
+            z_coord (int): Zoom level.
+
+        Returns:
+            float: Latitude in degrees.
+        """
+        n = math.pi - (2.0 * math.pi * y_coord) / (2 ** z_coord)
+        return math.degrees(math.atan(math.sinh(n)))
+
+    @staticmethod
+    def _tile_lon(xcoord: int, zcoord: int) -> float:
+        """
+        Calculate longitude from tile x number.
+
+        Args:
+            xcoord (int): Tile x number.
+            zcoord (int): Zoom level.
+
+        Returns:
+            float: Longitude in degrees.
+        """
+        return xcoord / (2 ** zcoord) * 360.0 - 180.0
+
+    @staticmethod
+    def _update_image_bounds(imbnds: list[float],
+                             tilebnds: list[float],
+                             ntiles: tuple[int, int],
+                             xind: int,
+                             yind: int) -> list[float]:
+        """
+        Update image bounds based on tile bounds.
+
+        Args:
+            imbnds (List[float]): Current image bounds.
+            tilebnds (List[float]): Bounds of the current tile.
+            ntiles (Tuple[int, int]): Number of tiles in x and y directions.
+            xind(int): Current tile x index.
+            yind (int): Current tile y index.
+
+        Returns:
+            List[float]: Updated image bounds.
+        """
+        # If the number of tiles both in x and y directions are
+        # greater than 1:
+        if ntiles[0] > 1 and ntiles[1] > 1:
+            if xind == 0 and yind == 0:
+                imbnds.append(tilebnds[2])
+                imbnds.append(tilebnds[0])
+            elif xind == ntiles[0] - 1 and yind == 0:
+                imbnds.append(tilebnds[3])
+            elif xind == 0 and yind == ntiles[1] - 1:
+                imbnds.append(tilebnds[1])
+        # If the total number of tiles is 1:
+        elif ntiles[0] == 1 and ntiles[1] == 1:
+            imbnds = [tilebnds[2], tilebnds[0],
+                      tilebnds[3], tilebnds[1]]
+        # If the total number of tiles is 1 in x-direction and
+        # greater than 1 in y-direction:
+        elif ntiles[0] == 1:
+            if yind == 0:
+                imbnds.append(tilebnds[2])
+                imbnds.append(tilebnds[0])
+                imbnds.append(tilebnds[3])
+            elif yind == ntiles[1] - 1:
+                imbnds.append(tilebnds[1])
+        # If the total number of tiles is greater than 1 in
+        # x-direction and 1 in y-direction:
+        elif ntiles[1] == 1:
+            if xind == 0:
+                imbnds.append(tilebnds[2])
+                imbnds.append(tilebnds[0])
+            elif xind == ntiles[0] - 1:
+                imbnds.append(tilebnds[3])
+                imbnds.append(tilebnds[1])
+        return imbnds
+
+    @staticmethod
+    def _combine_tiles(
+        tiles: list[Image.Image],
+        ntiles: tuple[int, int],
+        offsets: list[tuple[int, int]],
+    ) -> Image.Image:
+        """
+        Combine individual tiles into a single image.
+
+        Args:
+            tiles (List[Image.Image]): List of tile images.
+            ntiles (Tuple[int, int]): Number of tiles in x and y directions.
+            offsets (List[Tuple[int, int]]): Offsets for pasting tiles.
+
+        Returns:
+            Image.Image: Combined image.
+        """
+        combined_image = Image.new('RGB',
+                                   (TILE_SIZE * ntiles[0],
+                                    TILE_SIZE * ntiles[1]))
+        for ind, image in enumerate(tiles):
+            combined_image.paste(image, offsets[ind])
+        return combined_image
+
+    def _crop_and_pad_image(self,
+                            combined_im: Image.Image,
+                            bbox_buffered: tuple[list[float], list[float]],
+                            imbnds: list[float]) -> Image.Image:
+        """
+        Crop and pad the combined image around the footprint.
+
+        Args:
+            combined_im (Image.Image): The combined satellite image.
+            bbox_buffered (Tuple[List[float], List[float]]): Buffered bounding
+                box.
+            imbnds (List[float]): Image bounds.
+
+        Returns:
+            Image.Image: Cropped and padded image.
+        """
+        # Crop combined image around the footprint of the building:
+        im_width, im_height = combined_im.size
+
+        lonrange = imbnds[2] - imbnds[0]
+        latrange = imbnds[3] - imbnds[1]
+
+        left = math.floor(
+            (bbox_buffered[0][0] - imbnds[0]) / lonrange * im_width
+        )
+        right = math.ceil(
+            (bbox_buffered[0][-1] - imbnds[0]) / lonrange * im_width
+        )
+        bottom = math.ceil(
+            (bbox_buffered[1][0] - imbnds[1]) / latrange * im_height
+        )
+        top = math.floor(
+            (bbox_buffered[1][1] - imbnds[1]) / latrange * im_height
+        )
+
+        cropped_im = combined_im.crop((left, top, right, bottom))
+
+        # Pad the image in horizontal or vertical directions to make it
+        # square:
+        (newdim, indmax, mindim, _) = self._maxmin_and_ind(cropped_im.size)
+        padded_im = Image.new('RGB', (newdim, newdim))
+        buffer = round((newdim - mindim) / 2)
+
+        if indmax == 1:
+            padded_im.paste(cropped_im, (buffer, 0))
+        else:
+            padded_im.paste(cropped_im, (0, buffer))
+
+        return padded_im
+
+    @staticmethod
+    def _maxmin_and_ind(size: tuple[int, int]) -> tuple[int, int, int, int]:
+        """
+        Determine the maximum and minimum dimensions and their indices.
+
+        Args:
+            size (Tuple[int, int]): Width and height of the image.
+
+        Returns:
+            Tuple[int, int, int, int]: (max_dim, index_of_max,
+                                        min_dim, index_of_min)
+        """
+        max_dim = max(size)
+        min_dim = min(size)
+        return max_dim, size.index(max_dim), min_dim, size.index(min_dim)
