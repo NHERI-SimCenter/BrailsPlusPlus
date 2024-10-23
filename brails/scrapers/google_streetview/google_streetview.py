@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright (c) 2024 The Regents of the University of California
 #
 # This file is part of BRAILS++.
@@ -31,530 +29,194 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 # You should have received a copy of the BSD 3-Clause License along with
-# BRAILS++. If not, see <http://www.opensource.org/licenses/>.
+# BRAILS. If not, see <http://www.opensource.org/licenses/>.
 #
 # Contributors:
 # Barbaros Cetiner
 #
 # Last updated:
-# 05-06-2024   
+# 10-16-2024
 
-from brails.types.image_set import Image, ImageSet
+"""
+This module defines GoogleStreetview class downloading Google street imagery.
+
+.. autosummary::
+
+    GoogleStreetview
+"""
+
+import math
+import struct
+import base64
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import json
+from io import BytesIO
+from pathlib import Path
+import re
+import logging
+from typing import Any, Union, Optional
+
+import numpy as np
+import requests
+from requests.adapters import HTTPAdapter, Retry
+from shapely.geometry import Polygon
+from tqdm import tqdm
+import matplotlib as mpl
+import PIL
+from PIL import Image
+
+from brails.types.image_set import ImageSet
 from brails.types.asset_inventory import AssetInventory
 from brails.scrapers.image_scraper import ImageScraper
 
-import os
-import requests 
-import sys
-import math
-import concurrent.futures
-import numpy as np
-import base64
-import struct
-import json
-import matplotlib as mpl
+# Configure logging:
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-import PIL
-from requests.adapters import HTTPAdapter, Retry
-from io import BytesIO
-from shapely.geometry import Polygon
-from tqdm import tqdm
-from pathlib import Path
+# Constants:
+BASE_API_URL = 'https://maps.googleapis.com/maps/api/streetview/metadata'
+PANORAMA_METADATA_URL = 'https://www.google.com/maps/photometa/v1'
+TILE_URL_TEMPLATE = 'https://cbk0.google.com/cbk?output=tile' + \
+                    '&panoid={pano_id}&zoom={zoom}&x={x}&y={y}'
+TILE_SIZE = 512
+CIRCUM_EARTH_FT = 131482560
+
+REQUESTS_RETRY_STRATEGY = Retry(
+    total=5,
+    backoff_factor=0.1,
+    status_forcelist=[500, 502, 503, 504],
+)
+SESSION = requests.Session()
+SESSION.mount("https://", HTTPAdapter(max_retries=REQUESTS_RETRY_STRATEGY))
+
 
 class GoogleStreetview(ImageScraper):
-    
+    """
+    A class that downloads street-level imagery and depth maps for buildings.
+
+    This class interfaces with the Google Street View API to obtain
+    high-resolution street-level images and corresponding depth maps based on
+    specified building footprints. It supports saving interim images and
+    collecting various camera metadata.
+
+    Attributes:
+        api_key (str): API key for authenticating requests to the Google
+            Street View API.
+
+    Methods:
+        get_images(inventory: AssetInventory, save_directory: str) -> ImageSet:
+            Retrieves street-level imagery, depthmap, building location and
+            camera parameters for the assets in the given inventory and saves
+            them to the specified save_directory.
+    """
+
     def __init__(self, input_data: dict):
-
-        api_key = input_data["apiKey"]
-        
-        # Check if the provided Google API Key successfully obtains street view
-        # imagery metadata for Doe Memorial Library of UC Berkeley:
-        responseStreet = requests.get('https://maps.googleapis.com/maps/api/streetview/metadata?' + 
-                                      'location=37.8725187407,-122.2596028649' +
-                                      '&source=outdoor' + 
-                                      f'&key={api_key}')
-
-        # If the requested image cannot be downloaded, notify the user of the
-        # error and stop program execution:
-        if 'error' in responseStreet.text.lower():
-            error_message = ('Google API key error. The entered API key is valid '
-                             + 'but does not have Street View Static API enabled. ' 
-                             + 'Please enter a key that has the Street View' 
-                             + 'Static API enabled.')
-            sys.exit(error_message)
-            
-        self.apikey = api_key
-
-
-    def GetGoogleStreetImage(self, footprints, dir_path, save_interim_images=False,save_all_cam_metadata=False):
-        
-        def get_bin(a):
-            ba = bin(a)[2:]
-            return "0"*(8 - len(ba)) + ba
-
-        def getUInt16(arr, ind):
-            a = arr[ind]
-            b = arr[ind + 1]
-            return int(get_bin(b) + get_bin(a), 2)
-
-        def getFloat32(arr, ind):
-            return bin_to_float("".join(get_bin(i) for i in arr[ind : ind + 4][::-1]))
-
-        def bin_to_float(binary):
-            return struct.unpack("!f", struct.pack("!I", int(binary, 2)))[0]
-
-        def parse_dmap_str(b64_string):
-            # Ensure correct padding (The length of string needs to be divisible by 4):
-            b64_string += "="*((4 - len(b64_string)%4)%4)
-
-            # Convert the URL safe format to regular format:
-            data = b64_string.replace("-", "+").replace("_", "/")
-            
-            # Decode the string:
-            data = base64.b64decode(data)  
-            
-            return np.array([d for d in data])
-
-        def parse_dmap_header(depthMap):
-            return {
-                "headerSize": depthMap[0],
-                "numberOfPlanes": getUInt16(depthMap, 1),
-                "width": getUInt16(depthMap, 3),
-                "height": getUInt16(depthMap, 5),
-                "offset": getUInt16(depthMap, 7),
-            }
-
-        def parse_dmap_planes(header, depthMap):
-            indices = []
-            planes = []
-            n = [0, 0, 0]
-
-            for i in range(header["width"] * header["height"]):
-                indices.append(depthMap[header["offset"] + i])
-
-            for i in range(header["numberOfPlanes"]):
-                byteOffset = header["offset"] + header["width"]*header["height"] + i*4*4
-                n = [0, 0, 0]
-                n[0] = getFloat32(depthMap, byteOffset)
-                n[1] = getFloat32(depthMap, byteOffset + 4)
-                n[2] = getFloat32(depthMap, byteOffset + 8)
-                d = getFloat32(depthMap, byteOffset + 12)
-                planes.append({"n": n, "d": d})
-
-            return {"planes": planes, "indices": indices}
-
-        def compute_dmap(header, indices, planes):
-            v = [0, 0, 0]
-            w = header["width"]
-            h = header["height"]
-
-            depthMap = np.empty(w * h)
-
-            sin_theta = np.empty(h)
-            cos_theta = np.empty(h)
-            sin_phi = np.empty(w)
-            cos_phi = np.empty(w)
-
-            for y in range(h):
-                theta = (h - y - 0.5)/h*np.pi
-                sin_theta[y] = np.sin(theta)
-                cos_theta[y] = np.cos(theta)
-
-            for x in range(w):
-                phi = (w - x - 0.5)/w*2*np.pi + np.pi/2
-                sin_phi[x] = np.sin(phi)
-                cos_phi[x] = np.cos(phi)
-
-            for y in range(h):
-                for x in range(w):
-                    planeIdx = indices[y*w + x]
-
-                    v[0] = sin_theta[y]*cos_phi[x]
-                    v[1] = sin_theta[y]*sin_phi[x]
-                    v[2] = cos_theta[y]
-
-                    if planeIdx > 0:
-                        plane = planes[planeIdx]
-                        t = np.abs(
-                            plane["d"]
-                            / (
-                                v[0]*plane["n"][0]
-                                + v[1]*plane["n"][1]
-                                + v[2]*plane["n"][2]
-                            )
-                        )
-                        depthMap[y*w + (w - x - 1)] = t
-                    else:
-                        depthMap[y*w + (w - x - 1)] = 9999999999999999999.0
-            return {"width": w, "height": h, "depthMap": depthMap}
-
-        def get_depth_map(pano, saveim=False, imname='depthmap.jpg'):
-            
-            # Decode depth map string:
-            depthMapData = parse_dmap_str(pano['depthMapString'])
-            
-            # Parse first bytes to get the data headers:
-            header = parse_dmap_header(depthMapData)
-            
-            # Parse remaining bytes into planes of float values:
-            data = parse_dmap_planes(header, depthMapData)
-            
-            # Compute position and depth values of pixels:
-            depthMap = compute_dmap(header, data["indices"], data["planes"])
-            
-            # Process float 1D array into integer 2D array with pixel values ranging 
-            # from 0 to 255:
-            im = depthMap["depthMap"]
-            im[np.where(im == max(im))[0]] = 255
-            if min(im) < 0:
-                im[np.where(im < 0)[0]] = 0
-            im = im.reshape((depthMap["height"], depthMap["width"]))
-            
-            # Flip the 2D array to have it line up with pano image pixels:
-            im = np.fliplr(im)
-
-            # Read the 2D array into an image and resize this image to match the size 
-            # of pano:
-            #imMask = Image.fromarray(np.uint8(im))
-            imMask = Image.fromarray(im)
-            imMask = imMask.resize(pano['imageSize'])
-            pano['depthMap'] = imMask.copy()
-            
-            if saveim:
-                # Convert the float values to integer:
-                imSave = imMask.convert('L')
-                        
-                # Save the depth map image:
-                imSave.save(imname)
-                pano['depthImFile'] = imname
-            else:
-                pano['depthImFile'] = ''
-            return pano
-
-        def download_tiles(urls):    
-            # Define a retry strategy for downloading a tile if a common error code
-            # is encountered:
-            s = requests.Session()
-            retries = Retry(total=5, 
-                            backoff_factor=0.1,
-                            status_forcelist=[500, 502, 503, 504])
-            s.mount('https://', HTTPAdapter(max_retries=retries))
-            # Given the URLs, download tiles and save them as a PIL images: 
-            tiles = []
-            for url in urls:
-                response = s.get(url)
-                tiles.append(PIL.Image.open(BytesIO(response.content)))
-            return tiles
-
-        def download_pano(pano, saveim=False, imname='pano.jpg'):
-            panoID = pano['id']
-            imSize = pano['imageSize']
-            zoomVal = pano['zoom']
-            
-            # Calculate tile locations (offsets) and determine corresponding
-            # tile URL links:
-            baseurl = f'https://cbk0.google.com/cbk?output=tile&panoid={panoID}&zoom={zoomVal}'
-            urls = []
-            offsets = []
-            for x in range(int(imSize[0]/512)):
-                for y in range(int(imSize[1]/512)):
-                    urls.append(baseurl+f'&x={x}&y={y}')
-                    offsets.append((x*512,y*512))
-            images = download_tiles(urls)
-            
-            # Combine the downloaded tiles to get the uncropped pano:
-            combined_im = PIL.Image.new('RGB', imSize)
-            for (ind,im) in enumerate(images):
-               combined_im.paste(im, offsets[ind])
-            
-            # Save the uncropped pano:
-            pano['panoImage'] = combined_im.copy()
-            if saveim:              
-                combined_im.save(imname)
-                pano['panoImFile'] = imname
-            else:
-                pano['panoImFile'] = ''     
-            return pano
-
-        def get_pano_id(latlon,apikey):
-            # Obtain the pano id containing the image of the building at latlon:
-            endpoint = 'https://maps.googleapis.com/maps/api/streetview/metadata'
-            params = {
-                'location': f'{latlon[0]}, {latlon[1]}',
-                'key': apikey,
-                'source': 'outdoor',
-            }
-            
-            r = requests.get(endpoint, params=params)
-            return r.json()['pano_id']
-
-        def get_pano_meta(pano, savedmap = False, dmapoutname = 'depthmap.txt'):
-            # Get the metadata for a pano image:
-            baseurl = 'https://www.google.com/maps/photometa/v1'
-            params = {
-                'authuser': '0',
-                'hl': 'en',
-                'gl': 'us',
-                'pb': '!1m4!1smaps_sv.tactile!11m2!2m1!1b1!2m2!1sen!2suk!3m3!1m2!1e2!2s' + pano['id'] + '!4m57!1e1!1e2!1e3!1e4!1e5!1e6!1e8!1e12!2m1!1e1!4m1!1i48!5m1!1e1!5m1!1e2!6m1!1e1!6m1!1e2!9m36!1m3!1e2!2b1!3e2!1m3!1e2!2b0!3e3!1m3!1e3!2b1!3e2!1m3!1e3!2b0!3e3!1m3!1e8!2b0!3e3!1m3!1e1!2b0!3e3!1m3!1e4!2b0!3e3!1m3!1e10!2b1!3e2!1m3!1e10!2b0!3e3'
-            }
-            
-            # Send GET request to API endpoint and retrieve response:
-            response = requests.get(baseurl, params=params, proxies=None)
-            
-            # Extract depthmap and other image metadata from response:
-            response = response.content
-            response = json.loads(response[4:])
-            pano['zoom'] = 3
-            pano['depthMapString'] = response[1][0][5][0][5][1][2]
-            pano['camLatLon'] = (response[1][0][5][0][1][0][2],response[1][0][5][0][1][0][3])
-            pano['imageSize'] = tuple(response[1][0][2][3][0][pano['zoom']][0])[::-1]
-            pano['heading'] = response[1][0][5][0][1][2][0]
-            pano['pitch'] = response[1][0][5][0][1][2][1]
-            pano['fov'] = response[1][0][5][0][1][2][2]
-            pano['cam_elev'] = response[1][0][5][0][1][1][0]
-            #pano['city'] = response[1][0][3][2][1][0]
-            
-            # If savedmap is set to True write the depthmap string into a text file:
-            with open(dmapoutname,'w') as dmapfile:
-                dmapfile.write(pano['depthMapString'])
-            return pano
-
-        def get_composite_pano(pano,imname='panoOverlaid.jpg'):
-            # Convert depth map into a heat map:
-            im = np.array(pano['depthMap'].convert('L'))
-            cm_jet = mpl.colormaps['jet']
-            im = cm_jet(im)
-            im = np.uint8(im*255)
-            imMask = Image.fromarray(im).convert('RGB')
-            
-            # Overlay the heat map on the pano:
-            imPano = pano['panoImage']
-            imOverlaid = Image.blend(imMask, imPano, 0.5)
-            imOverlaid.save(imname)
-
-        def get_3pt_angle(a, b, c):
-            ang = math.degrees(math.atan2(c[1]-b[1], c[0]-b[0]) - math.atan2(a[1]-b[1], a[0]-b[0]))
-            return ang + 360 if ang < 0 else ang
-
-        def get_angle_from_heading(coord,heading):
-            # Determine the cartesian coordinates of a point along the heading that
-            # is 100 ft away from the origin:
-            x0 = 100*math.sin(math.radians(heading))
-            y0 = 100*math.cos(math.radians(heading))
-            
-            # Calculate the clockwise viewing angle for each coord with respect to the 
-            # heading:
-            ang = 360 - get_3pt_angle((x0,y0), (0,0), coord)
-            
-            # Return viewing angles such that anything to the left of the vertical 
-            # camera axis is negative and counterclockwise angle measurement:
-            return ang if ang<=180 else ang-360
-
-        def get_bldg_image(pano, fp, imname='imstreet.jpg', saveDepthMap=False):
-            # Project the coordinates of the footprint to Cartesian with the 
-            # approximate camera location set as the origin:
-            (lat0,lon0) = pano['camLatLon']
-            xy = []
-            for vert in fp:
-                lon1 = vert[1]
-                lat1 = vert[0]
-                x = (lon1 - lon0)*40075000*3.28084*math.cos((lat0 + lat1)*math.pi/360)/360
-                y = (lat1 - lat0)*40075000*3.28084/360
-                xy.append((x,y))
-            
-            # Calculate the theoretical viewing angle for each footprint vertex with 
-            # respect to the camera heading angle
-            camera_angles = []
-            for coord in xy:
-                camera_angles.append(get_angle_from_heading(coord,pano['heading']))
-            
-            # Calculate the viewing angle values that encompass the building buffered 
-            # 10 degrees in horizontal direction:
-            bndAngles = np.rint((np.array([round(min(camera_angles),-1)-10,
-                                           round(max(camera_angles),-1)+10]) + 180)/360*pano['imageSize'][0])
-            
-            im = pano['panoImage']
-            imCropped = im.crop((bndAngles[0],0,bndAngles[1],pano['imageSize'][1]))
-            imCropped.save(imname)
-            pano['pano_bnd_angles'] = np.copy(bndAngles)
-            
-            if saveDepthMap:
-                # Get the depth map for the pano:
-                panoDmapName = imname.replace('.' + imname.split('.')[-1],'') + '_pano_depthmap.jpg'
-                pano = get_depth_map(pano, saveim=saveDepthMap, imname = panoDmapName)
-                mask = pano['depthMap']
-                
-                # Crop the horizontal parts of the image outside the bndAngles:
-                dmapName = imname.replace('.' + imname.split('.')[-1],'') + '_depthmap.jpg'
-                maskCropped = mask.crop((bndAngles[0],0,bndAngles[1],pano['imageSize'][1]))
-                pano['depthMapBldg'] = maskCropped.copy()
-                maskCropped.convert('RGB').save(dmapName)
-            
-            return pano
-
-        def download_streetlev_image(fp, fpcent, im_name, depthmap_name, apikey,
-                                     saveInterIm=False, saveAllCamMeta=False):
-            if saveInterIm:    
-                imnameBase = im_name.replace('.' + im_name.split('.')[-1],'')
-                panoName = imnameBase + '_pano.jpg'
-                compImName = imnameBase + '_composite.jpg'
-                panoDmapName = imnameBase + '_depthmap.jpg'
-            else:
-                panoName = ''
-                compImName = ''
-                panoDmapName = ''   
-            
-            # Define the internal pano dictionary:
-            pano = {'queryLatLon':fpcent,
-                    'camLatLon':(),
-                    'id':'',
-                    'imageSize':(),
-                    'heading':0,
-                    'depthMap':0,
-                    'depthMapString':'',
-                    'panoImFile': panoName,
-                    'depthImFile':panoDmapName,
-                    'compositeImFile':compImName
-                    }
-            
-            # Get pano ID. If no pano exists, skip the remaining steps of the 
-            # function:
-            try:
-                pano['id'] = get_pano_id(pano['queryLatLon'],apikey)
-            except:
-                return None
-            
-            # Get the metdata for the pano:
-            pano = get_pano_meta(pano, savedmap = True, dmapoutname = depthmap_name)
-            
-            # Download the pano image:
-            pano = download_pano(pano, saveim=saveInterIm, imname = panoName)
-            
-            # Crop out the building-specific portions of the pano and depthmap:
-            pano = get_bldg_image(pano, fp, imname=im_name, saveDepthMap=saveInterIm)
-
-            if saveInterIm:
-                # Overlay depth map on the pano:
-                get_composite_pano(pano, imname=compImName)
-
-            # Return camera elevation, depthmap, and, if requested, other camera metadata:
-            if saveAllCamMeta:
-                out = (pano['cam_elev'],pano['camLatLon'],(depthmap_name, pano['imageSize'],pano['pano_bnd_angles']),pano['fov'],pano['heading'],pano['pitch'],pano['zoom'])
-            else:
-                out = (pano['cam_elev'],(depthmap_name, pano['imageSize'],pano['pano_bnd_angles']))
-            
-            return out
- 
-        # Create a directory to save the street-level images and corresponding
-        # depthmaps:
-        
-        #os.makedirs(f'{dir_path}',exist_ok=True)
-        #os.makedirs(f'{dir_path}',exist_ok=True)
- 
-        # Compute building footprints, parse satellite image and depthmap file
-        # names, and create the list of inputs required for obtaining 
-        # street-level imagery:
-        self.footprints = footprints
-        self.centroids = []
-        street_images = []
-        inps = [] 
-        for footprint in footprints:
-            fp = np.fliplr(np.squeeze(np.array(footprint))).tolist()
-            fp_cent = Polygon(footprint).centroid
-            self.centroids.append([fp_cent.x,fp_cent.y])
-            imName = str(round(fp_cent.y,8))+str(round(fp_cent.x,8))
-            imName.replace(".","")
-            im_name = f"{dir_path}/imstreet_{imName}.jpg"
-            depthmap_name = f"{dir_path}/dmstreet_{imName}.txt"            
-            street_images.append(im_name)
-            inps.append((fp,(fp_cent.y,fp_cent.x),im_name,depthmap_name))
-        
-        # Download building-wise street-level imagery and depthmap strings:
-        pbar = tqdm(total=len(footprints), desc='Obtaining street-level imagery')     
-        results = {}             
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_url = {
-                executor.submit(download_streetlev_image, fp, fpcent, fout, 
-                                dmapout, self.apikey, 
-                                saveInterIm=save_interim_images,
-                                saveAllCamMeta=save_all_cam_metadata): fout
-                for fp, fpcent, fout, dmapout in inps
-            }
-            for future in concurrent.futures.as_completed(future_to_url):
-                fout = future_to_url[future]
-                pbar.update(n=1)
-                try:
-                    results[fout] = future.result()
-                except Exception as exc:
-                    results[fout] = None
-                    print("%r generated an exception: %s" % (fout, exc))
-
-        # Save the depthmap and all other required camera metadata in
-        # the class object:
-        
-        if save_all_cam_metadata==False:
-            self.cam_elevs = []
-            self.depthmaps = [] 
-            for (ind,im) in enumerate(street_images):
-                if results[im] is not None:
-                    self.cam_elevs.append(results[im][0])
-                    self.depthmaps.append(results[im][1])
-                else:
-                    street_images[ind] = None
-                    self.cam_elevs.append(None)
-                    self.depthmaps.append(None)
-        else:
-            self.cam_elevs = []
-            self.cam_latlons = []
-            self.depthmaps = []
-            self.fovs = []
-            self.headings = []
-            self.pitch = []
-            self.zoom_levels = []
-            for (ind,im) in enumerate(street_images):
-                if results[im] is not None:
-                    self.cam_elevs.append(results[im][0])
-                    self.cam_latlons.append(results[im][1])
-                    self.depthmaps.append(results[im][2])
-                    self.fovs.append(results[im][3])
-                    self.headings.append(results[im][4])
-                    self.pitch.append(results[im][5])
-                    self.zoom_levels.append(results[im][6])            
-                else:
-                    self.cam_elevs.append(None)
-                    self.cam_latlons.append(None)
-                    self.depthmaps.append(None)
-                    self.fovs.append(None)
-                    self.headings.append(None)
-                    self.pitch.append(None)
-                    self.zoom_levels.append(None)
-                    street_images[ind] = None
-        self.street_images = street_images.copy()
-        
-
-    def get_images(self, inventory: AssetInventory, dir_path: str) -> ImageSet:
         """
-        This method obtains street-level imagery of buildings given the 
-        footprintsin the asset inventory
+        Initialize the GoogleStreetview object.
+
+        This constructor initializes an instance of the GoogleStreetview class
+        by validating the provided Google API key.
 
         Args:
-              inventory (AssetInventory):
-                   The AssetInventory
+            input_data (dict): A dictionary containing the following key:
+                - 'apiKey' (str): A valid Google API key with Street View
+                    Static API enabled.
+
+        Raises:
+            ValueError: If the 'apiKey' is missing or empty.
+            ConnectionError: If the API key validation fails when checking
+                against the Google Street View Static API.
+        """
+        try:
+            api_key = input_data['apiKey']
+            if not api_key:
+                raise ValueError(
+                    'API key is empty. Please provide a valid API key.')
+        except KeyError as exception:
+            raise ValueError('Please provide a Google API key to run the'
+                             'GoogleStreetview module') from exception
+        self._validate_api_key(api_key)
+        self.api_key = api_key
+
+    @staticmethod
+    def _validate_api_key(api_key: str):
+        """
+        Validate the provided Google API Key for the Street View Static API.
+
+        This method checks whether the specified API key is valid and has
+        access to the Street View Static API by attempting to retrieve metadata
+        for a specific location (Doe Memorial Library of UC Berkeley). If the
+        API key is valid but does not have access to the required API, a
+        ValueError is raised. If the request fails due to a connection error, a
+        ConnectionError is raised.
+
+        Args:
+            api_key (str): The Google API Key to validate.
+
+        Raises:
+            ValueError: If the API key is valid but does not have the
+                        Street View Static API enabled.
+            ConnectionError: If there is a failure in making the request
+                             to validate the API key.
+
+        Example:
+            >>> _validate_api_key('YOUR_API_KEY')
+
+        Notes:
+            This method is a static utility and does not require an instance
+            of the class to be invoked.
+        """
+        try:
+            # Check if the provided Google API Key successfully obtains street
+            # view imagery metadata for Doe Memorial Library of UC Berkeley:
+            params = {'location': '37.8725187407,-122.2596028649',
+                      'source': 'outdoor',
+                      'key': api_key}
+            response = requests.get(BASE_API_URL, params=params, timeout=30)
+
+            # If the requested image cannot be downloaded, notify the user of
+            # the error and stop program execution:
+            if 'error' in response.text.lower():
+                raise ValueError('Google API key error. The entered API key is'
+                                 'valid but does not have Street View Static '
+                                 'API enabled. Please enter a key that has '
+                                 'the Street View Static API enabled.')
+        except requests.RequestException as exception:
+            raise ConnectionError(f"Failed to validate API key: {exception}") \
+                from exception
+
+    def get_images(self,
+                   inventory: AssetInventory,
+                   save_directory: str) -> ImageSet:
+        """
+        Get street-level images of buildings from footprints in AssetInventory.
+
+        Args:
+              inventory (AssetInventory): AssetInventory for which the images
+                  will be retrieved.
+            save_directory (str): Path to the folder where the retrieved images
+                will be saved
 
         Returns:
-              Image_Set:
-                    An image_Set for the assets in the inventory
+              ImageSet: An ImageSet for the assets in the inventory.
 
+        Raises:
+            ValueError: If the provided inventory is not an instance of
+                AssetInventory.
         """
+        # Validate inputs:
+        if not isinstance(inventory, AssetInventory):
+            raise ValueError('Invalid AssetInventory provided.')
 
         # Ensure consistency in dir_path, i.e remove ending / if given:
-        dir_path = Path(dir_path)
-        os.makedirs(f'{dir_path}',exist_ok=True)
-        
+        dir_path = Path(save_directory)
+        dir_path.mkdir(parents=True, exist_ok=True)
+        logger.info('Images will be saved to: %s', dir_path.resolve())
+
         # Create the footprints from the items in AssetInventory
         # Keep the asset keys in a list for later use:
-        result = ImageSet()
-        result.dir_path = dir_path        
+        image_set = ImageSet()
+        image_set.dir_path = str(dir_path)
 
         asset_footprints = []
         asset_keys = []
@@ -562,45 +224,860 @@ class GoogleStreetview(ImageScraper):
             asset_footprints.append(asset.coordinates)
             asset_keys.append(key)
 
-        # Get the image filenames and properties, and create a new image:
-        self.GetGoogleStreetImage(asset_footprints, dir_path, False, True)
+        # Get the images:
+        street_images, metadata = self._download_images(asset_footprints,
+                                                        dir_path,
+                                                        False,
+                                                        True)
+        # Get the images:
+        for index, image_path in enumerate(street_images):
+            if image_path.exists():
+                image_set.add_image(asset_keys[index],
+                                    image_path.name,
+                                    metadata[index])
+            else:
+                logger.warning('Image for asset %s was not successfully '
+                               'downloaded.', asset_keys[index])
 
-        for i in range(len(asset_keys)):
-            
-            filename = self.street_images[i]            
-            if filename is not None:
-                key = asset_keys[i]
+        return image_set
 
-                # going to rename image files to use key .. barbaros can fix in code so no rename
-                current_file_path = Path(filename)
-                new_name = f'gstrt_{key}{current_file_path.suffix}'
-                new_file_path = current_file_path.parent / new_name
+    def _download_images(self,
+                         footprints: list[list[tuple[float, float]]],
+                         save_dir: Path,
+                         save_interim_images: bool,
+                         save_all_cam_metadata: bool
+                         ) -> tuple[list[Path], dict[str, list[Any]]]:
+        """
+        Download street-level imagery and depthmap for building footprints.
 
-                # sy - to prevent error : [WinError 183] Cannot create a file when that file already exists: 'tmp\\street\\imstreet_37.87343446-122.45684953.jpg' -> 'tmp\\street\\gstrt_596.jpg'
-                # we should not download the files
-                #current_file_path.rename(new_file_path)
-                current_file_path.replace(new_file_path)
+        Parameters:
+            footprints (list[list[tuple[float, float]]]): List of building
+                footprints.
+            save_dir (Path): Directory to save the images and depthmaps.
+            save_interim_images (bool): Whether to save interim images.
+            save_all_cam_metadata (bool): Whether to save all camera metadata.
 
+        Returns:
+            tuple[list[Path], dict[str, list[Any]]]: A tuple containing:
+                - A list of paths to the saved street images.
+                - A dictionary with processed metadata, where keys are
+                    different metadata fields (e.g., 'camElev', 'depthMap',
+                    etc.) and values are lists of corresponding metadata values
+                    for each image.
+        """
+        # Compute building footprints, parse street-level image and depthmap
+        # file names, and create the list of inputs required for obtaining
+        # street-level imagery and corresponding depthmap:
+        street_image_paths = []
+        bldg_centroids = []
+        inps = []
 
+        for footprint_raw in footprints:
+            footprint = np.fliplr(np.squeeze(np.array(footprint_raw))).tolist()
+            footprint_cent = Polygon(footprint_raw).centroid
+            image_name = f'{footprint_cent.y:.8f}_' + \
+                f'{footprint_cent.x:.8f}'
+            image_name.replace('.', '')
+            image_path = save_dir / f'gstrt_{image_name}.jpg'
+            depthmap_path = save_dir / f'gdmap_{image_name}.txt'
+            street_image_paths.append(image_path)
+            bldg_centroids.append((footprint_cent.y, footprint_cent.x))
+            inps.append((footprint,
+                         (footprint_cent.y, footprint_cent.x),
+                         image_path,
+                         depthmap_path))
 
-                # might as well do same for depthmap
-                current_depthfile_path = Path(self.depthmaps[i][0])
-                new_depthname = f'dmap_{key}{current_depthfile_path.suffix}'
-                new_depthfile_path = current_depthfile_path.parent / new_depthname                
-                #current_depthfile_path.rename(new_depthfile_path) # sy - gave a permission error when file already exists
-                current_depthfile_path.replace(new_depthfile_path)
+        # Download building-wise street-level imagery and depthmap strings:
+        pbar = tqdm(total=len(footprints),
+                    desc='Obtaining street-level imagery')
+        results = {}
+        with ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(self._download_streetlev_image,
+                                footprint,
+                                footprint_cent,
+                                image_path,
+                                depthmap_path,
+                                save_intermediate_imagery=save_interim_images,
+                                save_all_cam_meta=save_all_cam_metadata
+                                ): image_path
+                for (footprint,
+                     footprint_cent,
+                     image_path,
+                     depthmap_path) in inps
+            }
+            for future in as_completed(futures):
+                image_path = futures[future]
+                pbar.update(n=1)
+                try:
+                    results[image_path] = future.result()
+                except Exception as exc:
+                    results[image_path] = None
+                    cent = re.search(r'_(.*?)\.jpg', str(image_path))
+                    logger.error('Error downloading image for building located'
+                                 ' at %s: %s', cent, exc)
 
-                name_stripped = new_file_path.name
-                
-                properties = {}
-                properties['elev'] = self.cam_elevs[i]
-                properties['latlon'] = self.cam_latlons[i]
-                properties['depthmap'] = current_depthfile_path.name
-                properties['fov'] = self.fovs[i]
-                properties['heading'] = self.headings[i]
-                properties['pitch'] = self.pitch[i]
-                properties['zoom_level'] = self.zoom_levels[i]
-                
-                result.add_image(key, name_stripped, properties)
-            
-        return result
+        # Get the depthmap and all other required camera metadata:
+        metadata = self._process_meta_for_images(street_image_paths,
+                                                 bldg_centroids,
+                                                 results,
+                                                 save_all_cam_metadata)
+
+        return street_image_paths, metadata
+
+    def _download_streetlev_image(self,
+                                  footprint: list[list[float, float]],
+                                  fpcent: tuple[float, float],
+                                  im_path: Path,
+                                  depthmap_path: Path,
+                                  save_intermediate_imagery: bool = False,
+                                  save_all_cam_meta: bool = False
+                                  ) -> Optional[Union[
+                                      tuple[float, tuple[str, tuple[int, int],
+                                                         tuple[float, float]]],
+                                      tuple[float, tuple[str, tuple[int, int],
+                                                         tuple[float, float]],
+                                            float, int, int, int, int]]]:
+        """
+        Download a street-level panoramic image and processes it.
+
+        Parameters:
+            footprint (list[tuple[float, float]]): Coordinates of the building
+                footprint to crop the image.
+            fpcent (tuple[float, float]): Latitude and longitude of the query
+                point.
+            im_name (str): Filename for the output image.
+            depthmap_name (str): Filename for the depthmap.
+            save_intermediate_imagery (bool): Whether to save intermediate
+                images such as the panorama and composite image.
+            save_all_cam_meta (bool): Whether to return all camera metadata.
+
+        Returns:
+            Optional[Union[tuple[float, tuple[str, tuple[int, int],
+                                              tuple[float, float]]],
+                           tuple[float, tuple[str, tuple[int, int],
+                                              tuple[float, float]],
+                                 float, int, int, int, int]]]:
+                           If successful, returns camera elevation, depthmap,
+                           and optionally other camera metadata.
+        """
+        # Initialize filenames for intermediate files
+        pano_name, comp_im_name, pano_dmap_name = '', '', ''
+
+        # Convert image and depthmap paths to string:
+        im_name = str(im_path.as_posix())
+        depthmap_name = str(depthmap_path.as_posix())
+
+        if save_intermediate_imagery:
+            im_name_base: str = im_name.rsplit(
+                '.', 1)[0]  # Remove extension from im_name
+            pano_name = f'{im_name_base}_pano.jpg'
+            comp_im_name = f'{im_name_base}_composite.jpg'
+            pano_dmap_name = f'{im_name_base}_depthmap.jpg'
+
+        # Initialize panorama dictionary
+        pano: dict = {
+            'queryLatLon': fpcent,
+            'camLatLon': (),
+            'id': '',
+            'imageSize': (),
+            'heading': 0,
+            'depthMap': 0,
+            'depthMapString': '',
+            'panoImFile': pano_name,
+            'depthImFile': pano_dmap_name,
+            'compositeImFile': comp_im_name
+        }
+
+        # Get pano ID. If no pano exists, skip the remaining steps of the
+        # function:
+        try:
+            pano['id'] = self._get_pano_id(fpcent, self.api_key)
+        except KeyError as key_err:
+            print(f"Error getting pano ID for the building at {fpcent}")
+            return None
+
+        # Get the metdata for the pano:
+        pano = self._get_pano_meta(pano, dmap_outname=depthmap_name)
+
+        # Download the panorama image:
+        pano = self._download_pano_image(pano, im_name=pano_name)
+
+        # Crop the image based on the building footprint:
+        pano = self._get_bldg_image(pano, footprint, im_name=im_name,
+                                    save_depthmap=save_intermediate_imagery)
+
+        # If save_interim is True, generate the composite pano with depth
+        # map overlaid:
+        if save_intermediate_imagery:
+            self._get_composite_pano(pano, compim_name=comp_im_name)
+
+        # Return camera elevation, depthmap, and, if requested, other camera
+        # metadata:
+        if save_all_cam_meta:
+            return (pano['camElev'], pano['camLatLon'],
+                    (depthmap_name, pano['imageSize'],
+                     pano['panoBndAngles']),
+                    pano['fov'], pano['heading'], pano['pitch'], pano['zoom'])
+
+        return (pano['camElev'], (depthmap_name, pano['imageSize'],
+                                  pano['panoBndAngles']))
+
+    @staticmethod
+    def _process_meta_for_images(street_image_paths: list[Path],
+                                 bldg_centroids: list[tuple[float, float]],
+                                 results: dict[Path,
+                                               dict[str,
+                                                    Union[float, str, None]]],
+                                 save_all_cam_metadata: bool
+                                 ) -> dict[str, list[Union[tuple[float, float],
+                                                           float,
+                                                           str]]]:
+        """
+        Process the downloaded street image data and extract relevant metadata.
+
+        Parameters:
+            street_image_paths (List[Path]): List of file paths for the
+                downloaded street-level imagery.
+            bldg_centroids: list[tuple[float, float]]: List of centroids of
+                buildings for which street-level imagery was downloaded.
+            results (Dict[Path, Dict[str, Any[float, str, None]]]):
+                A dictionary where the keys are image file paths, and the
+                values are dictionaries containing metadata about each image,
+                such as camera elevation, depth maps locations, and other
+                optional camera metadata.
+            save_all_cam_metadata (bool): A flag indicating whether to save all
+            available camera metadata (e.g., camera latitude/longitude, field
+                                       of view, heading, pitch, zoom level).
+
+        Returns:
+            Dict[str, List[Any[float, str]]]: A dictionary containing processed
+                metadata, with keys representing
+                different metadata fields (e.g., 'camElev', 'depthMap',
+                'camLatLon', 'camFOV', etc.), and values as lists of
+                corresponding metadata values for each image.
+        """
+        # Initialize the metadata dictionary with essential keys:
+        metadata = {
+            'bdlgLatLon': [],
+            'camElev': [],
+            'depthMap': []
+        }
+
+        # If all camera metadata should be saved, extend the dictionary with
+        # additional keys:
+        if save_all_cam_metadata:
+            additional_keys = ['camLatLon', 'camFOV',
+                               'camHeading', 'camPitch', 'camZoomLevel']
+            metadata.update({key: [] for key in additional_keys})
+
+        # Populate the metadata dictionary with results:
+        for image_ind, image_path in enumerate(street_image_paths):
+            metadata['bdlgLatLon'] = bldg_centroids[image_ind]
+            if results[image_path] is not None:
+                metadata['camElev'].append(results[image_path][0])
+                metadata['depthMap'].append(results[image_path][1])
+
+                if save_all_cam_metadata:
+                    metadata['camLatLon'].append(results[image_path][2])
+                    metadata['camFOV'].append(results[image_path][3])
+                    metadata['camHeading'].append(results[image_path][4])
+                    metadata['camPitch'].append(results[image_path][5])
+                    metadata['camZoomLevel'].append(results[image_path][6])
+            else:
+                # Append None for each field if the result is missing:
+                metadata['camElev'].append(None)
+                metadata['depthMap'].append(None)
+
+                if save_all_cam_metadata:
+                    for key in additional_keys:
+                        metadata[key].append(None)
+
+        return metadata
+
+    @staticmethod
+    def _get_pano_id(latlon: tuple[float, float], api_key: str) -> str:
+        """
+        Obtain the pano ID for the given latitude and longitude.
+
+        Args:
+            latlon (tuple[float, float]): Latitude and longitude.
+
+        Returns:
+            str: Pano ID.
+        """
+        params = {
+            'location': f'{latlon[0]}, {latlon[1]}',
+            'key': api_key,
+            'source': 'outdoor',
+        }
+        response = SESSION.get(BASE_API_URL, params=params)
+        return response.json()['pano_id']
+
+    @staticmethod
+    def _get_pano_meta(pano: dict[str, Any],
+                       dmap_outname: str = '') -> dict[str, Any]:
+        """
+        Retrieve metadata for the pano.
+
+        Args:
+            pano (dict[str, any]): Pano dictionary.
+            dmap_outname (str): Filename to save the depth map string.
+
+        Returns:
+            Dict[str, Any]: Updated pano dictionary.
+        """
+        # Get the metadata for a pano image:
+        params = {
+            'authuser': '0',
+            'hl': 'en',
+            'gl': 'us',
+            'pb': ('!1m4!1smaps_sv.tactile!11m2!2m1!1b1!2m2!1sen!2suk!3m3!1m2!'
+                   '1e2!2s' + pano['id'] + '!4m57!1e1!1e2!1e3!1e4!1e5!1e6!1e8!'
+                   '1e12!2m1!1e1!4m1!1i48!5m1!1e1!5m1!1e2!6m1!1e1!6m1!1e2!'
+                   '9m36!1m3!1e2!2b1!3e2!1m3!1e2!2b0!3e3!1m3!1e3!2b1!3e2!1m3!'
+                   '1e3!2b0!3e3!1m3!1e8!2b0!3e3!1m3!1e1!2b0!3e3!1m3!1e4!2b0!'
+                   '3e3!1m3!1e10!2b1!3e2!1m3!1e10!2b0!3e3')
+        }
+
+        # Send GET request to API endpoint and retrieve response:
+        response = SESSION.get(PANORAMA_METADATA_URL,
+                               params=params,
+                               proxies=None)
+
+        # Extract depthmap and other image metadata from response:
+        response_content = response.content
+        response_json = json.loads(response_content[4:])  # Skip first 4 bytes
+        pano['zoom'] = 3
+        pano['depthMapString'] = response_json[1][0][5][0][5][1][2]
+        pano['camLatLon'] = (response_json[1][0][5][0][1][0][2],
+                             response_json[1][0][5][0][1][0][3])
+        pano['imageSize'] = tuple(
+            response_json[1][0][2][3][0][pano['zoom']][0])[::-1]
+        pano['heading'] = response_json[1][0][5][0][1][2][0]
+        pano['pitch'] = response_json[1][0][5][0][1][2][1]
+        pano['fov'] = response_json[1][0][5][0][1][2][2]
+        pano['camElev'] = response_json[1][0][5][0][1][1][0]
+        # pano['city'] = response_json[1][0][3][2][1][0]
+
+        # If dmap_outname is provided, write depthmap string into a text file:
+        if dmap_outname:
+            with open(dmap_outname, 'w', encoding='utf-8') as dmapfile:
+                dmapfile.write(pano['depthMapString'])
+
+        return pano
+
+    def _download_pano_image(self,
+                             pano: dict[str, Any],
+                             im_name: str) -> dict[str, Any]:
+        """
+        Download the pano image composed of tiles.
+
+        Args:
+            pano (Dict[str, Any]): Pano dictionary.
+            im_name (str): Filename to save the pano image.
+
+        Returns:
+            Dict[str, Any]: Updated pano dictionary.
+        """
+        pano_id = pano['id']
+        image_size = pano['imageSize']
+        zoom = pano['zoom']
+
+        # Calculate tile locations (offsets) and determine corresponding
+        # tile URL links:
+        baseurl = TILE_URL_TEMPLATE.format(pano_id=pano_id,
+                                           zoom=zoom,
+                                           x='{x}',
+                                           y='{y}')
+
+        urls = []
+        offsets = []
+        for x_coord in range(int(image_size[0] / TILE_SIZE)):
+            for y_coord in range(int(image_size[1] / TILE_SIZE)):
+                urls.append(baseurl.format(x=f'{x_coord}', y=f'{y_coord}'))
+                offsets.append((x_coord * TILE_SIZE, y_coord * TILE_SIZE))
+
+        tiles = self._download_tiles(urls)
+
+        # Combine the downloaded tiles to get the uncropped pano:
+        combined_im = PIL.Image.new('RGB', image_size)
+
+        for (ind, image) in enumerate(tiles):
+            combined_im.paste(image, offsets[ind])
+
+        # Save the uncropped pano:
+        pano['panoImage'] = combined_im.copy()
+        if im_name:
+            combined_im.save(im_name)
+        pano['panoImFile'] = im_name
+        return pano
+
+    def _get_bldg_image(self,
+                        pano: dict[str, Any],
+                        footprint: list[tuple[float, float]],
+                        im_name: str = 'imstreet.jpg',
+                        save_depthmap: bool = False
+                        ) -> dict[str, Union[np.ndarray,
+                                             list[float],
+                                             Image.Image,
+                                             np.ndarray]]:
+        """
+        Generate an image and depthmap cropped around a building from a pano.
+
+        Args:
+            pano (dict[str, Any]):
+                A dictionary containing panorama information, including:
+                    - camLatLon: The latitude and longitude of the camera
+                        location.
+                    - heading: The camera heading angle in degrees.
+                    - imageSize: The size of the panorama image as
+                        [width, height].
+                    - panoImage: The panorama image as a PIL Image.
+                    - depthMap: (Optional) The depth map associated with the
+                        panorama.
+            footprint (list[tuple[float, float]]): A list of tuples
+                representing the latitude and longitude of the building
+                footprint vertices.
+            im_name (str, optional): The name of the output image file.
+                Defaults to 'imstreet.jpg'.
+            save_depthmap (bool, optional): Whether to save the depth map of
+                the building. Defaults to False.
+
+        Returns:
+            pano( dict[str, Any]):
+                The updated panorama dictionary containing additional keys
+                including 'panoBndAngles' and 'depthMapBldg'.
+        """
+        # Calculate the viewing angle values that encompass the building
+        # buffered 10 degrees in horizontal direction:
+        camera_angles = self._get_view_angles(pano, footprint)
+        bnd_angles = np.rint((np.array([round(min(camera_angles), -1) - 10,
+                                       round(max(camera_angles), -1) + 10])
+                             + 180) / 360 * pano['imageSize'][0])
+
+        bldg_image = pano['panoImage']
+        bldg_im_cropped = bldg_image.crop(
+            (bnd_angles[0], 0, bnd_angles[1], pano['imageSize'][1]))
+        bldg_im_cropped.save(im_name)
+        pano['panoBndAngles'] = np.copy(bnd_angles)
+
+        if save_depthmap:
+            # Get the depth map for the pano:
+            pano_dmap_name = im_name.replace(
+                '.' + im_name.split('.')[-1], '') + '_pano_depthmap.jpg'
+            pano = self._get_depth_map(
+                pano, dmap_imname=pano_dmap_name)
+            mask = pano['depthMap']
+
+            # Crop the horizontal parts of the image outside the bndAngles:
+            dmap_name = im_name.replace(
+                '.' + im_name.split('.')[-1], '') + '_depthmap.jpg'
+            mask_cropped = mask.crop(
+                (bnd_angles[0], 0, bnd_angles[1], pano['imageSize'][1]))
+            pano['depthMapBldg'] = mask_cropped.copy()
+            mask_cropped.convert('RGB').save(dmap_name)
+
+        return pano
+
+    @staticmethod
+    def _get_composite_pano(pano: dict[str, Any],
+                            compim_name: str = 'panoOverlaid.jpg') -> None:
+        """
+        Create a composite pano image by overlaying a heat map of depth map.
+
+        Args:
+            pano (dict[str, Any]): A dictionary containing the depth map
+                (as a PIL image) and the panoramic image (as a PIL image).
+            imname (str): The filename for saving the overlaid image. Default
+                is 'panoOverlaid.jpg'.
+
+        Returns:
+            None
+        """
+        # Convert the depth map to grayscale and apply a heat map (jet
+        # colormap). Convert depth map to grayscale:
+        image = np.array(pano['depthMap'].convert('L'))
+        cm_jet = mpl.colormaps['jet']  # Access the 'jet' colormap
+
+        # Apply the colormap to the grayscale image:
+        im_colored = cm_jet(image)
+
+        # Scale the colormap output to [0, 255]:
+        im_colored = np.uint8(im_colored * 255)
+        im_mask = Image.fromarray(im_colored).convert(
+            'RGB')  # Convert to RGB format
+
+        # Overlay the heat map on the original panoramic image
+        # Original pano image (assumed to be in RGB format):
+        im_pano = pano['panoImage']
+
+        # Blend the heatmap and pano with equal weight:
+        im_overlaid = Image.blend(im_mask, im_pano, 0.5)
+
+        # Save the composite image:
+        im_overlaid.save(compim_name)
+
+    def _get_view_angles(self,
+                         pano: dict[str, Any],
+                         footprint: list[tuple[float, float]]) -> list[float]:
+        """
+        Calculate viewing angles of each footprint vertex from camera location.
+
+        This function converts the geographic coordinates (latitude and
+        longitude) of a building footprint into Cartesian coordinates relative
+        to the camera's location, and then calculates the viewing angles of the
+        building's vertices based on the camera's heading.
+
+        Args:
+            pano (dict[str, any]): A dictionary containing information about
+                the panorama, including:
+                - camLatLon (tuple[float, float]): Latitude and longitude of
+                    the camera location.
+                - heading (float): The camera's heading angle in degrees.
+            footprint (list[tuple[float, float]]): A list of tuples
+                representing the latitude and longitude coordinates of the
+                building footprint.
+
+        Returns:
+            list[float]: A list of viewing angles for each vertex of the
+                footprint relative to the camera's heading.
+        """
+        # Project the coordinates of the footprint to Cartesian with the
+        # approximate camera location set as the origin:
+        (lat0, lon0) = pano['camLatLon']
+        xy_footprint = []
+        for lat1, lon1 in footprint:
+            xcoord = (lon1 - lon0) * CIRCUM_EARTH_FT * \
+                math.cos((lat0 + lat1)*math.pi/360)/360
+            ycoord = (lat1 - lat0) * CIRCUM_EARTH_FT/360
+            xy_footprint.append((xcoord, ycoord))
+
+        # Calculate the theoretical viewing angle for each footprint vertex
+        # with respect to the camera heading angle:
+        return [self._get_angle_from_heading(coord, pano['heading'])
+                for coord in xy_footprint]
+
+    @staticmethod
+    def _download_tiles(urls: list[str]) -> list[PIL.Image.Image]:
+        """
+        Download image tiles from the provided URLs with retry strategy.
+
+        Args:
+            urls (List[str]): List of tile URLs.
+
+        Returns:
+            List[PIL.Image.Image]: List of downloaded tile images.
+        """
+        tiles = []
+        for url in urls:
+            response = SESSION.get(url)
+            tiles.append(PIL.Image.open(BytesIO(response.content)))
+
+        return tiles
+
+    def _get_depth_map(self,
+                       pano: dict[str, Any],
+                       dmap_imname: str = '') -> dict[str, Any]:
+        """
+        Compute and process the depth map for a panoramic image.
+
+        Args:
+            pano (dict[str, Any]): A dictionary containing panoramic image
+                data, including the depth map string and image size.
+            dmap_imname (str): The file name to use if saving the depth map
+                image. Default is '', i.e., depth map image is not saved.
+
+        Returns:
+            dict[str, Any]: The input pano dictionary with the processed
+                depth map and file information.
+        """
+        # Decode the depth map string
+        depth_map_data = self._parse_dmap_str(pano['depthMapString'])
+
+        # Parse the first bytes to get the data headers
+        header = self._parse_dmap_header(depth_map_data)
+
+        # Parse the remaining bytes into planes of float values
+        data = self._parse_dmap_planes(header, depth_map_data)
+
+        # Compute the position and depth values of pixels
+        depth_map = self._compute_dmap(header, data["indices"], data["planes"])
+
+        # Process float 1D array into a 2D array with pixel values ranging from
+        # 0 to 255:
+        dmap_array = depth_map["depthMap"]
+        dmap_array[np.where(dmap_array == np.max(dmap_array))] = 255
+        if np.min(dmap_array) < 0:
+            dmap_array[np.where(dmap_array < 0)] = 0
+        dmap_array = dmap_array.reshape(
+            (depth_map["height"], depth_map["width"]))
+
+        # Flip the 2D array to align it with the panoramic image pixels
+        dmap_array = np.fliplr(dmap_array)
+
+        # Convert the 2D array into an image and resize it to match the size
+        # of the pano:
+        im_dmap = Image.fromarray(np.uint8(dmap_array))
+        im_dmap = im_dmap.resize(pano['imageSize'])
+        pano['depthMap'] = im_dmap.copy()
+
+        if dmap_imname:
+            # Convert the float values to grayscale for saving
+            im_dmap_save = im_dmap.convert('L')
+
+            # Save the depth map image
+            im_dmap_save.save(dmap_imname)
+
+        pano['depthImFile'] = dmap_imname
+
+        return pano
+
+    def _get_angle_from_heading(self,
+                                coord: tuple[float, float],
+                                heading: float) -> float:
+        """
+        Calculate the viewing angle of a coordinate relative to camera heading.
+
+        Args:
+            coord (Tuple[float, float]): Cartesian coordinates.
+            heading (float): Camera heading angle in degrees.
+
+        Returns:
+            float: Calculated viewing angle.
+        """
+        # Determine the cartesian coordinates of a point along the heading that
+        # is 100 ft away from the origin:
+        x_0 = 100 * math.sin(math.radians(heading))
+        y_0 = 100 * math.cos(math.radians(heading))
+
+        # Calculate the clockwise viewing angle for the coord with respect to
+        # the heading:
+        ang = 360 - self._get_3pt_angle((x_0, y_0), (0, 0), coord)
+
+        # Return viewing angles such that anything to the left of the vertical
+        # camera axis is negative and counterclockwise angle measurement:
+        return ang if ang <= 180 else ang - 360
+
+    @staticmethod
+    def _parse_dmap_str(b64_string: str) -> np.ndarray:
+        """
+        Parse a base64-encoded depth map & return decoded data as numpy array.
+
+        Args:
+            b64_string (str): Base64-encoded depth map string.
+
+        Returns:
+            np.ndarray: A numpy array of decoded byte data.
+        """
+        # Ensure correct padding (length needs to be divisible by 4):
+        b64_string += '=' * ((4 - len(b64_string) % 4) % 4)
+
+        # Convert the URL-safe format to the regular format:
+        data = b64_string.replace('-', '+').replace('_', '/')
+
+        # Decode the base64 string into bytes:
+        data = base64.b64decode(data)
+
+        return np.array(data)
+
+    def _parse_dmap_header(self, depth_map: np.ndarray) -> dict[str, int]:
+        """
+        Parse the header information from the depth map.
+
+        Args:
+            depth_map (np.ndarray): Numpy array containing the depth map data.
+
+        Returns:
+            dict[str, int]: Dictionary containing parsed header information:
+                - 'headerSize': The size of the header.
+                - 'numberOfPlanes': The number of planes in the depth map.
+                - 'width': The width of the depth map in pixels.
+                - 'height': The height of the depth map in pixels.
+                - 'offset': The byte offset to the plane and index data.
+        """
+        return {'headerSize': depth_map[0],
+                'numberOfPlanes': self._get_uint16(depth_map, 1),
+                'width': self._get_uint16(depth_map, 3),
+                'height': self._get_uint16(depth_map, 5),
+                'offset': self._get_uint16(depth_map, 7),
+                }
+
+    def _parse_dmap_planes(self,
+                           header: dict[str, int],
+                           depth_map: np.ndarray) -> dict[str, list]:
+        """
+        Parse the plane information and indices from the depth map.
+
+        Args:
+            header (dict[str, int]): Parsed header information containing
+                width, height, number of planes, and offset.
+            depth_map (np.ndarray): Numpy array containing the depth map data.
+
+        Returns:
+            dict[str, List]: A dictionary containing:
+                - planes: A list of planes where each plane is a dictionary
+                    with:
+                    - normal (List[float]): The normal vector of the plane.
+                    - dist (float): The distance from the origin to the plane.
+                - 'indices': A list of plane indices for each pixel in the
+                    depth map.
+        """
+        # Parse the plane indices:
+        indices = []
+        for i in range(header['width'] * header['height']):
+            indices.append(depth_map[header['offset'] + i])
+
+        # Parse the plane information:
+        planes = []
+        normal = [0.0, 0.0, 0.0]
+        for i in range(header['numberOfPlanes']):
+            byte_offset = header['offset'] + \
+                header['width'] * header['height'] + i * 4 * 4
+            normal[0] = self._get_float32(depth_map, byte_offset)
+            normal[1] = self._get_float32(depth_map, byte_offset + 4)
+            normal[2] = self._get_float32(depth_map, byte_offset + 8)
+            dist = self._get_float32(depth_map, byte_offset + 12)
+            planes.append({'n': normal.copy(), 'd': dist})
+
+        return {'planes': planes, 'indices': indices}
+
+    @staticmethod
+    def _compute_dmap(header: dict[str, int],
+                      indices: list[int],
+                      planes: list[dict[str, Any]]) -> dict[str, Any]:
+        """
+        Compute depth map using provided planes and indices in the image.
+
+        This method generates a depth map by casting rays from the camera
+        through each pixel, determining where the rays intersect with the
+        detected planes. The depth (distance to the plane) is calculated using
+        the dot product between the ray direction and the plane's normal
+        vector.
+
+        Args:
+            header (Dict[str, int]): Parsed header containing image dimensions,
+                including:
+                - "width" (int): Width of the image in pixels.
+                - "height" (int): Height of the image in pixels.
+            indices (List[int]): A flat list of plane indices for each pixel
+                in the image. Each index corresponds to a detected plane in the
+                `planes` list.
+            planes (List[Dict[str, Any]]): A list of plane information. Each
+                plane is represented by a dictionary that contains:
+                - "n" (List[float]): Normal vector of the plane (3D direction).
+                - "d" (Callable[[float], float]): A function that computes the
+                    plane's distance based on the dot product with the
+                    ray direction vector.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing:
+                - "width" (int): The width of the image in pixels.
+                - "height" (int): The height of the image in pixels.
+                - "depthMap" (np.ndarray): A flattened array representing the
+                    depth map where each value is the computed depth for the
+                    corresponding pixel.
+        """
+        ray_dir = [0, 0, 0]
+        width = header["width"]
+        height = header["height"]
+
+        depth_map = np.empty(width * height)
+
+        for y_coord in range(height):
+            theta = (height - y_coord - 0.5)/height * np.pi
+            for x_coord in range(width):
+                plane_idx = indices[y_coord * width + x_coord]
+
+                phi = (width - x_coord - 0.5)/width * 2 * np.pi + np.pi / 2
+                ray_dir[0] = np.sin(theta) * np.cos(phi)
+                ray_dir[1] = np.sin(theta) * np.sin(phi)
+                ray_dir[2] = np.cos(theta)
+
+                if plane_idx > 0:
+                    plane = planes[plane_idx]
+                    depth = np.abs(plane["d"](ray_dir[0] * plane["n"][0] +
+                                              ray_dir[1] * plane["n"][1] +
+                                              ray_dir[2] * plane["n"][2])
+                                   )
+                    depth_map[y_coord * width + (width - x_coord - 1)] = depth
+                else:
+                    depth_map[y_coord * width + (width - x_coord - 1)
+                              ] = 9999999999999999999.0
+        return {"width": width, "height": height, "depthMap": depth_map}
+
+    @staticmethod
+    def _get_3pt_angle(pt1: tuple[float, float],
+                       pt2: tuple[float, float],
+                       pt3: tuple[float, float]) -> float:
+        """
+        Calculate the angle formed by three points.
+
+        Args:
+            pt1 (Tuple[float, float]): First point.
+            pt2 (Tuple[float, float]): Vertex point.
+            pt3(Tuple[float, float]): Third point.
+
+        Returns:
+            float: Angle in degrees.
+        """
+        ang = math.degrees(math.atan2(pt3[1] - pt2[1], pt3[0] - pt2[0]) -
+                           math.atan2(pt1[1] - pt2[1], pt1[0] - pt2[0]))
+        return ang + 360 if ang < 0 else ang
+
+    def _get_uint16(self, arr: list[int], ind: int) -> int:
+        """
+        Combine two bytes from the array into a 16-bit unsigned integer.
+
+        Args:
+            arr (list[int]): Array of byte values.
+            ind (int): Starting index of the two bytes to combine.
+
+        Returns:
+            int: 16-bit unsigned integer formed from the two bytes.
+        """
+        int_inp1 = arr[ind]
+        int_inp2 = arr[ind + 1]
+        return int(self._get_bin(int_inp2) + self._get_bin(int_inp1), 2)
+
+    @staticmethod
+    def _get_bin(int_inp: int) -> str:
+        """
+        Convert an integer to an 8-bit binary string.
+
+        Args:
+            a (int): The integer to be converted.
+
+        Returns:
+            str: The 8-bit binary string representation of the integer.
+        """
+        binary_str_int = bin(int_inp)[2:]
+        return '0' * (8 - len(binary_str_int)) + binary_str_int
+
+    def _get_float32(self, arr: list[int], ind: int) -> float:
+        """
+        Convert 4 bytes from input array at given index into a 32-bit float.
+
+        Args:
+            arr (list[int]): Array of byte values.
+            ind (int): Starting index of the 4 bytes to convert.
+
+        Returns:
+            float: The 32-bit floating-point number.
+        """
+        return self._bin_to_float(''.join(
+            self._get_bin(i) for i in arr[ind: ind + 4][::-1]))
+
+    @staticmethod
+    def _bin_to_float(binary: str) -> float:
+        """
+        Convert a binary string to a 32-bit float.
+
+        Args:
+            binary (str): A 32-bit binary string.
+
+        Returns:
+            float: The 32-bit floating-point number corresponding to the
+                binary string.
+        """
+        return struct.unpack('!f', struct.pack('!I', int(binary, 2)))[0]
