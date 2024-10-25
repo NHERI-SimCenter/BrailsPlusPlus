@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-24-2024
+# 10-25-2024
 
 """
 This module defines GoogleStreetview class downloading Google street imagery.
@@ -260,21 +260,25 @@ class GoogleStreetview(ImageScraper):
                     etc.) and values are lists of corresponding metadata values
                     for each image.
         """
+        image_dir = save_dir / 'images'
+        image_dir.mkdir(parents=True, exist_ok=True)
+        depthmap_dir = save_dir / 'depthmaps'
+        depthmap_dir.mkdir(parents=True, exist_ok=True)
+
         # Compute building footprints, parse street-level image and depthmap
         # file names, and create the list of inputs required for obtaining
         # street-level imagery and corresponding depthmap:
         street_image_paths = []
         bldg_centroids = []
         inps = []
-
         for footprint_raw in footprints:
             footprint = np.fliplr(np.squeeze(np.array(footprint_raw))).tolist()
             footprint_cent = Polygon(footprint_raw).centroid
             image_name = f'{footprint_cent.y:.8f}_' + \
                 f'{footprint_cent.x:.8f}'
             image_name.replace('.', '')
-            image_path = save_dir / f'gstrt_{image_name}.jpg'
-            depthmap_path = save_dir / f'gdmap_{image_name}.txt'
+            image_path = image_dir / f'gstrt_{image_name}.jpg'
+            depthmap_path = depthmap_dir / f'gdmap_{image_name}.txt'
             street_image_paths.append(image_path)
             bldg_centroids.append((footprint_cent.y, footprint_cent.x))
             inps.append((footprint,
@@ -333,28 +337,34 @@ class GoogleStreetview(ImageScraper):
                                       tuple[float, str, tuple[float, float],
                                             tuple[float, float],
                                             tuple[int, int],
-                                            float, float, float, float]]]:
+                                            float, float, float, float],
+                                      None]]:
         """
-        Download a street-level panoramic image and processes it.
+        Download a street-level panoramic image and process it.
 
         Parameters:
-            footprint(list[tuple[float, float]]): Coordinates of the building
+            footprint (list[list[float, float]]): Coordinates of the building
                 footprint to crop the image.
-            fpcent(tuple[float, float]): Latitude and longitude of the query
+            fpcent (tuple[float, float]): Latitude and longitude of the query
                 point.
-            im_name(str): Filename for the output image.
-            depthmap_name(str): Filename for the depthmap.
-            save_intermediate_imagery(bool): Whether to save intermediate
-                images such as the panorama and composite image.
-            save_all_cam_meta(bool): Whether to return all camera metadata.
+            im_path (Path): Path object for the output image file.
+            depthmap_path (Path): Path object for the depthmap file.
+            save_intermediate_imagery (bool, optional): Whether to save
+                intermediate
+                images such as the panorama and composite image. Defaults to
+                    False.
+            save_all_cam_meta (bool, optional): Whether to return all camera
+                metadata. Defaults to False.
 
         Returns:
-            Optional[Union[
-                tuple[float, str, tuple[float, float], tuple[float, float]],
-                tuple[float, str, tuple[float, float], tuple[float, float],
-                      tuple[int, int], float, float, float, float]]]: If
-            successful, returns camera elevation, depthmap, and optionally
-            other camera metadata.
+            tuple[float, str, tuple[float, float], tuple[float, float]] or
+            tuple[float, str, tuple[float, float], tuple[float, float],
+                  tuple[int, int], float, float, float, float] or
+            None: If successful, returns camera elevation, depthmap file path,
+                    camera location, and bounding angles. Optionally returns
+                    additional camera metadata such as pano size, heading,
+                    tilt, FOV, and roll. Returns None if no pano imagery is
+                    found.
         """
         # Initialize filenames for intermediate files
         pano_name, comp_im_name = '', ''
@@ -482,10 +492,9 @@ class GoogleStreetview(ImageScraper):
                     properties['panoTilt'] = results[image_path][6]
                     properties['panoFOV'] = results[image_path][7]
                     properties['panoRoll'] = results[image_path][8]
-            else:
-                if save_all_cam_metadata:
-                    for key in additional_keys:
-                        properties[key] = None
+            elif save_all_cam_metadata:
+                for key in additional_keys:
+                    properties[key] = None
 
             metadata[image_path] = dict(properties)
         return metadata
@@ -686,11 +695,8 @@ class GoogleStreetview(ImageScraper):
         Args:
             pano(dict[str, Any]): A dictionary containing the depth map
                 (as a PIL image) and the panoramic image(as a PIL image).
-            imname(str): The filename for saving the overlaid image. Default
-                is 'panoOverlaid.jpg'.
-
-        Returns:
-            None
+            compim_name(str): The filename for saving the overlaid image.
+                Default is 'panoOverlaid.jpg'.
         """
         # Convert the depth map to grayscale and apply a heat map (jet
         # colormap). Convert depth map to grayscale:
@@ -1046,7 +1052,7 @@ class GoogleStreetview(ImageScraper):
         Convert an integer to an 8-bit binary string.
 
         Args:
-            a(int): The integer to be converted.
+            int_inp(int): The integer to be converted.
 
         Returns:
             str: The 8-bit binary string representation of the integer.
