@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-25-2024
+# 10-26-2024
 
 """
 This module defines GoogleStreetview class downloading Google street imagery.
@@ -78,15 +78,20 @@ BASE_API_URL = 'https://maps.googleapis.com/maps/api/streetview/metadata'
 PANORAMA_METADATA_URL = 'https://www.google.com/maps/photometa/v1'
 TILE_URL_TEMPLATE = 'https://cbk0.google.com/cbk?output=tile' + \
                     '&panoid={pano_id}&zoom={zoom}&x={x}&y={y}'
+
 ZOOM2FOV_MAPPER = {0: 360, 1: 180, 2: 90, 3: 45, 4: 22.5, 5: 11.25}
+FOV_BUFFER_DEG = 10
 TILE_SIZE = 512
 CIRCUM_EARTH_FT = 131482560
 
+REQUESTS_TIMEOUT_VAL = 30
 REQUESTS_RETRY_STRATEGY = Retry(
     total=5,
     backoff_factor=0.1,
     status_forcelist=[500, 502, 503, 504],
 )
+
+FILE_SUBDIRECTORIES = {'images': 'images', 'depthmaps': 'depthmaps'}
 
 
 class GoogleStreetview(ImageScraper):
@@ -171,7 +176,9 @@ class GoogleStreetview(ImageScraper):
             params = {'location': '37.8725187407,-122.2596028649',
                       'source': 'outdoor',
                       'key': api_key}
-            response = requests.get(BASE_API_URL, params=params, timeout=30)
+            response = requests.get(BASE_API_URL,
+                                    params=params,
+                                    timeout=REQUESTS_TIMEOUT_VAL)
 
             # If the requested image cannot be downloaded, notify the user of
             # the error and stop program execution:
@@ -208,14 +215,14 @@ class GoogleStreetview(ImageScraper):
             raise ValueError('Invalid AssetInventory provided.')
 
         # Ensure consistency in dir_path, i.e remove ending / if given:
-        dir_path = Path(save_directory)
-        dir_path.mkdir(parents=True, exist_ok=True)
-        logger.info('\nImages will be saved to: %s\n', dir_path.resolve())
+        base_dir_path = Path(save_directory)
+        base_dir_path.mkdir(parents=True, exist_ok=True)
+        logger.info('\nImages will be saved to: %s\n', base_dir_path.resolve())
 
         # Create the footprints from the items in AssetInventory
         # Keep the asset keys in a list for later use:
         image_set = ImageSet()
-        image_set.dir_path = str(dir_path)
+        image_set.dir_path = str(base_dir_path)
 
         asset_footprints = []
         asset_keys = []
@@ -225,10 +232,15 @@ class GoogleStreetview(ImageScraper):
 
         # Get the images:
         street_images, metadata = self._download_images(asset_footprints,
-                                                        dir_path,
+                                                        base_dir_path,
                                                         False,
                                                         True)
-        # Get the images:
+
+        # Update the dir_path of the ImageSet to contain the updated image
+        # subdirectory:
+        image_set.dir_path = str(base_dir_path / FILE_SUBDIRECTORIES['images'])
+
+        # Write the extracted metadata to image_set:
         for index, image_path in enumerate(street_images):
             image_set.add_image(asset_keys[index],
                                 image_path.name,
@@ -260,9 +272,9 @@ class GoogleStreetview(ImageScraper):
                     etc.) and values are lists of corresponding metadata values
                     for each image.
         """
-        image_dir = save_dir / 'images'
+        image_dir = save_dir / FILE_SUBDIRECTORIES['images']
         image_dir.mkdir(parents=True, exist_ok=True)
-        depthmap_dir = save_dir / 'depthmaps'
+        depthmap_dir = save_dir / FILE_SUBDIRECTORIES['depthmaps']
         depthmap_dir.mkdir(parents=True, exist_ok=True)
 
         # Compute building footprints, parse street-level image and depthmap
@@ -515,7 +527,9 @@ class GoogleStreetview(ImageScraper):
             'key': api_key,
             'source': 'outdoor',
         }
-        response = requests.get(BASE_API_URL, params=params, timeout=30)
+        response = requests.get(BASE_API_URL,
+                                params=params,
+                                timeout=REQUESTS_TIMEOUT_VAL)
         return response.json()['pano_id']
 
     @ staticmethod
@@ -548,7 +562,7 @@ class GoogleStreetview(ImageScraper):
         response = requests.get(PANORAMA_METADATA_URL,
                                 params=params,
                                 proxies=None,
-                                timeout=30)
+                                timeout=REQUESTS_TIMEOUT_VAL)
 
         # Extract depthmap and other image metadata from response:
         response_content = response.content
@@ -656,11 +670,12 @@ class GoogleStreetview(ImageScraper):
                 including 'panoBndAngles' and 'depthMapBldg'.
         """
         # Calculate the viewing angle values that encompass the building
-        # buffered 10 degrees in horizontal direction:
+        # buffered by FOV_BUFFER_DEG degrees in horizontal direction:
         camera_angles = self._get_view_angles(pano, footprint)
-        bnd_angles = np.rint((np.array([round(min(camera_angles), -1) - 10,
-                                       round(max(camera_angles), -1) + 10])
-                             + 180) / 360 * pano['panoSize'][0])
+        bnd_angles = np.rint((
+            np.array([round(min(camera_angles), -1) - FOV_BUFFER_DEG,
+                      round(max(camera_angles), -1) + FOV_BUFFER_DEG])
+            + 180) / 360 * pano['panoSize'][0])
 
         bldg_image = pano['panoImage']
         bldg_im_cropped = bldg_image.crop(
