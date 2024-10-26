@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2024 The Regents of the University of California
 #
 # This file is part of BRAILS++.
@@ -37,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 10-14-2024
+# 10-26-2024
 
 """
 This module defines RegionBoundary class to store region boundary polygons.
@@ -47,13 +46,13 @@ This module defines RegionBoundary class to store region boundary polygons.
     RegionBoundary
 """
 
-import requests
 import sys
+import unicodedata
 from itertools import groupby
+import requests
 from shapely.geometry import Polygon, LineString, MultiPolygon, box
 from shapely.ops import linemerge, unary_union, polygonize
-from brails.utils.geo_tools import *
-import unicodedata
+from brails.utils.geo_tools import write_polygon2geojson
 
 
 class RegionBoundary:
@@ -71,12 +70,11 @@ class RegionBoundary:
 
     def __init__(self, input: dict = None):
         """
-        Check inputs
+        Check inputs.
 
         Args:
           data (dict): The data to be checked
         """
-
         self.data = {}
         valid_data = False
         if isinstance(input, dict):
@@ -85,7 +83,7 @@ class RegionBoundary:
                 self.type = input["type"]
                 # some more checks
 
-        if valid_data == True:
+        if valid_data:
             self.data = input["data"]
         else:
             self.data = {}
@@ -106,31 +104,15 @@ class RegionBoundary:
             else:
                 queryarea_formatted += "".join(list(j))
 
-        # sy - some fixes from the brails
-        ''' 
-        nominatimquery = (
-            "https://nominatim.openstreetmap.org/search?"
-            + f"q={queryarea_formatted}&format=jsonv2"
-        )
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1)"
-                + " AppleWebKit/537.36 (KHTML, like Gecko)"
-                + " Chrome/39.0.2171.95 Safari/537.36"
-            )
-        }
-        r = requests.get(nominatimquery, headers=headers)
-        datalist = r.json()
-        '''
-
         nominatim_endpoint = 'https://nominatim.openstreetmap.org/search'
 
         params = {'q': queryarea_formatted,
                   'format': 'jsonv2'
                   }
 
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                   '(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                   'AppleWebKit/537.36 (KHTML, like Gecko) '
+                   'Chrome/91.0.4472.124 Safari/537.36',
                    'Accept-Language': 'en-US,en;q=0.5',
                    'Referer': 'https://www.openstreetmap.org/',
                    'Connection': 'keep-alive'
@@ -147,13 +129,12 @@ class RegionBoundary:
                 areafound = True
                 break
 
-        if areafound == True:
+        if areafound:
             try:
                 print(f"Found {queryarea_name}")
             except:
-                queryareaNameUTF = unicodedata.normalize("NFKD", queryarea_name).encode(
-                    "ascii", "ignore"
-                )
+                queryareaNameUTF = unicodedata.normalize(
+                    "NFKD", queryarea_name).encode("ascii", "ignore")
                 queryareaNameUTF = queryareaNameUTF.decode("utf-8")
                 print(f"Found {queryareaNameUTF}")
         else:
@@ -220,19 +201,22 @@ class RegionBoundary:
                     bpolycoords = bpolycoords.append(
                         [queryarea[2 * i], queryarea[2 * i + 1]]
                     )
-                    queryarea_printname += f"{queryarea[2*i]}, {queryarea[2*i+1]}, "
+                    queryarea_printname += (f'{queryarea[2*i]}, '
+                                            f'{queryarea[2*i+1]}, ')
                 bpoly = Polygon(bpolycoords)
                 queryarea_printname = queryarea_printname[:-2] + "]"
             else:
                 raise ValueError(
-                    "Less than two longitude/latitude pairs were entered to define the bounding box entry. "
-                    + "A bounding box can be defined by using at least two longitude/latitude pairs."
+                    'Less than two longitude/latitude pairs were entered to '
+                    'define the bounding box entry. A bounding box can be '
+                    'defined by using at least two longitude/latitude pairs.'
                 )
         else:
-            raise ValueError(
-                "Incorrect number of elements detected in the tuple for the bounding box. "
-                "Please check to see if you are missing a longitude or latitude value."
-            )
+            raise ValueError('Incorrect number of elements detected in the '
+                             'tuple for the bounding box. Please check to see '
+                             'if you are missing a longitude or latitude '
+                             'value.'
+                             )
         if outfile:
             write_polygon2geojson(bpoly, outfile)
 
@@ -240,9 +224,7 @@ class RegionBoundary:
 
     def get_boundary(self):
         """
-        Method to return the current bouundary
-
-        Args:
+        Return the current boundary.
 
         Output: tuple
                 A tuple consisting of bpoly, query area and osmid
