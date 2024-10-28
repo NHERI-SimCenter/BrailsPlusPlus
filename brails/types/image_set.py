@@ -36,7 +36,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-26-2024
+# 10-28-2024
 
 """
 This module contains classes for managing and manipulating image sets.
@@ -128,12 +128,12 @@ class ImageSet:
 
     def __init__(self):
         """Initialize an Image set."""
-        self.dir_path = ""
+        self.dir_path = ''
         self.images = {}
 
     def set_directory(
         self,
-        path_to_dir,
+        path_to_dir: str,
         include_existing_images: bool = False,
         limited_to_extension_types=None,
     ):
@@ -164,8 +164,8 @@ class ImageSet:
             # sys.exit('ERROR: the supplied dir: ',
             #         path_to_dir,
             #         ' is not a valid directory')
-            print("ERROR: the supplied dir: ",
-                  path_to_dir, " is not a valid directory")
+            print('Warning: the supplied directory ',
+                  path_to_dir, ' is not a valid directory')
             return False
 
         # if asked to include current images in dir,
@@ -197,12 +197,14 @@ class ImageSet:
 
         return True
 
-    def add_image(self, key, filename: str, properties: dict = None):
+    def add_image(self, key: str | int,
+                  filename: str,
+                  properties: dict = None):
         """
         Create and add a new image to the ImageSet.
 
         Args:
-            key: The identifier for the image, could be a string or an int.
+            key (str|int): The identifier for the image.
             filename (str): The name of the file containing the image.
             properties (dict): Image properties (default is an empty dict).
 
@@ -219,13 +221,12 @@ class ImageSet:
 
         return False
 
-    def get_image(self, key):
+    def get_image(self, key: str | int):
         """
         Get an image.
 
         Args:
-            key:
-               the key corresponding to the image to be returned
+            key (str|int): The identifier for the image.
 
         Returns:
             Image:
