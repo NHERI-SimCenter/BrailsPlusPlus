@@ -1,5 +1,3 @@
-"""Custom data types for storing individual or sets of images."""
-#
 # Copyright (c) 2024 The Regents of the University of California
 #
 # This file is part of BRAILS++.
@@ -38,17 +36,12 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-09-2024
-
-# Written: fmk, 3/24
-
-import os
-# import sys  ERROR HANDLING NEED TO DISCUSSS
+# 10-28-2024
 
 """
 This module contains classes for managing and manipulating image sets.
 
-Classes__
+Classes:
     - Image: A class to represent an individual image.
     - ImageSet: A class for handling collections of images.
 
@@ -57,17 +50,20 @@ Classes__
     ImageSet
 """
 
+import os
+# import sys  ERROR HANDLING NEED TO DISCUSSS
+
 
 class Image:
     """
     A class to represent an image.
 
-    Attributes__
+    Attributes:
           filename (str): filename of image
           properties (dict): properties of image if known, i.e., camera
               location, depth map
 
-    Methods__
+    Methods:
         set_image: Set the filename for an Image.
         update_properties: Update image properties.
         print_info: Print Image properties.
@@ -77,7 +73,7 @@ class Image:
         """
         Initialize an Image.
 
-        Args__
+        Args:
             filename (str): the name of file containing image
             properties (dict): image properties (default is an empty dict)
         """
@@ -88,7 +84,7 @@ class Image:
         """
         Set the filename for an Image.
 
-        Args__
+        Args:
             filename (str): New filename.
         """
         self.filename = filename
@@ -97,7 +93,7 @@ class Image:
         """
         Update Image properties.
 
-        Args__
+        Args:
         additional_properties (dict): additional properties to update the
             current Image properties
         """
@@ -116,14 +112,14 @@ class ImageSet:
     """
     A class representing a set of images.
 
-    Attributes__
+    Attributes:
         dir_path (str):
               A path to image directory if images all in same location.
         images (dict):
               A dict of all images, key is the id for the image, value is an
               Image
 
-     Methods__
+     Methods:
         set_directory: Set the directory path and load existing images.
         add_image: Create and add a new image to the ImageSet.
         get_image: Retrieve an image by its key.
@@ -132,19 +128,19 @@ class ImageSet:
 
     def __init__(self):
         """Initialize an Image set."""
-        self.dir_path = ""
+        self.dir_path = ''
         self.images = {}
 
     def set_directory(
         self,
-        path_to_dir,
+        path_to_dir: str,
         include_existing_images: bool = False,
         limited_to_extension_types=None,
     ):
         """
         Set the directory path.
 
-        Args__
+        Args:
             path_to_dir (str):
                  The path to the directory.
             include_existing_images(bool):
@@ -155,7 +151,7 @@ class ImageSet:
                  specific extensions in list, default is None, i.e.
                  include all files
 
-        Returns__
+        Returns:
             bool:
                  True if the directory exists and is valid, False otherwise.
         """
@@ -168,8 +164,8 @@ class ImageSet:
             # sys.exit('ERROR: the supplied dir: ',
             #         path_to_dir,
             #         ' is not a valid directory')
-            print("ERROR: the supplied dir: ",
-                  path_to_dir, " is not a valid directory")
+            print('Warning: the supplied directory ',
+                  path_to_dir, ' is not a valid directory')
             return False
 
         # if asked to include current images in dir,
@@ -201,16 +197,18 @@ class ImageSet:
 
         return True
 
-    def add_image(self, key, filename: str, properties: dict = None):
+    def add_image(self, key: str | int,
+                  filename: str,
+                  properties: dict = None):
         """
         Create and add a new image to the ImageSet.
 
-        Args__
-            key: The identifier for the image, could be a string or an int.
+        Args:
+            key (str|int): The identifier for the image.
             filename (str): The name of the file containing the image.
             properties (dict): Image properties (default is an empty dict).
 
-        Returns__
+        Returns:
             bool: True if Image is added, False if Image already exists.
         """
         if properties is None:
@@ -223,15 +221,14 @@ class ImageSet:
 
         return False
 
-    def get_image(self, key):
+    def get_image(self, key: str | int):
         """
         Get an image.
 
-        Args__
-            key:
-               the key corresponding to the image to be returned
+        Args:
+            key (str|int): The identifier for the image.
 
-        Returns__
+        Returns:
             Image:
                  The image or None if no image with key
         """
