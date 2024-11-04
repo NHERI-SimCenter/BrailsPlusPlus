@@ -19,7 +19,7 @@ setup(
     package_data={
         'brails': ['processors/vlm_image_classifier/clip/'
                    'bpe_simple_vocab_16e6.txt.gz'],
-    },    
+    },
     install_requires=[
         'pandas',
         'requests',
@@ -74,8 +74,6 @@ setup(
         'Operating System :: Microsoft :: Windows',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Unix',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
