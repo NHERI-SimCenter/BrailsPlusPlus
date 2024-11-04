@@ -1,4 +1,3 @@
-"""This script provides an example on using footprint and image scrapers."""
 # Copyright (c) 2024 The Regents of the University of California
 #
 # This file is part of BRAILS++.
@@ -17,7 +16,7 @@
 # may be used to endorse or promote products derived from this software without
 # specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 'AS IS'
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
 # ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
@@ -39,14 +38,17 @@
 # Last updated:
 # 10-24-2024
 
-import os
-from brails import Importer
-
 """
+Example showcasing BRAILS' image downloading capabilities.
+
  Purpose: Testing 1) get_class method of Importer
                   2) get_footprints method of USA_FootprintScraper module
-                  3) get_images methods of GoogleSatellite and GoogleStreetview
+                  3) get_images and print_info methods of GoogleSatellite and
+                     GoogleStreetview
 """
+
+import os
+from brails import Importer
 
 # This script needs a Google API Key to run.
 # We suggest placing your API key in file apiKey.txt in the same directory as
@@ -64,40 +66,40 @@ if os.path.exists(API_KEY_DIR):
 importer = Importer()
 
 # Select a region and create its RegionBoundary:
-region_data = {"type": "locationName", "data": "Tiburon, CA"}
-region_boundary_class = importer.get_class("RegionBoundary")
+region_data = {'type': 'locationName', 'data': 'Tiburon, CA'}
+region_boundary_class = importer.get_class('RegionBoundary')
 region_boundary_object = region_boundary_class(region_data)
 
 # Get AssetInventory for buildings in the defined region via
 # USA_FootprintScraper:
-print("Running USA_FootprintsScraper...")
+print('Running USA_FootprintsScraper...')
 
-usa_class = importer.get_class("USA_FootprintScraper")
-usa_data = {"length": "ft"}
+usa_class = importer.get_class('USA_FootprintScraper')
+usa_data = {'length': 'ft'}
 instance2 = usa_class(usa_data)
 usa_inventory = instance2.get_footprints(region_boundary_object)
 
-print("\nTotal number of assets detected using FEMA USA Structures data: ",
+print('\nTotal number of assets detected using FEMA USA Structures: ',
       len(usa_inventory.inventory))
-"""
+
 # Subsample from the extracted assets to keep the image downloading step quick.
 # Here, we are randomly sampling 20 buildings using a random seed value of 40:
 small_inventory = usa_inventory.get_random_sample(20, 40)
-print("Number of assets in the selected subset: ",
+print('Number of assets in the selected subset: ',
       len(small_inventory.inventory))
-"""
+
 # Get aerial imagery for the selected subset using GoogleSatellite:
-google_satellite_class = importer.get_class("GoogleSatellite")
+google_satellite_class = importer.get_class('GoogleSatellite')
 google_satellite = google_satellite_class()
-images_satellite = google_satellite.get_images(
-    usa_inventory, "tmp/satellite/")
+images_satellite = google_satellite.get_images(small_inventory,
+                                               'tmp/satellite/')
 
 images_satellite.print_info()
 
 # Get street level imagery for the selected subset using GoogleStreetview:
-google_street_class = importer.get_class("GoogleStreetview")
-google_input = {"apiKey": api_key}
+google_street_class = importer.get_class('GoogleStreetview')
+google_input = {'apiKey': api_key}
 google_street = google_street_class(google_input)
-images_street = google_street.get_images(usa_inventory, "tmp/street/")
+images_street = google_street.get_images(small_inventory, 'tmp/street/')
 
 images_street.print_info()

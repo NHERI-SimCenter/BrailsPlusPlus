@@ -1,11 +1,46 @@
-# Written: Barbaros Cetiner(ImHandler in old BRAILS)
-#          minor edits for BRAILS++ by fmk
-# license: BSD-3 (see LICENSCE file: https://github.com/NHERI-SimCenter/BrailsPlusPlus)
+# Copyright (c) 2024 The Regents of the University of California
+#
+# This file is part of BRAILS++.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# You should have received a copy of the BSD 3-Clause License along with
+# BRAILS. If not, see <http://www.opensource.org/licenses/>.
+#
+# Contributors:
+# Barbaros Cetiner
+#
+# Last updated:
+# 11-04-2024
 
 from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import AssetInventory
-from brails.utils.geo_tools import *
+from brails.utils import GeoTools
 
 import math
 import requests
@@ -90,8 +125,10 @@ class USA_FootprintScraper(FootprintScraper):
             bbox = bpoly.bounds
 
             # Calculate the horizontal and vertical dimensions of the bounding box:
-            xdist = haversine_dist((bbox[0], bbox[1]), (bbox[2], bbox[1]))
-            ydist = haversine_dist((bbox[0], bbox[1]), (bbox[0], bbox[3]))
+            xdist = GeoTools.haversine_dist((bbox[0], bbox[1]),
+                                            (bbox[2], bbox[1]))
+            ydist = GeoTools.haversine_dist((bbox[0], bbox[1]),
+                                            (bbox[0], bbox[3]))
 
             # Determine the bounding box aspect ratio defined (as a number greater
             # than 1) and the long direction of the bounding box:
@@ -116,13 +153,13 @@ class USA_FootprintScraper(FootprintScraper):
                 cols = bboxAspectRatio * n
 
             # Determine the coordinates of each cell covering bpoly:
-            rectangles = mesh_polygon(bpoly, rows, cols)
+            rectangles = GeoTools.mesh_polygon(bpoly, rows, cols)
         else:
             rectangles = [bpoly.envelope]
 
         # Plot the generated mesh:
         if plotfout:
-            plot_polygon_cells(bpoly, rectangles, plotfout)
+            GeoTools.plot_polygon_cells(bpoly, rectangles, plotfout)
 
         return rectangles
 
@@ -164,7 +201,8 @@ class USA_FootprintScraper(FootprintScraper):
 
         cellsSplit = []
         for rect in cells2split:
-            rectangles = self._get_polygon_cells(rect, totalbldgs=results[rect])
+            rectangles = self._get_polygon_cells(
+                rect, totalbldgs=results[rect])
             cellsSplit += rectangles
 
         return cellsKeep, cellsSplit
@@ -262,7 +300,8 @@ class USA_FootprintScraper(FootprintScraper):
             footprints.append(fp)
             heightout = value[1]
             if heightout is not None:
-                attributes["buildingheight"].append(round(heightout * convFactor, 1))
+                attributes["buildingheight"].append(
+                    round(heightout * convFactor, 1))
             else:
                 attributes["buildingheight"].append(None)
 
@@ -311,7 +350,8 @@ class USA_FootprintScraper(FootprintScraper):
             meshInitialfout = (
                 queryarea_printname.replace(" ", "_") + "_Mesh_Initial.png"
             )
-            meshFinalfout = queryarea_printname.replace(" ", "_") + "_Mesh_Final.png"
+            meshFinalfout = queryarea_printname.replace(
+                " ", "_") + "_Mesh_Final.png"
 
         print("\nMeshing the defined area...")
         # cellsPrem = self._get_polygon_cells(bpoly, plotfout=meshInitialfout)
@@ -333,7 +373,7 @@ class USA_FootprintScraper(FootprintScraper):
             )
 
         if plotCells:
-            plot_polygon_cells(bpoly, cellsFinal, meshFinalfout)
+            GeoTools.plot_polygon_cells(bpoly, cellsFinal, meshFinalfout)
 
         footprints, attributes = self._download_ustruct_bldgattr4region(
             cellsFinal, bpoly

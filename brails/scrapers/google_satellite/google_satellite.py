@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-15-2024
+# 11-04-2024
 
 """
 This module defines GoogleSatellite class downloading Google satellite imagery.
@@ -79,8 +79,6 @@ REQUESTS_RETRY_STRATEGY = Retry(
     backoff_factor=0.1,
     status_forcelist=[500, 502, 503, 504],
 )
-SESSION = requests.Session()
-SESSION.mount("https://", HTTPAdapter(max_retries=REQUESTS_RETRY_STRATEGY))
 
 
 class GoogleSatellite(ImageScraper):
@@ -322,12 +320,15 @@ class GoogleSatellite(ImageScraper):
         tiles, offsets, imbnds = [], [], []
         ntiles = (len(x_list), len(y_list))
 
+        session = requests.Session()
+        session.mount("https://",
+                      HTTPAdapter(max_retries=REQUESTS_RETRY_STRATEGY))
         for y_idx, ycoord in enumerate(y_list):
             for x_idx, xcoord in enumerate(x_list):
                 url = GOOGLE_TILE_URL.format(x=xcoord, y=ycoord, z=ZOOM_LEVEL)
 
                 # Download tile using the defined retry strategy:
-                response = SESSION.get(url)
+                response = session.get(url)
                 response.raise_for_status()
 
                 # Save downloaded tile as a PIL image in tiles and calculate
