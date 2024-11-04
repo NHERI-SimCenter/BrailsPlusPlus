@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright (c) 2024 The Regents of the University of California
 #
 # This file is part of BRAILS++.
@@ -33,4 +31,16 @@
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 
-from .utils import Importer
+"""
+utils module of the brails package.
+
+Available classes:
+- GeoTools: Class containing static methods geospatial analysis & operations.
+- Importer: Class for importing class files.
+- InputValidator: Class for validating BRAILS input data.
+
+"""
+
+from .geo_tools import GeoTools
+from .importer import Importer
+from .input_validator import InputValidator
