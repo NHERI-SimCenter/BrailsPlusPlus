@@ -5,7 +5,7 @@
 # Copyright BSD2
 
 from brails.types.image_set import ImageSet
-from brails.utils.utils import Importer
+from brails.utils import Importer
 
 importer = Importer()
 aerial_images = ImageSet()
