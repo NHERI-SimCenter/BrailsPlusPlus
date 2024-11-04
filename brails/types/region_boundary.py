@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 10-26-2024
+# 11-03-2024
 
 """
 This module defines RegionBoundary class to store region boundary polygons.
@@ -52,7 +52,7 @@ from itertools import groupby
 import requests
 from shapely.geometry import Polygon, LineString, MultiPolygon, box
 from shapely.ops import linemerge, unary_union, polygonize
-from brails.utils.geo_tools import write_polygon2geojson
+from brails.utils import GeoTools
 
 
 class RegionBoundary:
@@ -132,7 +132,7 @@ class RegionBoundary:
         if areafound:
             try:
                 print(f"Found {queryarea_name}")
-            except:
+            except UnicodeEncodeError:
                 queryareaNameUTF = unicodedata.normalize(
                     "NFKD", queryarea_name).encode("ascii", "ignore")
                 queryareaNameUTF = queryareaNameUTF.decode("utf-8")
@@ -183,7 +183,7 @@ class RegionBoundary:
                 + "it was entered correctly."
             )
         if outfile:
-            write_polygon2geojson(bpoly, outfile)
+            GeoTools.write_polygon_to_geojson(bpoly, outfile)
 
         return bpoly, queryarea_printname, queryarea_osmid
 
@@ -218,7 +218,7 @@ class RegionBoundary:
                              'value.'
                              )
         if outfile:
-            write_polygon2geojson(bpoly, outfile)
+            GeoTools.write_polygon_to_geojson(bpoly, outfile)
 
         return bpoly, queryarea_printname, None
 
