@@ -131,12 +131,10 @@ class ImageSet:
         self.dir_path = ''
         self.images = {}
 
-    def set_directory(
-        self,
-        path_to_dir: str,
-        include_existing_images: bool = False,
-        limited_to_extension_types=None,
-    ):
+    def set_directory(self,
+                      path_to_dir: str,
+                      include_existing_images: bool = False,
+                      limited_to_extension_types=None):
         """
         Set the directory path.
 
@@ -197,7 +195,8 @@ class ImageSet:
 
         return True
 
-    def add_image(self, key: str | int,
+    def add_image(self,
+                  key: str | int,
                   filename: str,
                   properties: dict = None):
         """
