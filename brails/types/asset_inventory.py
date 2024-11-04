@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 10-26-2024
+# 11-03-2024
 
 """
 This module defines classes associated with asset inventories.
@@ -48,10 +48,19 @@ This module defines classes associated with asset inventories.
 """
 
 import random
+import json
+from datetime import datetime
+from importlib.metadata import version
 from typing import Any
 import csv
+import logging
 import numpy as np
 import pandas as pd
+from brails.utils import InputValidator
+
+# Configure logging:
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class Asset:
@@ -59,48 +68,40 @@ class Asset:
     A data structure for an asset that holds it coordinates and features.
 
     Attributes:
-        asset_id (str): Unique identifier for the asset.
-        coordinates (List[List[float]]): A list of coordinate pairs
-            [[x1, y1], [x2, y2], ...].
-        features (Dict[str, any]): A dictionary of features (attributes) for
+        asset_id (str|int):: Unique identifier for the asset.
+        coordinates (list[List[float]]): A list of coordinate pairs
+            [[lon1, lat1], [lon2, lat2], ..., [lonN, latN]].
+        features (dict[str, any]): A dictionary of features (attributes) for
             the asset.
 
     Methods:
-        add_features(additional_features: Dict[str, any],
+        add_features(additional_features: dict[str, any],
             overwrite: bool = True): Update the existing features in the asset.
         print_info(): Print the coordinates and features of the asset.
     """
 
     def __init__(self,
-                 asset_id: int,
+                 asset_id: str | int,
                  coordinates: list[list[float]],
                  features: dict[str, Any] = None):
         """
         Initialize an Asset with an asset ID, coordinates, and features.
 
         Args:
-            asset_id (int): The unique identifier for the asset.
-            coordinates (list[list[float]): A list of coordinate pairs
-                representing the asset's geometry.
+            asset_id (str|int): The unique identifier for the asset.
+            coordinates (list[list[float]]): A two-dimensional list
+                representing the geometry of the asset in [[lon1, lat1],
+                [lon2, lat2], ..., [lonN, latN]] format.
             features (dict[str, Any], optional): A dictionary of features.
                 Defaults to an empty dict.
         """
-        is_two_d = True
-        if not isinstance(coordinates, list):
-            is_two_d = False
-        else:
-            for item in coordinates:
-                if not isinstance(item, list):
-                    is_two_d = False
-
-        if is_two_d is True:
+        coords_check, output_msg = InputValidator.validate_coordinates(
+            coordinates)
+        if coords_check:
             self.coordinates = coordinates
         else:
-            print(
-                " Error Asset.__init__ cordinates passed for asset ",
-                asset_id,
-                " is not a 2d list",
-            )
+            logger.warning('%s Setting coordinates for asset %s to an empty '
+                           'list.', output_msg, asset_id)
             self.coordinates = []
 
         self.features = features if features is not None else {}
@@ -116,15 +117,18 @@ class Asset:
                 Defaults to True.
         """
         if overwrite:
+            # Overwrite existing features with new ones:
             self.features.update(additional_features)
         else:
-            additional_features.update(self.features)
-            self.features = additional_features
+            # Only update with new keys, do not overwrite existing keys:
+            for key, value in additional_features.items():
+                if key not in self.features:
+                    self.features[key] = value
 
     def print_info(self):
         """Print the coordinates and features of the asset."""
-        print('\t coords: ', self.coordinates)
-        print('\t features: ', self.features)
+        print('\t Coordinates: ', self.coordinates)
+        print('\t Features: ', self.features)
 
 
 class AssetInventory:
@@ -135,310 +139,270 @@ class AssetInventory:
         inventory (dict): The inventory stored in a dict accessed by asset_id
 
      Methods:
-        __init__: Constructor that just creats an empty inventory
-        print(): to print the inventory
-        add_asset(asset_id, Asset): to add an asset to the inventory     
-        add_asset_coordinates(asset_id, coordinates): to add an asset to the inventory with just a list of coordinates
-        add_asset_features(asset_id, features): to append new features to the asset
-        add_asset_features_from_csv(file_path, id_column): To add asset features from a csv file
-        remove_asset(asset_id): to remove an asset to the inventory     
-        get_asset_coordinates(asset_id): to get features of a particular assset
-        get_asset_features(asset_id): to coordinatesof a particular assset
-        get_random_sample(size, seed): to get a smaller subset
-        get_footprints(): to return a list of footprints
-        get_random_footprints(): to return a random sample of the footprints
-        get_geojson(): To return the contents as a geojson dict
-        get_asset_ids(): To return the asset ids as a list
-        read_from_csv(file_path, keep_existing, str_type, id_column): To read inventory dataset from a csv table
+        print_info(): Print the asset inventory.
+        add_asset(asset_id, Asset): Add an asset to the inventory.
+        add_asset_coordinates(asset_id, coordinates): Add an asset to the
+            inventory with just a list of coordinates.
+        add_asset_features(asset_id, features): Append new features to the
+            asset.
+        add_asset_features_from_csv(file_path, id_column): Add asset features
+            from a csv file.
+        remove_asset(asset_id): Remove an asset to the inventory.
+        get_asset_coordinates(asset_id): Get features of a particular assset.
+        get_asset_features(asset_id): Get coordinates of a particular assset.
+        get_random_sample(size, seed): Get subset of the inventory.
+        get_footprints(): Return a list of footprints.
+        get_random_footprints(): Return a random sample of the footprints.
+        get_geojson(): Return inventory as a geojson dict.
+        get_asset_ids(): Return the asset ids as a list.
+        read_from_csv(file_path, keep_existing, str_type, id_column): Read
+            inventory dataset from a csv table
     """
 
     def __init__(self):
-        """Initialize AssetInventory by setting inventory to an empty dict."""
+        """Initialize AssetInventory with an empty inventory dictionary."""
         self.inventory = {}
 
-    def print(self):
-        """print the asset inventory"""
-
+    def print_info(self):
+        """Print the asset inventory."""
         print(self.__class__.__name__)
         print("Inventory stored in: ", self.inventory.__class__.__name__)
         for key, asset in self.inventory.items():
-            print("key: ", key, "asset:")
-            asset.print()
+            print("Key: ", key, "Asset:")
+            asset.print_info()
 
-    def add_asset_coordinates(self, asset_id: int, coordinates: list) -> bool:
+    def add_asset(self, asset_id: str | int, asset: Asset) -> bool:
         """
-        To initialize an Asset and add to inventory
+        Add an Asset to the inventory.
 
         Args:
-            asset_id (str):
-                  The unique asset id.
-            coordinates (list):
-                  A two-dimensional list representing the coordinates,
-                  [[x1, y1][x2, y2],..,[xN, yN]]
+            asset_id (str|int): The unique identifier for the asset.
+            asset (Asset): The asset to be added.
 
         Returns:
-            bool:
-                  True if asset was addded, False otherwise.
+            bool: True if the asset was added successfully, False otherwise.
         """
         existing_asset = self.inventory.get(asset_id, None)
 
         if existing_asset is not None:
-            print(
-                "ERROR: AssetInventory.add_asset_feature: asset with id {} already exists".format(
-                    asset_id),
-            )
+            logger.warning('Asset with id %s already exists. Asset was not '
+                           'added', asset_id)
             return False
 
-        # create asset and add using id as the key
+        self.inventory[asset_id] = asset
+
+        return True
+
+    def add_asset_coordinates(self,
+                              asset_id: str | int,
+                              coordinates: list[list[float]]) -> bool:
+        """
+        Add an Asset to the inventory by adding its coordinate information.
+
+        Args:
+            asset_id (str|int): The unique identifier for the asset.
+            coordinates (list[list[float]]): A two-dimensional list
+                representing the geometry in [[lon1, lat1], [lon2, lat2], ...,
+                [lonN, latN]] format.
+
+        Returns:
+            bool: True if the asset was added successfully, False otherwise.
+        """
+        existing_asset = self.inventory.get(asset_id, None)
+
+        if existing_asset is not None:
+            logger.warning('Asset with id %s already exists. Coordinates were '
+                           'not added', asset_id)
+            return False
+
+        # Create asset and add using id as the key:
         asset = Asset(asset_id, coordinates)
         self.inventory[asset_id] = asset
 
         return True
 
-    def add_asset(self, asset_id: int, asset: Asset) -> bool:
+    def add_asset_features(self,
+                           asset_id: str | int,
+                           new_features: dict,
+                           overwrite=True) -> bool:
         """
-        To initialize an Asset and add to inventory
+        Add new asset features to the Asset with the specified ID.
 
         Args:
-            asset_id (str):
-                  The unique asset id.
-            asset (Asset):
-                  An asset.
+            asset_id (str|int): The unique identifier for the asset.
+            new_features (dict): A dictionary of features to add to the asset.
+            overwrite (bool): Whether to overwrite existing features with the
+                same keys. Defaults to True.
 
         Returns:
-            bool:
-                  True if asset was addded, False otherwise.
+            bool: True if features were successfully added, False if the asset
+                does not exist or the operation fails.
         """
-        existing_asset = self.inventory.get(asset_id, None)
-
-        if existing_asset is not None:
-            print(
-                "ERROR: AssetInventory.add_asset_feature: asset with id",
-                asset_id,
-                " already exists",
-            )
+        asset = self.inventory.get(asset_id, None)
+        if asset is None:
+            logger.warning('No existing Asset with id % s found. Asset '
+                           'features not added.', asset_id)
             return False
 
-        # create asset and add using id as the key
-        self.inventory[asset_id] = asset
+        return asset.add_features(new_features, overwrite)
 
-        return True
-
-    def remove_asset(self, asset_id: int) -> bool:
+    def remove_asset(self, asset_id: str | int) -> bool:
         """
-        To remove an Asset
+        Remove an Asset from the inventory.
 
         Args:
-            asset_id (str):
-                  The unique asset id.
+            asset_id (str|int): The unique identifier for the asset.
 
         Returns:
-            bool:
-                  True if asset was removed, False otherwise.
+            bool: True if asset was removed, False otherwise.
         """
         del self.inventory[asset_id]
 
         return True
 
-    def add_asset_features(self, asset_id, new_features: dict, overwrite=True):
-        """
-        Add a asset feature to a asset.
-
-        Args:
-           id (str):
-                 The unique asset id.
-           feature (dict):
-                 A dict of features to add for a asset
-
-        Returns:
-           bool:
-                 Success (True) or Failure (False)
-        """
-
-        asset = self.inventory.get(asset_id, None)
-        if asset is None:
-            print(
-                "ERROR: AssetInventory.add_asset_feature: no asset exists with id",
-                asset_id,
-            )
-            return False
-
-        return asset.add_features(new_features, overwrite)
-
-    def get_asset_features(self, asset_id):
+    def get_asset_features(self, asset_id: str | int) -> tuple[bool, dict]:
         """
         Get features of a particular asset.
 
         Args:
-            id (str):
-                  The unique asset id.
+            asset_id (str|int): The unique identifier for the asset.
 
         Returns:
-            tuple:
-                A tuple containing a boolean value indicating whether the processing was
-                successful and the dict of asset features if asset present
+            tuple[bool, Dict]: A tuple where the first element is a boolean
+                indicating whether the asset was found, and the second element
+                is a dictionary containing the asset's features if the asset
+                is present. Returns an empty dictionary if the asset is not
+                found.
         """
-
         asset = self.inventory.get(asset_id, None)
         if asset is None:
             return False, {}
 
         return True, asset.features
 
-    def get_asset_coordinates(self, asset_id):
+    def get_asset_coordinates(self, asset_id: str | int) -> tuple[bool, list]:
         """
-        Add a asset feature to a asset.
+        Get the coordinates of a particular asset.
 
         Args:
-            asset_id (str):
-                 The unique asset id.
+            asset_id (str | int): The unique identifier for the asset.
 
         Returns:
-            tuple:
-                 A tuple containing a boolean value indicating whether the processing was
-                 successful and the dict of asset features if asset present
-
+            tuple[bool, list]]: A tuple where the first element is a boolean
+                indicating whether the asset was found, and the second element
+                is a list of coordinate pairs in the format [[lon1, lat1],
+                [lon2, lat2], ..., [lonN, latN]] if the asset is present.
+                Returns an empty list if the asset is not found.
         """
-
         asset = self.inventory.get(asset_id, None)
         if asset is None:
             return False, []
 
         return True, asset.coordinates
 
-    def get_random_sample(self, number, seed=None):
+    def get_asset_ids(self) -> list[str | int]:
         """
-        Method to return a smaller AssetInvenntory of randomly selected assets
-
-        Args:
-            number (int):
-                 The number of assets to be in smaller inventory
-            seed (int):
-                 The seed for generator, if None provided no seed.
+        Retrieve the IDs of all assets in the inventory.
 
         Returns:
-           AssetInventory
-                 A smaller inventory of randomly selected assets
+            list[str | int]: A list of asset IDs, which may be strings or
+                integers.
         """
+        return list(self.inventory.keys())
 
+    def get_random_sample(self,
+                          nsamples: int,
+                          seed: int | float | str | bytes | bytearray = None):
+        """
+        Generate a smaller AssetInventory with a random selection of assets.
+
+        Args:
+            nsamples (int): The number of assets to include in the sampled
+                inventory.
+            seed (int | float | str | bytes | bytearray | None): The seed for
+                the random generator. If None, the seed is set to the sytem
+                default (i.e., the current system time).
+
+        Returns:
+           AssetInventory: A new AssetInventory instance containing a random
+               subset of assets.
+        """
         result = AssetInventory()
-        if (seed is not None):
+        if seed is not None:
             random.seed(seed)
 
-        list_random_keys = random.sample(self.inventory.keys(), number)
-        for key in list_random_keys:
+        random_keys = random.sample(list(self.inventory.keys()), nsamples)
+        for key in random_keys:
             result.add_asset(key, self.inventory[key])
 
         return result
 
-    def get_footprints(self) -> list:
+    def get_coordinates(self) -> tuple[list[list[list[float, float]]],
+                                       list[str | int]]:
         """
-        Method to return the footprints of the assets in the invetory
-
-        Args:
+        Get geometry (coordinates) and keys of all assets in the inventory.
 
         Returns:
-           list
-                 The asset.coordinates of each asset
-           keys
-                 The asset keys
+            tuple[list[list[list[float, float]]], list[str | int]]: A tuple
+                containing:
+                - A list of coordinates for each asset, where each coordinate
+                    is represented as a list of [longitude, latitude] pairs.
+                - A list of asset keys corresponding to each Asset.
         """
-
-        result_footprints = []
+        result_coordinates = []
         result_keys = []
         for key, asset in self.inventory.items():
-            result_footprints.append(asset.coordinates)
+            result_coordinates.append(asset.coordinates)
             result_keys.append(key)
 
-        return result_footprints, result_keys
+        return result_coordinates, result_keys
 
-    def get_random_footprints(self, number, seed=None) -> list:
+    def write2geojson(self, output_file: str = '') -> dict:
         """
-        Method to return the footprints of a number of randomly selected assets in the inventory.
-
-        Args:
-            number (int):
-                 The number of asset coordinates
-            seed (int):
-                 The seed for generator, if None provided no seed.
+        Generate a GeoJSON representation of the assets in the inventory.
 
         Returns:
-           list
-                 The asset.coordinates of the random set of assets chosen
+            dict: A dictionary in GeoJSON format containing all assets, with
+                each asset represented as a feature. Each feature includes the
+                geometry (Point or Polygon) and associated properties.
         """
-
-        result_footprints = []
-        result_keys = []
-        if (seed is not None):
-            random.seed(seed)
-
-        list_random_keys = random.sample(self.inventory.keys(), number)
-        for key in list_random_keys:
-            asset = self.inventory[key]
-            result_footprints.append(asset.coordinates)
-            result_keys.append(key)
-
-        return result_footprints, result_keys
-
-    def get_geojson(self) -> dict:
-        """
-        Method to return the assets in a GeoJSON dictionary
-
-        Args:
-
-        Returns:
-           dict: GeoJSON dictionary
-
-        """
-
         geojson = {'type': 'FeatureCollection',
-                   "crs": {"type": "name", "properties":
-                           {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
-                   'features': []}
+                   'generated': str(datetime.now()),
+                   'brails_version': version('BRAILS'),
+                   'crs': {'type': 'name',
+                           'properties': {
+                               'name': 'urn:ogc:def:crs:OGC:1.3:CRS84'}
+                           },
+                   'features': []
+                   }
 
         for key, asset in self.inventory.items():
             if len(asset.coordinates) == 1:
-                # sy - completing incompete code
                 geometry = {"type": "Point",
-                            "coordinates": [[asset.coordinates[0][0], asset.coordinates[0][1]]]
+                            "coordinates": [asset.coordinates[0][:]]
                             }
-
-                point_feature = {"type": "Feature",
-                                 "geometry": geometry,
-                                 "properties": asset.features
-                                 }
-
-                geojson['features'].append(point_feature)
-
             else:
                 geometry = {'type': 'Polygon',
                             'coordinates': asset.coordinates
                             }
 
-                feature = {'type': 'Feature',
-                           'properties': asset.features,
-                           'geometry': geometry
-                           }
-                if 'type' in asset.features:
-                    feature['type'] = asset.features['type']
+            feature = {'type': 'Feature',
+                       'properties': asset.features,
+                       'geometry': geometry
+                       }
+            if 'type' in asset.features:
+                feature['type'] = asset.features['type']
 
-                geojson['features'].append(feature)
-                # here we could put in NA! for imputation and ensure all features have same set of keys!!
+            geojson['features'].append(feature)
+            # TODO: Note from SY here we could put in NA! for imputation and
+            # ensure all features have same set of keys!!
+
+        # Write the created GeoJSON dictionary into a GeoJSON file:
+        if output_file:
+            with open(output_file, 'w', encoding='utf-8') as file_out:
+                json.dump(geojson, file_out, indent=2)
 
         return geojson
-
-    def get_asset_ids(self) -> list:
-        """
-        Method to return the asset ids
-
-        Args:
-
-        Returns:
-           list: asset ids
-
-        """
-
-        return list(self.inventory.keys())
 
     def read_from_csv(self, file_path, keep_existing, str_type="building", id_column=None) -> bool:
         """
@@ -557,17 +521,6 @@ class AssetInventory:
                   True if assets were addded, False otherwise.
         """
 
-        def is_float(element: any) -> bool:
-            # If you expect None to be passed:
-            if element is None:
-                return False
-            try:
-                float(element)
-                return True
-            except ValueError:
-                return False
-            pass
-
         try:  # Attempt to open the file
             with open(file_path, mode="r") as csvfile:
                 csv_reader = csv.DictReader(csvfile)
@@ -581,7 +534,7 @@ class AssetInventory:
                 val = bldg_features[key]
                 if val.isdigit():
                     bldg_features[key] = int(val)
-                elif is_float(val):
+                elif InputValidator.is_float(val):
                     bldg_features[key] = float(val)
 
             if id_column not in bldg_features.keys():
@@ -610,7 +563,7 @@ class AssetInventory:
 
         features_json = self.get_geojson()['features']
         bldg_properties = [(self.inventory[i].features | {
-                            "index": i}) for dummy, i in enumerate(self.inventory)]
+            "index": i}) for dummy, i in enumerate(self.inventory)]
 
         # [bldg_features['properties'] for bldg_features in features_json]
 
