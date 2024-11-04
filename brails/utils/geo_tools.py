@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright (c) 2024 The Regents of the University of California
 #
-# This file is part of BRAILS.
+# This file is part of BRAILS++.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -37,200 +35,287 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 03-15-2024
+# 11-03-2024
 
 """
-This module defines clesses related to image sets
+This module defines a class for geospatial analysis and operations.
 
 .. autosummary::
 
-      haversine_dist
-      mesh_polygon
-      plot_polygon_cells
-      write_polygon2geojson(poly, outfile):
+      GeoTools
 """
 
 import json
 from math import radians, sin, cos, atan2, sqrt
 import matplotlib.pyplot as plt
 
-from shapely import to_geojson, centroid
-from shapely.geometry import Polygon
+from shapely import to_geojson
+from shapely.geometry import Polygon, MultiPolygon
 from shapely.strtree import STRtree
 
+# Constants:
+R_EARTH_KM = 6371.0
+KM2_FEET = 3280.84
 
-def haversine_dist(p1, p2):
+
+class GeoTools:
     """
-    Function that calculates the Haversine distance between two points.
+    A collection of static methods for geospatial analysis and operations.
 
-    Input: Two points with coordinates defined as latitude and longitude
-           with each point defined as a list of two floating-point values
-    Output: Distance between the input points in feet
-    """
+    The GeoTools class provides various utility functions to perform common
+    geospatial tasks, including distance calculations, polygon meshing,
+    plotting, and GeoJSON file handling. The methods leverage Shapely
+    geometries to operate on points and polygons, making it suitable for
+    geographical data manipulation and visualization.
 
-    # Define mean radius of the Earth in kilometers:
-    R = 6371.0
+    Methods:
+        - haversine_dist(p1: list, p2: list) -> float:
+          Calculate the Haversine distance between two geographical points.
 
-    # Convert coordinate values from degrees to radians
-    lat1 = radians(p1[0])
-    lon1 = radians(p1[1])
-    lat2 = radians(p2[0])
-    lon2 = radians(p2[1])
+        - mesh_polygon(polygon: Polygon, rows: int, cols: int) ->
+            list[Polygon]: Split a polygon into a grid of individual
+            rectangular polygons.
 
-    # Compute the difference between latitude and longitude values:
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
+        - plot_polygon_cells(bpoly: Polygon | MultiPolygon,
+            rectangles: list[Polygon], output_file: str = ''): Plot a polygon
+            and its rectangular mesh, optionally saving the plot.
 
-    # Compute the distance between two points as a proportion of Earth's
-    # mean radius:
-    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        - write_polygon_to_geojson(poly: Polygon | MultiPolygon,
+            output_file: str): Write a Shapely Polygon or MultiPolygon to a
+            GeoJSON file.
 
-    # Compute distance between the two points in feet:
-    distance = R * c * 3280.84
-    return distance
-
-
-def mesh_polygon(polygon, rows: int, cols: int):
-    """
-    Function that splits a polygon into individual rectangular polygons.
-
-    Inputs: A Shapely polygon and number of rows and columns of rectangular
-            cells requested to mesh the area of the polygon.
-            with each point defined as a list of two floating-point values
-    Output: Individual rectangular cells stored as Shapely polygons
+        - match_points_to_polygons(points: list, polygons: list) ->
+            tuple[list, dict]: Match points to polygons and return the
+            correspondence data.
     """
 
-    # Get bounds of the polygon:
-    min_x, min_y, max_x, max_y = polygon.bounds
+    @staticmethod
+    def haversine_dist(p1: list, p2: list) -> float:
+        """
+        Calculate the Haversine distance between two points.
 
-    # Calculate dimensions of each cell:
-    width = (max_x - min_x) / cols
-    height = (max_y - min_y) / rows
+        This function computes the shortest distance over the earth's surface
+        between two points specified by their latitude and longitude.
 
-    rectangles = []
-    # For each cell:
-    for i in range(rows):
-        for j in range(cols):
-            # Calculate coordinates of the cell vertices:
-            x1 = min_x + j * width
-            y1 = min_y + i * height
-            x2 = x1 + width
-            y2 = y1 + height
+        Args:
+            p1 (list): The first point as a list containing two floating-point
+                values, where the first element is the latitude and the second
+                is the longitude of the point in degrees.
+            p2 (list): The second point as a list containing two floating-point
+                values, where the first element is the latitude and the second
+                is the longitude of the point in degrees.
 
-            # Convert the computed geometry into a polygon:
-            poly = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+        Returns:
+            float: The Haversine distance between the two points in feet.
+        """
+        # Convert coordinate values from degrees to radians:
+        lat1, lon1 = radians(p1[0]), radians(p1[1])
+        lat2, lon2 = radians(p2[0]), radians(p2[1])
 
-            # Check if the obtained cell intersects with the polygon:
-            if poly.intersects(polygon):
-                poly = poly.intersection(polygon)
-                # If the intersection is a finite geometry keep its envelope as
-                # a valid cell:
-                if poly.area > 0:
-                    rectangles.append(poly.envelope)
-    return rectangles
+        # Compute the difference between latitude and longitude values:
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
 
+        # Compute the distance between two points as a proportion of Earth's
+        # mean radius:
+        a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
-def plot_polygon_cells(bpoly, rectangles, fout=False):
-    """
-    Function that plots the mesh for a polygon and saves the plot into a PNG image
+        # Return distance between the two points in feet:
+        return R_EARTH_KM * c * KM2_FEET
 
-    Inputs: A Shapely polygon and a list of rectangular mesh cells saved as
-            Shapely polygons. Optional input is a string containing the name of the
-            output file
-    """
+    @staticmethod
+    def mesh_polygon(polygon: Polygon, rows: int, cols: int) -> list[Polygon]:
+        """
+        Split a Spolygon into a grid of individual rectangular polygons.
 
-    if bpoly.geom_type == "MultiPolygon":
-        for poly in bpoly.geoms:
-            plt.plot(*poly.exterior.xy, "k")
-    else:
-        plt.plot(*bpoly.exterior.xy, "k")
-    for rect in rectangles:
-        try:
-            plt.plot(*rect.exterior.xy)
-        except:
-            pass
-    if fout:
-        plt.savefig(fout, dpi=600, bbox_inches="tight")
-    plt.show()
+        This function divides the area of the input polygon into a specified
+        number of rows and columns, creating a mesh of rectangular cells.
+        Each cell is checked for intersection with the input polygon, and
+        only the intersecting parts are returned.
 
+        Args:
+            polygon (Polygon): A Shapely polygon to be meshed.
+            rows (int): The number of rows to divide the polygon into.
+            cols (int): The number of columns to divide the polygon into.
 
-def write_polygon2geojson(poly, outfile):
-    """
-    Function that writes a single Shapely polygon into a GeoJSON file
+        Returns:
+            list[Polygon]: A list of Shapely polygons representing the
+                individual rectangular cells that mesh the input polygon.
+        """
+        # Get bounds of the polygon:
+        min_x, min_y, max_x, max_y = polygon.bounds
 
-    Input: A Shapely polygon or multi polygon
-    """
+        # Calculate dimensions of each cell:
+        width = (max_x - min_x) / cols
+        height = (max_y - min_y) / rows
 
-    if "geojson" not in outfile.lower():
-        outfile = outfile.replace(outfile.split(".")[-1], "geojson")
-    geojson = {
-        "type": "FeatureCollection",
-        "crs": {
-            "type": "name",
-            "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"},
-        },
-        "features": [],
-    }
-    if poly.geom_type == "MultiPolygon":
-        polytype = "MultiPolygon"
-    elif poly.geom_type == "Polygon":
-        polytype = "Polygon"
+        rectangles = []
+        # For each cell:
+        for i in range(rows):
+            for j in range(cols):
+                # Calculate coordinates of the cell vertices:
+                x1 = min_x + j * width
+                y1 = min_y + i * height
+                x2 = x1 + width
+                y2 = y1 + height
 
-    feature = {
-        "type": "Feature",
-        "properties": {},
-        "geometry": {"type": polytype, "coordinates": []},
-    }
-    feature["geometry"]["coordinates"] = json.loads(
-        to_geojson(poly).split('"coordinates":')[-1][:-1]
-    )
-    geojson["features"].append(feature)
-    with open(outfile, "w") as output_file:
-        json.dump(geojson, output_file, indent=2)
+                # Convert the computed geometry into a polygon:
+                cell_polygon = Polygon(
+                    [(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
 
+                # Check if the obtained cell intersects with the polygon:
+                if cell_polygon.intersects(polygon):
+                    intersection = cell_polygon.intersection(polygon)
+                    # If the intersection is a finite geometry keep its
+                    # envelope as a valid cell:
+                    if intersection.is_empty:
+                        continue
+                    rectangles.append(intersection.envelope)
 
-def match_points2polygons(points: list, polygons: list) -> list:
-    """
-    Function that finds the set of points that match a set of polygons 
+        return rectangles
 
-    Inputs:  A list of Shapely points and a list of footprint data defined as a
-             list of lists of coordinates in EPSG 4326, i.e., [[vert1],....
-             [vertlast]]. Vertices are defined in [longitude,latitude] fashion.
-    Outputs: A list of Shapely points and a dictionary that maps each footprint
-             list of coordinates (converted to string) to the first matched 
-             Shapely point
-    """
+    @staticmethod
+    def plot_polygon_cells(bpoly: Polygon | MultiPolygon,
+                           rectangles: list[Polygon],
+                           output_file: str = ''):
+        """
+        Plot a polygon and its rectangular mesh, optionally saving the plot.
 
-    # Create an STR tree for the input points:
-    pttree = STRtree(points)
+        Args:
+            bpoly (Polygon | MultiPolygon): A Shapely polygon or MultiPolygon
+                to plot.
+            rectangles (list[Polygon]): A list of Shapely polygons representing
+                the rectangular cells that mesh input polygon.
+            output_file (str, optional): Filename to save the plot as a PNG
+                image. If empty string, the plot is not saved.
 
-    # Find the data points that are enclosed in each polygon:
-    ptkeepind = []
-    other_index = []
-    fp2ptmap = {}
-    for ind, poly in enumerate(polygons):
-        res = pttree.query(Polygon(poly))
+        Raises:
+            ValueError: If `fout` is provided and an invalid filename is given.
+        """
+        # Plot the base polygon:
+        if bpoly.geom_type == "MultiPolygon":
+            for poly in bpoly.geoms:
+                plt.plot(*poly.exterior.xy, color='black')
+        else:
+            plt.plot(*bpoly.exterior.xy, color='black')
 
-        if res.size > 1:
-            # sy - if multiple points exist in polygon, find the closest to the centroid
-            source1_points = pttree.geometries.take(res)
-            poly_centroid = centroid(Polygon(poly))
+        # Plot the rectangular cells:
+        for rect in rectangles:
+            # Check if the rectangle is valid before plotting
+            if not rect.is_empty:
+                plt.plot(*rect.exterior.xy, color='blue')
 
-            tree = STRtree(source1_points)
-            idx = tree.nearest(poly_centroid)
-            res = res[idx:idx+1]  # make res.size==1
+        # Save the plot if a filename is provided:
+        if output_file:
+            try:
+                plt.savefig(output_file, dpi=600, bbox_inches="tight")
+            except Exception as e:
+                raise ValueError(f"Error saving the file: {e}") from e
 
-        if res.size == 1:
-            ptkeepind.extend(res)
-            other_index.append(ind)
-            fp2ptmap[str(poly)] = points[res[0]]
-    ptkeepind = set(ptkeepind)
+        plt.show()
 
-    # Create a list of points that include just the points that have a polygon
-    # match:
-    ptskeep = []
-    for ind in ptkeepind:
-        ptskeep.append(points[ind])
+    @staticmethod
+    def write_polygon_to_geojson(poly: Polygon | MultiPolygon,
+                                 output_file: str):
+        """
+        Write a Shapely Polygon or MultiPolygon to a GeoJSON file.
 
-    return ptskeep, fp2ptmap, other_index
+        Args:
+            poly (Polygon | MultiPolygon): A Shapely polygon or MultiPolygon to
+                be written.
+            output_file (str): The output filename for the GeoJSON file.
+
+        """
+        if 'geojson' not in output_file.lower():
+            output_file = output_file.replace(
+                output_file.split('.')[-1], 'geojson')
+
+        # Create the GeoJSON structure:
+        geojson = {
+            "type": "FeatureCollection",
+            "crs": {
+                "type": "name",
+                "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"},
+            },
+            "features": []
+        }
+
+        # Determine the geometry type and coordinates:
+        polytype = poly.geom_type
+        coordinates = json.loads(
+            to_geojson(poly).split('"coordinates":')[-1][:-1])
+
+        feature = {"type": "Feature",
+                   "properties": {},
+                   "geometry": {"type": polytype,
+                                "coordinates": coordinates
+                                }
+                   }
+
+        geojson["features"].append(feature)
+
+        # Write the GeoJSON to the specified file:
+        with open(output_file, 'w', encoding='utf8') as outfile:
+            json.dump(geojson, outfile, indent=2)
+
+    @staticmethod
+    def match_points_to_polygons(points: list,
+                                 polygons: list) -> tuple[list, dict]:
+        """
+        Match points to polygons and return the correspondence data.
+
+        This function finds Shapely points that fall within given polygons.
+        If multiple points exist within a polygon, it selects the point closest
+        to the polygon's centroid.
+
+        Args:
+            points (list): A list of Shapely points.
+            polygons (list): A list of polygon coordinates defined in
+                             EPSG 4326 (longitude, latitude).
+
+        Returns:
+            tuple[list, dict]:
+                - A list of matched Shapely Point geometries.
+                - A dictionary mapping each polygon (represented as a string)
+                    to the corresponding matched point.
+        """
+        # Create an STR tree for the input points:
+        pttree = STRtree(points)
+
+        # Initialize the list to keep indices of matched points and the mapping
+        # dictionary:
+        ptkeepind = []
+        fp2ptmap = {}
+
+        for poly in polygons:
+            polygon = Polygon(poly)
+
+            # Query points that are within the polygon:
+            res = pttree.query(polygon)
+
+            if res.size > 0:  # Check if any points were found:
+                # If multiple points exist in polygon, find the closest to the
+                # centroid:
+                if res.size > 1:
+                    source_points = pttree.geometries.take(res)
+                    poly_centroid = polygon.centroid
+                    nearest_point = min(source_points,
+                                        key=poly_centroid.distance)
+                    res = [nearest_point]  # Keep only the nearest point
+
+                # Add the found point(s) to the keep index list:
+                ptkeepind.extend(res)
+
+                # Map polygon to the first matched point:
+                fp2ptmap[str(poly)] = points[res[0]]
+
+        # Convert the list of matched points to a set for uniqueness and back
+        # to a list:
+        ptkeepind = list(set(ptkeepind))
+
+        # Create a list of points that includes just the points that have a
+        # polygon match:
+        ptskeep = [points[ind] for ind in ptkeepind]
+
+        return ptskeep, fp2ptmap
