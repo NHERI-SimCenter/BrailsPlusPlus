@@ -1,4 +1,4 @@
-"""Setup file for the `BRAILS++` package."""
+"""Setup file for the BRAILS++ package."""
 
 from setuptools import setup, find_packages
 import brails
@@ -17,8 +17,8 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={
-        'brails': ['processors/vlm_image_classifier/clip/'
-                   'bpe_simple_vocab_16e6.txt.gz'],
+        'brails': ['py.typed', 'processors/vlm_image_classifier/clip/'
+                   'bpe_simple_vocab_16e6.txt.gz']
     },
     install_requires=[
         'pandas',
