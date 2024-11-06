@@ -1,15 +1,20 @@
 """Setup file for the BRAILS++ package."""
 
+import re
 from setuptools import setup, find_packages
-import brails
 
 
 with open('README.md', encoding='utf-8') as f:
     long_description = f.read()
 
+with open('brails/__init__.py', 'r', encoding='utf-8') as f:
+    version = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
+                        f.read(), re.M).group(1)
+
+
 setup(
     name='brails',
-    version=brails.__version__,
+    version=version,
     description='BRAILS++: Building Regional Asset Inventories at Large Scale',
     long_description=long_description,
     author='NHERI SimCenter',
