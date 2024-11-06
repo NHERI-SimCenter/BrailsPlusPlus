@@ -36,7 +36,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-24-2024
+# 11-06-2024
 
 """
 Example showcasing BRAILS' image downloading capabilities.
@@ -60,7 +60,9 @@ API_KEY_DIR = '../api_key.txt'
 if os.path.exists(API_KEY_DIR):
     with open(API_KEY_DIR, 'r', encoding='utf-8') as file:
         api_key = file.readline().strip()  # Read first line & strip whitespace
-
+else:
+    raise FileNotFoundError('API key file not found. Please ensure the file'
+                            f' exists at: {API_KEY_DIR}')
 
 # Create the importer:
 importer = Importer()
