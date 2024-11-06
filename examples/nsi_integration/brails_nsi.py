@@ -6,13 +6,10 @@
 """
 
 import os
-import sys
 import copy
 import json
 
-sys.path.insert(1, "../../")
-
-from brails.utils.utils import Importer
+from brails import Importer
 
 # create an Import to get the classes
 
@@ -30,7 +27,7 @@ region_boundary_object = region_boundary_class(region_data)
 nsi_class = importer.get_class("NSI_Parser")
 nsi = nsi_class()
 inventory = nsi.get_raw_data_given_boundary(region_boundary_object, 'ft')
-inventory.print()
+inventory.print_info()
 
 
 #
@@ -48,21 +45,21 @@ small_inventory = osm_inventory.get_random_sample(3, 200)
 copy_inventory = copy.deepcopy(small_inventory)
 
 print('\n******** SMALL INVENTORY *********')
-small_inventory.print()
+small_inventory.print_info()
 
 print('\n******** NSI RAW DATA FOR SMALL INVENTORY *********')
 small_inventory = nsi.get_raw_data_given_inventory(small_inventory, 'ft')
-small_inventory.print()
+small_inventory.print_info()
 
 print('\n******** NSI FILTERED DATA FOR SMALL INVENTORY *********')
-#another_small_inventory = osm_inventory.get_random_sample(4, 200)
+# another_small_inventory = osm_inventory.get_random_sample(4, 200)
 copy_inventory = nsi.get_filtered_data_given_inventory(copy_inventory, 'ft')
-copy_inventory.print()
+copy_inventory.print_info()
 
 geojson = copy_inventory.get_geojson()
 
-#pretty_geojson = json.dumps(geojson, indent=2)
-#print(pretty_geojson)
+# pretty_geojson = json.dumps(geojson, indent=2)
+# print(pretty_geojson)
 
 filepath = 'tmp/smallinv.geojson'
 directory = os.path.dirname(filepath)
