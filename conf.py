@@ -57,3 +57,16 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['sphynx/static']
+
+rst_prolog = f"""
+.. |fmk| replace:: **fmk**
+.. |app| replace:: BrailsPlusPlus
+.. |SimCenter| replace:: `SimCenter`_
+.. _SimCenter: https://simcenter.designsafe-ci.org/
+.. |DesignSafe| replace:: `DesignSafe`_
+.. _DesignSafe: https://designsafe-ci.org
+.. |br| raw:: html
+
+    <br>
+
+"""
