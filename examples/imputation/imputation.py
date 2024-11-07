@@ -1,8 +1,11 @@
+# Written: sangri 08/24
+# License: BSD-2
+
 """
 imputation.py
 ================
 
-This is a simple BRAILS example to demonstrate imputating (estimating the
+This is a simple BRAILS++ example to demonstrate imputating (estimating the
 missing pieces) of an inventory dataset.
 
 """
@@ -15,7 +18,7 @@ import json
 #   .. it is included here as it allows us to test the code on a nightly basis
 sys.path.insert(1, "../../")
 
-from brails.utils.utils import Importer
+from brails.utils.importer import Importer
 from brails.types.image_set import ImageSet
 from brails.types.asset_inventory import Asset, AssetInventory
 importer = Importer()
@@ -32,10 +35,10 @@ new_inventory = imputer.impute(inventory,n_possible_worlds=10)
 
 new_inventory.print()
 
-
 #
 # Saving the imputed database into a geojson file 
 #
+
 geojson = new_inventory.get_geojson()
 filepath = 'tmp/imputed_inventory.geojson'
 directory = os.path.dirname(filepath)
