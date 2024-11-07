@@ -32,11 +32,20 @@
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 #
 # Contributors:
-# Frank McKenna
 # Barbaros Cetiner
+# Frank McKenna
+#
 #
 # Last updated:
 # 11-06-2024
+
+"""
+This module defines a class for scraping data from NSI.
+
+.. autosummary::
+
+      NSI_Parser
+"""
 
 import requests
 from requests.adapters import HTTPAdapter, Retry
@@ -61,22 +70,28 @@ class NSI_Parser:
                               'occupancy': 'OccupancyClass', 'fp': 'Footprint'}
         self.footprints = {}
         self.nsi2brailsmap = {'x': 'lon', 'y': 'lat', 'sqft': 'fparea',
-                              'num_story': 'numstories', 'med_yr_blt': 'erabuilt',
-                              'val_struct': 'repaircost', 'bldgtype': 'constype',
+                              'num_story': 'numstories',
+                              'med_yr_blt': 'erabuilt',
+                              'val_struct': 'repaircost',
+                              'bldgtype': 'constype',
                               'occtype': 'occupancy', 'fd_id': 'fd_id'}
 
     def __get_bbox(self, footprints: list) -> tuple:
         """
-        Method that determines the extent of the area covered by the 
+        Get the bounding box for a footprint.
+
+        Method that determines the extent of the area covered by the
         footprints as a tight-fit rectangular bounding box
 
-        Input:  List of footprint data defined as a list of lists of 
-                coordinates in EPSG 4326, i.e., [[vert1],....[vertlast]].
-                Vertices are defined in [longitude,latitude] fashion
-        Output: Tuple containing the minimum and maximum latitude and 
-                longitude values 
-       """
-       # :
+        Args:
+            footprints (list) List of footprint data defined as a list of
+                lists of coordinates in EPSG 4326, i.e., [[vert1],....
+                [vertlast]]. Vertices are defined in [longitude,latitude]
+                fashion.
+        Returns:
+            tuple: containing the minimum and maximum latitude and
+                longitude values.
+        """
         minlat = footprints[0][0][1]
         minlon = footprints[0][0][0]
         maxlat = footprints[0][0][1]
@@ -95,14 +110,15 @@ class NSI_Parser:
 
     def __get_nbi_data(self, bbox: tuple) -> dict:
         """
-        Method that gets the NBI data for a bounding box entry
+        Get the NBI data for a bounding box entry.
 
-        Input:  Tuple containing the minimum and maximum latitude and 
-                longitude values 
-        Output: Dictionary containing extracted NBI data keyed using the
+        Args:
+            bbox (tuple) Tuple containing the minimum and maximum latitude and
+                longitude values.
+        Returns:
+            dict: Dictionary containing extracted NBI data keyed using the
                 NBI point coordinates
-       """
-
+        """
         # Unpack the bounding box coordinates:
         (minlat, minlon, maxlat, maxlon) = bbox
 
@@ -138,22 +154,25 @@ class NSI_Parser:
 
     def GetRawDataROI(self, roi, outfile: str) -> None:
         """
-        Method that reads NSI buildings data finds the points within a 
-        bounding polygon or matches a set of footprints, then writes the 
+        Get NSI data within an ROI/area of footprints and write to GeoJSON.
+
+        Method that reads NSI buildings data finds the points within a
+        bounding polygon or matches a set of footprints, then writes the
         extracted data into a GeoJSON file.
 
-        Input:  roi: Either 1) a list of footprint data defined as a list of 
-                lists of coordinates in EPSG 4326, i.e., [[vert1],....[vertlast]].
-                Vertices are defined in [longitude,latitude] fashion, or 
-                2) a shapely polygon or multipolygon for the boundary polygon
-                of the region of interest.
+        Args:
+            roi: Either 1) a list of footprint data defined as a list of
+                lists of coordinates in EPSG 4326, i.e., [[vert1],....
+                [vertlast]]. Vertices are defined in [longitude,latitude]
+                fashion, or 2) a shapely polygon or multipolygon for the
+                boundary polygon of the region of interest.
 
                 outfile: string containing the name of the output file
                 Currently, only GeoJSON format is supported
         """
-
         if type(roi) is list:
-            # Determine the coordinates of the bounding box including the footprints:
+            # Determine the coordinates of the bounding box including the
+            # footprints:
             bbox = self.__get_bbox(roi)
             footprints = roi.copy()
             bpoly = None
@@ -162,14 +181,15 @@ class NSI_Parser:
                 roitype = roi.geom_type
                 bpoly = roi
                 # If ROI is defined as a Shapely polygon or multipolygon,
-                # determine the coordinates of the bounding box for the bounding
-                # polygon:
+                # determine the coordinates of the bounding box for the
+                # bounding polygon:
                 if roitype in ['MultiPolygon', 'Polygon', 'POLYGON']:
                     bbox = bpoly.bounds
                     bbox = (bbox[1], bbox[0], bbox[3], bbox[2])
                 # Otherwise exit with a system error:
             except:
-                sys.exit('Unimplemented region of interest data type: ', roitype)
+                sys.exit('Unimplemented region of interest data type: ',
+                         roitype)
 
         # Get NBI data for the computed bounding box:
         datadict = self.__get_nbi_data(bbox)
@@ -177,8 +197,8 @@ class NSI_Parser:
         points = list(datadict.keys())
         if bpoly is None:
             # Find the NBI points that are enclosed in each footprint:
-            pointsKeep, points_keep_footprints_index = GeoTools.match_points_to_polygons(
-                points, footprints)
+            pointsKeep, _, points_keep_footprints_index = \
+                GeoTools.match_points_to_polygons(points, footprints)
         else:
             # Find the NBI points contained in bpoly:
             pointsKeep = set()
@@ -217,22 +237,30 @@ class NSI_Parser:
         else:
             return {}
 
-    def GetNSIData(self, footprints: list, lengthUnit: str = 'ft', outfile: str = ''):
+    def GetNSIData(self, footprints: list,
+                   lengthUnit: str = 'ft',
+                   outfile: str = ''):
         """
+        Match NSI buildings points to a set of footprints.
+
         Method that reads NSI buildings points and matches the data to a set
         of footprints and writes the data in a BRAILS-compatible format
 
-        Input:  roi: List of footprint data defined as a list of lists of 
+        Args:
+            footprints: List of footprint data defined as a list of lists of
                 coordinates in EPSG 4326, i.e., [[vert1],....[vertlast]].
                 Vertices are defined in [longitude,latitude] fashion.
 
-                outfile: string containing the name of the output file
+            lengthUnit: The units for the data to be returned in, 'm' or 'ft'
+
+            outfile: string containing the name of the output file
                 Currently, only GeoJSON format is supported
 
-        Output: Attribute dictionary for the footprints containing the attributes:
-                1)latitude, 2)longitude, 3)building plan area, 4)number of 
-                floors, 5)year of construction, 6)replacement cost, 7)structure
-                type, 8)occupancy class, 9)footprint polygon
+        Output:
+            dict: Attribute dictionary for the footprints containing the
+                attributes: 1)latitude, 2)longitude, 3)building plan area,
+                4)number of floors, 5)year of construction, 6)replacement cost,
+                7)structure type, 8)occupancy class, 9)footprint polygon
         """
 
         def get_attr_from_datadict(datadict, footprints, nsi2brailsmap):
@@ -252,8 +280,8 @@ class NSI_Parser:
             points = list(datadict.keys())
 
             # Match NBI data to footprints:
-            fp2ptmap, points_keep_footprint_index = GeoTools.match_points_to_polygons(
-                points, footprints)
+            _, fp2ptmap, points_keep_footprint_index = \
+                GeoTools.match_points_to_polygons(points, footprints)
 
             # Write the matched footprints to a list:
             footprintsMatched = fp2ptmap.keys()
@@ -272,10 +300,13 @@ class NSI_Parser:
                 pt = fp2ptmap[fpstr]
                 ptres = datadict[pt]
                 attributes['fp'].append(fp)
-                attributes['fp_json'].append(('{"type":"Feature","geometry":' +
-                                              '{"type":"Polygon","coordinates":[' +
-                                              f"""{fp}""" +
-                                              ']},"properties":{}}'))
+                attributes['fp_json'].append(
+                    ('{"type":"Feature","geometry":' +
+                     '{"type":"Polygon","coordinates":[' +
+                     f"""{fp}""" +
+                     ']},"properties":{}}'
+                     )
+                )
                 for key in nsikeys:
                     if key == 'bldgtype':
                         attributes[nsi2brailsmap[key]].append(
@@ -286,13 +317,15 @@ class NSI_Parser:
                     else:
                         attributes[nsi2brailsmap[key]].append(ptres[key])
 
-            # Display the number of footprints that can be matched to NSI points:
+            # Display the number of footprints that can be matched to NSI
+            # points:
             print(f'Found a total of {len(footprintsMatched)} building points'
                   ' in NSI that match the footprint data.')
 
             return attributes, points_keep_footprint_index
 
-        # Determine the coordinates of the bounding box including the footprints:
+        # Determine the coordinates of the bounding box including the
+        # footprints:
         bbox = self.__get_bbox(footprints)
 
         # Get the NBI data for computed bounding box:
@@ -345,7 +378,9 @@ class NSI_Parser:
         del self.attributes['fp_json']
 
         geojson = {'type': 'FeatureCollection',
-                   "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
+                   "crs": {"type": "name", "properties": {
+                       "name": "urn:ogc:def:crs:OGC:1.3:CRS84"}
+                   },
                    'features': []}
 
         for ind, fp in enumerate(self.footprints):
@@ -369,7 +404,10 @@ class NSI_Parser:
 
         return geojson, points_keep_footprint_index
 
-    def get_raw_data_given_boundary(self, region_boundary: RegionBoundary, length_unit: str = 'ft', outfile: str = '') -> AssetInventory:
+    def get_raw_data_given_boundary(self,
+                                    region_boundary: RegionBoundary,
+                                    length_unit: str = 'ft',
+                                    outfile: str = '') -> AssetInventory:
         """
         Method that gets nsi data given a region boundary
 
@@ -401,7 +439,10 @@ class NSI_Parser:
         # return self.GetRawDataROI(region_boundary.get_boundary()[0], outfile)
         return inventory
 
-    def get_raw_data_given_inventory(self, inventory: AssetInventory, length_unit: str = 'ft', outfile: str = '') -> AssetInventory:
+    def get_raw_data_given_inventory(self,
+                                     inventory: AssetInventory,
+                                     length_unit: str = 'ft',
+                                     outfile: str = '') -> AssetInventory:
         """
         Method that gets nsi data given a region boundary
 
@@ -442,7 +483,7 @@ class NSI_Parser:
                                           length_unit: str = 'ft',
                                           outfile: str = ''):
         """
-        Gets NSI data given a region boundary.
+        Get NSI data corresponding to an AssetInventory.
 
         Input:  RegionBoundary
                    The region boundary
@@ -458,8 +499,8 @@ class NSI_Parser:
                 type, 8)occupancy class, 9)footprint polygon
         """
 
-        footprints, asset_keys = inventory.get_footprints()
-        geojson, footprints_index = self.GetNSIData(footprints,  length_unit)
+        footprints, asset_keys = inventory.get_coordinates()
+        geojson, footprints_index = self.GetNSIData(footprints, length_unit)
 
         print('keys: ', asset_keys, ' index   ', footprints_index)
         # print(geojson)
