@@ -1,4 +1,4 @@
-# Written: sangri 08/24
+# Written: sy Aug 2024
 # License: BSD-2
 
 """
@@ -33,16 +33,20 @@ knn_imputer_class = importer.get_class("KnnImputer")
 imputer=knn_imputer_class()
 new_inventory = imputer.impute(inventory,n_possible_worlds=10)
 
-new_inventory.print()
+new_inventory.print_info()
 
 #
 # Saving the imputed database into a geojson file 
 #
 
-geojson = new_inventory.get_geojson()
+
 filepath = 'tmp/imputed_inventory.geojson'
 directory = os.path.dirname(filepath)
 if not os.path.exists(directory):
     os.makedirs(directory)
-with open(filepath, "w") as f:
-    json.dump(geojson, f, indent=2)
+    
+new_inventory.write_to_geojson(filepath)
+
+#with open(filepath, "w") as f:
+#    json.dump(geojson, f, indent=2)
+

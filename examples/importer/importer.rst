@@ -18,6 +18,18 @@ The following example shows it re-written using the **Importer** class.
    :language: python
    :linenos:
 
+To run for example the **importer.py** script for Berkeley, CA the following would be issued frm a terminal window:
+
+.. code-block::
+      
+   python3 imputation.py USA_FootprintScraper "Berkeley, CA"
+
+
+and the application  would produce:
+
+.. literalinclude:: output.txt
+   :linenos:   
+    
 .. note::
 
    #. The purpose of the **Importer** class is to allow applications to be developed for building workflows. Consider developing an application that would parse the following JSON input file to such an application. Using the **Importer** class, this application could be written without a bunch of if-else statments switching on the type. This works in |app| because all the classes that do work inherit from **ABC**, **Abstract Base Class** which is part of the python abc module.

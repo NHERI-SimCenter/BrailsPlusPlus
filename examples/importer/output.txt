@@ -1,0 +1,24 @@
+
+Searching for Berkeley, CA...
+Found Berkeley, Alameda County, California, United States
+
+Meshing the defined area...
+
+Meshing complete. Split Berkeley into 76 cells
+
+Found a total of 28404 building footprints in Berkeley
+num assets found: 28404 for Berkeley, CA using USA_FootprintScraper
+AssetInventory
+Inventory stored in:  dict
+Key:  1494 Asset:
+	 Coordinates:  [[-122.251349037992, 37.8918864620566], [-122.251516845084, 37.8918428029327], [-122.251549765644, 37.8919222669851], [-122.251381955857, 37.891965925353], [-122.251349037992, 37.8918864620566]]
+	 Features:  {'type': 'Building', 'buildingheight': 17.4, 'fpAreas': 1554}
+Key:  6666 Asset:
+	 Coordinates:  [[-122.249638045616, 37.8518085710136], [-122.249704555083, 37.8517353439222], [-122.249817801199, 37.8518000117672], [-122.249751291732, 37.8518732380851], [-122.249638045616, 37.8518085710136]]
+	 Features:  {'type': 'Building', 'buildingheight': 21.6, 'fpAreas': 1326}
+Key:  24068 Asset:
+	 Coordinates:  [[-122.286804056442, 37.8794971468902], [-122.286829349408, 37.8794214649434], [-122.286967954066, 37.8794505676668], [-122.286942660203, 37.8795262510017], [-122.286804056442, 37.8794971468902]]
+	 Features:  {'type': 'Building', 'buildingheight': 20.4, 'fpAreas': 1181}
+Key:  23236 Asset:
+	 Coordinates:  [[-122.260463864989, 37.8783452637543], [-122.260597977173, 37.8783233546667], [-122.260614329206, 37.8783862371837], [-122.260480216124, 37.8784081469617], [-122.260463864989, 37.8783452637543]]
+	 Features:  {'type': 'Building', 'buildingheight': 25.6, 'fpAreas': 925}

@@ -1,0 +1,64 @@
+******** SMALL INVENTORY WITH NO NSI_DATA *********
+AssetInventory
+Inventory stored in:  dict
+Key:  2989 Asset:
+	 Coordinates:  [[-122.2539358, 37.8823889], [-122.2538841, 37.8822577], [-122.2538636, 37.882258], [-122.2538454, 37.8821659], [-122.2540379, 37.8821623], [-122.2540337, 37.8822459], [-122.2539784, 37.882245], [-122.2540264, 37.8823667], [-122.2539358, 37.8823889]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 'NA', 'numstories': 1, 'roofshape': 'NA', 'fpAreas': 2973}
+Key:  13333 Asset:
+	 Coordinates:  [[-122.2743673, 37.8721826], [-122.2743469, 37.8720391], [-122.2743897, 37.8720353], [-122.2743867, 37.8720143], [-122.2744387, 37.8720097], [-122.2744416, 37.8720305], [-122.2744612, 37.8720287], [-122.2744816, 37.8721725], [-122.2743673, 37.8721826]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 'NA', 'numstories': 'NA', 'roofshape': 'NA', 'fpAreas': 1866}
+Key:  1989 Asset:
+	 Coordinates:  [[-122.2534638, 37.856443], [-122.2534705, 37.856479], [-122.2535403, 37.8564711], [-122.253547, 37.8564912], [-122.2535946, 37.8565177], [-122.2535993, 37.8565277], [-122.2536127, 37.8565272], [-122.2535939, 37.8564404], [-122.253494, 37.8564531], [-122.2534913, 37.8564399], [-122.2534638, 37.856443]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 'NA', 'numstories': 'NA', 'roofshape': 'NA', 'fpAreas': 625}
+Key:  9361 Asset:
+	 Coordinates:  [[-122.2654248, 37.8550534], [-122.2654134, 37.854993], [-122.2654737, 37.8549859], [-122.2654851, 37.8550463], [-122.2654248, 37.8550534]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 'NA', 'numstories': 'NA', 'roofshape': 'NA', 'fpAreas': 392}
+Key:  17479 Asset:
+	 Coordinates:  [[-122.292788, 37.8763201], [-122.2927717, 37.8762696], [-122.2928486, 37.8762541], [-122.2928649, 37.8763047], [-122.292788, 37.8763201]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 'NA', 'numstories': 'NA', 'roofshape': 'NA', 'fpAreas': 435}
+
+Getting National Structure Inventory (NSI) building data for the entered location input...
+Found a total of 3 building points in NSI that are within the entered region of interest
+keys:  [2989, 13333, 1989, 9361, 17479]  index    [0, 1, 2]
+
+Getting National Structure Inventory (NSI) building data for the entered location input...
+Found a total of 3 building points in NSI that match the footprint data.
+keys:  [2989, 13333, 1989, 9361, 17479]  index    [0, 1, 2]
+
+******** SMALL INVENTORY WITH RAW NSI DATA *********
+AssetInventory
+Inventory stored in:  dict
+Key:  2989 Asset:
+	 Coordinates:  [[-122.2539358, 37.8823889], [-122.2538841, 37.8822577], [-122.2538636, 37.882258], [-122.2538454, 37.8821659], [-122.2540379, 37.8821623], [-122.2540337, 37.8822459], [-122.2539784, 37.882245], [-122.2540264, 37.8823667], [-122.2539358, 37.8823889]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 1954, 'numstories': 1, 'roofshape': 'NA', 'fpAreas': 2973, 'fd_id': 475445345, 'bid': '849VVP4W+HHW-2-2-2-2', 'occtype': 'IND6', 'st_damcat': 'IND', 'bldgtype': 'W', 'found_type': 'S', 'cbfips': '060014239021001', 'pop2amu65': 0, 'pop2amo65': 0, 'pop2pmu65': 4, 'pop2pmo65': 0, 'sqft': 6506.02409, 'num_story': 1, 'ftprntid': '06001_548222', 'ftprntsrc': 'NGA', 'students': 0, 'found_ht': 0.5, 'val_struct': 958384.635, 'val_cont': 958384.635, 'val_vehic': 81000, 'source': 'E', 'med_yr_blt': 1939, 'firmzone': 'NA', 'o65disable': 0.22, 'u65disable': 0.03, 'x': -122.2535494, 'y': 37.85648153, 'ground_elv': 239.3753899307251, 'ground_elv_m': 72.96161651611328, 'lon': -122.2539358, 'lat': 37.882252355, 'fparea': 1592, 'repaircost': 389506.045, 'constype': 'RM1', 'occupancy': 'RES1'}
+Key:  13333 Asset:
+	 Coordinates:  [[-122.2743673, 37.8721826], [-122.2743469, 37.8720391], [-122.2743897, 37.8720353], [-122.2743867, 37.8720143], [-122.2744387, 37.8720097], [-122.2744416, 37.8720305], [-122.2744612, 37.8720287], [-122.2744816, 37.8721725], [-122.2743673, 37.8721826]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 1992, 'numstories': 1, 'roofshape': 'NA', 'fpAreas': 1866, 'fd_id': 473584913, 'bid': '849VVPJW+WC4-6-2-5-3', 'occtype': 'RES1-1SWB', 'st_damcat': 'RES', 'bldgtype': 'M', 'found_type': 'B', 'cbfips': '060014216002007', 'pop2amu65': 2, 'pop2amo65': 1, 'pop2pmu65': 2, 'pop2pmo65': 1, 'sqft': 1592, 'num_story': 1, 'ftprntid': '06001_813170', 'ftprntsrc': 'NGA', 'students': 0, 'found_ht': 2, 'val_struct': 389506.045, 'val_cont': 194753.022, 'val_vehic': 27000, 'source': 'P', 'med_yr_blt': 1954, 'firmzone': 'NA', 'o65disable': 0.22, 'u65disable': 0.03, 'x': -122.2539358, 'y': 37.882252355, 'ground_elv': 1004.1034449096679, 'ground_elv_m': 306.05072021484375, 'lon': -122.2743974, 'lat': 37.872097621, 'fparea': 1539.29, 'repaircost': 320524.48, 'constype': 'W1', 'occupancy': 'RES3A'}
+Key:  1989 Asset:
+	 Coordinates:  [[-122.2534638, 37.856443], [-122.2534705, 37.856479], [-122.2535403, 37.8564711], [-122.253547, 37.8564912], [-122.2535946, 37.8565177], [-122.2535993, 37.8565277], [-122.2536127, 37.8565272], [-122.2535939, 37.8564404], [-122.253494, 37.8564531], [-122.2534913, 37.8564399], [-122.2534638, 37.856443]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 1939, 'numstories': 1, 'roofshape': 'NA', 'fpAreas': 625, 'fd_id': 474705763, 'bid': '849VVPCG+R6Q-4-2-3-2', 'occtype': 'RES3A', 'st_damcat': 'RES', 'bldgtype': 'W', 'found_type': 'S', 'cbfips': '060014223003010', 'pop2amu65': 1, 'pop2amo65': 0, 'pop2pmu65': 0, 'pop2pmo65': 0, 'sqft': 1539.29, 'num_story': 1, 'ftprntid': '06001_34778', 'ftprntsrc': 'NGA', 'students': 0, 'found_ht': 0.5, 'val_struct': 320524.48, 'val_cont': 160262.24, 'val_vehic': 27000, 'source': 'P', 'med_yr_blt': 1992, 'firmzone': 'NA', 'o65disable': 0.22, 'u65disable': 0.03, 'x': -122.2743974, 'y': 37.872097621, 'ground_elv': 165.9004509815979, 'ground_elv_m': 50.56645584106445, 'lon': -122.2535494, 'lat': 37.85648153, 'fparea': 6506.02409, 'repaircost': 958384.635, 'constype': 'W1', 'occupancy': 'IND6'}
+Key:  9361 Asset:
+	 Coordinates:  [[-122.2654248, 37.8550534], [-122.2654134, 37.854993], [-122.2654737, 37.8549859], [-122.2654851, 37.8550463], [-122.2654248, 37.8550534]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 'NA', 'numstories': 'NA', 'roofshape': 'NA', 'fpAreas': 392}
+Key:  17479 Asset:
+	 Coordinates:  [[-122.292788, 37.8763201], [-122.2927717, 37.8762696], [-122.2928486, 37.8762541], [-122.2928649, 37.8763047], [-122.292788, 37.8763201]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 'NA', 'numstories': 'NA', 'roofshape': 'NA', 'fpAreas': 435}
+
+******** SMALL INVENTORY WITH PROCESSES NSI DATA*********
+AssetInventory
+Inventory stored in:  dict
+Key:  2989 Asset:
+	 Coordinates:  [[-122.2539358, 37.8823889], [-122.2538841, 37.8822577], [-122.2538636, 37.882258], [-122.2538454, 37.8821659], [-122.2540379, 37.8821623], [-122.2540337, 37.8822459], [-122.2539784, 37.882245], [-122.2540264, 37.8823667], [-122.2539358, 37.8823889]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 1954, 'numstories': 1, 'roofshape': 'NA', 'fpAreas': 2973, 'fd_id': 475445345, 'bid': '849VVP4W+HHW-2-2-2-2', 'occtype': 'IND6', 'st_damcat': 'IND', 'bldgtype': 'W', 'found_type': 'S', 'cbfips': '060014239021001', 'pop2amu65': 0, 'pop2amo65': 0, 'pop2pmu65': 4, 'pop2pmo65': 0, 'sqft': 6506.02409, 'num_story': 1, 'ftprntid': '06001_548222', 'ftprntsrc': 'NGA', 'students': 0, 'found_ht': 0.5, 'val_struct': 958384.635, 'val_cont': 958384.635, 'val_vehic': 81000, 'source': 'E', 'med_yr_blt': 1939, 'firmzone': 'NA', 'o65disable': 0.22, 'u65disable': 0.03, 'x': -122.2535494, 'y': 37.85648153, 'ground_elv': 239.3753899307251, 'ground_elv_m': 72.96161651611328, 'lon': -122.2539358, 'lat': 37.882252355, 'fparea': 1592, 'repaircost': 389506.045, 'constype': 'RM1', 'occupancy': 'RES1'}
+Key:  13333 Asset:
+	 Coordinates:  [[-122.2743673, 37.8721826], [-122.2743469, 37.8720391], [-122.2743897, 37.8720353], [-122.2743867, 37.8720143], [-122.2744387, 37.8720097], [-122.2744416, 37.8720305], [-122.2744612, 37.8720287], [-122.2744816, 37.8721725], [-122.2743673, 37.8721826]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 1992, 'numstories': 1, 'roofshape': 'NA', 'fpAreas': 1866, 'fd_id': 473584913, 'bid': '849VVPJW+WC4-6-2-5-3', 'occtype': 'RES1-1SWB', 'st_damcat': 'RES', 'bldgtype': 'M', 'found_type': 'B', 'cbfips': '060014216002007', 'pop2amu65': 2, 'pop2amo65': 1, 'pop2pmu65': 2, 'pop2pmo65': 1, 'sqft': 1592, 'num_story': 1, 'ftprntid': '06001_813170', 'ftprntsrc': 'NGA', 'students': 0, 'found_ht': 2, 'val_struct': 389506.045, 'val_cont': 194753.022, 'val_vehic': 27000, 'source': 'P', 'med_yr_blt': 1954, 'firmzone': 'NA', 'o65disable': 0.22, 'u65disable': 0.03, 'x': -122.2539358, 'y': 37.882252355, 'ground_elv': 1004.1034449096679, 'ground_elv_m': 306.05072021484375, 'lon': -122.2743974, 'lat': 37.872097621, 'fparea': 1539.29, 'repaircost': 320524.48, 'constype': 'W1', 'occupancy': 'RES3A'}
+Key:  1989 Asset:
+	 Coordinates:  [[-122.2534638, 37.856443], [-122.2534705, 37.856479], [-122.2535403, 37.8564711], [-122.253547, 37.8564912], [-122.2535946, 37.8565177], [-122.2535993, 37.8565277], [-122.2536127, 37.8565272], [-122.2535939, 37.8564404], [-122.253494, 37.8564531], [-122.2534913, 37.8564399], [-122.2534638, 37.856443]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 1939, 'numstories': 1, 'roofshape': 'NA', 'fpAreas': 625, 'fd_id': 474705763, 'bid': '849VVPCG+R6Q-4-2-3-2', 'occtype': 'RES3A', 'st_damcat': 'RES', 'bldgtype': 'W', 'found_type': 'S', 'cbfips': '060014223003010', 'pop2amu65': 1, 'pop2amo65': 0, 'pop2pmu65': 0, 'pop2pmo65': 0, 'sqft': 1539.29, 'num_story': 1, 'ftprntid': '06001_34778', 'ftprntsrc': 'NGA', 'students': 0, 'found_ht': 0.5, 'val_struct': 320524.48, 'val_cont': 160262.24, 'val_vehic': 27000, 'source': 'P', 'med_yr_blt': 1992, 'firmzone': 'NA', 'o65disable': 0.22, 'u65disable': 0.03, 'x': -122.2743974, 'y': 37.872097621, 'ground_elv': 165.9004509815979, 'ground_elv_m': 50.56645584106445, 'lon': -122.2535494, 'lat': 37.85648153, 'fparea': 6506.02409, 'repaircost': 958384.635, 'constype': 'W1', 'occupancy': 'IND6'}
+Key:  9361 Asset:
+	 Coordinates:  [[-122.2654248, 37.8550534], [-122.2654134, 37.854993], [-122.2654737, 37.8549859], [-122.2654851, 37.8550463], [-122.2654248, 37.8550534]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 'NA', 'numstories': 'NA', 'roofshape': 'NA', 'fpAreas': 392}
+Key:  17479 Asset:
+	 Coordinates:  [[-122.292788, 37.8763201], [-122.2927717, 37.8762696], [-122.2928486, 37.8762541], [-122.2928649, 37.8763047], [-122.292788, 37.8763201]]
+	 Features:  {'type': 'Building', 'buildingheight': 'NA', 'erabuilt': 'NA', 'numstories': 'NA', 'roofshape': 'NA', 'fpAreas': 435}

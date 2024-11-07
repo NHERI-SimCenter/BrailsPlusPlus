@@ -23,7 +23,7 @@ def main():
     region_boundary_object = RegionBoundary({"type": "locationName", "data": args.location})
 
     scraper_type = args.scraper
-    if scraper_type == "OSM_Scraper":
+    if scraper_type == "OSM_FootprintScraper":
         scraper = OSM_FootprintScraper({"length": "ft"})
     elif scraper_type == "MS_FootprintScraper":
         scraper = MS_FootprintScraper({"length": "ft"})

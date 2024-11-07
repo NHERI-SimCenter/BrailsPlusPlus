@@ -1,0 +1,9 @@
+******** SMALL NSI INVENTORY  *********
+AssetInventory
+Inventory stored in:  dict
+Key:  474740175 Asset:
+	 Coordinates:  [[-122.262559, 37.879117]]
+	 Features:  {'fd_id': 474740175, 'bid': '849VVPHP+JXW-2-1-2-2', 'occtype': 'RES1-2SWB', 'st_damcat': 'RES', 'bldgtype': 'M', 'found_type': 'B', 'cbfips': '060014225001003', 'pop2amu65': 2, 'pop2amo65': 1, 'pop2pmu65': 2, 'pop2pmo65': 1, 'sqft': 1773, 'num_story': 2, 'ftprntid': '06001_559590', 'ftprntsrc': 'NGA', 'students': 0, 'found_ht': 2, 'val_struct': 359933.479, 'val_cont': 179966.739, 'val_vehic': 27000, 'source': 'P', 'med_yr_blt': 1939, 'firmzone': 'NA', 'o65disable': 0.22, 'u65disable': 0.03, 'x': -122.2625592, 'y': 37.879116732, 'ground_elv': 350.8512103598022, 'ground_elv_m': 106.93944549560547, 'type': 'Building'}
+Key:  475206003 Asset:
+	 Coordinates:  [[-122.279912, 37.894081]]
+	 Features:  {'fd_id': 475206003, 'bid': '849VVPVC+J2P-4-4-4-3', 'occtype': 'RES1-2SNB', 'st_damcat': 'RES', 'bldgtype': 'W', 'found_type': 'C', 'cbfips': '060014213001020', 'pop2amu65': 2, 'pop2amo65': 0, 'pop2pmu65': 1, 'pop2pmo65': 0, 'sqft': 2341, 'num_story': 2, 'ftprntid': '06001_730116', 'ftprntsrc': 'NGA', 'students': 0, 'found_ht': 1.5, 'val_struct': 378037.886, 'val_cont': 189018.943, 'val_vehic': 27000, 'source': 'P', 'med_yr_blt': 1939, 'firmzone': 'NA', 'o65disable': 0.22, 'u65disable': 0.03, 'x': -122.2799116, 'y': 37.894081399, 'ground_elv': 195.71405070861817, 'ground_elv_m': 59.65364074707031, 'type': 'Building'}

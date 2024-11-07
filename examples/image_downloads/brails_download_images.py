@@ -2,10 +2,11 @@
 # License: BSD-2
 
 """
-Example showcasing BRAILS' image downloading capabilities.
+brails_dpenload_images.py
+=========================
 
  Purpose: Testing 1) get_class method of Importer
-                  2) get_footprints method of USA_FootprintScraper module
+                  2) get_footprints method of scraper module
                   3) get_images and print_info methods of GoogleSatellite and
                      GoogleStreetview
 
@@ -16,10 +17,11 @@ import argparse
 from brails import Importer
 
 # This script needs a Google API Key to run.
-# We suggest placing your API key in file apiKey.txt in the same directory as
+# We suggest placing your API key in file api_key.txt in the directory above
 # this script if you plan to commit changes to this example. This way, you do
-# not risk accidentally uploading your API key (apiKey.txt is in .gitignore,
-# so you have work to do to get it uploaded)
+# not risk accidentally uploading your API key (api_key.txt is in .gitignore,
+# so you have work to do to get it uploaded).
+# The api_key.txt is used in other examples.
 
 API_KEY_DIR = '../api_key.txt'
 if os.path.exists(API_KEY_DIR):
