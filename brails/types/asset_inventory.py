@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 11-03-2024
+# 11-06-2024
 
 """
 This module defines classes associated with asset inventories.
@@ -145,18 +145,17 @@ class AssetInventory:
             inventory with just a list of coordinates.
         add_asset_features(asset_id, features): Append new features to the
             asset.
-        add_asset_features_from_csv(file_path, id_column): Add asset features
-            from a csv file.
         remove_asset(asset_id): Remove an asset to the inventory.
-        get_asset_coordinates(asset_id): Get features of a particular assset.
         get_asset_features(asset_id): Get coordinates of a particular assset.
-        get_random_sample(size, seed): Get subset of the inventory.
-        get_footprints(): Return a list of footprints.
-        get_random_footprints(): Return a random sample of the footprints.
-        get_geojson(): Return inventory as a geojson dict.
+        get_asset_coordinates(asset_id): Get features of a particular assset.
         get_asset_ids(): Return the asset ids as a list.
+        get_random_sample(size, seed): Get subset of the inventory.
+        get_coordinates(): Return a list of footprints.
+        write_to_geojson(): Return inventory as a geojson dict.
         read_from_csv(file_path, keep_existing, str_type, id_column): Read
             inventory dataset from a csv table
+        add_asset_features_from_csv(file_path, id_column): Add asset features
+            from a csv file.
     """
 
     def __init__(self):
@@ -357,7 +356,7 @@ class AssetInventory:
 
         return result_coordinates, result_keys
 
-    def write2geojson(self, output_file: str = '') -> dict:
+    def write_to_geojson(self, output_file: str = '') -> dict:
         """
         Generate a GeoJSON representation of the assets in the inventory.
 
