@@ -151,7 +151,8 @@ class AssetInventory:
         get_asset_ids(): Return the asset ids as a list.
         get_random_sample(size, seed): Get subset of the inventory.
         get_coordinates(): Return a list of footprints.
-        write_to_geojson(): Return inventory as a geojson dict.
+        get_geojson(): Return inventory as a geojson dict.
+        write_to_geojson(): Wtite inventory to file in GeoJSON format. Also return inventory as a geojson dict!
         read_from_csv(file_path, keep_existing, str_type, id_column): Read
             inventory dataset from a csv table
         add_asset_features_from_csv(file_path, id_column): Add asset features
@@ -356,6 +357,49 @@ class AssetInventory:
 
         return result_coordinates, result_keys
 
+    def get_geojson(self) -> dict:
+        """
+        Generate a GeoJSON representation of the assets in the inventory.
+
+        Returns:
+            dict: A dictionary in GeoJSON format containing all assets, with
+                each asset represented as a feature. Each feature includes the
+                geometry (Point or Polygon) and associated properties.
+        """
+        geojson = {'type': 'FeatureCollection',
+                   'generated': str(datetime.now()),
+                   'brails_version': version('BRAILS'),
+                   'crs': {'type': 'name',
+                           'properties': {
+                               'name': 'urn:ogc:def:crs:OGC:1.3:CRS84'}
+                           },
+                   'features': []
+                   }
+
+        for key, asset in self.inventory.items():
+            if len(asset.coordinates) == 1:
+                geometry = {"type": "Point",
+                            "coordinates": [asset.coordinates[0][:]]
+                            }
+            else:
+                geometry = {'type': 'Polygon',
+                            'coordinates': asset.coordinates
+                            }
+
+            feature = {'type': 'Feature',
+                       'properties': asset.features,
+                       'geometry': geometry
+                       }
+            if 'type' in asset.features:
+                feature['type'] = asset.features['type']
+
+            geojson['features'].append(feature)
+            # TODO: Note from SY here we could put in NA! for imputation and
+            # ensure all features have same set of keys!!
+
+        return geojson
+
+    
     def write_to_geojson(self, output_file: str = '') -> dict:
         """
         Generate a GeoJSON representation of the assets in the inventory.
@@ -456,7 +500,7 @@ class AssetInventory:
         lat = ['latitude', 'lat']
         lon = ['longitude', 'lon']
         key_names = csv_reader.fieldnames
-        lat_id = np.where([x.lower() in lat for x in key_names])[0]
+        lat_id = np.where([y.lower() in lat for y in key_names])[0]
         lon_id = np.where([x.lower() in lon for x in key_names])[0]
         if len(lat_id) == 0:
             raise Exception(
@@ -477,7 +521,10 @@ class AssetInventory:
                 elif is_float(val):
                     bldg_features[key] = float(val)
 
-            coordinates = [[bldg_features[lat_key], bldg_features[lon_key]]]
+
+            #coordinates = [[bldg_features[lat_key], bldg_features[lon_key]]]
+            coordinates = [[bldg_features[lon_key], bldg_features[lat_key]]]            
+            
             bldg_features.pop(lat_key)
             bldg_features.pop(lon_key)
 
