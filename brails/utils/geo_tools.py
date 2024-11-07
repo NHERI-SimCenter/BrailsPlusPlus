@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 11-03-2024
+# 11-06-2024
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -261,7 +261,7 @@ class GeoTools:
 
     @staticmethod
     def match_points_to_polygons(points: list,
-                                 polygons: list) -> tuple[list, dict]:
+                                 polygons: list) -> tuple[list, dict, list]:
         """
         Match points to polygons and return the correspondence data.
 
@@ -275,10 +275,12 @@ class GeoTools:
                              EPSG 4326 (longitude, latitude).
 
         Returns:
-            tuple[list, dict]:
+            tuple[list, dict, list]:
                 - A list of matched Shapely Point geometries.
                 - A dictionary mapping each polygon (represented as a string)
                     to the corresponding matched point.
+                - A list of the indices of polygons matched to points, with
+                    each index listed in the same order as the list of points.
         """
         # Create an STR tree for the input points:
         pttree = STRtree(points)
@@ -287,8 +289,9 @@ class GeoTools:
         # dictionary:
         ptkeepind = []
         fp2ptmap = {}
+        ind_fp_matched = []
 
-        for poly in polygons:
+        for ind, poly in enumerate(polygons):
             polygon = Polygon(poly)
 
             # Query points that are within the polygon:
@@ -310,6 +313,9 @@ class GeoTools:
                 # Map polygon to the first matched point:
                 fp2ptmap[str(poly)] = points[res[0]]
 
+                # Store the index of the matched polygon:
+                ind_fp_matched.append(ind)
+
         # Convert the list of matched points to a set for uniqueness and back
         # to a list:
         ptkeepind = list(set(ptkeepind))
@@ -318,4 +324,4 @@ class GeoTools:
         # polygon match:
         ptskeep = [points[ind] for ind in ptkeepind]
 
-        return ptskeep, fp2ptmap
+        return ptskeep, fp2ptmap, ind_fp_matched
