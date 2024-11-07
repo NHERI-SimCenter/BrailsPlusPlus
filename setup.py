@@ -3,13 +3,11 @@
 import re
 from setuptools import setup, find_packages
 
-
-with open('README.md', encoding='utf-8') as f:
-    long_description = f.read()
-
 with open('brails/__init__.py', 'r', encoding='utf-8') as f:
     version = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
                         f.read(), re.M).group(1)
+with open('README.md', encoding='utf-8') as f:
+    long_description = f.read()
 
 
 setup(
@@ -26,28 +24,27 @@ setup(
                    'bpe_simple_vocab_16e6.txt.gz']
     },
     install_requires=[
-        'pandas',
-        'requests',
-        'wget',
-        'shapely',
-        'tqdm',
-        'torch>=1.12',
-        'torchvision>0.13',
-        'Pillow',
-        'matplotlib',
-        'seaborn',
-        'plotly',
-        'ftfy',
-        'supervision',
-        'opencv-python',
         'addict',
-        'yapf',
-        'timm',
-        'transformers',
-        'pycocotools',
         'Cython',
+        'ftfy',
+        'matplotlib',
+        'pillow',
+        'plotly',
+        'pycocotools',
+        'requests',
+        'seaborn',
+        'shapely',
+        'supervision',
+        'timm',
+        'torch',
+        'torchvision',
+        'transformers',
+        'typing',
+        'wget',
+        'yapf',
         'webcolors',
-        'typing'
+        'opencv-python',
+        'pandas'
     ],
     extras_require={
         'development': [

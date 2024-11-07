@@ -1,6 +1,4 @@
-"""
-Test suite for `untils.py`
-"""
+"""Test suite for BRAILS++"""
 
 import unittest
 from unittest import mock
@@ -29,7 +27,7 @@ class TestImporter(unittest.TestCase):
     def test_get_class_with_invalid_name(self):
         with self.assertRaises(BrailsError) as context:
             self.importer.get_class(r'¯\_(ツ)_/¯')
-        assert ('is not found.\nThese are the available classes: ') in str(
+        assert 'is not found.\nThese are the available classes: ' in str(
             context.exception
         )
 
@@ -95,15 +93,16 @@ class TestImporter(unittest.TestCase):
         # Mock the method to return the path to the data directory
         mock_find_package_path.return_value = 'tests/utils/data/duplicate_name'
         with self.assertRaises(BrailsError) as context:
-            Importer('Brails')
-        self.assertIn('unique class names', str(context.exception))
+            Importer('brails')
+        self.assertIn('unique class name', str(context.exception))
 
 
 if __name__ == '__main__':
 
     # Debugging --- test a specific method
     suite = unittest.TestSuite()
-    suite.addTest(TestImporter('test_get_object_invalid_class_type_raises_error'))
+    suite.addTest(TestImporter(
+        'test_get_object_invalid_class_type_raises_error'))
     runner = unittest.TextTestRunner()
     runner.run(suite)
 
