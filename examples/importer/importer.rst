@@ -20,7 +20,7 @@ The following example shows it re-written using the **Importer** class.
 
 .. note::
 
-   #. The purpose of the **Importer** class is for creating applications for building workflows. Consider developing an application that would parse the following JSON input file to such an application. Using the **Importer** class, this application could be written without a bunch of if-else statments switching on the type. This works in |app| because all the classes that do work inherit from **ABC**, **Abstract Base Class** which is part of the python abc module.
+   #. The purpose of the **Importer** class is to allow applications to be developed for building workflows. Consider developing an application that would parse the following JSON input file to such an application. Using the **Importer** class, this application could be written without a bunch of if-else statments switching on the type. This works in |app| because all the classes that do work inherit from **ABC**, **Abstract Base Class** which is part of the python abc module.
 
    .. literalinclude:: workflow.json
       :language: json		       

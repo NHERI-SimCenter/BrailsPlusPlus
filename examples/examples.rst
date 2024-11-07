@@ -3,5 +3,8 @@ Examples
 
 .. toctree::
    :maxdepth: 1
-
+	      
+   importer/importer.rst
+   footprint/footprint.rst
+   image_downloads/image_downloads.rst	         
    imputation/imputation.rst
