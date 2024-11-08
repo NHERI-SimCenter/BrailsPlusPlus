@@ -1,32 +1,31 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="ls" data-content_root="../../">
+<html class="writer-html5" lang="en" data-content_root="../../">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Imputation Algorithms &mdash; BRAILS++  documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
       <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-gallery.css?v=26227f6e" />
 
   
-  <!--[if lt IE 9]>
-    <script src="../../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="../../_static/jquery.js?v=5d32c60e"></script>
-        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="../../_static/documentation_options.js?v=56c7b627"></script>
-        <script src="../../_static/doctools.js?v=9a2dae69"></script>
-        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-        <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
-        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Loading data table from csv" href="imputation_example.html" />
-    <link rel="prev" title="Examples" href="../examples.html" /> 
+    <link rel="next" title="brails package" href="../../rst-code/brails.html" />
+    <link rel="prev" title="Downloading Images" href="../image_downloads/image_downloads.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -51,12 +50,14 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../importer/importer.html">Importer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../footprint/footprint.html">Building Footprints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../nsi_integration/nsi_integration.html">NSI Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Imputation Algorithms</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#imputation-notebook">Imputation Notebook</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="imputation_example.html">Loading data table from csv</a></li>
-<li class="toctree-l4"><a class="reference internal" href="imputation_example.html#Importing-imputer-and-run-imputation">Importing imputer and run imputation</a></li>
-<li class="toctree-l4"><a class="reference internal" href="imputation_example.html#Inspecting-the-results">Inspecting the results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#imputation-notebook">Imputation Notebook</a><ul class="simple">
 </ul>
 </li>
 </ul>
@@ -99,61 +100,96 @@
 <p>This is an example of how to use the BRAILS imputation algorithms to fill in missing data
 in an inventory. In this example, the user has a csv file that they will use to create the asset inventory. That csv file
 contains rows, some of which are complete and some of which have missing column values. For example, for some rows the roof shape attribute may be missing. An inventory is first created with this csv file, a knn imputer is created, and this imputer returns a second inventory, which for the missing fields will contain a number of possible values.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos"> 2</span><span class="sd">imputation.py</span>
-<span class="linenos"> 3</span><span class="sd">================</span>
-<span class="linenos"> 4</span>
-<span class="linenos"> 5</span><span class="sd">This is a simple BRAILS example to demonstrate imputating (estimating the</span>
-<span class="linenos"> 6</span><span class="sd">missing pieces) of an inventory dataset.</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1"># Written: sy Aug 2024</span>
+<span class="linenos"> 2</span><span class="c1"># License: BSD-2</span>
+<span class="linenos"> 3</span>
+<span class="linenos"> 4</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos"> 5</span><span class="sd">imputation.py</span>
+<span class="linenos"> 6</span><span class="sd">================</span>
 <span class="linenos"> 7</span>
-<span class="linenos"> 8</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos"> 9</span>
-<span class="linenos">10</span><span class="kn">import</span> <span class="nn">os</span>
-<span class="linenos">11</span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="linenos"> 8</span><span class="sd">This is a simple BRAILS++ example to demonstrate imputating (estimating the</span>
+<span class="linenos"> 9</span><span class="sd">missing pieces) of an inventory dataset.</span>
+<span class="linenos">10</span>
+<span class="linenos">11</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="linenos">12</span>
-<span class="linenos">13</span><span class="c1"># the following line is not neeeded if brails is imported from pypi</span>
-<span class="linenos">14</span><span class="c1">#   .. it is included here as it allows us to test the code on a nightly basis</span>
-<span class="linenos">15</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;../../&quot;</span><span class="p">)</span>
+<span class="linenos">13</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">14</span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="linenos">15</span><span class="kn">import</span> <span class="nn">json</span>
 <span class="linenos">16</span>
-<span class="linenos">17</span><span class="kn">from</span> <span class="nn">brails.utils.utils</span> <span class="kn">import</span> <span class="n">Importer</span>
-<span class="linenos">18</span><span class="kn">from</span> <span class="nn">brails.types.image_set</span> <span class="kn">import</span> <span class="n">ImageSet</span>
-<span class="linenos">19</span><span class="kn">from</span> <span class="nn">brails.types.asset_inventory</span> <span class="kn">import</span> <span class="n">Asset</span><span class="p">,</span> <span class="n">AssetInventory</span>
-<span class="linenos">20</span><span class="n">importer</span> <span class="o">=</span> <span class="n">Importer</span><span class="p">()</span>
-<span class="linenos">21</span>
-<span class="linenos">22</span><span class="n">file_path</span> <span class="o">=</span> <span class="s2">&quot;./example_Tiburon.csv&quot;</span>
-<span class="linenos">23</span>    
-<span class="linenos">24</span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
-<span class="linenos">25</span><span class="n">inventory</span><span class="o">.</span><span class="n">read_from_csv</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span><span class="n">keep_existing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">id_column</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span>
-<span class="linenos">26</span>
-<span class="linenos">27</span>
-<span class="linenos">28</span><span class="n">knn_imputer_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s2">&quot;KnnImputer&quot;</span><span class="p">)</span>
-<span class="linenos">29</span><span class="n">imputer</span><span class="o">=</span><span class="n">knn_imputer_class</span><span class="p">()</span>
-<span class="linenos">30</span><span class="n">new_inventory</span> <span class="o">=</span> <span class="n">imputer</span><span class="o">.</span><span class="n">impute</span><span class="p">(</span><span class="n">inventory</span><span class="p">,</span><span class="n">n_possible_worlds</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="linenos">17</span><span class="c1"># the following line is not neeeded if brails is imported from pypi</span>
+<span class="linenos">18</span><span class="c1">#   .. it is included here as it allows us to test the code on a nightly basis</span>
+<span class="linenos">19</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;../../&quot;</span><span class="p">)</span>
+<span class="linenos">20</span>
+<span class="linenos">21</span><span class="kn">from</span> <span class="nn">brails.utils.importer</span> <span class="kn">import</span> <span class="n">Importer</span>
+<span class="linenos">22</span><span class="kn">from</span> <span class="nn">brails.types.image_set</span> <span class="kn">import</span> <span class="n">ImageSet</span>
+<span class="linenos">23</span><span class="kn">from</span> <span class="nn">brails.types.asset_inventory</span> <span class="kn">import</span> <span class="n">Asset</span><span class="p">,</span> <span class="n">AssetInventory</span>
+<span class="linenos">24</span><span class="n">importer</span> <span class="o">=</span> <span class="n">Importer</span><span class="p">()</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="n">file_path</span> <span class="o">=</span> <span class="s2">&quot;./example_Tiburon.csv&quot;</span>
+<span class="linenos">27</span>    
+<span class="linenos">28</span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="linenos">29</span><span class="n">inventory</span><span class="o">.</span><span class="n">read_from_csv</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span><span class="n">keep_existing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">id_column</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span>
+<span class="linenos">30</span>
 <span class="linenos">31</span>
-<span class="linenos">32</span><span class="n">new_inventory</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+<span class="linenos">32</span><span class="n">knn_imputer_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s2">&quot;KnnImputer&quot;</span><span class="p">)</span>
+<span class="linenos">33</span><span class="n">imputer</span><span class="o">=</span><span class="n">knn_imputer_class</span><span class="p">()</span>
+<span class="linenos">34</span><span class="n">new_inventory</span> <span class="o">=</span> <span class="n">imputer</span><span class="o">.</span><span class="n">impute</span><span class="p">(</span><span class="n">inventory</span><span class="p">,</span><span class="n">n_possible_worlds</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="linenos">35</span>
+<span class="linenos">36</span><span class="n">new_inventory</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="linenos">37</span>
+<span class="linenos">38</span><span class="c1">#</span>
+<span class="linenos">39</span><span class="c1"># Saving the imputed database into a geojson file </span>
+<span class="linenos">40</span><span class="c1">#</span>
+<span class="linenos">41</span>
+<span class="linenos">42</span>
+<span class="linenos">43</span><span class="n">filepath</span> <span class="o">=</span> <span class="s1">&#39;tmp/imputed_inventory.geojson&#39;</span>
+<span class="linenos">44</span><span class="n">directory</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+<span class="linenos">45</span><span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+<span class="linenos">46</span>    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+<span class="linenos">47</span>    
+<span class="linenos">48</span><span class="n">new_inventory</span><span class="o">.</span><span class="n">write_to_geojson</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+<span class="linenos">49</span>
+<span class="linenos">50</span><span class="c1">#with open(filepath, &quot;w&quot;) as f:</span>
+<span class="linenos">51</span><span class="c1">#    json.dump(geojson, f, indent=2)</span>
+<span class="linenos">52</span>
 </pre></div>
 </div>
+<p>The script is run by issuing the following would be issued from a terminal window:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">imputation</span><span class="o">.</span><span class="n">py</span> <span class="n">USA_FootprintScraper</span> <span class="s2">&quot;Berkeley, CA&quot;</span>
+</pre></div>
+</div>
+<p>and the application  would produce:</p>
 <section id="imputation-notebook">
 <h2>Imputation Notebook<a class="headerlink" href="#imputation-notebook" title="Link to this heading"></a></h2>
 <p>Below is a link to a Jupyter notebook that runs this basic code, with graphics to better understand the
 output.</p>
-<div class="toctree-wrapper compound">
+<a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/imputation/imputation_example.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>"
+
+<a href=https://lightning.ai/new?repo_url=https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/imputation/imputation_example.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg/></a><div class="toctree-wrapper compound">
 <div class="nbsphinx-gallery">
-<a class="reference internal" href="imputation_example.html">
-  <div><img alt="" src="../../_images/examples_imputation_imputation_example_14_0.png"></div>
-  <div>Loading data table from csv</div>
-</a>
 </div>
 </div>
-<hr></section>
+<hr><div class="admonition note">
+<p class="admonition-title">Note</p>
+<ol class="arabic simple">
+<li><p>Imputation is a statistical technique used to handle missing data by replacing it with substituted values. In BrailsPlusPlus the goal is to fill in the gaps in an inventory dataset to ensure that analyses can proceed without having to throw away assets from the inventory due to missing values. Imputation is used in many other fields like data science, machine learning, and statistics.</p></li>
+</ol>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>There are a number of algorithms outlined in the literature. These algorithms produce either a single values for each missing data-point, e.g. <strong>mean</strong>, <strong>modal</strong>, <strong>median</strong>, or they produce a number of possible values for each missing data-point, e.g. <strong>K-NearestNeighbour</strong>. BrailsPlusPlus algorithms produce the latter. When multiple possible values are generated or exist for any <strong>Asset</strong> in the inventory, due to <strong>imputation</strong> or <strong>ingerence</strong>, the inventory has a field for the <strong>#samples</strong>.</p></li>
+<li><p>When multiple options in the workflow generate a number of samples field for one or more assets in the inventory, any option that generates samples is expected to generate the same number of samples as existing <strong>overriding users request to the contrary</strong>. With this enforced, the user can request from the inventory a number of distinct <strong>possible worlds</strong>.</p></li>
+</ol>
+</div></blockquote>
+</div>
+</section>
 </section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../examples.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="imputation_example.html" class="btn btn-neutral float-right" title="Loading data table from csv" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../image_downloads/image_downloads.html" class="btn btn-neutral float-left" title="Downloading Images" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../rst-code/brails.html" class="btn btn-neutral float-right" title="brails package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

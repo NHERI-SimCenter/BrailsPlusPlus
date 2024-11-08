@@ -1,0 +1,12 @@
+.. _lblINstall:
+
+************
+Installation
+************
+
+BRAILS++ is not yet available on PyPI. In the meantime, you can install BRAILS++ by running the following command in a terminal window:
+
+.. code-block::
+
+   pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
+

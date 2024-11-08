@@ -1,0 +1,265 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Importer &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Building Footprints" href="../footprint/footprint.html" />
+    <link rel="prev" title="Examples" href="../examples.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Importer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../footprint/footprint.html">Building Footprints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../nsi_integration/nsi_integration.html">NSI Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../examples.html">Examples</a></li>
+      <li class="breadcrumb-item active">Importer</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/examples/importer/importer.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="importer">
+<span id="importer-example"></span><h1>Importer<a class="headerlink" href="#importer" title="Link to this heading"></a></h1>
+<p>BrailsPlusPlus is a modular python framework for creating workflows that create data for SimCenter applications. In order to allow applications to be built <strong>w/o the need to hard code every possible case</strong>, there is a class in BrailsPlusPlus that will return the class given the class name. This is the <strong>Importer</strong> class. It’s has one method, <strong>get_class()</strong>, which will return the python class with that given name from which an object can be instantiated.</p>
+<p>The following example shows a more typical python example.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1"># Written: fmk 4/23</span>
+<span class="linenos"> 2</span><span class="c1"># License: BSD-2</span>
+<span class="linenos"> 3</span>
+<span class="linenos"> 4</span><span class="kn">import</span> <span class="nn">argparse</span>
+<span class="linenos"> 5</span>
+<span class="linenos"> 6</span><span class="kn">from</span> <span class="nn">brails.types.asset_inventory</span> <span class="kn">import</span> <span class="n">AssetInventory</span>
+<span class="linenos"> 7</span><span class="kn">from</span> <span class="nn">brails.types.region_boundary</span> <span class="kn">import</span> <span class="n">RegionBoundary</span>
+<span class="linenos"> 8</span><span class="kn">from</span> <span class="nn">brails.scrapers.osm_footprint_scraper.osm_footprint_scraper</span> <span class="kn">import</span> <span class="n">OSM_FootprintScraper</span>
+<span class="linenos"> 9</span><span class="kn">from</span> <span class="nn">brails.scrapers.ms_footprint_scraper.ms_footprint_handler</span> <span class="kn">import</span> <span class="n">MS_FootprintScraper</span>
+<span class="linenos">10</span><span class="kn">from</span> <span class="nn">brails.scrapers.usa_footprint_scraper.usa_footprint_scraper</span> <span class="kn">import</span> <span class="n">USA_FootprintScraper</span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<span class="linenos">13</span>    
+<span class="linenos">14</span>    <span class="c1"># Create the argument parser</span>
+<span class="linenos">15</span>    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Demonstrate Importer.&quot;</span><span class="p">)</span>
+<span class="linenos">16</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;scraper&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Location&quot;</span><span class="p">)</span>        
+<span class="linenos">17</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Location&quot;</span><span class="p">)</span>
+<span class="linenos">18</span>
+<span class="linenos">19</span>    <span class="c1"># Parse the arguments</span>
+<span class="linenos">20</span>    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+<span class="linenos">21</span>
+<span class="linenos">22</span>    <span class="c1"># create a RegionBoundary</span>
+<span class="linenos">23</span>    <span class="n">region_boundary_object</span> <span class="o">=</span> <span class="n">RegionBoundary</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;locationName&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">location</span><span class="p">})</span>
+<span class="linenos">24</span>
+<span class="linenos">25</span>    <span class="n">scraper_type</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">scraper</span>
+<span class="linenos">26</span>    <span class="k">if</span> <span class="n">scraper_type</span> <span class="o">==</span> <span class="s2">&quot;OSM_FootprintScraper&quot;</span><span class="p">:</span>
+<span class="linenos">27</span>        <span class="n">scraper</span> <span class="o">=</span> <span class="n">OSM_FootprintScraper</span><span class="p">({</span><span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="s2">&quot;ft&quot;</span><span class="p">})</span>
+<span class="linenos">28</span>    <span class="k">elif</span> <span class="n">scraper_type</span> <span class="o">==</span> <span class="s2">&quot;MS_FootprintScraper&quot;</span><span class="p">:</span>
+<span class="linenos">29</span>        <span class="n">scraper</span> <span class="o">=</span> <span class="n">MS_FootprintScraper</span><span class="p">({</span><span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="s2">&quot;ft&quot;</span><span class="p">})</span>
+<span class="linenos">30</span>    <span class="k">elif</span> <span class="n">scraper_type</span> <span class="o">==</span> <span class="s2">&quot;USA_FootprintScraper&quot;</span><span class="p">:</span>
+<span class="linenos">31</span>        <span class="n">scraper</span> <span class="o">=</span> <span class="n">USA_FootprintScraper</span><span class="p">({</span><span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="s2">&quot;ft&quot;</span><span class="p">})</span>
+<span class="linenos">32</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">33</span>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown Scraper Type: </span><span class="si">{</span><span class="n">scraper_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="linenos">34</span>        
+<span class="linenos">35</span>    <span class="n">inventory</span> <span class="o">=</span> <span class="n">scraper</span><span class="o">.</span><span class="n">get_footprints</span><span class="p">(</span><span class="n">region_boundary_object</span><span class="p">)</span>
+<span class="linenos">36</span>
+<span class="linenos">37</span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;num assets found: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2"> using </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="linenos">38</span>
+<span class="linenos">39</span>    <span class="n">small_inventory</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+<span class="linenos">40</span>    <span class="n">small_inventory</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="linenos">41</span>    
+<span class="linenos">42</span><span class="c1"># Run the main function if this script is executed directly</span>
+<span class="linenos">43</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="linenos">44</span>    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The following example shows it re-written using the <strong>Importer</strong> class.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1"># Written: fmk 09/24</span>
+<span class="linenos"> 2</span><span class="c1"># License: BSD-2</span>
+<span class="linenos"> 3</span>
+<span class="linenos"> 4</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos"> 5</span><span class="sd">importer.py</span>
+<span class="linenos"> 6</span><span class="sd">================</span>
+<span class="linenos"> 7</span>
+<span class="linenos"> 8</span><span class="sd">This is a simple example to demonstrate the Importer class in BRAILS++</span>
+<span class="linenos"> 9</span>
+<span class="linenos">10</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="kn">import</span> <span class="nn">argparse</span>
+<span class="linenos">13</span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="linenos">14</span>
+<span class="linenos">15</span><span class="c1"># the following line is not neeeded if brails is imported from pypi</span>
+<span class="linenos">16</span><span class="c1">#   .. it is included here as it allows us to test the code on a nightly basis</span>
+<span class="linenos">17</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;../../&quot;</span><span class="p">)</span>
+<span class="linenos">18</span>
+<span class="linenos">19</span>
+<span class="linenos">20</span><span class="kn">from</span> <span class="nn">brails.utils.importer</span> <span class="kn">import</span> <span class="n">Importer</span>
+<span class="linenos">21</span>
+<span class="linenos">22</span>
+<span class="linenos">23</span><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<span class="linenos">24</span>    <span class="c1"># Create the argument parser</span>
+<span class="linenos">25</span>    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Demonstrate Importer.&quot;</span><span class="p">)</span>
+<span class="linenos">26</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;scraper&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Footprint Scraper&quot;</span><span class="p">)</span>
+<span class="linenos">27</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Location&quot;</span><span class="p">)</span>    
+<span class="linenos">28</span>
+<span class="linenos">29</span>    <span class="c1"># Parse the arguments</span>
+<span class="linenos">30</span>    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+<span class="linenos">31</span>
+<span class="linenos">32</span>    <span class="n">importer</span> <span class="o">=</span> <span class="n">Importer</span><span class="p">()</span>
+<span class="linenos">33</span>
+<span class="linenos">34</span>    <span class="n">region_boundary_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s2">&quot;RegionBoundary&quot;</span><span class="p">)</span>
+<span class="linenos">35</span>    <span class="n">region_boundary_object</span> <span class="o">=</span> <span class="n">region_boundary_class</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;locationName&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">location</span><span class="p">})</span>
+<span class="linenos">36</span>    <span class="n">scraper_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="p">)</span>
+<span class="linenos">37</span>    <span class="n">scraper</span> <span class="o">=</span> <span class="n">scraper_class</span><span class="p">({</span><span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="s2">&quot;ft&quot;</span><span class="p">})</span>
+<span class="linenos">38</span>    <span class="n">inventory</span> <span class="o">=</span> <span class="n">scraper</span><span class="o">.</span><span class="n">get_footprints</span><span class="p">(</span><span class="n">region_boundary_object</span><span class="p">)</span>
+<span class="linenos">39</span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;num assets found: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2"> using </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="linenos">40</span>    
+<span class="linenos">41</span>
+<span class="linenos">42</span><span class="c1"># Run the main function if this script is executed directly</span>
+<span class="linenos">43</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="linenos">44</span>    <span class="n">main</span><span class="p">()</span>
+<span class="linenos">45</span>    
+</pre></div>
+</div>
+<p>To run for example the <strong>importer.py</strong> script for Berkeley, CA the following would be issued frm a terminal window:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">imputation</span><span class="o">.</span><span class="n">py</span> <span class="n">USA_FootprintScraper</span> <span class="s2">&quot;Berkeley, CA&quot;</span>
+</pre></div>
+</div>
+<p>and the application  would produce:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span>
+<span class="linenos"> 2</span><span class="n">Searching</span> <span class="k">for</span> <span class="n">Berkeley</span><span class="p">,</span> <span class="n">CA</span><span class="o">...</span>
+<span class="linenos"> 3</span><span class="n">Found</span> <span class="n">Berkeley</span><span class="p">,</span> <span class="n">Alameda</span> <span class="n">County</span><span class="p">,</span> <span class="n">California</span><span class="p">,</span> <span class="n">United</span> <span class="n">States</span>
+<span class="linenos"> 4</span>
+<span class="linenos"> 5</span><span class="n">Meshing</span> <span class="n">the</span> <span class="n">defined</span> <span class="n">area</span><span class="o">...</span>
+<span class="linenos"> 6</span>
+<span class="linenos"> 7</span><span class="n">Meshing</span> <span class="n">complete</span><span class="o">.</span> <span class="n">Split</span> <span class="n">Berkeley</span> <span class="n">into</span> <span class="mi">76</span> <span class="n">cells</span>
+<span class="linenos"> 8</span>
+<span class="linenos"> 9</span><span class="n">Found</span> <span class="n">a</span> <span class="n">total</span> <span class="n">of</span> <span class="mi">28404</span> <span class="n">building</span> <span class="n">footprints</span> <span class="ow">in</span> <span class="n">Berkeley</span>
+<span class="linenos">10</span><span class="n">num</span> <span class="n">assets</span> <span class="n">found</span><span class="p">:</span> <span class="mi">28404</span> <span class="k">for</span> <span class="n">Berkeley</span><span class="p">,</span> <span class="n">CA</span> <span class="n">using</span> <span class="n">USA_FootprintScraper</span>
+<span class="linenos">11</span><span class="n">AssetInventory</span>
+<span class="linenos">12</span><span class="n">Inventory</span> <span class="n">stored</span> <span class="ow">in</span><span class="p">:</span>  <span class="nb">dict</span>
+<span class="linenos">13</span><span class="n">Key</span><span class="p">:</span>  <span class="mi">1494</span> <span class="n">Asset</span><span class="p">:</span>
+<span class="linenos">14</span>	 <span class="n">Coordinates</span><span class="p">:</span>  <span class="p">[[</span><span class="o">-</span><span class="mf">122.251349037992</span><span class="p">,</span> <span class="mf">37.8918864620566</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.251516845084</span><span class="p">,</span> <span class="mf">37.8918428029327</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.251549765644</span><span class="p">,</span> <span class="mf">37.8919222669851</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.251381955857</span><span class="p">,</span> <span class="mf">37.891965925353</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.251349037992</span><span class="p">,</span> <span class="mf">37.8918864620566</span><span class="p">]]</span>
+<span class="linenos">15</span>	 <span class="n">Features</span><span class="p">:</span>  <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;Building&#39;</span><span class="p">,</span> <span class="s1">&#39;buildingheight&#39;</span><span class="p">:</span> <span class="mf">17.4</span><span class="p">,</span> <span class="s1">&#39;fpAreas&#39;</span><span class="p">:</span> <span class="mi">1554</span><span class="p">}</span>
+<span class="linenos">16</span><span class="n">Key</span><span class="p">:</span>  <span class="mi">6666</span> <span class="n">Asset</span><span class="p">:</span>
+<span class="linenos">17</span>	 <span class="n">Coordinates</span><span class="p">:</span>  <span class="p">[[</span><span class="o">-</span><span class="mf">122.249638045616</span><span class="p">,</span> <span class="mf">37.8518085710136</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.249704555083</span><span class="p">,</span> <span class="mf">37.8517353439222</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.249817801199</span><span class="p">,</span> <span class="mf">37.8518000117672</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.249751291732</span><span class="p">,</span> <span class="mf">37.8518732380851</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.249638045616</span><span class="p">,</span> <span class="mf">37.8518085710136</span><span class="p">]]</span>
+<span class="linenos">18</span>	 <span class="n">Features</span><span class="p">:</span>  <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;Building&#39;</span><span class="p">,</span> <span class="s1">&#39;buildingheight&#39;</span><span class="p">:</span> <span class="mf">21.6</span><span class="p">,</span> <span class="s1">&#39;fpAreas&#39;</span><span class="p">:</span> <span class="mi">1326</span><span class="p">}</span>
+<span class="linenos">19</span><span class="n">Key</span><span class="p">:</span>  <span class="mi">24068</span> <span class="n">Asset</span><span class="p">:</span>
+<span class="linenos">20</span>	 <span class="n">Coordinates</span><span class="p">:</span>  <span class="p">[[</span><span class="o">-</span><span class="mf">122.286804056442</span><span class="p">,</span> <span class="mf">37.8794971468902</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.286829349408</span><span class="p">,</span> <span class="mf">37.8794214649434</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.286967954066</span><span class="p">,</span> <span class="mf">37.8794505676668</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.286942660203</span><span class="p">,</span> <span class="mf">37.8795262510017</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.286804056442</span><span class="p">,</span> <span class="mf">37.8794971468902</span><span class="p">]]</span>
+<span class="linenos">21</span>	 <span class="n">Features</span><span class="p">:</span>  <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;Building&#39;</span><span class="p">,</span> <span class="s1">&#39;buildingheight&#39;</span><span class="p">:</span> <span class="mf">20.4</span><span class="p">,</span> <span class="s1">&#39;fpAreas&#39;</span><span class="p">:</span> <span class="mi">1181</span><span class="p">}</span>
+<span class="linenos">22</span><span class="n">Key</span><span class="p">:</span>  <span class="mi">23236</span> <span class="n">Asset</span><span class="p">:</span>
+<span class="linenos">23</span>	 <span class="n">Coordinates</span><span class="p">:</span>  <span class="p">[[</span><span class="o">-</span><span class="mf">122.260463864989</span><span class="p">,</span> <span class="mf">37.8783452637543</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.260597977173</span><span class="p">,</span> <span class="mf">37.8783233546667</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.260614329206</span><span class="p">,</span> <span class="mf">37.8783862371837</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.260480216124</span><span class="p">,</span> <span class="mf">37.8784081469617</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.260463864989</span><span class="p">,</span> <span class="mf">37.8783452637543</span><span class="p">]]</span>
+<span class="linenos">24</span>	 <span class="n">Features</span><span class="p">:</span>  <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;Building&#39;</span><span class="p">,</span> <span class="s1">&#39;buildingheight&#39;</span><span class="p">:</span> <span class="mf">25.6</span><span class="p">,</span> <span class="s1">&#39;fpAreas&#39;</span><span class="p">:</span> <span class="mi">925</span><span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ol class="arabic simple">
+<li><p>The purpose of the <strong>Importer</strong> class is to allow applications to be developed for building workflows. Consider developing an application that would parse the following JSON input file to such an application. Using the <strong>Importer</strong> class, this application could be written without a bunch of if-else statments switching on the type. This works in BrailsPlusPlus because all the classes that do work inherit from <strong>ABC</strong>, <strong>Abstract Base Class</strong> which is part of the python abc module.</p></li>
+</ol>
+<ol class="arabic simple">
+<li><p>An additional advantage of this approach is that as developers add new subclasses, they do not have to search through the code to see all the places that need the if-else statements modified for their classes to be used.</p></li>
+<li><p>In the construction of the <strong>Importer</strong> object the code will search through all directories of the brails code to find all the classes that exist in the code-base. As such, no changes are needed to the class by developers wishing to add their code.</p></li>
+<li><p>Most of the examples presented will use the Importer class as we use the examples to test that class.</p></li>
+</ol>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../examples.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../footprint/footprint.html" class="btn btn-neutral float-right" title="Building Footprints" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, fmk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,28 +1,29 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="ls" data-content_root="../">
+<html class="writer-html5" lang="en" data-content_root="../">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>About &mdash; BRAILS++  documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
 
   
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="../_static/jquery.js?v=5d32c60e"></script>
-        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="../_static/documentation_options.js?v=56c7b627"></script>
-        <script src="../_static/doctools.js?v=9a2dae69"></script>
-        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Examples" href="../examples/examples.html" />
+    <link rel="next" title="Installation" href="install.html" />
     <link rel="prev" title="Indices and tables" href="../index.html" /> 
 </head>
 
@@ -48,6 +49,7 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgements</a></li>
@@ -81,16 +83,13 @@
              
   <section id="about">
 <span id="lblabout"></span><h1>About<a class="headerlink" href="#about" title="Link to this heading"></a></h1>
-<p>The Building Regional Asset Inventories at Large Scale (BRAILS++) is an object-oriented framework for creating applications that focus on generating asset inventories for large geographic regions.</p>
-<p>Like any object-oriented framework, BRAILS provides a number of high level classes whose interfaces prescribe a means by
-which the classes in the workflow can be used. The following are these high level classes:</p>
+<p>The Building Regional Asset Inventories at Large Scale (BRAILS++) is an object-oriented framework for creating applications that focus on generating asset inventories for large geographic regions. The framework was developed by <a class="reference external" href="https://simcenter.designsafe-ci.org/">NHERI SimCenter</a> for the creation of asset inventories needed to understand the effects of natural hazards on the built environment.</p>
+<p>Like any object-oriented framework, BRAILS provides a number of high level classes whose interfaces prescribe a means
+by which the classes in the workflow can be used. The following are these high level classes:</p>
 <ol class="arabic simple">
 <li><p>Scrapers: A scraper is code that will go out and get data from the www, e.g a scraper might go to the NSI database and obtain information on the buildings in a region.</p></li>
 <li><p>Processor: A processor is code that wil take an image set and determine information for the images in the set.</p></li>
-</ol>
-<p>3. Segmenters: A segmenter is code that will again take an image set and for each image will segment it, e.g. a segmenter
-might identify the roof, windows, and doors, in an image.</p>
-<ol class="arabic simple" start="4">
+<li><p>Segmenters: A segmenter is code that will again take an image set and for each image will segment it, e.g. a segmenter might identify the roof, windows, and doors, in an image.</p></li>
 <li><p>Filters: A filter is code that will again take an image set and for each image will create a filtered image, e.g. a filter might remove everything but the building in the center of an image.</p></li>
 <li><p>Imputers: An imputer is code that given an AssetInventory that contains missing information for certain fields of certain assets, provide a new inventory that contains a number of possible entries for those missing fields. hey generate what is termed <strong>possible worlds</strong>.</p></li>
 <li><p>Inferer: An inferer is code that given the fields for each asset in an asset inventory, will infer new fields.</p></li>
@@ -99,11 +98,12 @@ might identify the roof, windows, and doors, in an image.</p>
 <ol class="arabic simple">
 <li><p>AssetInventory</p></li>
 <li><p>ImageSet</p></li>
+<li><p>RegionBoundary</p></li>
 </ol>
 <p>For the Documentaion of BRAILS++ we are providing examples and the api documentation. The api documentation being provided by sphinx-apidoc.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Some of the code in BRAILS++ is taken from the original <cite>BRAILS work &lt;https://nheri-simcenter.github.io/BRAILS-Documentation/common/about/cite.html&gt;_</cite>. The original BRAILS code has been re-factored to be more object-oriented and extended to include new features.</p>
+<p>Some of the code in BRAILS++ is taken from the original <a class="reference external" href="https://nheri-simcenter.github.io/BRAILS-Documentation/common/about/cite.html">BRAILS work</a>. The original BRAILS code has been re-factored to be more object-oriented and extended to include new features.</p>
 </div>
 </section>
 
@@ -112,7 +112,7 @@ might identify the roof, windows, and doors, in an image.</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../index.html" class="btn btn-neutral float-left" title="Indices and tables" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../examples/examples.html" class="btn btn-neutral float-right" title="Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="install.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
