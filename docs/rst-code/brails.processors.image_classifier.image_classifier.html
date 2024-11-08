@@ -1,0 +1,331 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.processors.image_classifier.image_classifier module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.processors.image_segmenter package" href="brails.processors.image_segmenter.html" />
+    <link rel="prev" title="brails.processors.image_classifier package" href="brails.processors.image_classifier.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.processors.html">brails.processors package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="brails.processors.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="brails.processors.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.utils.html">brails.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.html">brails.processors package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.image_classifier.html">brails.processors.image_classifier package</a></li>
+      <li class="breadcrumb-item active">brails.processors.image_classifier.image_classifier module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.processors.image_classifier.image_classifier.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.processors.image_classifier.image_classifier">
+<span id="brails-processors-image-classifier-image-classifier-module"></span><h1>brails.processors.image_classifier.image_classifier module<a class="headerlink" href="#module-brails.processors.image_classifier.image_classifier" title="Link to this heading"></a></h1>
+<p>Class object to train and use image classification models.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.image_classifier.image_classifier.ImageClassifier">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.image_classifier.image_classifier.</span></span><span class="sig-name descname"><span class="pre">ImageClassifier</span></span><a class="headerlink" href="#brails.processors.image_classifier.image_classifier.ImageClassifier" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class to manage and train an image classification model.</p>
+<p>This class provides methods to download train models using transfer
+learning, retrain existing models, and make predictions using these models.
+The class supports using different model architectures and performs
+operations on GPU if available.</p>
+<p><a href="#id1"><span class="problematic" id="id2">Attributes__</span></a>
+- device (torch.device): The device (GPU or CPU) on which the model will be</p>
+<blockquote>
+<div><p>trained and evaluated.</p>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>implemented_architectures (List[str]): List of supported model</dt><dd><p>architectures.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.image_classifier.image_classifier.ImageClassifier.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="brails.types.image_set.html#brails.types.image_set.ImageSet" title="brails.types.image_set.ImageSet"><span class="pre">ImageSet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_arch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'efficientnetv2_s'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'tmp/models/trained_model.pth'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['Ants',</span> <span class="pre">'Bees']</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#brails.processors.image_classifier.image_classifier.ImageClassifier.predict" title="Link to this definition"></a></dt>
+<dd><p>Predict the class of each image in the provided image set.</p>
+<dl class="simple">
+<dt><a href="#id1"><span class="problematic" id="id3">Args__</span></a></dt><dd><dl class="simple">
+<dt>images (ImageSet): An object containing the directory path and</dt><dd><p>image data.</p>
+</dd>
+<dt>model_arch (str): The architecture of the model to be used for</dt><dd><p>prediction.</p>
+</dd>
+<dt>model_path (str, optional): Path to the pre-trained model. Defaults</dt><dd><p>to ‘tmp/models/trained_model.pth’.</p>
+</dd>
+<dt>classes (List[str], optional): List of class labels. Defaults to</dt><dd><p>[‘Ants’, ‘Bees’].</p>
+</dd>
+</dl>
+</dd>
+<dt><a href="#id1"><span class="problematic" id="id4">Raises__</span></a></dt><dd><dl class="simple">
+<dt>NotImplementedError: If the specified model architecture is not</dt><dd><p>found in MODEL_PROPERTIES.</p>
+</dd>
+<dt>NotADirectoryError: If the directory containing the images is not</dt><dd><p>valid.</p>
+</dd>
+</dl>
+</dd>
+<dt><a href="#id1"><span class="problematic" id="id5">Returns__</span></a></dt><dd><dl class="simple">
+<dt>Dict[str, str]: A dictionary where the keys are image names and</dt><dd><p>the values are the predicted classes.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.image_classifier.image_classifier.ImageClassifier.retrain">
+<span class="sig-name descname"><span class="pre">retrain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_arch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'efficientnetv2_s'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'tmp/models/trained_model.pth'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'tmp/hymenoptera_data'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nepochs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">es_tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_accuracy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#brails.processors.image_classifier.image_classifier.ImageClassifier.retrain" title="Link to this definition"></a></dt>
+<dd><p>Retrain existing model using training dataset and hyperparameters.</p>
+<p><a href="#id1"><span class="problematic" id="id6">Parameters__</span></a>
+- model_path (str): Path to the pre-trained model to be fine-tuned.</p>
+<blockquote>
+<div><p>Default is ‘tmp/models/trained_model.pth’.</p>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>train_data_dir (str): Directory containing the training and</dt><dd><p>validation datasets. Default is ‘tmp/hymenoptera_data’.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>model_inp_size (int): Input size for the model, used for resizing</dt><dd><p>images in the dataset. Default is 384.</p>
+</dd>
+</dl>
+</li>
+<li><p>batch_size (int): Batch size for data loading. Default is 32.</p></li>
+<li><dl class="simple">
+<dt>nepochs (Union[int, List[int]]): Number of epochs for training.</dt><dd><p>Should be an integer for retraining. Default is 100.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>es_tolerance (int): Early stopping tolerance; the number of epochs</dt><dd><p>without improvement before stopping. Default is 10.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>plot_accuracy (bool): Whether to plot the validation accuracy over</dt><dd><p>epochs. Default is True.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p><a href="#id1"><span class="problematic" id="id7">Returns__</span></a>
+- None</p>
+<p><a href="#id1"><span class="problematic" id="id8">Raises__</span></a>
+- ValueError: If <cite>nepochs</cite> is not provided as an integer during</p>
+<blockquote>
+<div><p>retraining.</p>
+</div></blockquote>
+<p><a href="#id1"><span class="problematic" id="id9">Procedure__</span></a>
+1. Loads the model from the specified path.
+2. Applies data augmentation and normalization to the training dataset</p>
+<blockquote>
+<div><p>and normalization to the validation dataset.</p>
+</div></blockquote>
+<ol class="arabic simple" start="3">
+<li><dl class="simple">
+<dt>If the default training data directory is used, downloads a sample</dt><dd><p>dataset.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Prepares PyTorch <cite>DataLoader</cite> objects for the training and</dt><dd><p>validation datasets.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Sends the model to the GPU and fine-tunes it using Stochastic</dt><dd><p>Gradient Descent (SGD) optimization.</p>
+</dd>
+</dl>
+</li>
+<li><p>After training, the model is saved at the specified path.</p></li>
+<li><dl class="simple">
+<dt>If <cite>plot_accuracy</cite> is <cite>True</cite>, plots the validation accuracy versus</dt><dd><p>training epochs.</p>
+</dd>
+</dl>
+</li>
+</ol>
+<p><a href="#id1"><span class="problematic" id="id10">Example__</span></a>
+&gt;&gt;&gt; classifier = ImageClassifier()
+&gt;&gt;&gt; classifier.retrain(model_path=’model.pth’,</p>
+<blockquote>
+<div><p>train_data_dir=’my_data’,
+nepochs=50)</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.image_classifier.image_classifier.ImageClassifier.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_arch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'efficientnetv2_s'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'tmp/hymenoptera_data'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nepochs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">es_tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_accuracy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#brails.processors.image_classifier.image_classifier.ImageClassifier.train" title="Link to this definition"></a></dt>
+<dd><p>Train a model using transfer learning.</p>
+<p><a href="#id1"><span class="problematic" id="id11">Parameters__</span></a>
+- model_arch (str): The architecture of the model to use</p>
+<blockquote>
+<div><p>(e.g., ‘efficientnetv2_s’).</p>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>train_data_dir (str): The directory where the training and validation</dt><dd><p>data is located.</p>
+</dd>
+</dl>
+</li>
+<li><p>batch_size (int): The number of samples per batch.</p></li>
+<li><dl class="simple">
+<dt>nepochs (Union[int, List[int]]): Number of epochs for initial</dt><dd><p>training and fine-tuning.
+If an integer, it will be split into two halves for initial
+training and fine-tuning.
+If a list of two integers, it will use the two values as epochs for
+initial training and fine-tuning respectively.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>es_tolerance (int): Number of epochs with no improvement after which</dt><dd><p>training will be stopped early.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>plot_accuracy (bool): Whether to plot the validation accuracy</dt><dd><p>against the number of training epochs.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p><a href="#id1"><span class="problematic" id="id12">Returns__</span></a>
+- None: This method does not return any value.</p>
+<p><a href="#id1"><span class="problematic" id="id13">Raises__</span></a>
+- ValueError: If <cite>nepochs</cite> is not an integer or a list of two integers.
+- NotImplementedError: model_arch is not defined</p>
+<p><a href="#id1"><span class="problematic" id="id14">Example__</span></a>
+&gt;&gt;&gt; trainer = ImageClassifier()
+&gt;&gt;&gt; trainer.train(
+…     model_arch=’resnet50’,
+…     train_data_dir=’path/to/data’,
+…     batch_size=64,
+…     nepochs=[10, 20],
+…     es_tolerance=5,
+…     plot_accuracy=True
+… )
+New classifier head trained using transfer learning.
+Fine-tuning the model…
+Training complete.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.processors.image_classifier.html" class="btn btn-neutral float-left" title="brails.processors.image_classifier package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.processors.image_segmenter.html" class="btn btn-neutral float-right" title="brails.processors.image_segmenter package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, fmk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
