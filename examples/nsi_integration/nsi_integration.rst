@@ -43,5 +43,6 @@ The original and integrated inventories are as shown:
       
 .. note::
 
-      #. The NSI is new and under development and as a consequence not perfect.
+      #. Information on the fields output for NSI can be found `here <https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/latest/technical-documentation#id-.TechnicalDocumentationv2022-NSIPublicFields>`_
       #. When the number of buildings is different and integration is used, **imputation** may be needed.
+      #. The NSI is new and under development and as a consequence is not perfect.	 
