@@ -21,7 +21,7 @@ To run the example provided contained in a file example.py for for a "Berkeley, 
       
    python3 brails_footprint.py "Berkeley, CA"
    
-The example will print out the number of buildings obtained for each scraper. They are typically different. This is because they are developed from different data sources and using different techniques.
+The example will print out the number of buildings obtained for each scraper.
 
 .. code-block::
    
@@ -33,8 +33,16 @@ The example will print out the number of buildings obtained for each scraper. Th
    USA              28404     
    ---------------------------
 
-The example when run will also prints out a two inventory subset of the data obtained. The data is different, and depending on the actual building information present in OSM can contain data fields or be empty.
+The example when run will also prints out a two inventory subset of the data obtained for each footprint scraper. As shown below, the features obtained for each of the assets is different between scrapers.
 
 .. literalinclude:: output.txt
    :linenos:
       
+.. note::
+
+   #. The number of buildings differs across datasets due to variations in data sources, processing techniques, geographic coverage, and update frequency. Since no dataset is perfect, users are encouraged to compare building inventories from different datasets for their area of interest by overlaying them with satellite imagery for accuracy.
+   #. OSM is a **community-driven** platform where volunteers manually contribute building footprints using ground surveys, GPS data, and licensed aerial imagery. This results in variable data quality depending on the region and contributor activity, with a particularly active community in non-urban areas. The results may contain **NA** values for buildings for which community has yet to provide data.
+   #. OSM offers global coverage, Microsoft’s data is expanding internationally, and USA Structures is limited to the United States.
+   #. OSM is updated in real time by contributors, Microsoft’s data is updated periodically, and USA Structures updates are infrequent.
+      
+   
