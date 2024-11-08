@@ -9,5 +9,6 @@ A series of examples is provided as documentation for |app|. These examples are 
    importer/importer.rst
    footprint/footprint.rst
    nsi_integration/nsi_integration.rst
-   image_downloads/image_downloads.rst	         
+   image_downloads/image_downloads.rst
+   image_filters/image_filters.rst   
    imputation/imputation.rst

@@ -55,6 +55,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../footprint/footprint.html">Building Footprints</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../nsi_integration/nsi_integration.html">NSI Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../image_filters/image_filters.html">Image Filters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
 </ul>
 </li>
@@ -188,7 +189,7 @@
 </pre></div>
 </div>
 <p>To run for example the <strong>importer.py</strong> script for Berkeley, CA the following would be issued frm a terminal window:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">imputation</span><span class="o">.</span><span class="n">py</span> <span class="n">USA_FootprintScraper</span> <span class="s2">&quot;Berkeley, CA&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">importer</span><span class="o">.</span><span class="n">py</span> <span class="n">USA_FootprintScraper</span> <span class="s2">&quot;Berkeley, CA&quot;</span>
 </pre></div>
 </div>
 <p>and the application  would produce:</p>
@@ -223,7 +224,7 @@
 <ol class="arabic simple">
 <li><p>The purpose of the <strong>Importer</strong> class is to allow applications to be developed for building workflows. Consider developing an application that would parse the following JSON input file to such an application. Using the <strong>Importer</strong> class, this application could be written without a bunch of if-else statments switching on the type. This works in BrailsPlusPlus because all the classes that do work inherit from <strong>ABC</strong>, <strong>Abstract Base Class</strong> which is part of the python abc module.</p></li>
 </ol>
-<ol class="arabic simple">
+<ol class="arabic simple" start="2">
 <li><p>An additional advantage of this approach is that as developers add new subclasses, they do not have to search through the code to see all the places that need the if-else statements modified for their classes to be used.</p></li>
 <li><p>In the construction of the <strong>Importer</strong> object the code will search through all directories of the brails code to find all the classes that exist in the code-base. As such, no changes are needed to the class by developers wishing to add their code.</p></li>
 <li><p>Most of the examples presented will use the Importer class as we use the examples to test that class.</p></li>

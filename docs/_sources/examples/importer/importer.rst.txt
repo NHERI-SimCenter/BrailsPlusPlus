@@ -22,7 +22,7 @@ To run for example the **importer.py** script for Berkeley, CA the following wou
 
 .. code-block::
       
-   python3 imputation.py USA_FootprintScraper "Berkeley, CA"
+   python3 importer.py USA_FootprintScraper "Berkeley, CA"
 
 
 and the application  would produce:
@@ -32,17 +32,17 @@ and the application  would produce:
     
 .. note::
 
-   #. The purpose of the **Importer** class is to allow applications to be developed for building workflows. Consider developing an application that would parse the following JSON input file to such an application. Using the **Importer** class, this application could be written without a bunch of if-else statments switching on the type. This works in |app| because all the classes that do work inherit from **ABC**, **Abstract Base Class** which is part of the python abc module.
+   1. The purpose of the **Importer** class is to allow applications to be developed for building workflows. Consider developing an application that would parse the following JSON input file to such an application. Using the **Importer** class, this application could be written without a bunch of if-else statments switching on the type. This works in |app| because all the classes that do work inherit from **ABC**, **Abstract Base Class** which is part of the python abc module.
 
    .. literalinclude:: workflow.json
       :language: json		       
       :linenos:
 
-   #. An additional advantage of this approach is that as developers add new subclasses, they do not have to search through the code to see all the places that need the if-else statements modified for their classes to be used.
+   2. An additional advantage of this approach is that as developers add new subclasses, they do not have to search through the code to see all the places that need the if-else statements modified for their classes to be used.
 
-   #. In the construction of the **Importer** object the code will search through all directories of the brails code to find all the classes that exist in the code-base. As such, no changes are needed to the class by developers wishing to add their code.
+   3. In the construction of the **Importer** object the code will search through all directories of the brails code to find all the classes that exist in the code-base. As such, no changes are needed to the class by developers wishing to add their code.
       
-   #. Most of the examples presented will use the Importer class as we use the examples to test that class.
+   4. Most of the examples presented will use the Importer class as we use the examples to test that class.
 
 	 
    
