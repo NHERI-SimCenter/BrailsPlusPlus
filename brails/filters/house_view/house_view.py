@@ -215,6 +215,7 @@ class HouseView(Filter):
     for key, im in input_images.images.items():
       print(key,im)
       if isImage(im.filename):
+          
         image = os.path.join(input_dir, im.filename)
         print(image)        
         
@@ -224,7 +225,7 @@ class HouseView(Filter):
         #batch_features.append(im.features)
         crop_dict = self._bound_one_image(image, self.text_prompt, self.box_treshhold, self.text_treshhold, model = None, device = device)
         self._crop_and_save_img(crop_dict, output_dir, random = False)
-        output_images.add_image(key, im, im.properties)
+        output_images.add_image(key, im.filename, im.properties)
 
     return output_images
 

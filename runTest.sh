@@ -57,6 +57,16 @@ run_python_script brails_nsi.py OSM_FootprintScraper "Tiburon, CA"
 run_python_script brails_nsi.py USA_FootprintScraper "Tiburon, CA" 
 cd ..
 
+echo "TESTING FILTERS"
+cd image_filters
+run_python_script brails_filters.py OSM_FootprintScraper "Tiburon, CA" 
+cd ..
+
+echo "TESTING PROCESSORS"
+cd image_processors
+run_python_script brails_classifier.py USA_FootprintScraper "Larkspur, CA" NFloorDetector
+cd ..
+
 echo "TESTING IMPUTATION"
 cd imputation
 run_python_script imputation.py OSM_FootprintScraper "Tiburon, CA" 
