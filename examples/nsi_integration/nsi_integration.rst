@@ -40,6 +40,20 @@ The original and integrated inventories are as shown:
 
 .. literalinclude:: outputINTEGRATION.txt
    :linenos:   
+
+
+NSI Integration Notebook
+------------------------
+
+Below is a link to a Jupyter notebook that runs this basic code, with graphics to better understand the
+output.
+
+.. raw:: html
+	 
+	 <a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/nsi_integration/brails_nsi_integration.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>"
+
+         <a href=https://lightning.ai/new?repo_url=https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/imputation/imputation_example.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg/></a>
+
       
 .. note::
 
