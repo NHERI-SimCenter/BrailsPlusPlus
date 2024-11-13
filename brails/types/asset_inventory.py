@@ -399,7 +399,6 @@ class AssetInventory:
 
         return geojson
 
-    
     def write_to_geojson(self, output_file: str = '') -> dict:
         """
         Generate a GeoJSON representation of the assets in the inventory.
@@ -521,10 +520,9 @@ class AssetInventory:
                 elif is_float(val):
                     bldg_features[key] = float(val)
 
+            # coordinates = [[bldg_features[lat_key], bldg_features[lon_key]]]
+            coordinates = [[bldg_features[lon_key], bldg_features[lat_key]]]
 
-            #coordinates = [[bldg_features[lat_key], bldg_features[lon_key]]]
-            coordinates = [[bldg_features[lon_key], bldg_features[lat_key]]]            
-            
             bldg_features.pop(lat_key)
             bldg_features.pop(lon_key)
 
@@ -654,8 +652,8 @@ class AssetInventory:
         lon_values = [None] * nbldg
         for idx in range(nbldg):
             polygon_coordinate = features_json[idx]['geometry']['coordinates']
-            latitudes = [coord[0] for coord in polygon_coordinate]
-            longitudes = [coord[1] for coord in polygon_coordinate]
+            latitudes = [coord[1] for coord in polygon_coordinate]
+            longitudes = [coord[0] for coord in polygon_coordinate]
             lat_values[idx] = sum(latitudes) / len(latitudes)
             lon_values[idx] = sum(longitudes) / len(longitudes)
 
