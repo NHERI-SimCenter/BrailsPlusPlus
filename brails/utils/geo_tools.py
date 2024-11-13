@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 11-06-2024
+# 11-13-2024
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -305,7 +305,10 @@ class GeoTools:
                     poly_centroid = polygon.centroid
                     nearest_point = min(source_points,
                                         key=poly_centroid.distance)
-                    res = [nearest_point]  # Keep only the nearest point
+                    nearest_index = next((index for index, point in
+                                          enumerate(source_points) if
+                                          point.equals(nearest_point)), None)
+                    res = [nearest_index]
 
                 # Add the found point(s) to the keep index list:
                 ptkeepind.extend(res)
