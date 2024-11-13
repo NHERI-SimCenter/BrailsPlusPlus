@@ -80,7 +80,7 @@ class MS_FootprintScraper(FootprintScraper):
         quadkeybin = "".join(i + j for i, j in zip(ytilebin, xtilebin))
         quadkey = ""
         for i in range(0, int(len(quadkeybin) / 2)):
-            quadkey += str(int(quadkeybin[2 * i : 2 * (i + 1)], 2))
+            quadkey += str(int(quadkeybin[2 * i: 2 * (i + 1)], 2))
         return int(quadkey)
 
     def _bbox2quadkeys(self, bpoly):
@@ -120,7 +120,8 @@ class MS_FootprintScraper(FootprintScraper):
 
     def _download_ms_tiles(self, quadkeys, bpoly):
         dftiles = pd.read_csv(
-            "https://minedbuildings.blob.core.windows.net/global-buildings/dataset-links.csv"
+            'https://minedbuildings.z5.web.core.windows.net/global-buildings/'
+            'dataset-links.csv.'
         )
 
         # Define length unit conversion factor:

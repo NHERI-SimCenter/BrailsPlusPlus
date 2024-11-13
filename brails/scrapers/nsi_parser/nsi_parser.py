@@ -37,7 +37,7 @@
 #
 #
 # Last updated:
-# 11-06-2024
+# 11-13-2024
 
 """
 This module defines a class for scraping data from NSI.
@@ -502,7 +502,7 @@ class NSI_Parser:
         footprints, asset_keys = inventory.get_coordinates()
         geojson, footprints_index = self.GetNSIData(footprints, length_unit)
 
-        print('keys: ', asset_keys, ' index   ', footprints_index)
+        # print('keys: ', asset_keys, ' index   ', footprints_index)
         # print(geojson)
 
         #
