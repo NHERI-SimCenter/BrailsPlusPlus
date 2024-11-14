@@ -390,8 +390,10 @@ class AssetInventory:
                        'properties': asset.features,
                        'geometry': geometry
                        }
-            if 'type' in asset.features:
-                feature['type'] = asset.features['type']
+            
+            # fmk - Feature is what is needed in geojson
+            #if 'type' in asset.features:
+            #    feature['type'] = asset.features['type']
 
             geojson['features'].append(feature)
             # TODO: Note from SY here we could put in NA! for imputation and
@@ -432,8 +434,10 @@ class AssetInventory:
                        'properties': asset.features,
                        'geometry': geometry
                        }
-            if 'type' in asset.features:
-                feature['type'] = asset.features['type']
+            
+            # fmk - NOPE - not geojson
+            #if 'type' in asset.features:
+            #    feature['type'] = asset.features['type']
 
             geojson['features'].append(feature)
             # TODO: Note from SY here we could put in NA! for imputation and
