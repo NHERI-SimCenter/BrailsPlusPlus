@@ -20,19 +20,19 @@ The script is executed by entering the following command in a terminal window:
       
    python3 brails_nsi.py OSM_FootprintScraper "Berkeley, CA"
 
-As shown in the print_output() of the smaller NSI inventory, the coordinates for such an inventory only contain points instead of the building footprint.
+As shown in the `print_output()` of the smaller NSI inventory, the coordinates for such an inventory only contain points instead of the building footprints.
 
 .. literalinclude:: outputNSI.txt
    :linenos:
 
-The output also demonstrates that the number of buildings in the two inventories, nsi_inventory and scraper_inventory, are different:
+The output also shows that the number of buildings in the two inventories, nsi_inventory and scraper_inventory, are different:
 
 .. code-block::
 
    Total number of assets detected using NSI is 27705
    Total number of assets detected using OSM_FootprintScraper is 35547
 
-As there are different numbers of buildings, when integrating NSI dataset into the footprint inventory, there will be assets for which no NSI data exists. In the merge performed with the example run, 2 out of the 5 assets in the subset inventories do not have data available in NSI.  This is shown in the output lines:
+As there are different numbers of buildings in the two inventories, when integrating NSI dataset into the footprint inventory, there will be assets for which no NSI data exists. In the merge performed with the example run, 2 out of the 5 assets in the subset inventories do not have data available in NSI.  This is shown in the output lines:
 
 .. code-block::
 
