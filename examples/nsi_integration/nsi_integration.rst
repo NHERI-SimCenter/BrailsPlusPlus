@@ -5,8 +5,8 @@ NSI Integration
 
 This is an example to demonstrate how |app| integrates with the `National Structures Inventory <https://www.hec.usace.army.mil/confluence/nsi>`_. There are two ways to integrate:
 
-#. Create an inventory that does not include footprint information.
-#. Integrate with an existing inventory. For each footprint associated with an asset in the existing inventory, the features from NSI are obtained and merged with the asset's existing features.
+#. Create an inventory that does not include footprint information directly from NSI.
+#. Integrate an existing **AssetInventory** with NSI. For each **Asset** in the asset inventory, the features from NSI are obtained and merged with the asset's existing features. This is done by finding an asset in the NSI located in the footprint.
 
 
 .. literalinclude:: brails_nsi.py
