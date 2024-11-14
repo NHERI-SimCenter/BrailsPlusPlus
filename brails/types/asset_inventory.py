@@ -381,9 +381,13 @@ class AssetInventory:
                 geometry = {"type": "Point",
                             "coordinates": [asset.coordinates[0][:]]
                             }
+            elif len(asset.coordinates) == 2:
+                geometry = {"type": "Line",
+                            "coordinates": sset.coordinates
+                            }                
             else:
                 geometry = {'type': 'Polygon',
-                            'coordinates': asset.coordinates
+                            'coordinates': [asset.coordinates]
                             }
 
             feature = {'type': 'Feature',
@@ -425,9 +429,13 @@ class AssetInventory:
                 geometry = {"type": "Point",
                             "coordinates": [asset.coordinates[0][:]]
                             }
+            elif len(asset.coordinates) == 2:
+                geometry = {"type": "Point",
+                            "coordinates": asset.coordinates
+                            }                
             else:
                 geometry = {'type': 'Polygon',
-                            'coordinates': asset.coordinates
+                            'coordinates': [asset.coordinates]
                             }
 
             feature = {'type': 'Feature',
