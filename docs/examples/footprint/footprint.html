@@ -52,10 +52,14 @@
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../importer/importer.html">Importer</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Building Footprints</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Building Footprints</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#footprint-notebook">Footprint Notebook</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../nsi_integration/nsi_integration.html">NSI Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../image_filters/image_filters.html">Image Filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../image_processor/image_processors.html">Image Processors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
 </ul>
 </li>
@@ -249,7 +253,12 @@
 <span class="linenos">31</span>	 <span class="n">Features</span><span class="p">:</span>  <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;Building&#39;</span><span class="p">,</span> <span class="s1">&#39;buildingheight&#39;</span><span class="p">:</span> <span class="mf">19.1</span><span class="p">,</span> <span class="s1">&#39;fpAreas&#39;</span><span class="p">:</span> <span class="mi">1675</span><span class="p">}</span>
 </pre></div>
 </div>
-<div class="admonition note">
+<section id="footprint-notebook">
+<h2>Footprint Notebook<a class="headerlink" href="#footprint-notebook" title="Link to this heading"></a></h2>
+<p>Here is a link to a Jupyter Notebook that runs the basic code, accompanied by graphics to better illustrate the output.</p>
+<a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>
+
+<a href=https://lightning.ai/new?repo_url=https%3A//github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg></a><div class="admonition note">
 <p class="admonition-title">Note</p>
 <ol class="arabic simple">
 <li><p>The number of buildings differs across datasets due to variations in data sources, processing techniques, geographic coverage, and update frequency. Since no dataset is perfect, users are encouraged to compare building inventories from different datasets for their area of interest by overlaying them with satellite imagery for accuracy.</p></li>
@@ -258,6 +267,7 @@
 <li><p>OSM is updated in real time by contributors, Microsoft’s data is updated periodically, and USA Structures updates are infrequent.</p></li>
 </ol>
 </div>
+</section>
 </section>
 
 

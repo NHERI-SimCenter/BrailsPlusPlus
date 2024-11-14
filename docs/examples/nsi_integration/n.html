@@ -22,9 +22,7 @@
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Downloading Images" href="../image_downloads/image_downloads.html" />
-    <link rel="prev" title="Building Footprints" href="../footprint/footprint.html" /> 
+    <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -47,22 +45,10 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../importer/importer.html">Importer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../footprint/footprint.html">Building Footprints</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">NSI Integration</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#nsi-integration-notebook">NSI Integration Notebook</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_filters/image_filters.html">Image Filters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_processor/image_processors.html">Image Processors</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
@@ -83,10 +69,9 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
-          <li class="breadcrumb-item"><a href="../examples.html">Examples</a></li>
       <li class="breadcrumb-item active">NSI Integration</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../../_sources/examples/nsi_integration/nsi_integration.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../../_sources/examples/nsi_integration/n.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -98,8 +83,8 @@
 <span id="nsi-integration-exammple"></span><h1>NSI Integration<a class="headerlink" href="#nsi-integration" title="Link to this heading"></a></h1>
 <p>This is an example to demonstrate how BrailsPlusPlus integrates with the <a class="reference external" href="https://www.hec.usace.army.mil/confluence/nsi">National Structures Inventory</a>. There are two ways to integrate:</p>
 <ol class="arabic simple">
-<li><p>Create an inventory that does not include footprint information directly from NSI.</p></li>
-<li><p>Integrate an existing <strong>AssetInventory</strong> with NSI. For each <strong>Asset</strong> in the asset inventory, the features from NSI are obtained and merged with the asset’s existing features. This is done by finding an asset in the NSI located in the footprint.</p></li>
+<li><p>Create an inventory that does not include footprint information using NSI.</p></li>
+<li><p>Integrate NSI with an existing inventory obtained with a <strong>FootprintScraper</strong>. For each asset in the existing inventory, is a building exists in the NSI that falls within the footprint the NSI features are added to the asset features.</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">  1</span><span class="c1"># written: fmk, bacetiner</span>
 <span class="linenos">  2</span><span class="c1"># Last updated: 11-06-2024</span>
@@ -211,7 +196,7 @@
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">brails_nsi</span><span class="o">.</span><span class="n">py</span> <span class="n">OSM_FootprintScraper</span> <span class="s2">&quot;Berkeley, CA&quot;</span>
 </pre></div>
 </div>
-<p>As shown in the <cite>print_output()</cite> of the smaller NSI inventory, the coordinates for such an inventory only contain points instead of the building footprints.</p>
+<p>As shown in the print_output() of the smaller NSI inventory, the coordinates for such an inventory only contain points instead of the building footprint.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">1</span><span class="o">********</span> <span class="n">SMALL</span> <span class="n">NSI</span> <span class="n">INVENTORY</span>  <span class="o">*********</span>
 <span class="linenos">2</span><span class="n">AssetInventory</span>
 <span class="linenos">3</span><span class="n">Inventory</span> <span class="n">stored</span> <span class="ow">in</span><span class="p">:</span>  <span class="nb">dict</span>
@@ -223,12 +208,12 @@
 <span class="linenos">9</span>	 <span class="n">Features</span><span class="p">:</span>  <span class="p">{</span><span class="s1">&#39;fd_id&#39;</span><span class="p">:</span> <span class="mi">475206003</span><span class="p">,</span> <span class="s1">&#39;bid&#39;</span><span class="p">:</span> <span class="s1">&#39;849VVPVC+J2P-4-4-4-3&#39;</span><span class="p">,</span> <span class="s1">&#39;occtype&#39;</span><span class="p">:</span> <span class="s1">&#39;RES1-2SNB&#39;</span><span class="p">,</span> <span class="s1">&#39;st_damcat&#39;</span><span class="p">:</span> <span class="s1">&#39;RES&#39;</span><span class="p">,</span> <span class="s1">&#39;bldgtype&#39;</span><span class="p">:</span> <span class="s1">&#39;W&#39;</span><span class="p">,</span> <span class="s1">&#39;found_type&#39;</span><span class="p">:</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;cbfips&#39;</span><span class="p">:</span> <span class="s1">&#39;060014213001020&#39;</span><span class="p">,</span> <span class="s1">&#39;pop2amu65&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;pop2amo65&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;pop2pmu65&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;pop2pmo65&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;sqft&#39;</span><span class="p">:</span> <span class="mi">2341</span><span class="p">,</span> <span class="s1">&#39;num_story&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;ftprntid&#39;</span><span class="p">:</span> <span class="s1">&#39;06001_730116&#39;</span><span class="p">,</span> <span class="s1">&#39;ftprntsrc&#39;</span><span class="p">:</span> <span class="s1">&#39;NGA&#39;</span><span class="p">,</span> <span class="s1">&#39;students&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;found_ht&#39;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s1">&#39;val_struct&#39;</span><span class="p">:</span> <span class="mf">378037.886</span><span class="p">,</span> <span class="s1">&#39;val_cont&#39;</span><span class="p">:</span> <span class="mf">189018.943</span><span class="p">,</span> <span class="s1">&#39;val_vehic&#39;</span><span class="p">:</span> <span class="mi">27000</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;P&#39;</span><span class="p">,</span> <span class="s1">&#39;med_yr_blt&#39;</span><span class="p">:</span> <span class="mi">1939</span><span class="p">,</span> <span class="s1">&#39;firmzone&#39;</span><span class="p">:</span> <span class="s1">&#39;NA&#39;</span><span class="p">,</span> <span class="s1">&#39;o65disable&#39;</span><span class="p">:</span> <span class="mf">0.22</span><span class="p">,</span> <span class="s1">&#39;u65disable&#39;</span><span class="p">:</span> <span class="mf">0.03</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">122.2799116</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="mf">37.894081399</span><span class="p">,</span> <span class="s1">&#39;ground_elv&#39;</span><span class="p">:</span> <span class="mf">195.71405070861817</span><span class="p">,</span> <span class="s1">&#39;ground_elv_m&#39;</span><span class="p">:</span> <span class="mf">59.65364074707031</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;Building&#39;</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>The output also shows that the number of buildings in the two inventories, nsi_inventory and scraper_inventory, are different:</p>
+<p>The output also demonstrates that the number of buildings in the two inventories, nsi_inventory and scraper_inventory, are different:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Total</span> <span class="n">number</span> <span class="n">of</span> <span class="n">assets</span> <span class="n">detected</span> <span class="n">using</span> <span class="n">NSI</span> <span class="ow">is</span> <span class="mi">27705</span>
 <span class="n">Total</span> <span class="n">number</span> <span class="n">of</span> <span class="n">assets</span> <span class="n">detected</span> <span class="n">using</span> <span class="n">OSM_FootprintScraper</span> <span class="ow">is</span> <span class="mi">35547</span>
 </pre></div>
 </div>
-<p>As there are different numbers of buildings in the two inventories, when integrating NSI dataset into the footprint inventory, there will be assets for which no NSI data exists. In the merge performed with the example run, 2 out of the 5 assets in the subset inventories do not have data available in NSI.  This is shown in the output lines:</p>
+<p>As there are different numbers of buildings, when integrating NSI dataset into the footprint inventory, there will be assets for which no NSI data exists. In the merge performed with the example run, 2 out of the 5 assets in the subset inventories do not have data available in NSI.  This is shown in the output lines:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>
 </pre></div>
 </div>
@@ -318,10 +303,7 @@
 
            </div>
           </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../footprint/footprint.html" class="btn btn-neutral float-left" title="Building Footprints" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../image_downloads/image_downloads.html" class="btn btn-neutral float-right" title="Downloading Images" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+          <footer>
 
   <hr/>
 

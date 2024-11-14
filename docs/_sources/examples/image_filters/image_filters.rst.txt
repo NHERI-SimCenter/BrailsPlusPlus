@@ -12,7 +12,7 @@ The following example shows a more typical python example.
    :language: python
    :linenos:
 
-To run for example the **importer.py** script for Berkeley, CA the following would be issued frm a terminal window:
+To run for example the **brails_filters.py** script for Berkeley, CA the following would be issued frm a terminal window:
 
 .. code-block::
       
@@ -30,30 +30,30 @@ Raw Images
    :widths: 33 33 33
    :header-rows: 0
 
-   * - .. image:: tmp/street/images/gstrt_37.84910645_-122.27443686.jpg
-     - .. image:: tmp/street/images/gstrt_37.85885402_-122.25080419.jpg
-     - .. image:: tmp/street/images/gstrt_37.86096388_-122.27096762.jpg
+   * - .. image:: images/street/images/gstrt_37.84910645_-122.27443686.jpg
+     - .. image:: images/street/images/gstrt_37.85885402_-122.25080419.jpg
+     - .. image:: images/street/images/gstrt_37.86096388_-122.27096762.jpg
 
-   * - .. image:: tmp/street/images/gstrt_37.86240981_-122.29162218.jpg
-     - .. image:: tmp/street/images/gstrt_37.86325404_-122.27462417.jpg
-     - .. image:: tmp/street/images/gstrt_37.86369654_-122.26024302.jpg
+   * - .. image:: images/street/images/gstrt_37.86240981_-122.29162218.jpg
+     - .. image:: images/street/images/gstrt_37.86325404_-122.27462417.jpg
+     - .. image:: images/street/images/gstrt_37.86369654_-122.26024302.jpg
 
-   * - .. image:: tmp/street/images/gstrt_37.87800845_-122.27387780.jpg
-     - .. image:: tmp/street/images/gstrt_37.87979406_-122.27365989.jpg
-     - .. image:: tmp/street/images/gstrt_37.88182298_-122.26462540.jpg
+   * - .. image:: images/street/images/gstrt_37.87800845_-122.27387780.jpg
+     - .. image:: images/street/images/gstrt_37.87979406_-122.27365989.jpg
+     - .. image:: images/street/images/gstrt_37.88182298_-122.26462540.jpg
 
 Filtered Images:   
-   * - .. image:: tmp/filtered_images/gstrt_37.84910645_-122.27443686.jpg
-     - .. image:: tmp/filtered_images/gstrt_37.85885402_-122.25080419.jpg
-     - .. image:: tmp/filtered_images/gstrt_37.86096388_-122.27096762.jpg
+   * - .. image:: images/filtered_images/gstrt_37.84910645_-122.27443686.jpg
+     - .. image:: images/filtered_images/gstrt_37.85885402_-122.25080419.jpg
+     - .. image:: images/filtered_images/gstrt_37.86096388_-122.27096762.jpg
 
-   * - .. image:: tmp/filtered_images/gstrt_37.86240981_-122.29162218.jpg
-     - .. image:: tmp/filtered_images/gstrt_37.86325404_-122.27462417.jpg
-     - .. image:: tmp/filtered_images/gstrt_37.86369654_-122.26024302.jpg
+   * - .. image:: images/filtered_images/gstrt_37.86240981_-122.29162218.jpg
+     - .. image:: images/filtered_images/gstrt_37.86325404_-122.27462417.jpg
+     - .. image:: images/filtered_images/gstrt_37.86369654_-122.26024302.jpg
 
-   * - .. image:: tmp/filtered_images/gstrt_37.87800845_-122.27387780.jpg
-     - .. image:: tmp/filtered_images/gstrt_37.87979406_-122.27365989.jpg
-     - .. image:: tmp/filtered_images/gstrt_37.88182298_-122.26462540.jpg
+   * - .. image:: images/filtered_images/gstrt_37.87800845_-122.27387780.jpg
+     - .. image:: images/filtered_images/gstrt_37.87979406_-122.27365989.jpg
+     - .. image:: images/filtered_images/gstrt_37.88182298_-122.26462540.jpg
    
 .. note::
 
