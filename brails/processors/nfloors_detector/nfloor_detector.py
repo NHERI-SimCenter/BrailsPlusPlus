@@ -483,114 +483,118 @@ class NFloorDetector():
 
         predictions = {}
         for img_no, im_path in enumerate(tqdm(image_list)):
-            # Perform iterative inference:
-            img = cv2.imread(im_path)
-            img = cv2.resize(img, (640, 640))
-            cv2.imwrite("input.jpg", img)
-            _, _, boxes = gtf_infer.predict("input.jpg", threshold=0.2)
-            boxes_poly = [create_polygon(bbox) for bbox in boxes]
-
-            multiplier = 1
-            while check_threshold_level(boxes_poly)[0]:
-                if check_threshold_level(boxes_poly)[1]:
-                    conf_threshold = 0.2 + multiplier*0.1
-                    if conf_threshold > 1:
-                        break
-                else:
-                    conf_threshold = 0.2 - multiplier*0.02
-                    if conf_threshold == 0:
-                        break
-                _, _, boxes = gtf_infer.predict(
-                    "input.jpg", threshold=conf_threshold)
-                multiplier += 1
+            if os.path.isfile(im_path):
+                # Perform iterative inference:
+                img = cv2.imread(im_path)
+                img = cv2.resize(img, (640, 640))
+                cv2.imwrite("input.jpg", img)
+                _, _, boxes = gtf_infer.predict("input.jpg", threshold=0.2)
                 boxes_poly = [create_polygon(bbox) for bbox in boxes]
 
-            # Postprocessing:
-            boxes_poly = [create_polygon(bbox) for bbox in boxes]
+                multiplier = 1
+                while check_threshold_level(boxes_poly)[0]:
+                    if check_threshold_level(boxes_poly)[1]:
+                        conf_threshold = 0.2 + multiplier*0.1
+                        if conf_threshold > 1:
+                            break
+                    else:
+                        conf_threshold = 0.2 - multiplier*0.02
+                        if conf_threshold == 0:
+                            break
+                    _, _, boxes = gtf_infer.predict(
+                        "input.jpg", threshold=conf_threshold)
+                    multiplier += 1
+                    boxes_poly = [create_polygon(bbox) for bbox in boxes]
 
-            nested_boxes = np.zeros((10*len(boxes)), dtype=int)
-            counter = 0
-            for bbox_poly in boxes_poly:
-                overlap_ratio = np.array(
-                    [intersect_polygons(p, bbox_poly)
-                     for p in boxes_poly], dtype=float)
-                ind = [idx for idx, val in enumerate(
-                    overlap_ratio) if val > 75][1:]
-                nested_boxes[counter:counter+len(ind)] = ind
-                counter += len(ind)
-            nested_boxes = np.unique(nested_boxes[:counter])
+                # Postprocessing:
+                boxes_poly = [create_polygon(bbox) for bbox in boxes]
 
-            counter = 0
-            for box_ind in nested_boxes:
-                del boxes[box_ind-counter]
-                counter += 1
+                nested_boxes = np.zeros((10*len(boxes)), dtype=int)
+                counter = 0
+                for bbox_poly in boxes_poly:
+                    overlap_ratio = np.array(
+                        [intersect_polygons(p, bbox_poly)
+                         for p in boxes_poly], dtype=float)
+                    ind = [idx for idx, val in enumerate(
+                        overlap_ratio) if val > 75][1:]
+                    nested_boxes[counter:counter+len(ind)] = ind
+                    counter += len(ind)
+                nested_boxes = np.unique(nested_boxes[:counter])
 
-            n_boxes = len(boxes)
-
-            boxes_poly = []
-            boxes_extended_poly = []
-            cent_boxes = np.zeros((n_boxes, 2))
-            for k in range(n_boxes):
-                bbox = boxes[k]
-                temp_poly = create_polygon(bbox)
-                boxes_poly.append(temp_poly)
-                xcoord, ycoord = temp_poly.centroid.xy
-                cent_boxes[k, :] = np.array([xcoord[0],
-                                             ycoord[0]])
-                boxes_extended_poly.append(create_polygon(
-                    [0.9*bbox[0], 0, 1.1*bbox[2], len(img)-1]))
-
-            stacked_ind = []
-            for bbox in boxes_extended_poly:
-                overlap_ratio = np.array(
-                    [intersect_polygons(p, bbox)
-                     for p in boxes_extended_poly], dtype=float)
-                stacked_ind.append(
-                    [idx for idx, val in enumerate(overlap_ratio) if val > 10])
-
-            unique_stacks0 = [list(x) for x in set(tuple(x)
-                                                   for x in stacked_ind)]
-
-            dy_over_dx = compute_derivative(cent_boxes)
-            stacks = np.where(dy_over_dx > 1.3)
-
-            counter = 0
-            unique_stacks0 = [[] for i in range(n_boxes)]
-            for k in range(n_boxes):
-                while counter < len(stacks[0]) and k == stacks[0][counter]:
-                    unique_stacks0[k].append(stacks[1][counter])
+                counter = 0
+                for box_ind in nested_boxes:
+                    del boxes[box_ind-counter]
                     counter += 1
 
-            unique_stacks0 = [list(x) for x in set(tuple(x)
-                                                   for x in unique_stacks0)]
+                n_boxes = len(boxes)
 
-            if len(unique_stacks0) == 1 or len(unique_stacks0) == 1:
-                nfloors = len(unique_stacks0[0])
-            else:
-                lbound = len(img)/5
-                ubound = 4*len(img)/5
-                middle_poly = Polygon(
-                    [(lbound, 0), (lbound, len(img)),
-                     (ubound, len(img)), (ubound, 0)])
-                overlap_ratio = np.empty(len(unique_stacks0))
-                for k in range(len(unique_stacks0)):
-                    poly = unary_union([boxes_poly[x]
-                                       for x in unique_stacks0[k]])
-                    overlap_ratio[k] = (
-                        intersect_polygons(poly, middle_poly))
+                boxes_poly = []
+                boxes_extended_poly = []
+                cent_boxes = np.zeros((n_boxes, 2))
+                for k in range(n_boxes):
+                    bbox = boxes[k]
+                    temp_poly = create_polygon(bbox)
+                    boxes_poly.append(temp_poly)
+                    xcoord, ycoord = temp_poly.centroid.xy
+                    cent_boxes[k, :] = np.array([xcoord[0],
+                                                 ycoord[0]])
+                    boxes_extended_poly.append(create_polygon(
+                        [0.9*bbox[0], 0, 1.1*bbox[2], len(img)-1]))
 
-                ind_keep = np.argsort(-overlap_ratio)[0:2]
-                stack4address = []
-                for k in range(2):
-                    if overlap_ratio[ind_keep[k]] > 10:
-                        stack4address.append(ind_keep[k])
-                if len(stack4address) != 0:
-                    nfloors = max(len(unique_stacks0[x])
-                                  for x in stack4address)
-                else:
+                stacked_ind = []
+                for bbox in boxes_extended_poly:
+                    overlap_ratio = np.array(
+                        [intersect_polygons(p, bbox)
+                         for p in boxes_extended_poly], dtype=float)
+                    stacked_ind.append(
+                        [idx for idx, val in enumerate(overlap_ratio
+                                                       ) if val > 10])
+
+                unique_stacks0 = [list(x) for x in set(tuple(x)
+                                                       for x in stacked_ind)]
+
+                dy_over_dx = compute_derivative(cent_boxes)
+                stacks = np.where(dy_over_dx > 1.3)
+
+                counter = 0
+                unique_stacks0 = [[] for i in range(n_boxes)]
+                for k in range(n_boxes):
+                    while counter < len(stacks[0]) and k == stacks[0][counter]:
+                        unique_stacks0[k].append(stacks[1][counter])
+                        counter += 1
+
+                unique_stacks0 = [list(x) for x in set(
+                    tuple(x) for x in unique_stacks0)]
+
+                if len(unique_stacks0) == 1 or len(unique_stacks0) == 1:
                     nfloors = len(unique_stacks0[0])
+                else:
+                    lbound = len(img)/5
+                    ubound = 4*len(img)/5
+                    middle_poly = Polygon(
+                        [(lbound, 0), (lbound, len(img)),
+                         (ubound, len(img)), (ubound, 0)])
+                    overlap_ratio = np.empty(len(unique_stacks0))
+                    for k in range(len(unique_stacks0)):
+                        poly = unary_union([boxes_poly[x]
+                                           for x in unique_stacks0[k]])
+                        overlap_ratio[k] = (
+                            intersect_polygons(poly, middle_poly))
 
-            predictions[image_keys[img_no]] = nfloors
+                    ind_keep = np.argsort(-overlap_ratio)[0:2]
+                    stack4address = []
+                    for k in range(2):
+                        if overlap_ratio[ind_keep[k]] > 10:
+                            stack4address.append(ind_keep[k])
+                    if len(stack4address) != 0:
+                        nfloors = max(len(unique_stacks0[x])
+                                      for x in stack4address)
+                    else:
+                        nfloors = len(unique_stacks0[0])
+
+                predictions[image_keys[img_no]] = nfloors
+            else:
+                predictions[image_keys[img_no]] = None
 
         self.system_dict["infer"]['predictions'] = predictions
 
