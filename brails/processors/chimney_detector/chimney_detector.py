@@ -368,14 +368,17 @@ class ChimneyDetector():
 
         predictions = {}
         for img_no, im_path in enumerate(tqdm(image_list)):
-            img = cv2.imread(im_path)
-            cv2.imwrite("input.jpg", img)
-            _, _, boxes = gtf_infer.predict(
-                "input.jpg", threshold=0.35)
-            if len(boxes) >= 1:
-                predictions[image_keys[img_no]] = 1
+            if os.path.isfile(im_path):
+                img = cv2.imread(im_path)
+                cv2.imwrite("input.jpg", img)
+                _, _, boxes = gtf_infer.predict(
+                    "input.jpg", threshold=0.35)
+                if len(boxes) >= 1:
+                    predictions[image_keys[img_no]] = 1
+                else:
+                    predictions[image_keys[img_no]] = 0
             else:
-                predictions[image_keys[img_no]] = 0
+                predictions[image_keys[img_no]] = None
 
         self.system_dict["infer"]['predictions'] = predictions
 
