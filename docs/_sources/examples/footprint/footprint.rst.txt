@@ -37,6 +37,18 @@ The example when run will also prints out a two inventory subset of the data obt
 
 .. literalinclude:: output.txt
    :linenos:
+
+Footprint Notebook
+------------------
+
+Here is a link to a Jupyter Notebook that runs the basic code, accompanied by graphics to better illustrate the output. 
+
+.. raw:: html
+	 
+	 <a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>
+
+         <a href=https://lightning.ai/new?repo_url=https%3A//github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg></a>
+
       
 .. note::
 

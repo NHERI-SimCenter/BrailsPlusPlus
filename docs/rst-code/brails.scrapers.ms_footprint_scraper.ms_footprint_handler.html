@@ -102,25 +102,57 @@
              
   <section id="module-brails.scrapers.ms_footprint_scraper.ms_footprint_handler">
 <span id="brails-scrapers-ms-footprint-scraper-ms-footprint-handler-module"></span><h1>brails.scrapers.ms_footprint_scraper.ms_footprint_handler module<a class="headerlink" href="#module-brails.scrapers.ms_footprint_scraper.ms_footprint_handler" title="Link to this heading"></a></h1>
+<p>This module defines MS_FootprintScraper class downloading Microsoft footprints.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#brails.scrapers.ms_footprint_scraper.ms_footprint_handler.MS_FootprintScraper" title="brails.scrapers.ms_footprint_scraper.ms_footprint_handler.MS_FootprintScraper"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MS_FootprintScraper</span></code></a>(input_data)</p></td>
+<td><p>A scraper class for downloading building footprints from Microsoft data.</p></td>
+</tr>
+</tbody>
+</table>
 <dl class="py class">
 <dt class="sig sig-object py" id="brails.scrapers.ms_footprint_scraper.ms_footprint_handler.MS_FootprintScraper">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.scrapers.ms_footprint_scraper.ms_footprint_handler.</span></span><span class="sig-name descname"><span class="pre">MS_FootprintScraper</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.scrapers.ms_footprint_scraper.ms_footprint_handler.MS_FootprintScraper" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.scrapers.ms_footprint_scraper.ms_footprint_handler.</span></span><span class="sig-name descname"><span class="pre">MS_FootprintScraper</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.scrapers.ms_footprint_scraper.ms_footprint_handler.MS_FootprintScraper" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="brails.scrapers.footprint_scraper.html#brails.scrapers.footprint_scraper.FootprintScraper" title="brails.scrapers.footprint_scraper.FootprintScraper"><code class="xref py py-class docutils literal notranslate"><span class="pre">FootprintScraper</span></code></a></p>
-<p>A class to generate the foorprint data utilizing Microsofts</p>
-<p>Attributes:</p>
+<p>A scraper class for downloading building footprints from Microsoft data.</p>
+<p>This class is designed to retrieve building footprint data for a specified
+region using quadkeys, download the data from Microsoft’s dataset, and
+provide an inventory of building footprints and their attributes, such as
+building height. It supports multiple units for building height (i.e., feet
+or meters).</p>
 <dl class="simple">
-<dt>Methods:</dt><dd><p>__init__: Constructor that just creates an empty footprint
-get_inventory(id, coordinates): to get the inventory</p>
+<dt>Attributes:</dt><dd><dl class="simple">
+<dt>length_unit (str): The unit of measurement for building height, either</dt><dd><p>‘ft’ (feet) or ‘m’ (meters). The default is ‘ft’ (feet) if not
+specified.</p>
+</dd>
+</dl>
+</dd>
+<dt>Methods:</dt><dd><dl class="simple">
+<dt>get_footprints(region: RegionBoundary) -&gt; AssetInventory: Retrieves</dt><dd><p>building footprints and their attributes for the specified region.</p>
+</dd>
+</dl>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="brails.scrapers.ms_footprint_scraper.ms_footprint_handler.MS_FootprintScraper.get_footprints">
 <span class="sig-name descname"><span class="pre">get_footprints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="brails.types.region_boundary.html#brails.types.region_boundary.RegionBoundary" title="brails.types.region_boundary.RegionBoundary"><span class="pre">RegionBoundary</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="brails.types.asset_inventory.html#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><span class="pre">AssetInventory</span></a></span></span><a class="headerlink" href="#brails.scrapers.ms_footprint_scraper.ms_footprint_handler.MS_FootprintScraper.get_footprints" title="Link to this definition"></a></dt>
-<dd><p>This method will be used by the caller to obtain the footprints for builings in an area.</p>
+<dd><p>Retrieve building footprints and associated attributes for a region.</p>
+<p>This method takes a <cite>RegionBoundary</cite> object, extracts the region’s
+boundary, determines the relevant quadkeys for that region, downloads
+the building footprint data, and returns an <cite>AssetInventory</cite>
+containing the building footprints and other attributes (e.g.,
+building height).</p>
 <dl class="simple">
-<dt>Args:</dt><dd><p>region (RegionBoundary): The region of interest.</p>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>region (RegionBoundary): The region of interest containing the</dt><dd><p>geographical boundary.</p>
 </dd>
-<dt>Returns:</dt><dd><p>BuildingInventory: A building inventory for buildings in the region.</p>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>AssetInventory: An inventory of buildings within the specified</dt><dd><p>region, including their footprints and attributes (such as
+building height).</p>
+</dd>
+</dl>
 </dd>
 </dl>
 </dd></dl>

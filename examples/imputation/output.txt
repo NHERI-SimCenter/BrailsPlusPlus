@@ -1,0 +1,19 @@
+
+INCOMPLETE ASSET: {'index': 4, 'erabuilt': 'NA', 'numstories': 2, 'roofshape': 'Hip', 'fpAreas': 10802, 'occupancy2': 'Residential', 'fparea': '', 'repaircost': '', 'constype': '', 'occupancy': '', 'type': 'building'}
+
+
+Missing percentages among 3249 assets
+erabuilt: 14.19%
+numstories: 13.82%
+occupancy2: 3.42%
+fparea: 14.19%
+repaircost: 14.19%
+constype: 14.19%
+occupancy: 14.19%
+Primitive imputation done.
+Running the main imputation. This may take a while.
+Done imputation. It took 0.01 mins
+
+
+COMPLETE ASSET: {'index': 4, 'erabuilt': 1975.0, 'numstories': 2, 'roofshape': 'Hip', 'fpAreas': 10802, 'occupancy2': 'Residential', 'fparea': [np.float64(4654.0), np.float64(1784.0), np.float64(4654.0), np.float64(4654.0), np.float64(2582.0), np.float64(2582.0), np.float64(4654.0), np.float64(2582.0), np.float64(2582.0), np.float64(1784.0)], 'repaircost': [np.float64(236440.24), np.float64(419571.341), np.float64(419571.341), np.float64(236440.24), np.float64(419571.341), np.float64(236440.24), np.float64(419571.341), np.float64(322763.278), np.float64(236440.24), np.float64(425334.148)], 'constype': ['W1', 'W1', 'S1', 'S1', 'RM1', 'W1', 'S1', 'RM1', 'S1', 'RM1'], 'occupancy': ['RES1', 'RES1', 'COM4', 'RES1', 'RES1', 'RES3A', 'RES1', 'RES3A', 'COM4', 'COM4'], 'type': 'building'}
+
