@@ -47,7 +47,7 @@ import cv2
 import torch
 
 from brails.types.image_set import ImageSet
-from lib.infer_detector import Infer
+from .lib.infer_detector import Infer
 from .lib.train_detector import Detector
 
 warnings.filterwarnings("ignore")
