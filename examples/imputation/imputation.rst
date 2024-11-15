@@ -17,7 +17,7 @@ in an inventory. In this example, the user has a csv file that they will use to 
    ......
    ......
 
-An inventory is first created with this csv file, a knn imputer is then created, and this imputer returns a second inventory, which for the missing fields will contain a number of possible values.
+In the python script, shown below, the inventory is first created with this csv file, a **KNN** imputer is then created, and this imputer when the **impute()** method is invoked returns a second inventory, which for the missing fields will contain a number of possible values.
 
 .. literalinclude:: imputation.py
    :language: python
@@ -25,7 +25,7 @@ An inventory is first created with this csv file, a knn imputer is then created,
 
 
       
-The script is run by issuing the following would be issued from a terminal window:
+The script is run by issuing the following from a terminal window:
 
 .. code-block::
       
