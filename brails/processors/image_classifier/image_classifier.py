@@ -770,7 +770,9 @@ class ImageClassifier():
             if is_image(im.filename):
                 image = image_loader(os.path.join(data_dir, im.filename))
                 _, pred = torch.max(model(image), 1)
-            preds[key] = classes[pred.item()]
+                preds[key] = classes[pred.item()]
+            else:
+                preds[key] = None
 
         # self.preds = preds
         return preds
