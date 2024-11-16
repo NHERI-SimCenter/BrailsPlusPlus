@@ -754,8 +754,7 @@ class ImageClassifier():
             return image.to(self.device)
 
         def is_image(im):
-            return im.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')) and \
-                os.path.isfile(im)
+            return im.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))
 
         model = torch.load(self.model_path, map_location=self.device)
         model.eval()
@@ -767,8 +766,9 @@ class ImageClassifier():
                                      "is not a directory")
 
         for key, im in images.images.items():
-            if is_image(im.filename):
-                image = image_loader(os.path.join(data_dir, im.filename))
+            im_path = os.path.join(data_dir, im.filename)
+            if is_image(im.filename) and os.path.isfile(im_path):
+                image = image_loader(im_path)
                 _, pred = torch.max(model(image), 1)
                 preds[key] = classes[pred.item()]
             else:
