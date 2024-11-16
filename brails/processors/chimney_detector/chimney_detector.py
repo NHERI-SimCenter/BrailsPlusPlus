@@ -62,19 +62,13 @@ class ChimneyDetector():
     detection system. It initializes a nested dictionary to hold various
     configurations and parameters for different stages of processing.
 
-    Attributes_
-        system_dict (Dict[str, Dict[str, Any]]): A dictionary to store system
-        configurations and parameters, initialized with nested dictionaries for
-        training and inference settings.
+    Attributes:
+        system_dict (dict):
+            A dictionary to store system configurations and parameters,
+            initialized with nested dictionaries for training and inference
+            settings.
 
-    Methods_
-        __init__(self, input_data: Optional[Dict[str, Any]] = None):
-            Initializes the ChimneyDetector instance with default
-            configurations and optionally with provided input data.
-
-        set_fixed_params(self):
-            Configures fixed parameters required for the chimney detection
-            system.
+    Methods:
         train(self, comp_coeff: int = 3, top_only: bool = False,
               optim: str = "adamw", lr: float = 1e-4, nepochs: int = 25,
               ngpu: int = 1) -> None:
@@ -85,16 +79,18 @@ class ChimneyDetector():
         """
         Initialize the ChimneyDetector instance.
 
-        Args__
-            input_data (Optional[dict]): An optional dictionary that can be
-                    used to initialize the system parameters. If not provided,
-                    the system is initialized with default values.
+        Args:
+            input_data (dict):
+                An optional dictionary that can be used to initialize the
+                system parameters. If not provided, the system is initialized
+                with default values.
 
-        Initializes__
-            self.system_dict (dict): A nested dictionary structure with
-                predefined keys for storing training and inference
-                configurations. The default structure includes placeholders
-                for training data and models, as well as inference parameters.
+        Initializes_:
+            self.system_dict (dict):
+                A nested dictionary structure with predefined keys for storing
+                training and inference configurations. The default structure
+                includes placeholders for training data and models, as well as
+                inference parameters.
         """
         self.system_dict = {}
         self.system_dict["train"] = {}
@@ -145,18 +141,24 @@ class ChimneyDetector():
         """
         Train a chimney detection model.
 
-        Args__
-            comp_coeff (int): Coefficient for comparison, default is 3.
-            top_only (bool): If True, only the top layers are trained, default
-                is False.
-            optim (str): Optimizer type, default is "adamw".
-            lr (float): Learning rate, default is 1e-4.
-            nepochs (int): Number of epochs for training, default is 25.
-            ngpu (int): Number of GPUs to use, default is 1.
+        Args:
+            comp_coeff (int):
+                Coefficient for comparison, default is 3.
+            top_only (bool):
+                If True, only the top layers are trained, default is False.
+            optim (str):
+                Optimizer type, default is "adamw".
+            lr (float):
+                Learning rate, default is 1e-4.
+            nepochs (int):
+                Number of epochs for training, default is 25.
+            ngpu (int):
+                Number of GPUs to use, default is 1.
 
-        Updates__
-            self.system_dict (Dict[str, Dict[str, Any]]): Updates the model
-            configuration parameters for training in the system dictionary.
+        Updates:
+            self.system_dict (dict[str, dict[str, Any]]):
+                Updates the model configuration parameters for training in the
+                system dictionary.
         """
         # Initialize the Object Detector:
         gtf = Detector()
@@ -216,11 +218,15 @@ class ChimneyDetector():
         """
         Retrain the chimney detection model with specified parameters.
 
-        Args__
-            optim (str): Optimizer to use for training (default is "adamw").
-            lr (float): The learning rate for the optimizer (default is 1e-4).
-            nepochs (int): Number of epochs to train the model (default is 25).
-            ngpu (int): The number of GPUs to use for training (default is 1).
+        Args:
+            optim (str):
+                Optimizer to use for training (default is "adamw").
+            lr (float):
+                The learning rate for the optimizer (default is 1e-4).
+            nepochs (int):
+                Number of epochs to train the model (default is 25).
+            ngpu (int):
+                The number of GPUs to use for training (default is 1).
 
         This method configures the training parameters, sets the training and
         validation datasets, initializes the model architecture, and starts
@@ -295,16 +301,19 @@ class ChimneyDetector():
         """
         Predict the existence of chimneys in buildings from the given images.
 
-        Args__
-            images (ImageSet): ImageSet object containing the collection of
-                images to be analyzed.
-            modelPath (str): The file path to the pre-trained model. If the
-                default path is used, the model will be downloaded (default is
+        Args:
+            images (ImageSet):
+                ImageSet object containing the collection of images to be
+                analyzed.
+            modelPath (str):
+                The file path to the pre-trained model. If the default path is
+                used, the model will be downloaded (default is
                 'tmp/models/efficientdet-d4_chimneyDetector.pth').
 
-        Returns__
-            predictions (dict): Existence of chimneys with the keys
-                being the same keys used in ImageSet.images.
+        Returns_:
+            predictions (dict):
+                Existence of chimneys with the keys being the same keys used in
+                ImageSet.images.
 
         This method processes the images provided, loads the specified model,
         and performs inference to determine the existence of chimneys in each
