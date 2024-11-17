@@ -1,0 +1,26 @@
+name: Run Brails++ tests
+
+on: push
+  # workflow_dispatch:
+  # schedule:
+  #   - cron: "0 5 * * *"
+
+jobs:
+  setup_and_test:
+    name: Setup and run tests
+    runs-on: ubuntu-latest
+    environment: quoFEM
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        uses: actions/setup-python@v5
+
+      - name: setup
+        with:
+            python-version: '3.10'
+        run: python3 -m pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
+
+      - name: Run Tests
+        run: source runTests.sh
