@@ -10,6 +10,8 @@ jobs:
     name: Setup and run tests
     runs-on: ubuntu-latest
     # environment: quoFEM
+    env:  
+      API_KEY: ${{ secrets.API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -18,8 +20,7 @@ jobs:
           python-version: '3.10'
 
       - name: Run Tests
-        env:  
-          API_KEY: ${{ secrets.API_KEY }}
+        
         run: echo "$API_KEY" > ./examples/api_key.txt
       - run: cat ./examples/api_key.txt
       # - run: python -m pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
