@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10' 
+          python-version: '3.10'
+          super_secret: ${{ secrets.API_KEY }}
       - run: python -m pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
       - run: source ./runTest.sh
