@@ -24,7 +24,7 @@
 
 ## Quick Links
 
-- [Documentation & Guides] (https://nheri-simcenter.github.io/BrailsPlusPlus/).
+- [Documentation & Guides](https://nheri-simcenter.github.io/BrailsPlusPlus/)
 
 ## Installation instructions
 
