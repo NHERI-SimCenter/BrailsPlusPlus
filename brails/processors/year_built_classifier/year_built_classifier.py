@@ -280,12 +280,11 @@ class YearBuiltClassifier():
                                      f'{data_dir} is not a directory')
 
         image_files_dict = {}
-        image_files = []
         for key, im in images.images.items():
             im_path = os.path.join(data_dir, im.filename)
             if is_image(im.filename) and os.path.isfile(im_path):
-                image_files_dict[im.filename] = key
-                image_files.append(im_path)
+                image_files_dict[im_path] = key
+        image_files = list(image_files_dict.keys())
 
         # Initialize the dataset and DataLoader:
         dataset = YearBuiltFolder(image_files,
@@ -304,7 +303,7 @@ class YearBuiltClassifier():
         pred = {}
         for prediction in tqdm(predictions_data):
             image_path = str(prediction['filename']).replace('\\', '/')
-            prediction_int = (prediction['prediction'][0])
+            prediction_int = prediction['prediction']
             prediction_class = self.classes[prediction_int]
             pred[image_files_dict[image_path]] = prediction_class
             prob = prediction['probability']
@@ -336,8 +335,6 @@ class YearBuiltClassifier():
         # Ensure ground truth is not calculated by default:
         self.calc_perf = False
 
-        predictions = []
-
         # Validate batch size:
         batch_size = testloader.batch_size
         if batch_size != 1:
@@ -345,7 +342,7 @@ class YearBuiltClassifier():
                                       'of 1. Larger batch sizes are not '
                                       'compatible.'
                                       )
-
+        predictions = []
         with torch.no_grad():
             for inputs, label, filename in testloader:
                 # Move inputs to the specified device:
@@ -362,7 +359,8 @@ class YearBuiltClassifier():
                 output_probs = sm(outputs_combined.data)
                 _, predicted_class = torch.max(output_probs, 1)
 
-                # Extract prediction probability for the predicted class:
+                # Extract prediction probability for the predicted class.
+                # Please note that prediction is a 0-dim tensor:
                 prediction = predicted_class[0].flatten().cpu().numpy()
                 probability = output_probs[0][prediction][0].item()
 
@@ -372,13 +370,14 @@ class YearBuiltClassifier():
                 # Append prediction results to the list
                 prediction_entry = {
                     'filename': filename_str,
-                    'prediction': prediction,
+                    'prediction': prediction.item(),
                     'probability': probability,
                 }
 
                 if self.calc_perf:
                     prediction_entry['ground truth'] = label.cpu().numpy()
 
+                predictions.append(prediction_entry)
         return predictions
 
     def construct_confusion_matrix_image(classes: list,
