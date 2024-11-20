@@ -47,7 +47,7 @@ setup(
         'typing',
         'wget',
         'yapf',
-        'yacs'
+        'yacs',
         'webcolors',
         'opencv-python',
         'pandas'
