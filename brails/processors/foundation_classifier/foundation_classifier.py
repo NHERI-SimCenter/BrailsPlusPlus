@@ -318,11 +318,12 @@ class FoundationElavationClassifier:
                                      f'{data_dir} is not a directory')
 
         image_files_dict = {}
+        image_files = []
         for key, im in images.images.items():
             im_path = os.path.join(data_dir, im.filename)
             if is_image(im.filename) and os.path.isfile(im_path):
-                image_files_dict[im_path] = key
-        image_files = list(image_files_dict.keys())
+                image_files_dict[im] = key
+                image_files.append(im_path)
 
         # Initialize the dataset and DataLoader:
         dataset = Foundation_Type_Testset(image_files,
