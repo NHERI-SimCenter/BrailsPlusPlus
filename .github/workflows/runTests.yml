@@ -12,7 +12,7 @@ jobs:
     # environment: quoFEM
     env:  
       API_KEY: ${{ secrets.API_KEY }}
-      ONPENAI_KEY: ${{ secretd.OPENAI_KEY }}
+      ONPENAI_KEY: ${{ secrets.OPENAI_KEY }}
 
     steps:
       - uses: actions/checkout@v4
