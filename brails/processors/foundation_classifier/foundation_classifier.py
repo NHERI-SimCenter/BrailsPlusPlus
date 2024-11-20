@@ -324,8 +324,6 @@ class FoundationElevationClassifier:
             if is_image(im.filename) and os.path.isfile(im_path):
                 image_files_dict[im.filename] = key
                 image_files.append(im_path)
-        print(image_files_dict)
-        print(image_files)
 
         # Initialize the dataset and DataLoader:
         dataset = Foundation_Type_Testset(image_files,
