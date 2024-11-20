@@ -20,8 +20,14 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={
-        'brails': ['py.typed', 'processors/vlm_image_classifier/clip/'
-                   'bpe_simple_vocab_16e6.txt.gz']
+        'brails': ['py.typed',
+                   'processors/vlm_image_classifier/clip/'
+                   'bpe_simple_vocab_16e6.txt.gz',
+                   'processors/foundation_classifier/csail_segmentation_tool'
+                   '/csail_seg/data/color150.mat',
+                   'processors/foundation_classifier/csail_segmentation_tool'
+                   '/csail_seg/config/*.yaml'
+                   ]
     },
     install_requires=[
         'addict',
@@ -44,6 +50,7 @@ setup(
         'typing',
         'wget',
         'yapf',
+        'yacs',
         'webcolors',
         'opencv-python',
         'pandas'

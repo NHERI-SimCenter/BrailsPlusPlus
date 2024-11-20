@@ -39,12 +39,13 @@
 # 04-16-2024
 
 
-from brails.processors.image_classifier.image_classifier import ImageClassifier
-from brails.types.image_set import ImageSet
+import os
 from typing import Optional
 
 import torch
-import os
+
+from brails.processors.image_classifier.image_classifier import ImageClassifier
+from brails.types.image_set import ImageSet
 
 
 class OccupancyClassifier(ImageClassifier):

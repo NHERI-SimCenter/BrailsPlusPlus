@@ -4,9 +4,9 @@ Raised Foundation Classification
 
 What is Raised Foundation Classification
 ------------------------------------------
-The code in this package enables to see if a building is on piles piers or posts (PPP). For classification, the path of a folder holding the images has to be supplied. The result will be a comma separated value file in that folder, listing the filenames and classification result.
+The code in this package identifies if a building is on piles of piers or posts (PPP). For classification, the path of a folder holding the images has to be supplied. The result will be a comma-separated value file listing the filenames and classification results in that folder.
 
-There is further optional code to improve the quality and speed of the classification. At the current moment, classification reaches an F1-score of 72% on a random test set, holding out 20% of the data.
+There is further optional code to improve the quality and speed of the classification. Currently, classification reaches an F1-score of 72% on a random test set, holding out 20% of the data.
 
 Copyright
 ~~~~~~~~~
@@ -16,7 +16,7 @@ Copyright
     Contact: Sascha Hornauer  - sascha.hornauer@uni-oldenburg.de
 
 
-BSD 3-Caluse license
+BSD 3-Clause license
 ~~~~~~~~~~~~~~~~~~~~
 ::
 
@@ -49,37 +49,32 @@ BSD 3-Caluse license
 Installation
 ---------------------------
 The following commands clone the BRAILS repository and enter the foundation classification module.
-Requirements are installed using pip. The final 
-command adds the current folder to the PYTHONPATH environment variable which is necessary to train.
+Requirements are installed using pip. The final command adds the current folder to the PYTHONPATH environment variable, which is necessary for training.
 
 ::
 
-    git clone https://github.com/NHERI-SimCenter/BRAILS.git BRAILS
-    cd BRAILS/brails/modules/Foundation_Classification
+    git https://github.com/NHERI-SimCenter/BrailsPlusPlus.git BrailsPlusPlus
+    cd BrailsPlusPlus/brails/processors/FoundationClassifier
     python3 -m pip install -r requirements.txt
     export PYTHONPATH=$PYTHONPATH:`pwd`
 
 How to use
 ---------------------------
 
-Execute with pretrained model
+Execute with the pretrained model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The detect code will download approximately 300 mb in required model weight files on its first start. 
-Detection on a single image or all images in a folder is started in the same way. The default classifier
-with the provided checkpoint expects as input, given with --image-path, either a single image or
-a folder which will be searched for images. One way of improving detection is to mask the parts
-of the image which are not a building. That is done with --mask-buildings.
-Please see `Pre-Saving Masked Images` about how to create masks. If masks should not be used remove the
---mask-buildings flag from the command line.
-If masks should be generated on the fly remove the --load-masks flag, however this will
-take more time and use more GPU memory.
+The detect code will download approximately 300 MB of required model weight files at the start of the process. 
+
+Detection on a single image or all images in a folder is performed the same way. The default classifier with the provided checkpoint expects as input `--image-path`, i.e., the path for either a single image or a folder that contains a set of images. 
+
+One way of improving detection is to mask the parts of the image which are not a building. That is done with `--mask-buildings`. Please see `Pre-Saving Masked Images` for information on how to create masks. If masks should not be used, remove the `--mask-buildings` flag from the command line. If masks should be generated on the fly, remove the `--load-masks flag`; however, this will take more computational time and GPU memory.
 
 ::
 
     python3 detect.py --image-path <IMG_FOLDER or IMAGE PATH> --mask-buildings --load-masks
 
-The result will be a comma separated value file *<IMG_FOLDER>_prediction_results.csv* which contains in each row a filename for each image and a 1 if the building is higher than 8ft or 0 otherwise.
+The result will be a comma-separated value file *<IMG_FOLDER>_prediction_results.csv*, which contains in each row a filename for each image and `1` if the building is higher than 8 ft or 0 otherwise.
 
 
 Optional Improvements
@@ -99,10 +94,7 @@ Masks of images will be saved and expected at the same folder as the original im
 Input Data Format for Training
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Training, validation and test folders should be separate. The name is arbitrary and each path can
-be stated separately with command line parameters during training. Within each folder there
-has to be one folder for each label, named *ppp_buildings*, containing images of buildings from the PPP category
-and other containing buildings which are not in that category. The same structure holds for the val and test folders.
+Training, validation, and test folders should be separate. The name is arbitrary, and each path can be stated separately with command line parameters during training. Within each folder, there has to be one folder for each label, named *ppp_buildings*, containing images of buildings from the PPP category and others containing buildings that are not in that category. The exact structure holds for the val and test folders.
 ::
 
     IMG_FOLDER
@@ -123,14 +115,11 @@ For training it is necessary to create the masks beforehand, as described in the
 Cleaning the Dataset
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Many datasets have outliers which do not show buildings but empty properties or
-objects covering the camera. A half-automatic way of finding and removing noisy images from the
-dataset is described in the following
+Many datasets contain outliers that do not represent buildings, but instead consist images of obstructed buildings or objects that are not buildings. A semi-automated method for identifying and removing these noisy images from the dataset is outlined below.
 
 Training the Model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-Training can happen in two different ways: With an attention based
-network or with a standard Resnet 50, with or without unsupervised pretraining.
+Training can happen in two different ways: With an attention based network or with a standard ResNet-50, with or without unsupervised pretraining.
 
 Unsupervised Pretraining
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
