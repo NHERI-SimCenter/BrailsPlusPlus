@@ -314,6 +314,8 @@ class YearBuiltClassifier():
                     f'Class : {prediction_class} '
                     f'({str(round(prob*100,2))}%)')
 
+        return pred
+
     def evaluate_to_stats(self,
                           testloader: torch.utils.data.DataLoader
                           ) -> list[dict[str, [str | int | float]]]:
