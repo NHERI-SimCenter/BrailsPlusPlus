@@ -20,8 +20,11 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={
-        'brails': ['py.typed', 'processors/vlm_image_classifier/clip/'
-                   'bpe_simple_vocab_16e6.txt.gz']
+        'brails': ['py.typed',
+                   'processors/vlm_image_classifier/clip/'
+                   'bpe_simple_vocab_16e6.txt.gz',
+                   'brails/processors/foundation_classifier/'
+                   'csail_segmentation_tool/csail_seg/data/color150.mat']
     },
     install_requires=[
         'addict',
