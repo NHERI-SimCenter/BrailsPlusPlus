@@ -368,7 +368,7 @@ class FoundationElavationClassifier:
                 prediction_bin = int(score >= 0.5)  # Binary classification
                 prediction_class = self.classes[prediction_bin]
                 image_path = filename[0]
-                pred[image_files_dict[image_path]] = self.classes[prediction]
+                pred[image_files_dict[image_path]] = prediction_class
                 prob = score if score >= 0.5 else 1.0 - score
                 if self.print_res:
                     print(
