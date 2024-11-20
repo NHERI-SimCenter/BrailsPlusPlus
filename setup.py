@@ -36,6 +36,8 @@ setup(
         'shapely',
         'supervision',
         'timm',
+        'tensorboard',
+        'tensorboardX',
         'torch',
         'torchvision',
         'transformers',

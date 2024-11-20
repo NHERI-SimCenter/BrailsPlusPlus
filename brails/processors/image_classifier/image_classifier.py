@@ -36,7 +36,7 @@
 # Contributors:
 # Barbaros Cetiner
 # Last updated:
-# 08-21-2024
+# 11-16-2024
 
 import time
 import os
@@ -129,14 +129,30 @@ class ImageClassifier():
     """
 
     def __init__(self):
+        """
+        Initialize the class instance and sets up essential attributes.
 
+        Attributes:
+            device (torch.device):
+                Specifies the device to be used for computations. It will use
+                a GPU (CUDA) if available; otherwise, it defaults to the CPU.
+            implemented_architectures (list):
+                A list of supported model architectures, derived from the keys
+                in the `MODEL_PROPERTIES` dictionary.
+
+        Notes:
+        - The `torch.device` setting ensures compatibility with the hardware
+          available on the system.
+        - Ensure that `MODEL_PROPERTIES` is defined and contains information
+          about the supported model architectures before using this class.
+        """
         self.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu")
         self.implemented_architectures = list(MODEL_PROPERTIES.keys())
 
     def _download_default_dataset(self):
         """
-        Download and prepares the default dataset for training.
+        Download and prepare the default dataset for training.
 
         This is a private method and is not intended to be accessed directly.
         Implement this method to handle dataset downloading and setup.
@@ -187,33 +203,37 @@ class ImageClassifier():
         number of epochs, evaluates model performance, and implements
         early stopping based on validation accuracy.
 
-        Parameters__
-        - model (nn.Module): The model to be trained.
-        - device (torch.device): The device (GPU or CPU) on which the model
-            and data are located.
-        - dataloaders (Dict[str, DataLoader]): A dictionary containing
-            'train' and 'val' DataLoaders for training and validation
-            phases.
-        - criterion (nn.Module): The loss function used to compute the
-            loss.
-        - optimizer (optim.Optimizer): The optimizer used to update model
-            parameters.
-        - num_epochs (int): The number of epochs to train the model.
-        - es_tolerance (int): The number of epochs with no improvement
-            after which training will be stopped early.
+        Args:
+            model (nn.Module):
+                The model to be trained.
+            device (torch.device):
+                The device (GPU or CPU) on which the model and data are
+                located.
+            dataloaders (dict[str, DataLoader]):
+                A dictionary containing 'train' and 'val' DataLoaders for
+                training and validation phases.
+            criterion (nn.Module):
+                The loss function used to compute the loss.
+            optimizer (optim.Optimizer):
+                The optimizer used to update model parameters.
+            num_epochs (int):
+                The number of epochs to train the model.
+            es_tolerance (int):
+                The number of epochs with no improvement after which training
+                will be stopped early.
 
-        Returns__
-        - Tuple[nn.Module, List[float]]:
-          - The trained model with the best weights.
-          - A list of validation accuracies recorded at each epoch during
+        Returns:
+            Tuple[nn.Module, List[float]]:
+                - The trained model with the best weights.
+                - A list of validation accuracies recorded at each epoch during
               training.
 
-        Prints__
+        Prints:
         - Training and validation loss and accuracy for each epoch.
         - The best validation accuracy achieved.
         - The elapsed time of the training process.
 
-        Example__
+        Example:
         >>> model, val_acc_history = _train_model(
         ...     model=my_model,
         ...     device=torch.device('cuda:0'),
@@ -312,17 +332,20 @@ class ImageClassifier():
         not updated during training. Otherwise, all parameters will be set to
         `requires_grad = True`, making them trainable.
 
-        Parameters__
-        - model (nn.Module): The model whose parameters' `requires_grad`
-            attribute will be modified.
-        - feature_extracting (bool): If `True`, freezes all parameters of the
-            model. If `False`, makes all parameters trainable.
+        Args:
+            model (nn.Module):
+                The model whose parameters' `requires_grad` attribute will be
+                modified.
+            feature_extracting (bool):
+                If `True`, freezes all parameters of the model. If `False`,
+                makes all parameters trainable.
 
-        Returns__
-        - nn.Module: The modified model with the appropriate `requires_grad`
-            settings.
+        Returns:
+            nn.Module:
+                The modified model with the appropriate `requires_grad`
+                settings.
 
-        Example__
+        Example:
         >>> model = models.resnet18(pretrained=True)
         >>> model = _set_parameter_requires_grad(model,
                                                  feature_extracting=True)
@@ -341,20 +364,22 @@ class ImageClassifier():
         """
         Create data transformations for training and validation datasets.
 
-        Parameters__
-        - model_inp_size (int): The input size to which the images will be
-            resized for the model.
+        Args:
+            model_inp_size (int):
+                The input size to which the images will be resized for the
+                model.
 
-        Returns__
-        - Dict[str, transforms.Compose]: A dictionary containing the data
-            transformations for the 'train' and 'val' datasets.
-          - 'train': Resizes images, applies random horizontal flipping,
-              converts them to tensors, and normalizes using
-            ImageNet statistics.
-          - 'val': Resizes images, converts them to tensors, and normalizes
-              using ImageNet statistics.
+        Returns:
+            Dict[str, transforms.Compose]:
+                A dictionary containing the data transformations for the
+                'train' and 'val' datasets.
+                - 'train': Resizes images, applies random horizontal flipping,
+                    converts them to tensors, and normalizes using ImageNet
+                    statistics.
+                - 'val': Resizes images, converts them to tensors, and
+                normalizes using ImageNet statistics.
 
-        Example__
+        Example:
         >>> transforms_dict = data_transformer(224)
         >>> train_transforms = transforms_dict['train']
         >>> val_transforms = transforms_dict['val']
@@ -728,7 +753,7 @@ class ImageClassifier():
             image = image.unsqueeze(0)
             return image.to(self.device)
 
-        def isImage(im):
+        def is_image(im):
             return im.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))
 
         model = torch.load(self.model_path, map_location=self.device)
@@ -741,10 +766,13 @@ class ImageClassifier():
                                      "is not a directory")
 
         for key, im in images.images.items():
-            if isImage(im.filename):
-                image = image_loader(os.path.join(data_dir, im.filename))
+            im_path = os.path.join(data_dir, im.filename)
+            if is_image(im.filename) and os.path.isfile(im_path):
+                image = image_loader(im_path)
                 _, pred = torch.max(model(image), 1)
-            preds[key] = classes[pred.item()]
+                preds[key] = classes[pred.item()]
+            else:
+                preds[key] = None
 
         # self.preds = preds
         return preds

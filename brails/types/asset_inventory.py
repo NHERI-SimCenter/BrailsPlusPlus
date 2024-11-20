@@ -420,17 +420,23 @@ class AssetInventory:
                 geometry = {"type": "Point",
                             "coordinates": [asset.coordinates[0][:]]
                             }
+            elif len(asset.coordinates) == 2:
+                geometry = {"type": "Line",
+                            "coordinates": sset.coordinates
+                            }                
             else:
                 geometry = {'type': 'Polygon',
-                            'coordinates': asset.coordinates
+                            'coordinates': [asset.coordinates]
                             }
 
             feature = {'type': 'Feature',
                        'properties': asset.features,
                        'geometry': geometry
                        }
-            if 'type' in asset.features:
-                feature['type'] = asset.features['type']
+            
+            # fmk - Feature is what is needed in geojson
+            #if 'type' in asset.features:
+            #    feature['type'] = asset.features['type']
 
             geojson['features'].append(feature)
 
@@ -460,17 +466,23 @@ class AssetInventory:
                 geometry = {"type": "Point",
                             "coordinates": [asset.coordinates[0][:]]
                             }
+            elif len(asset.coordinates) == 2:
+                geometry = {"type": "Point",
+                            "coordinates": asset.coordinates
+                            }                
             else:
                 geometry = {'type': 'Polygon',
-                            'coordinates': asset.coordinates
+                            'coordinates': [asset.coordinates]
                             }
 
             feature = {'type': 'Feature',
                        'properties': asset.features,
                        'geometry': geometry
                        }
-            if 'type' in asset.features:
-                feature['type'] = asset.features['type']
+            
+            # fmk - NOPE - not geojson
+            #if 'type' in asset.features:
+            #    feature['type'] = asset.features['type']
 
             geojson['features'].append(feature)
             # TODO: Note from SY here we could put in NA! for imputation and

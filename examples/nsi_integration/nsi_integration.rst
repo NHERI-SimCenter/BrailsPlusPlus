@@ -5,8 +5,8 @@ NSI Integration
 
 This is an example to demonstrate how |app| integrates with the `National Structures Inventory <https://www.hec.usace.army.mil/confluence/nsi>`_. There are two ways to integrate:
 
-#. Create a inventory, that lacks footprint information.
-#. Integrate with an existing inventory. For this integration, for each footprint for which an asset in the NSI exists, the features in the NSI are added to the existing features of the asset.
+#. Create an inventory that does not include footprint information directly from NSI.
+#. Integrate an existing **AssetInventory** with NSI. For each **Asset** in the asset inventory, the features from NSI are obtained and merged with the asset's existing features. This is done by finding an asset in the NSI located in the footprint.
 
 
 .. literalinclude:: brails_nsi.py
@@ -14,25 +14,25 @@ This is an example to demonstrate how |app| integrates with the `National Struct
    :linenos:
 
 
-The script is run by issuing the following would be issued from a terminal window:
+The script is executed by entering the following command in a terminal window:
 
 .. code-block::
       
    python3 brails_nsi.py OSM_FootprintScraper "Berkeley, CA"
 
-As shown in the print_output() of the smaller nsi inventory, the coordinates for such an inventory only contain a point as opposed to the building footprint.
+As shown in the `print_output()` of the smaller NSI inventory, the coordinates for such an inventory only contain points instead of the building footprints.
 
 .. literalinclude:: outputNSI.txt
    :linenos:
 
-The ouput also demonstrates that the number of buildings in the two inventories, nsi_inventory and scraper_inventory isdifferent:
+The output also shows that the number of buildings in the two inventories, nsi_inventory and scraper_inventory, are different:
 
 .. code-block::
 
    Total number of assets detected using NSI is 27705
    Total number of assets detected using OSM_FootprintScraper is 35547
 
-As there are different numbers of buildings, when integrating NSI dataset into the footprint inventory, there will be assets for which no NSI data exists. In the integration perfmormed with the example as run, 2 of the 5 Assets in the subset inventories have no data available. This is shown in the output lines:
+As there are different numbers of buildings in the two inventories, when integrating NSI dataset into the footprint inventory, there will be assets for which no NSI data exists. In the merge performed with the example run, 2 out of the 5 assets in the subset inventories do not have data available in NSI.  This is shown in the output lines:
 
 .. code-block::
 
@@ -45,18 +45,17 @@ The original and integrated inventories are as shown:
 NSI Integration Notebook
 ------------------------
 
-Below is a link to a Jupyter notebook that runs this basic code, with graphics to better understand the
-output.
+Here is a link to a Jupyter Notebook that runs the basic code, accompanied by graphics to better illustrate the output.
 
 .. raw:: html
 	 
-	 <a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/nsi_integration/brails_nsi_integration.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>"
+	 <a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/nsi_integration/brails_nsi_integration.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>
 
-         <a href=https://lightning.ai/new?repo_url=https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/imputation/imputation_example.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg/></a>
+         <a href=https://lightning.ai/new?repo_url=https%3A//github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/nsi_integration/brails_nsi_integration.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg></a>
 
       
 .. note::
 
       #. Information on the fields output for NSI can be found `here <https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/latest/technical-documentation#id-.TechnicalDocumentationv2022-NSIPublicFields>`_
-      #. When the number of buildings is different and integration is used, **imputation** may be needed.
+      #. When the number of buildings in the NSI differs from the inventory it is being merged with, **imputation** may be required during the integration process.
       #. The NSI is new and under development and as a consequence is not perfect.	 

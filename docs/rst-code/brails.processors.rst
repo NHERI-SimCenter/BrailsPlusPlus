@@ -17,6 +17,7 @@ Subpackages
    brails.processors.cons_type_classifier
    brails.processors.facade_parser
    brails.processors.garage_detector
+   brails.processors.gpt_base_model
    brails.processors.image_classifier
    brails.processors.image_segmenter
    brails.processors.nFloor_gpt

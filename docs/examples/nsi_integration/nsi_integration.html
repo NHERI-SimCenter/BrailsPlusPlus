@@ -53,9 +53,13 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../importer/importer.html">Importer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../footprint/footprint.html">Building Footprints</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">NSI Integration</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">NSI Integration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#nsi-integration-notebook">NSI Integration Notebook</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../image_filters/image_filters.html">Image Filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../image_processor/image_processors.html">Image Processors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
 </ul>
 </li>
@@ -94,8 +98,8 @@
 <span id="nsi-integration-exammple"></span><h1>NSI Integration<a class="headerlink" href="#nsi-integration" title="Link to this heading"></a></h1>
 <p>This is an example to demonstrate how BrailsPlusPlus integrates with the <a class="reference external" href="https://www.hec.usace.army.mil/confluence/nsi">National Structures Inventory</a>. There are two ways to integrate:</p>
 <ol class="arabic simple">
-<li><p>Create a inventory, that lacks footprint information.</p></li>
-<li><p>Integrate with an existing inventory. For this integration, for each footprint for which an asset in the NSI exists, the features in the NSI are added to the existing features of the asset.</p></li>
+<li><p>Create an inventory that does not include footprint information directly from NSI.</p></li>
+<li><p>Integrate an existing <strong>AssetInventory</strong> with NSI. For each <strong>Asset</strong> in the asset inventory, the features from NSI are obtained and merged with the asset’s existing features. This is done by finding an asset in the NSI located in the footprint.</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">  1</span><span class="c1"># written: fmk, bacetiner</span>
 <span class="linenos">  2</span><span class="c1"># Last updated: 11-06-2024</span>
@@ -167,46 +171,47 @@
 <span class="linenos"> 68</span>    <span class="n">scraper</span> <span class="o">=</span> <span class="n">scraper_class</span><span class="p">({</span><span class="s1">&#39;length&#39;</span><span class="p">:</span> <span class="s1">&#39;ft&#39;</span><span class="p">})</span>
 <span class="linenos"> 69</span>    <span class="n">scraper_inventory</span> <span class="o">=</span> <span class="n">scraper</span><span class="o">.</span><span class="n">get_footprints</span><span class="p">(</span><span class="n">region_boundary_object</span><span class="p">)</span>
 <span class="linenos"> 70</span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Total number of assets detected using </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="si">}</span><span class="s1"> is </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">scraper_inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>    
-<span class="linenos"> 71</span>    
-<span class="linenos"> 72</span>    <span class="c1"># Create inventories that are a small subset of the obtained footprints &amp; print:</span>
-<span class="linenos"> 73</span>    <span class="n">inventory_subset1</span> <span class="o">=</span> <span class="n">scraper_inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
-<span class="linenos"> 74</span>    <span class="n">inventory_subset2</span> <span class="o">=</span> <span class="n">scraper_inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>    
-<span class="linenos"> 75</span>    
-<span class="linenos"> 76</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH NO NSI_DATA *********&#39;</span><span class="p">)</span>    
-<span class="linenos"> 77</span>    <span class="n">inventory_subset1</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
-<span class="linenos"> 78</span>
-<span class="linenos"> 79</span>    
-<span class="linenos"> 80</span>    <span class="c1"># integrate subset with raw and filtered NSI data</span>
-<span class="linenos"> 81</span>
-<span class="linenos"> 82</span>    <span class="n">subset_nsi_raw_data</span> <span class="o">=</span> <span class="n">nsi</span><span class="o">.</span><span class="n">get_raw_data_given_inventory</span><span class="p">(</span><span class="n">inventory_subset1</span><span class="p">,</span> <span class="s1">&#39;ft&#39;</span><span class="p">)</span>
-<span class="linenos"> 83</span>    <span class="n">subset_nsi_processed_data</span> <span class="o">=</span> <span class="n">nsi</span><span class="o">.</span><span class="n">get_filtered_data_given_inventory</span><span class="p">(</span><span class="n">inventory_subset2</span><span class="p">,</span> <span class="s1">&#39;ft&#39;</span><span class="p">)</span>
-<span class="linenos"> 84</span>    
-<span class="linenos"> 85</span>    <span class="c1">#</span>
-<span class="linenos"> 86</span>    <span class="c1"># Print the inventories</span>
-<span class="linenos"> 87</span>    <span class="c1">#</span>
-<span class="linenos"> 88</span>    
-<span class="linenos"> 89</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH RAW NSI DATA *********&#39;</span><span class="p">)</span>
-<span class="linenos"> 90</span>    <span class="n">subset_nsi_raw_data</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
-<span class="linenos"> 91</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH PROCESSES NSI DATA*********&#39;</span><span class="p">)</span>
-<span class="linenos"> 92</span>    <span class="n">subset_nsi_processed_data</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
-<span class="linenos"> 93</span>    
-<span class="linenos"> 94</span>    <span class="c1"># Write the extracted inventory to a GeoJSON file:</span>
-<span class="linenos"> 95</span>    <span class="n">FILE_PATH</span> <span class="o">=</span> <span class="s1">&#39;tmp/smallinv.geojson&#39;</span>
-<span class="linenos"> 96</span>    <span class="n">directory</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">FILE_PATH</span><span class="p">)</span>
-<span class="linenos"> 97</span>    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="linenos"> 98</span>    
+<span class="linenos"> 71</span>    <span class="c1"># Create inventories that are a small subset of the obtained footprints &amp; print:</span>
+<span class="linenos"> 72</span>    <span class="n">inventory_subset1</span> <span class="o">=</span> <span class="n">scraper_inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+<span class="linenos"> 73</span>    <span class="n">inventory_subset2</span> <span class="o">=</span> <span class="n">scraper_inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>    
+<span class="linenos"> 74</span>    
+<span class="linenos"> 75</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH NO NSI_DATA *********&#39;</span><span class="p">)</span>    
+<span class="linenos"> 76</span>    <span class="n">inventory_subset1</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="linenos"> 77</span>    
+<span class="linenos"> 78</span>    <span class="c1"># integrate subset with raw and filtered NSI data</span>
+<span class="linenos"> 79</span>    <span class="n">subset_nsi_raw_data</span> <span class="o">=</span> <span class="n">nsi</span><span class="o">.</span><span class="n">get_raw_data_given_inventory</span><span class="p">(</span><span class="n">inventory_subset1</span><span class="p">,</span> <span class="s1">&#39;ft&#39;</span><span class="p">)</span>
+<span class="linenos"> 80</span>    <span class="n">subset_nsi_processed_data</span> <span class="o">=</span> <span class="n">nsi</span><span class="o">.</span><span class="n">get_filtered_data_given_inventory</span><span class="p">(</span><span class="n">inventory_subset2</span><span class="p">,</span> <span class="s1">&#39;ft&#39;</span><span class="p">)</span>
+<span class="linenos"> 81</span>    
+<span class="linenos"> 82</span>    <span class="c1">#</span>
+<span class="linenos"> 83</span>    <span class="c1"># Print the inventories</span>
+<span class="linenos"> 84</span>    <span class="c1">#</span>
+<span class="linenos"> 85</span>    
+<span class="linenos"> 86</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH RAW NSI DATA *********&#39;</span><span class="p">)</span>
+<span class="linenos"> 87</span>    <span class="n">subset_nsi_raw_data</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="linenos"> 88</span>
+<span class="linenos"> 89</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH PROCESSES NSI DATA*********&#39;</span><span class="p">)</span>
+<span class="linenos"> 90</span>    <span class="n">subset_nsi_processed_data</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="linenos"> 91</span>
+<span class="linenos"> 92</span>    <span class="c1">#</span>
+<span class="linenos"> 93</span>    <span class="c1"># Write the extracted inventory to a GeoJSON file:</span>
+<span class="linenos"> 94</span>    <span class="c1">#</span>
+<span class="linenos"> 95</span>    
+<span class="linenos"> 96</span>    <span class="n">FILE_PATH</span> <span class="o">=</span> <span class="s1">&#39;tmp/smallinv.geojson&#39;</span>
+<span class="linenos"> 97</span>    <span class="n">directory</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">FILE_PATH</span><span class="p">)</span>
+<span class="linenos"> 98</span>    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="linenos"> 99</span>    <span class="n">geojson</span> <span class="o">=</span> <span class="n">subset_nsi_processed_data</span><span class="o">.</span><span class="n">write_to_geojson</span><span class="p">(</span><span class="n">FILE_PATH</span><span class="p">)</span>
 <span class="linenos">100</span>
-<span class="linenos">101</span><span class="c1"># Run the main function if this script is executed directly</span>
-<span class="linenos">102</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-<span class="linenos">103</span>    <span class="n">main</span><span class="p">()</span>        
+<span class="linenos">101</span>    
+<span class="linenos">102</span><span class="c1"># Run the main function if this script is executed directly</span>
+<span class="linenos">103</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="linenos">104</span>    <span class="n">main</span><span class="p">()</span>        
 </pre></div>
 </div>
-<p>The script is run by issuing the following would be issued from a terminal window:</p>
+<p>The script is executed by entering the following command in a terminal window:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">brails_nsi</span><span class="o">.</span><span class="n">py</span> <span class="n">OSM_FootprintScraper</span> <span class="s2">&quot;Berkeley, CA&quot;</span>
 </pre></div>
 </div>
-<p>As shown in the print_output() of the smaller nsi inventory, the coordinates for such an inventory only contain a point as opposed to the building footprint.</p>
+<p>As shown in the <cite>print_output()</cite> of the smaller NSI inventory, the coordinates for such an inventory only contain points instead of the building footprints.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">1</span><span class="o">********</span> <span class="n">SMALL</span> <span class="n">NSI</span> <span class="n">INVENTORY</span>  <span class="o">*********</span>
 <span class="linenos">2</span><span class="n">AssetInventory</span>
 <span class="linenos">3</span><span class="n">Inventory</span> <span class="n">stored</span> <span class="ow">in</span><span class="p">:</span>  <span class="nb">dict</span>
@@ -218,12 +223,12 @@
 <span class="linenos">9</span>	 <span class="n">Features</span><span class="p">:</span>  <span class="p">{</span><span class="s1">&#39;fd_id&#39;</span><span class="p">:</span> <span class="mi">475206003</span><span class="p">,</span> <span class="s1">&#39;bid&#39;</span><span class="p">:</span> <span class="s1">&#39;849VVPVC+J2P-4-4-4-3&#39;</span><span class="p">,</span> <span class="s1">&#39;occtype&#39;</span><span class="p">:</span> <span class="s1">&#39;RES1-2SNB&#39;</span><span class="p">,</span> <span class="s1">&#39;st_damcat&#39;</span><span class="p">:</span> <span class="s1">&#39;RES&#39;</span><span class="p">,</span> <span class="s1">&#39;bldgtype&#39;</span><span class="p">:</span> <span class="s1">&#39;W&#39;</span><span class="p">,</span> <span class="s1">&#39;found_type&#39;</span><span class="p">:</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;cbfips&#39;</span><span class="p">:</span> <span class="s1">&#39;060014213001020&#39;</span><span class="p">,</span> <span class="s1">&#39;pop2amu65&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;pop2amo65&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;pop2pmu65&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;pop2pmo65&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;sqft&#39;</span><span class="p">:</span> <span class="mi">2341</span><span class="p">,</span> <span class="s1">&#39;num_story&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;ftprntid&#39;</span><span class="p">:</span> <span class="s1">&#39;06001_730116&#39;</span><span class="p">,</span> <span class="s1">&#39;ftprntsrc&#39;</span><span class="p">:</span> <span class="s1">&#39;NGA&#39;</span><span class="p">,</span> <span class="s1">&#39;students&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;found_ht&#39;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s1">&#39;val_struct&#39;</span><span class="p">:</span> <span class="mf">378037.886</span><span class="p">,</span> <span class="s1">&#39;val_cont&#39;</span><span class="p">:</span> <span class="mf">189018.943</span><span class="p">,</span> <span class="s1">&#39;val_vehic&#39;</span><span class="p">:</span> <span class="mi">27000</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;P&#39;</span><span class="p">,</span> <span class="s1">&#39;med_yr_blt&#39;</span><span class="p">:</span> <span class="mi">1939</span><span class="p">,</span> <span class="s1">&#39;firmzone&#39;</span><span class="p">:</span> <span class="s1">&#39;NA&#39;</span><span class="p">,</span> <span class="s1">&#39;o65disable&#39;</span><span class="p">:</span> <span class="mf">0.22</span><span class="p">,</span> <span class="s1">&#39;u65disable&#39;</span><span class="p">:</span> <span class="mf">0.03</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">122.2799116</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="mf">37.894081399</span><span class="p">,</span> <span class="s1">&#39;ground_elv&#39;</span><span class="p">:</span> <span class="mf">195.71405070861817</span><span class="p">,</span> <span class="s1">&#39;ground_elv_m&#39;</span><span class="p">:</span> <span class="mf">59.65364074707031</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;Building&#39;</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>The ouput also demonstrates that the number of buildings in the two inventories, nsi_inventory and scraper_inventory isdifferent:</p>
+<p>The output also shows that the number of buildings in the two inventories, nsi_inventory and scraper_inventory, are different:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Total</span> <span class="n">number</span> <span class="n">of</span> <span class="n">assets</span> <span class="n">detected</span> <span class="n">using</span> <span class="n">NSI</span> <span class="ow">is</span> <span class="mi">27705</span>
 <span class="n">Total</span> <span class="n">number</span> <span class="n">of</span> <span class="n">assets</span> <span class="n">detected</span> <span class="n">using</span> <span class="n">OSM_FootprintScraper</span> <span class="ow">is</span> <span class="mi">35547</span>
 </pre></div>
 </div>
-<p>As there are different numbers of buildings, when integrating NSI dataset into the footprint inventory, there will be assets for which no NSI data exists. In the integration perfmormed with the example as run, 2 of the 5 Assets in the subset inventories have no data available. This is shown in the output lines:</p>
+<p>As there are different numbers of buildings in the two inventories, when integrating NSI dataset into the footprint inventory, there will be assets for which no NSI data exists. In the merge performed with the example run, 2 out of the 5 assets in the subset inventories do not have data available in NSI.  This is shown in the output lines:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>
 </pre></div>
 </div>
@@ -294,14 +299,20 @@
 <span class="linenos">64</span>	 <span class="n">Features</span><span class="p">:</span>  <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;Building&#39;</span><span class="p">,</span> <span class="s1">&#39;buildingheight&#39;</span><span class="p">:</span> <span class="s1">&#39;NA&#39;</span><span class="p">,</span> <span class="s1">&#39;erabuilt&#39;</span><span class="p">:</span> <span class="s1">&#39;NA&#39;</span><span class="p">,</span> <span class="s1">&#39;numstories&#39;</span><span class="p">:</span> <span class="s1">&#39;NA&#39;</span><span class="p">,</span> <span class="s1">&#39;roofshape&#39;</span><span class="p">:</span> <span class="s1">&#39;NA&#39;</span><span class="p">,</span> <span class="s1">&#39;fpAreas&#39;</span><span class="p">:</span> <span class="mi">435</span><span class="p">}</span>
 </pre></div>
 </div>
-<div class="admonition note">
+<section id="nsi-integration-notebook">
+<h2>NSI Integration Notebook<a class="headerlink" href="#nsi-integration-notebook" title="Link to this heading"></a></h2>
+<p>Here is a link to a Jupyter Notebook that runs the basic code, accompanied by graphics to better illustrate the output.</p>
+<a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/nsi_integration/brails_nsi_integration.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>
+
+<a href=https://lightning.ai/new?repo_url=https%3A//github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/nsi_integration/brails_nsi_integration.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg></a><div class="admonition note">
 <p class="admonition-title">Note</p>
 <ol class="arabic simple">
 <li><p>Information on the fields output for NSI can be found <a class="reference external" href="https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/latest/technical-documentation#id-.TechnicalDocumentationv2022-NSIPublicFields">here</a></p></li>
-<li><p>When the number of buildings is different and integration is used, <strong>imputation</strong> may be needed.</p></li>
+<li><p>When the number of buildings in the NSI differs from the inventory it is being merged with, <strong>imputation</strong> may be required during the integration process.</p></li>
 <li><p>The NSI is new and under development and as a consequence is not perfect.</p></li>
 </ol>
 </div>
+</section>
 </section>
 
 
