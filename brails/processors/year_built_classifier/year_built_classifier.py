@@ -163,6 +163,9 @@ class YearBuiltClassifier():
         # Define preprocessing transforms:
         self.test_transforms = self._initialize_transforms()
 
+        # Get the number of prediction classes in the loaded model:
+        self.num_classes = self._validate_model()
+
         # Set the model to evaluation mode and send it to the appropriate
         # device:
         self.model.eval()
