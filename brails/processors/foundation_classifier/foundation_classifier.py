@@ -271,112 +271,112 @@ class FoundationElavationClassifier:
 
         return transforms.Compose(transforms_list)
 
-
-def predict(self, images: ImageSet):
-    """
-    Predict whether a building is elevated or not from street-level imagery.
-
-    Args:
-        images(ImageSet):
-            An `ImageSet` object containing image file paths and their
-            metadata.
-
-    Returns:
-        dict:
-            A dictionary mapping image IDs to predicted classes. The keys are
-            derived from the `ImageSet` metadata, and the values are the
-            predicted class labels (e.g., 'elevated', 'non-elevated').
-
-    Raises:
-        NotADirectoryError:
-            If the directory specified in `images.dir_path` does not exist.
-
-    Notes:
-        - The model performs binary classification for each input image.
-        - Class predictions and confidence scores are displayed if
-          `self.print_res` is set to `True`.
-        - Ensure the `ImageSet` object provides valid image paths and metadata.
-    """
-    def is_image(im):
+    def predict(self, images: ImageSet):
         """
-        Check if a given filename corresponds to an image file.
+        Predict whether a building is elevated from street-level imagery.
 
         Args:
-            im(str):
-                The filename or file path to check.
+            images(ImageSet):
+                An `ImageSet` object containing image file paths and their
+                metadata.
 
         Returns:
-            bool:
-                `True` if the file has an image extension(e.g., .png, .jpg,
-                .jpeg, .bmp), otherwise `False`.
+            dict:
+                A dictionary mapping image IDs to predicted classes. The keys
+                are derived from the `ImageSet` metadata, and the values are
+                the predicted class labels (e.g., 'elevated', 'non-elevated').
+
+        Raises:
+            NotADirectoryError:
+                If the directory specified in `images.dir_path` does not exist.
+
+        Notes:
+            - The model performs binary classification for each input image.
+            - Class predictions and confidence scores are displayed if
+              `self.print_res` is set to `True`.
+            - Ensure the `ImageSet` object provides valid image paths and
+              metadata.
         """
-        return im.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))
+        def is_image(im):
+            """
+            Check if a given filename corresponds to an image file.
 
-    data_dir = images.dir_path
-    if not os.path.isdir(data_dir):
-        raise NotADirectoryError('FoundationElavationClassifier failed. '
-                                 f'{data_dir} is not a directory')
+            Args:
+                im(str):
+                    The filename or file path to check.
 
-    image_files_dict = {}
-    for key, im in images.images.items():
-        im_path = os.path.join(data_dir, im.filename)
-        if is_image(im.filename) and os.path.isfile(im_path):
-            image_files_dict[im_path] = key
-    image_files = list(image_files_dict.keys())
+            Returns:
+                bool:
+                    `True` if the file has an image extension(e.g., .png, .jpg,
+                    .jpeg, .bmp), otherwise `False`.
+            """
+            return im.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))
 
-    # Initialize the dataset and DataLoader:
-    dataset = Foundation_Type_Testset(image_files,
-                                      transform=self.test_transforms,
-                                      mask_buildings=self.mask_buildings,
-                                      load_masks=self.load_masks)
+        data_dir = images.dir_path
+        if not os.path.isdir(data_dir):
+            raise NotADirectoryError('FoundationElavationClassifier failed. '
+                                     f'{data_dir} is not a directory')
 
-    test_loader = DataLoader(dataset, batch_size=1, shuffle=False,
-                             num_workers=0)
+        image_files_dict = {}
+        for key, im in images.images.items():
+            im_path = os.path.join(data_dir, im.filename)
+            if is_image(im.filename) and os.path.isfile(im_path):
+                image_files_dict[im_path] = key
+        image_files = list(image_files_dict.keys())
 
-    # Load the model:
-    model = resnet50(low_dim=1)
-    if self.device == 'cpu':
-        state_dict = torch.load(self.model_file,
-                                map_location=torch.device(self.device))
-    else:
-        state_dict = torch.load(self.model_file)
+        # Initialize the dataset and DataLoader:
+        dataset = Foundation_Type_Testset(image_files,
+                                          transform=self.test_transforms,
+                                          mask_buildings=self.mask_buildings,
+                                          load_masks=self.load_masks)
 
-    # Handle DataParallel loading issues:
-    missing, unexpected = model.load_state_dict(state_dict, strict=False)
-    if any('module' in name for name in unexpected):
-        # Remapping to remove effects of DataParallel:
-        new_state_dict = OrderedDict()
-        for k, v in state_dict.items():
-            new_state_dict[k[7:]] = v  # remove 'module.' of dataparallel
-        model.load_state_dict(new_state_dict, strict=False)
+        test_loader = DataLoader(dataset, batch_size=1, shuffle=False,
+                                 num_workers=0)
 
-    # Ensure no unexpected keys remain:
-    if len(missing) or len(unexpected):
-        print(f'Missing or unexpected keys: {missing},{unexpected}')
-        print('This should not happen. Check if checkpoint is correct')
+        # Load the model:
+        model = resnet50(low_dim=1)
+        if self.device == 'cpu':
+            state_dict = torch.load(self.model_file,
+                                    map_location=torch.device(self.device))
+        else:
+            state_dict = torch.load(self.model_file)
 
-    model.eval()
-    model = model.to(self.device)
+        # Handle DataParallel loading issues:
+        missing, unexpected = model.load_state_dict(state_dict, strict=False)
+        if any('module' in name for name in unexpected):
+            # Remapping to remove effects of DataParallel:
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                new_state_dict[k[7:]] = v  # remove 'module.' of dataparallel
+            model.load_state_dict(new_state_dict, strict=False)
 
-    # Run inference:
-    pred = {}
-    with torch.no_grad():
-        for image, filename in test_loader:
-            image = image.to(self.device)
-            prediction = model(image.float())
-            score = torch.sigmoid(prediction).cpu().numpy()[0][0]
-            prediction_bin = int(score >= 0.5)  # Binary classification
-            prediction_class = self.classes[prediction_bin]
-            image_path = filename[0]
-            pred[image_files_dict[image_path]] = self.classes[prediction]
-            prob = score if score >= 0.5 else 1.0 - score
-            if self.print_res:
-                print(
-                    f'Image :  {image_path}     '
-                    f'Class : {prediction_class} '
-                    f'({str(round(prob*100,2))}%)')
+        # Ensure no unexpected keys remain:
+        if len(missing) or len(unexpected):
+            print(f'Missing or unexpected keys: {missing},{unexpected}')
+            print('This should not happen. Check if checkpoint is correct')
 
-    return pred
+        model.eval()
+        model = model.to(self.device)
+
+        # Run inference:
+        pred = {}
+        with torch.no_grad():
+            for image, filename in test_loader:
+                image = image.to(self.device)
+                prediction = model(image.float())
+                score = torch.sigmoid(prediction).cpu().numpy()[0][0]
+                prediction_bin = int(score >= 0.5)  # Binary classification
+                prediction_class = self.classes[prediction_bin]
+                image_path = filename[0]
+                pred[image_files_dict[image_path]] = self.classes[prediction]
+                prob = score if score >= 0.5 else 1.0 - score
+                if self.print_res:
+                    print(
+                        f'Image :  {image_path}     '
+                        f'Class : {prediction_class} '
+                        f'({str(round(prob*100,2))}%)')
+
+        return pred
 
 
 if __name__ == '__main__':
