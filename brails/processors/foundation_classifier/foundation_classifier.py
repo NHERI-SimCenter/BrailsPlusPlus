@@ -51,7 +51,7 @@ from .utils.Datasets import Foundation_Type_Testset
 from .csail_segmentation_tool.csail_segmentation import MaskBuilding
 
 
-class FoundationElavationClassifier:
+class FoundationElevationClassifier:
     """
     Classifier for predicting if a building is elevated.
 
