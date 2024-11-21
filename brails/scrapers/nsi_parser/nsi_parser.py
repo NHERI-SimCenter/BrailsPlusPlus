@@ -461,7 +461,7 @@ class NSI_Parser:
         geojson, footprints_index = self.GetRawDataROI(
             footprints,  length_unit)
 
-        print('keys: ', asset_keys, ' index   ', footprints_index)
+        #print('keys: ', asset_keys, ' index   ', footprints_index)
 
         features = geojson['features']
         for index, feature in enumerate(geojson['features']):
