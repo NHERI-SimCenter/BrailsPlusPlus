@@ -88,6 +88,7 @@ class KnnImputer(Imputation):
         seed=1,
         batch_size=50,
         k_nn=5,
+        nbldg_per_cluster=500
     ) -> AssetInventory:
         self.n_pw = n_possible_worlds
         self.batch_size = batch_size
@@ -141,7 +142,7 @@ class KnnImputer(Imputation):
         bldg_properties_df = bldg_properties_df.drop(columns=column_entirely_missing)
         mask = mask.drop(columns=column_entirely_missing)
 
-        if len(column_entirely_missing) > 1:
+        if len(column_entirely_missing) >= 1:
             print(
                 "Features with no reference data cannot be imputed. Removing them from the imputation target: "
                 + ", ".join(list(column_entirely_missing))
@@ -175,7 +176,7 @@ class KnnImputer(Imputation):
         cluster_ids, n_cluster = self.clustering(
             bldg_properties_encoded,
             bldg_geometries_df,
-            nbldg_per_cluster=500,
+            nbldg_per_cluster=nbldg_per_cluster,
             seed=self.seed,
         )
 
@@ -347,9 +348,10 @@ class KnnImputer(Imputation):
             idxs = np.array(mask[column] == False)  # removing nans  # noqa: E712
 
             # if not is_numeric_dtype(values):
+
             if math.isnan(sum(pd.to_numeric(values[idxs], errors="coerce"))):
                 is_category[column] = True
-            elif len(np.unique(values)) < 20:
+            elif len(np.unique(values[~np.isnan(values.astype(float))])) < 20:
                 is_category[column] = True
             else:
                 is_category[column] = False
@@ -515,7 +517,16 @@ class KnnImputer(Imputation):
                 # sample indices
                 #
 
+                distances[distances==0] = np.min(distances[distances!=0])/100 # if dist is zero
+                
+                ndup = np.sum(distances==0)
+                if ndup>0:
+                    print(f'Warning: Found {ndup} duplicated assets that has distance 0.')
+
+
                 invdistance = 1 / distances
+
+
                 row_sums = invdistance.sum(axis=1)
                 weights = invdistance / row_sums[:, np.newaxis]
 
@@ -536,9 +547,16 @@ class KnnImputer(Imputation):
                     # global_nb = cluster_idx[missing_idx[nb]]
                     bldg_idx = bldg_inde_subset[missing_idx[nb]]
 
-                    surrounding_building_sample = np.random.choice(
-                        building_ids[nb, :], size=1, replace=True, p=weights[nb, :]
-                    )
+                    try:
+                        surrounding_building_sample = np.random.choice(
+                            building_ids[nb, :], size=1, replace=True, p=weights[nb, :]
+                        )
+                    except Exception as e:
+                        print(weights[nb, :])
+                        print(row_sums[nb, np.newaxis])
+                        print(invdistance[nb, :])
+                        exit(-1)
+
                     closet_building = building_ids[nb, np.argmin(weights[nb, :])]
 
                     imputed_index_sample = mytrainY[surrounding_building_sample]
