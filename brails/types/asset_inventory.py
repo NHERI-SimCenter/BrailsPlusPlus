@@ -405,9 +405,14 @@ class AssetInventory:
                 each asset represented as a feature. Each feature includes the
                 geometry (Point or Polygon) and associated properties.
         """
+        try:
+            brails_version = version('BRAILS')
+        except Exception as e:
+            brails_version = 'NA'
+
         geojson = {'type': 'FeatureCollection',
                    'generated': str(datetime.now()),
-                   'brails_version': version('BRAILS'),
+                   'brails_version': brails_version,
                    'crs': {'type': 'name',
                            'properties': {
                                'name': 'urn:ogc:def:crs:OGC:1.3:CRS84'}
@@ -451,9 +456,15 @@ class AssetInventory:
                 each asset represented as a feature. Each feature includes the
                 geometry (Point or Polygon) and associated properties.
         """
+
+        try:
+            brails_version = version('BRAILS')
+        except Exception as e:
+            brails_version = 'NA'
+
         geojson = {'type': 'FeatureCollection',
                    'generated': str(datetime.now()),
-                   'brails_version': version('BRAILS'),
+                   'brails_version': brails_version,
                    'crs': {'type': 'name',
                            'properties': {
                                'name': 'urn:ogc:def:crs:OGC:1.3:CRS84'}
@@ -546,7 +557,7 @@ class AssetInventory:
 
         # Check if latitude/longitude exist
         lat = ['latitude', 'lat']
-        lon = ['longitude', 'lon']
+        lon = ['longitude', 'lon', 'long']
         key_names = csv_reader.fieldnames
         lat_id = np.where([y.lower() in lat for y in key_names])[0]
         lon_id = np.where([x.lower() in lon for x in key_names])[0]
@@ -697,10 +708,23 @@ class AssetInventory:
         #  get centoried
         lat_values = [None] * nbldg
         lon_values = [None] * nbldg
+
         for idx in range(nbldg):
             polygon_coordinate = features_json[idx]['geometry']['coordinates']
-            latitudes = [coord[1] for coord in polygon_coordinate]
-            longitudes = [coord[0] for coord in polygon_coordinate]
+
+            if isinstance(polygon_coordinate[0], list):
+                if isinstance(polygon_coordinate[0][0], list):
+                    # multipolygon
+                    latitudes = [coord[0][1] for coord in polygon_coordinate]
+                    longitudes = [coord[0][0] for coord in polygon_coordinate]
+                else:
+                    # polygon or point    
+                    latitudes = [coord[1] for coord in polygon_coordinate]
+                    longitudes = [coord[0] for coord in polygon_coordinate]
+            else:
+                # point?
+                latitude = [polygon_coordinate[1]]
+                longitudes = [polygon_coordinate[0]]
             lat_values[idx] = sum(latitudes) / len(latitudes)
             lon_values[idx] = sum(longitudes) / len(longitudes)
 
