@@ -63,7 +63,7 @@ run_python_script brails_filters.py OSM_FootprintScraper "Tiburon, CA"
 cd ..
 
 echo "TESTING PROCESSORS"
-cd image_processors
+cd image_processor
 run_python_script brails_classifier.py USA_FootprintScraper "Larkspur, CA" NFloorDetector
 cd ..
 
