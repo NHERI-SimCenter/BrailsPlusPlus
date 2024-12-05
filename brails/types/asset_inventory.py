@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 11-06-2024
+# 12-05-2024
 
 """
 This module defines classes associated with asset inventories.
@@ -152,7 +152,8 @@ class AssetInventory:
         get_random_sample(size, seed): Get subset of the inventory.
         get_coordinates(): Return a list of footprints.
         get_geojson(): Return inventory as a geojson dict.
-        write_to_geojson(): Wtite inventory to file in GeoJSON format. Also return inventory as a geojson dict!
+        write_to_geojson(): Write inventory to file in GeoJSON format. Also
+                            return inventory as a geojson dict.
         read_from_csv(file_path, keep_existing, str_type, id_column): Read
             inventory dataset from a csv table
         add_asset_features_from_csv(file_path, id_column): Add asset features
@@ -379,16 +380,21 @@ class AssetInventory:
         for key, asset in self.inventory.items():
             if len(asset.coordinates) == 1:
                 geometry = {"type": "Point",
-                            "coordinates": [asset.coordinates[0][:]]
+                            "coordinates": asset.coordinates[0]
                             }
             elif len(asset.coordinates) == 2:
                 geometry = {"type": "Line",
                             "coordinates": asset.coordinates
                             }
             else:
-                geometry = {'type': 'Polygon',
-                            'coordinates': [asset.coordinates]
-                            }
+                if asset.coordinates[0] == asset.coordinates[-1]:
+                    geometry = {'type': 'Polygon',
+                                'coordinates': [asset.coordinates]
+                                }
+                else:
+                    geometry = {'type': 'LineString',
+                                'coordinates': asset.coordinates
+                                }
 
             feature = {'type': 'Feature',
                        'properties': asset.features,
