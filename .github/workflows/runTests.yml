@@ -23,7 +23,6 @@ jobs:
       - run: echo $API_KEY > ./examples/api_key.txt
       - run: echo $OPENAI_KEY > ./examples/chatGPT_key.txt
       - run: python -m pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
-      - run: python -m pip install scikit-learn
       - run: sudo apt-get update
       - run: sudo apt-get install freeglut3-dev -y
       - run: source ./runTest.sh
