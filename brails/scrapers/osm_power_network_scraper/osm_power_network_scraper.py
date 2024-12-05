@@ -48,14 +48,13 @@ This module defines the class scraping power network data from OSM.
 import requests
 from shapely.geometry import Polygon
 
-from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import Asset, AssetInventory
 
 OVERPASS_URL = "http://overpass-api.de/api/interpreter"
 
 
-class OSM_PowerNetworkScraper(FootprintScraper):
+class OSM_PowerNetworkScraper:
     """
     A class for retrieving & processing power network data from OpenStreetMap.
 
@@ -137,8 +136,12 @@ class OSM_PowerNetworkScraper(FootprintScraper):
 
         datalist = self._fetch_data_from_api(query, queryarea_printname)
         assets_data = self._process_power_data(datalist)
+        inventory = self._create_inventory(assets_data)
 
-        return self._create_inventory(assets_data)
+        print(f'\nFound a total of {len(inventory.inventory)} power network '
+              f'elements in {queryarea_printname}.')
+
+        return inventory
 
     def _fetch_data_from_api(self,
                              query: str,
@@ -209,7 +212,7 @@ class OSM_PowerNetworkScraper(FootprintScraper):
         # Assemble asset geometries and dictionary of attributes and save them
         # in assets_data:
         for data in datalist:
-            if data["type"] == "way":
+            if data["type"] == "way" and 'tags' in data:
                 nodes = data["nodes"]
                 geometry = []
                 for node in nodes:
