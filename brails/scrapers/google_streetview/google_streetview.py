@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-26-2024
+# 12-03-2024
 
 """
 This module defines GoogleStreetview class downloading Google street imagery.
@@ -240,11 +240,13 @@ class GoogleStreetview(ImageScraper):
         # subdirectory:
         image_set.dir_path = str(base_dir_path / FILE_SUBDIRECTORIES['images'])
 
-        # Write the extracted metadata to image_set:
+        # If an image is successfully downloaded, write the image path and
+        # extracted metadata to the image_set:
         for index, image_path in enumerate(street_images):
-            image_set.add_image(asset_keys[index],
-                                image_path.name,
-                                metadata[image_path])
+            if image_path.exists():
+                image_set.add_image(asset_keys[index],
+                                    image_path.name,
+                                    metadata[image_path])
 
         return image_set
 
@@ -437,7 +439,7 @@ class GoogleStreetview(ImageScraper):
         return (pano['camElev'], pano['panoDepthStrFile'], pano['camLatLon'],
                 pano['panoBndAngles'])
 
-    @ staticmethod
+    @staticmethod
     def _process_meta_for_images(street_image_paths: list[Path],
                                  bldg_centroids: list[tuple[float, float]],
                                  results: dict[Path,
@@ -511,7 +513,7 @@ class GoogleStreetview(ImageScraper):
             metadata[image_path] = dict(properties)
         return metadata
 
-    @ staticmethod
+    @staticmethod
     def _get_pano_id(latlon: tuple[float, float], api_key: str) -> str:
         """
         Obtain the pano ID for the given latitude and longitude.
@@ -532,7 +534,7 @@ class GoogleStreetview(ImageScraper):
                                 timeout=REQUESTS_TIMEOUT_VAL)
         return response.json()['pano_id']
 
-    @ staticmethod
+    @staticmethod
     def _get_pano_meta(pano: dict[str, Any],
                        dmap_outname: str = '') -> dict[str, Any]:
         """
@@ -701,7 +703,7 @@ class GoogleStreetview(ImageScraper):
 
         return pano
 
-    @ staticmethod
+    @staticmethod
     def _get_composite_pano(pano: dict[str, Any],
                             compim_name: str = 'panoOverlaid.jpg') -> None:
         """
@@ -776,7 +778,7 @@ class GoogleStreetview(ImageScraper):
         return [self._get_angle_from_heading(coord, pano['camHeading'])
                 for coord in xy_footprint]
 
-    @ staticmethod
+    @staticmethod
     def _download_tiles(urls: list[str]) -> list[PIL.Image.Image]:
         """
         Download image tiles from the provided URLs with retry strategy.
@@ -880,7 +882,7 @@ class GoogleStreetview(ImageScraper):
         # camera axis is negative and counterclockwise angle measurement:
         return ang if ang <= 180 else ang - 360
 
-    @ staticmethod
+    @staticmethod
     def _parse_dmap_str(b64_string: str) -> np.ndarray:
         """
         Parse a base64-encoded depth map & return decoded data as numpy array.
@@ -963,7 +965,7 @@ class GoogleStreetview(ImageScraper):
 
         return {'planes': planes, 'indices': indices}
 
-    @ staticmethod
+    @staticmethod
     def _compute_dmap(header: dict[str, int],
                       indices: list[int],
                       planes: list[dict[str, Any]]) -> dict[str, Any]:
@@ -1027,7 +1029,7 @@ class GoogleStreetview(ImageScraper):
                               ] = 9999999999999999999.0
         return {"width": width, "height": height, "depthMap": depth_map}
 
-    @ staticmethod
+    @staticmethod
     def _get_3pt_angle(pt1: tuple[float, float],
                        pt2: tuple[float, float],
                        pt3: tuple[float, float]) -> float:
@@ -1061,7 +1063,7 @@ class GoogleStreetview(ImageScraper):
         int_inp2 = arr[ind + 1]
         return int(self._get_bin(int_inp2) + self._get_bin(int_inp1), 2)
 
-    @ staticmethod
+    @staticmethod
     def _get_bin(int_inp: int) -> str:
         """
         Convert an integer to an 8-bit binary string.
@@ -1089,7 +1091,7 @@ class GoogleStreetview(ImageScraper):
         return self._bin_to_float(''.join(
             self._get_bin(i) for i in arr[ind: ind + 4][::-1]))
 
-    @ staticmethod
+    @staticmethod
     def _bin_to_float(binary: str) -> float:
         """
         Convert a binary string to a 32-bit float.

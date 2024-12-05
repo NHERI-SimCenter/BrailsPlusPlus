@@ -383,8 +383,8 @@ class AssetInventory:
                             }
             elif len(asset.coordinates) == 2:
                 geometry = {"type": "Line",
-                            "coordinates": sset.coordinates
-                            }                
+                            "coordinates": asset.coordinates
+                            }
             else:
                 geometry = {'type': 'Polygon',
                             'coordinates': [asset.coordinates]
@@ -394,9 +394,9 @@ class AssetInventory:
                        'properties': asset.features,
                        'geometry': geometry
                        }
-            
-            # fmk - Feature is what is needed in geojson
-            #if 'type' in asset.features:
+
+            # fmk - NOPE - not geojson
+            # if 'type' in asset.features:
             #    feature['type'] = asset.features['type']
 
             geojson['features'].append(feature)
@@ -407,49 +407,13 @@ class AssetInventory:
 
     def write_to_geojson(self, output_file: str = '') -> dict:
         """
-        Generate a GeoJSON representation of the assets in the inventory.
+        Write an inventory to a GeoJSON file.
 
-        Returns:
-            dict: A dictionary in GeoJSON format containing all assets, with
-                each asset represented as a feature. Each feature includes the
-                geometry (Point or Polygon) and associated properties.
+        Args:
+            output_file(str):
+                Path of the GeoJSON output file.
         """
-        geojson = {'type': 'FeatureCollection',
-                   'generated': str(datetime.now()),
-                   'brails_version': version('BRAILS'),
-                   'crs': {'type': 'name',
-                           'properties': {
-                               'name': 'urn:ogc:def:crs:OGC:1.3:CRS84'}
-                           },
-                   'features': []
-                   }
-
-        for key, asset in self.inventory.items():
-            if len(asset.coordinates) == 1:
-                geometry = {"type": "Point",
-                            "coordinates": [asset.coordinates[0][:]]
-                            }
-            elif len(asset.coordinates) == 2:
-                geometry = {"type": "Point",
-                            "coordinates": asset.coordinates
-                            }                
-            else:
-                geometry = {'type': 'Polygon',
-                            'coordinates': [asset.coordinates]
-                            }
-
-            feature = {'type': 'Feature',
-                       'properties': asset.features,
-                       'geometry': geometry
-                       }
-            
-            # fmk - NOPE - not geojson
-            #if 'type' in asset.features:
-            #    feature['type'] = asset.features['type']
-
-            geojson['features'].append(feature)
-            # TODO: Note from SY here we could put in NA! for imputation and
-            # ensure all features have same set of keys!!
+        geojson = self.get_geojson()
 
         # Write the created GeoJSON dictionary into a GeoJSON file:
         if output_file:
