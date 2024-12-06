@@ -177,7 +177,7 @@ class USA_FootprintScraper(FootprintScraper):
 
         # Download building footprints and attributes for element inside the
         # boundaing polygon, bpoly:
-        footprints, attributes = self._download_ustruct_bldgattr4region(
+        footprints, attributes = self._get_usastruct_data_for_region(
             final_cells, bpoly
         )
         print(f'\nFound a total of {len(footprints)} building footprints in'
@@ -188,11 +188,11 @@ class USA_FootprintScraper(FootprintScraper):
                                             attributes,
                                             self.length_unit)
 
-    def _download_ustruct_bldgattr4region(self,
-                                          final_cells: list[Polygon],
-                                          bpoly: Polygon
-                                          ) -> tuple[list[list[float]],
-                                                     dict[str, list[float]]]:
+    def _get_usastruct_data_for_region(self,
+                                       final_cells: list[Polygon],
+                                       bpoly: Polygon
+                                       ) -> tuple[list[list[float]],
+                                                  dict[str, list[float]]]:
         """
         Download building attribute data for a specified region.
 
