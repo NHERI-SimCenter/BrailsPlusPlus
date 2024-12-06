@@ -74,8 +74,10 @@ class NSI_Parser:
                               'med_yr_blt': 'erabuilt',
                               'val_struct': 'repaircost',
                               'bldgtype': 'constype',
-                              'occtype': 'occupancy', 'fd_id': 'fd_id'}
+                              'occtype': 'occupancy', 'fd_id': 'fd_id',
+                              'occtype_extended': ['splitlevel','basement']} # extended features will be provided only when get_extended_features option is selected
 
+        
     def __get_bbox(self, footprints: list) -> tuple:
         """
         Get the bounding box for a footprint.
@@ -239,7 +241,9 @@ class NSI_Parser:
 
     def GetNSIData(self, footprints: list,
                    lengthUnit: str = 'ft',
-                   outfile: str = ''):
+                   outfile: str = '',
+                   get_extended_features: bool=False,
+                   add_features: list = []):
         """
         Match NSI buildings points to a set of footprints.
 
@@ -256,14 +260,20 @@ class NSI_Parser:
             outfile: string containing the name of the output file
                 Currently, only GeoJSON format is supported
 
+            get_extended_features: additionally get split level and gararge
+
+            add_features: list of features to be included
+
         Output:
             dict: Attribute dictionary for the footprints containing the
                 attributes: 1)latitude, 2)longitude, 3)building plan area,
                 4)number of floors, 5)year of construction, 6)replacement cost,
                 7)structure type, 8)occupancy class, 9)footprint polygon
+                If "get_extended_features" option is selected, output additionally includes 
+                10) split level and 11) gararge
         """
 
-        def get_attr_from_datadict(datadict, footprints, nsi2brailsmap):
+        def get_attr_from_datadict(datadict, footprints, nsi2brailsmap, get_extended_features=False, add_features=[]):
             # Parsers for building and occupancy types:
             def bldgtype_parser(bldgtype):
                 bldgtype = bldgtype + '1'
@@ -275,6 +285,25 @@ class NSI_Parser:
                 if '-' in occtype:
                     occtype = occtype.split('-')[0]
                 return occtype
+
+
+            def split_parser(occtype):
+                # TODO-ADAM: by default no
+                split = "No"
+                if "RES1-SL" in occtype:
+                    split = "Yes"
+                return split
+
+            def base_parser(occtype):
+                # TODO-ADAM: By default what?
+                base = "NA"
+                if "RES1" in occtype:
+                    if "NB" in occtype:
+                        base = "Yes"
+                    elif "WB" in occtype:
+                        base = "No"
+
+                return base
 
             # Extract the NSI points from the data dictionary input:
             points = list(datadict.keys())
@@ -290,8 +319,20 @@ class NSI_Parser:
             attributes = {'fp': [], 'fp_json': []}
             nsikeys = list(nsi2brailsmap.keys())
             brailskeys = list(nsi2brailsmap.values())
-            for key in brailskeys:
+
+            basic_indices = [i for i, s in enumerate(nsikeys) if '_extended' not in s]
+            extended_indices = [i for i, s in enumerate(nsikeys) if '_extended' in s]
+
+            for key in [brailskeys[i] for i in basic_indices]:
                 attributes[key] = []
+
+            for key in add_features:
+                attributes[key] = []
+
+            if get_extended_features:
+                for key in [brailskeys[i] for i in extended_indices]:
+                    for subkey in key:
+                        attributes[subkey] = []
 
             # Extract NSI attributes corresponding to each building footprint
             # and write them in attributes dictionary:
@@ -308,14 +349,28 @@ class NSI_Parser:
                      )
                 )
                 for key in nsikeys:
+                    # Get Basic features
                     if key == 'bldgtype':
                         attributes[nsi2brailsmap[key]].append(
                             bldgtype_parser(ptres[key]))
                     elif key == 'occtype':
                         attributes[nsi2brailsmap[key]].append(
                             occ_parser(ptres[key]))
+                    elif key == 'occtype_extended':
+                        if get_extended_features: 
+                            key_org = key.split('_')[0]
+                            attributes[nsi2brailsmap[key][0]].append(split_parser(ptres[key_org]))
+                            attributes[nsi2brailsmap[key][1]].append(base_parser(ptres[key_org]))
+                        else:
+                            pass
                     else:
                         attributes[nsi2brailsmap[key]].append(ptres[key])
+
+                    # Sy - User provided features
+                    if key in add_features:
+                        attributes[key].append(ptres[key])
+
+
 
             # Display the number of footprints that can be matched to NSI
             # points:
@@ -333,7 +388,7 @@ class NSI_Parser:
 
         # Create a footprint-merged building inventory from extracted NBI data:
         attributes, points_keep_footprint_index = get_attr_from_datadict(
-            datadict, footprints, self.nsi2brailsmap)
+            datadict, footprints, self.nsi2brailsmap, get_extended_features = get_extended_features, add_features=add_features)
 
         # Convert to footprint areas to sqm if needed:
         if lengthUnit == 'm':
@@ -481,7 +536,9 @@ class NSI_Parser:
     def get_filtered_data_given_inventory(self,
                                           inventory: AssetInventory,
                                           length_unit: str = 'ft',
-                                          outfile: str = ''):
+                                          outfile: str = '',
+                                          get_extended_features: bool=False,
+                                          add_features: list = []):
         """
         Get NSI data corresponding to an AssetInventory.
 
@@ -491,16 +548,22 @@ class NSI_Parser:
                    The units data to be returned in, 'm' or 'ft'
                 outfile
                    Optional string
+                get_extended_features
+                   additionally get split level and gararge
+                add_features
+                   Optional list of strings. Use this if you want to include additional features in the filtered inventory
 
         Output: dict
                 Attribute dictionary for the footprints containing the attributes:
                 1)latitude, 2)longitude, 3)building plan area, 4)number of 
                 floors, 5)year of construction, 6)replacement cost, 7)structure
                 type, 8)occupancy class, 9)footprint polygon
+                If "get_extended_features" option is selected, output additionally includes 
+                10) split level and 11) gararge
         """
 
         footprints, asset_keys = inventory.get_coordinates()
-        geojson, footprints_index = self.GetNSIData(footprints, length_unit)
+        geojson, footprints_index = self.GetNSIData(footprints, length_unit, get_extended_features = get_extended_features, add_features=add_features)
 
         # print('keys: ', asset_keys, ' index   ', footprints_index)
         # print(geojson)
