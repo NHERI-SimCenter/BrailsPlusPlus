@@ -155,6 +155,21 @@ class Asset:
                     
         return updated, n_pw
 
+    def remove_features(self, feature_list: list[str]):
+        """
+        Update the existing features in the asset.
+
+        Args:
+            feature_list (dict[str, any]): List of features to be removed
+
+        Return:
+            bool: True if features are removed
+        """
+        for key in feature_list:
+            self.features.pop(key,None)
+
+        return True
+
     def print_info(self):
         """Print the coordinates and features of the asset."""
         print('\t Coordinates: ', self.coordinates)
@@ -176,6 +191,7 @@ class AssetInventory:
         add_asset_features(asset_id, features, overwrite): Append new features to the
             asset.
         remove_asset(asset_id): Remove an asset to the inventory.
+        remove_feature(feature_list): Remove features from the inventory.
         get_asset_features(asset_id): Get coordinates of a particular assset.
         get_asset_coordinates(asset_id): Get features of a particular assset.
         get_asset_ids(): Return the asset ids as a list.
@@ -298,6 +314,38 @@ class AssetInventory:
         del self.inventory[asset_id]
 
         return True
+
+    def remove_features(self, feature_list: list[str]) -> bool:
+        """
+        Remove feaures from the inventory.
+
+        Args:
+            feature_list: The unique identifier for the asset.
+
+        Returns:
+            bool: True if features were removed, False otherwise.
+        """
+
+        for key, asset in self.inventory.items():
+            asset.remove_features(feature_list)
+
+        return True
+
+    # def remove_asset_features(self, asset_id: str | int, feature_list: list) -> tuple[bool, dict]:
+    #     """
+    #     Get features of a particular asset.
+
+    #     Args:
+    #         asset_id (str|int): The unique identifier for the asset.
+    #         feature_list (list): The list of features to be removed 
+
+    #     Returns:
+    #         bool: True if features were removed, False otherwise.
+    #     """
+    #     asset = self.inventory.get(asset_id, None)
+    #     asset.remove_features(feature_list)
+
+    #    return True
 
     def get_asset_features(self, asset_id: str | int) -> tuple[bool, dict]:
         """
