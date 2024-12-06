@@ -48,5 +48,9 @@ def user_inferer(inventory_array):
 		elif bldg["properties"]["occupancy"] == "RES3C":
 			new_features[bldgidx] = {"fpAreas": OccToSqft["RES3C"]["AverageSqFtPerFloor"],
 									 "fpAreas_max": OccToSqft["RES3C"]["MaximumSqFt"]} 
+		else:
+			new_features[bldgidx] = {"fpAreas": "NA",
+									 "fpAreas_max": "NA"}
+
 
 	return new_features
