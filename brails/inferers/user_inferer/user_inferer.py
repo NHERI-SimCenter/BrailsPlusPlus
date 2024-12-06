@@ -77,26 +77,28 @@ class UserInferer(InferenceEngine):
 
     """
 
-    def __init__(self):
-        pass
-
-    def infer(
-        self,
+    def __init__(self,
         input_inventory: AssetInventory,
         user_path,
         overwrite=True,
-    ) -> AssetInventory:
+    ):
+        self.input_inventory = input_inventory
+        self.overwrite=overwrite
+        self.user_path=user_path
+
+    def infer(self) -> AssetInventory:
 
         #
         # read the user-defined function named "user_inferer"
         #
-        module_name = os.path.splitext(os.path.basename(user_path))[0]
-        spec = importlib.util.spec_from_file_location(module_name, user_path)
+        input_inventory = self.input_inventory
+        module_name = os.path.splitext(os.path.basename(self.user_path))[0]
+        spec = importlib.util.spec_from_file_location(module_name, self.user_path)
         user_module = importlib.util.module_from_spec(spec)
         sys.modules[module_name] = user_module
         spec.loader.exec_module(user_module)
         if not hasattr(user_module, 'user_inferer'):
-            msg = f"Function 'user_inferer' should exist in {user_path}."
+            msg = f"Function 'user_inferer' should exist in {self.user_path}."
             raise Exception(msg)
         
 
@@ -129,7 +131,7 @@ class UserInferer(InferenceEngine):
         output_inventory = copy.deepcopy(input_inventory)
         count = 0
         for index, feature in prop.items():
-            updated = output_inventory.add_asset_features(index, feature, overwrite=overwrite)
+            updated = output_inventory.add_asset_features(index, feature, overwrite=self.overwrite)
             count += updated
 
         if len(prop)==0:
@@ -142,7 +144,6 @@ class UserInferer(InferenceEngine):
             print("All assets are updated")
 
         return output_inventory
-
 
 
     def merge_two_json(self,A,B,shrink=False):
@@ -187,7 +188,6 @@ class UserInferer(InferenceEngine):
             C[key] = merged_values
 
         return C
-
 
     def to_json(self,this_inventory):
 

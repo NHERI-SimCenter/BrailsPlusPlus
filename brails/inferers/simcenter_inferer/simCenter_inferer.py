@@ -78,8 +78,8 @@ class SimCenterInferer(HazusInferer):
     """
     # 
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
         self.options = ['no_urm', 'allow_mh_only_for_res2', 'res3_AB_to_res1']
 
     def modulate_weights(self, weights, structure_types, region, occ, year_class, height):

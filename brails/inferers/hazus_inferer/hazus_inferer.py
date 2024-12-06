@@ -49,14 +49,17 @@ import json
 import numpy as np
 from copy import deepcopy
 import logging
+import pandas as pd
+import numpy as np
 
 from brails.types.asset_inventory import AssetInventory
 from brails.inferers.inferenceEngine import InferenceEngine
 from brails.inferers.hazus_inferer.hazus_rulesets import get_hazus_occ_type_mapping, get_hazus_state_region_mapping, get_hazus_height_classes, get_hazus_year_classes
-
+from brails.inferers.hazus_inferer.hazus_rulesets import get_hazus_region_to_garage, get_hazus_income_to_const_class, get_hazus_height_classes_RES1, get_hazus_base_replacement_cost
 from itertools import product
 
 import reverse_geocode # sy - note this may not be the most accurate package but it's fast
+                       # To be replaced with old brails ++ codes
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
@@ -77,25 +80,49 @@ class HazusInferer(InferenceEngine):
 
     """
 
-    def __init__(self):
-        pass
+    def __init__(self,  
+                input_inventory: AssetInventory,
+                n_possible_worlds=1,
+                include_features=['repcost','strtype'],
+                seed=1,
+                overwirte_existing = True,
+                year_key = 'erabuilt', # TODO: to be updated
+                occ_key = 'occupancy',
+                nstory_key = 'numstories',
+                income_key = 'income',
+                planarea_key = 'fparea',
+                split_key = 'split_level',
+                garage_key= 'garage_type', # optional
+                const_class_key= 'const_class', # optional
+                strtype_key = 'constype',
+                repcost_key= 'replacementcost'):
 
-    def infer(
-        self,
-        input_inventory: AssetInventory,
-        n_possible_worlds=1,
-        include_features=[],
-        seed=1,
-        overwirte_existing = True,
-        year_key = 'erabuilt', # TODO: to be updated
-        occ_key = 'occupancy',
-        strtype_key = 'constype2',
-        nstory_key = 'numstories',
-        strtype_options = []
-    ) -> AssetInventory:
+        """
+        Make inference using Hazus 6 rulesets
 
-        # ['no_urm', 'allow_mh_only_for_res2', 'res3_AB_to_res1']
+        """
 
+        self.input_inventory = input_inventory
+        self.n_possible_worlds = n_possible_worlds
+        self.include_features = include_features
+        self.seed = seed
+        self.overwirte_existing = overwirte_existing
+        self.year_key = year_key # TODO: to be updated
+        self.occ_key = occ_key
+        self.nstory_key = nstory_key
+        self.income_key = income_key
+        self.planarea_key = planarea_key
+        self.split_key = split_key
+        self.garage_key= garage_key
+        self.const_class_key= const_class_key
+        self.strtype_key = strtype_key
+        self.repcost_key= repcost_key
+
+
+    def infer(self) -> AssetInventory:
+
+        input_inventory = self.input_inventory
+        n_possible_worlds = self.n_possible_worlds
         #
         # Determine n_pw
         #
@@ -121,9 +148,9 @@ class HazusInferer(InferenceEngine):
         #
         # set some variables : TODO: move to the constructer
         #
-        self.n_pw = n_possible_worlds
-        self.seed = seed
-        self.overwirte_existing = overwirte_existing
+        #self.n_pw = n_possible_worlds
+        #self.seed = seed
+        #self.overwirte_existing = overwirte_existing
         self.skip_buildings_if_needed = False
         output_inventory = copy.deepcopy(input_inventory)
 
@@ -137,12 +164,18 @@ class HazusInferer(InferenceEngine):
         # run the first world
         #
 
-        # occupancy type
         input_inventory_subset = input_inventory.get_world_realization(0)
 
-        occ_runable = self.check_keys(needed_keys = [year_key, occ_key, nstory_key], target_key=occ_key, inventory= input_inventory_subset)
-        if occ_runable:
-            occ_prop, inventory_realization_df = self.get_str_from_occ(input_inventory_subset, year_key, occ_key, strtype_key, nstory_key, n_pw)
+
+        if 'strtype' in self.include_features:
+            occ_runable = self.check_keys(needed_keys = [self.year_key, self.occ_key, self.nstory_key], target_key=self.strtype_key, inventory= input_inventory_subset)
+            if occ_runable:
+                occ_prop, inventory_realization_df = self.get_str_from_occ(input_inventory_subset, self.year_key, self.occ_key, self.nstory_key, n_pw, self.strtype_key)
+
+        if 'repcost' in self.include_features:
+            repl_cost_runable = self.check_keys(needed_keys = [self.income_key, self.occ_key, self.nstory_key, self.planarea_key, self.split_key], optional_needed_keys = [self.garage_key, self.const_class_key],  target_key=self.repcost_key, inventory= input_inventory_subset)
+            if repl_cost_runable:
+                repl_cost_prop, inventory_realization_df = self.get_replacement_cost(input_inventory_subset, self.income_key, self.occ_key, self.nstory_key, self.planarea_key, self.split_key, self.garage_key, self.const_class_key, n_pw, self.repcost_key)
 
         #
         # loop over the second ~ n_pw worlds if needed 
@@ -155,10 +188,18 @@ class HazusInferer(InferenceEngine):
             # get inventory realization
             inventory_realization = input_inventory.get_world_realization(nw)
 
-            # occupancy type
-            if occ_runable:
-                acc_prop_tmp, inventory_realization_df = self.get_str_from_occ(inventory_realization, year_key, occ_key, strtype_key, nstory_key, n_pw)
-                occ_prop = self.merge_two_json(acc_prop_tmp, occ_prop, shrink=(nw == existing_worlds-1))
+
+            if 'strtype' in self.include_features:
+                # occupancy type
+                if occ_runable:
+                    occ_prop_tmp, inventory_realization_df = self.get_str_from_occ(inventory_realization, self.year_key, self.occ_key, self.nstory_key, n_pw, self.strtype_key)
+                    occ_prop = self.merge_two_json(occ_prop_tmp, occ_prop, shrink=(nw == existing_worlds-1))
+
+            if 'repcost' in self.include_features:
+                if repl_cost_runable:
+                    repl_cost_prop_tmp, inventory_realization_df = self.get_replacement_cost(inventory_realization, self.income_key, self.occ_key, self.nstory_key, self.planarea_key, self.split_key, self.garage_key, self.const_class_key, n_pw, self.repcost_key)
+                    repl_cost_prop = self.merge_two_json(repl_cost_prop_tmp, repl_cost_prop, shrink=(nw == existing_worlds-1))
+
 
         #
         # update features
@@ -166,10 +207,15 @@ class HazusInferer(InferenceEngine):
 
         updated = False
             
-        # occupancy type
-        for index, feature in occ_prop.items():
-            output_inventory.add_asset_features(index, feature, overwrite=True)
-            updated = True
+        if 'strtype' in self.include_features:
+            for index, feature in occ_prop.items():
+                output_inventory.add_asset_features(index, feature, overwrite=True)
+                updated = True
+
+        if 'repcost' in self.include_features:
+            for index, feature in repl_cost_prop.items():
+                output_inventory.add_asset_features(index, feature, overwrite=True)
+                updated = True
 
         #
         # Return the valuee
@@ -227,7 +273,7 @@ class HazusInferer(InferenceEngine):
         return C
 
 
-    def check_keys(self,needed_keys,target_key,inventory):
+    def check_keys(self,needed_keys,target_key,inventory, optional_needed_keys = []):
 
         #
         # Convert inventory to df
@@ -257,7 +303,13 @@ class HazusInferer(InferenceEngine):
         #
 
         ready = True
-        for key in needed_keys:
+
+        for key in (needed_keys + optional_needed_keys):
+
+            if (key in optional_needed_keys) and (key not in provided_keys):
+                # don't care
+                continue
+
             my_col = bldg_properties_df[key]
 
             if bldg_properties_df[key].isnull().any():  # if null found
@@ -274,7 +326,6 @@ class HazusInferer(InferenceEngine):
                         print(f"The feature {key} is missing in following buildings: ", missing_values_index)
                     ready = False
             
-
         if ready==False:
             print(f"Skipping hazus inference of {target_key}. If you still want to perform the inference, run imputer first.")
             return False
@@ -307,7 +358,7 @@ class HazusInferer(InferenceEngine):
 
         return True
 
-    def get_str_from_occ(self, input_inventory, year_key, occ_key, strtype_key, nstory_key, n_pw):
+    def get_str_from_occ(self, input_inventory, year_key, occ_key, nstory_key, n_pw, strtype_key):
 
         #
         # convert inventory to df
@@ -337,6 +388,7 @@ class HazusInferer(InferenceEngine):
         #
         # Add "height_class" column 
         #
+
 
         bldg_properties_df["height_class"] = ""
         for height_class, story_list in height_classes.items():
@@ -479,7 +531,7 @@ class HazusInferer(InferenceEngine):
                 #new_prop[index] = {strtype_key: "NOT IN HAZUS" } 
                new_prop[index] = {strtype_key: np.nan} 
            return new_prop
-        
+
         if n_pw==0:
             # most likely struct
             struct_pick = [structure_types[np.argmax(weights)]]*n_bldg_subset            
@@ -510,3 +562,195 @@ class HazusInferer(InferenceEngine):
         pass
 
         return weights, structure_types
+
+
+
+
+
+    def get_replacement_cost(self, input_inventory, income_key, occ_key, nstory_key, planarea_key, split_key, garage_key, const_class_key, n_pw, repcost_key):
+        
+        #
+        # convert inventory to df
+        #
+
+        bldg_properties_df, bldg_geometries_df, nbldg = input_inventory.get_dataframe()
+
+        #
+        # get hazus rulesets
+        #
+
+        states_to_region = get_hazus_state_region_mapping()
+        # each to garage (random), construction class(random), height class(deterministic) columns and fianl replacement cost(random)
+        garage_type_list, census_to_garage_weight = get_hazus_region_to_garage() 
+        income_ratio_thres, income_group_list, const_class_list, income_to_const_class_weight, state_average_income = get_hazus_income_to_const_class() 
+        res1_height_classes = get_hazus_height_classes_RES1()
+        replacement_cost_per_ft2, garage_cost_per_residence = get_hazus_base_replacement_cost()
+
+        #
+        # From 'Lat' and 'Long' to 'state' and 'region' columns
+        #
+
+        geo_locs = reverse_geocode.search([(row[0],row[1]) for i,row in enumerate(bldg_geometries_df.values)] )
+        states_list = [bldg["state"] for bldg in geo_locs]
+        region_list = [states_to_region[state]["CensusRegion"] for state in states_list]
+        bldg_properties_df["state"]=states_list
+        bldg_properties_df["region"]=region_list
+
+        #
+        # From 'nstory' to 'height_class' (Only used for RES1)
+        #
+
+        bldg_properties_df["height_class"] = ""
+        for height_class, story_list in res1_height_classes.items():
+            in_class_index = bldg_properties_df[nstory_key].isin(story_list)
+            if sum(in_class_index)>0:
+                bldg_properties_df.loc[in_class_index, 'height_class'] = height_class
+
+        # overwrite if split level
+        bldg_properties_df.loc[bldg_properties_df[split_key]=='Yes', 'height_class'] = 'Split level' 
+
+
+        #
+        # From 'state' and 'income' to 'income group' # this can be more efficient
+        #
+
+        state_average_income_list = [state_average_income[state] for state in states_list]
+        bldg_properties_df["state_average_income"]=state_average_income_list
+        #income_ratio_list = [bldg[income_key]/state_average_income[bldg["state"]] for bldg in geo_locs]
+        bldg_properties_df['income_ratio'] = bldg_properties_df[income_key]/bldg_properties_df["state_average_income"]
+        bldg_properties_df['income_group'] = pd.cut(bldg_properties_df['income_ratio'], bins=income_ratio_thres, labels=income_group_list)
+
+
+        #
+        # From 'Region' to 'Garage' (random sampling) - always do 1 pw at a time 
+        #
+
+
+        if garage_key in bldg_properties_df.columns:
+            print(f"{garage_key} info found in the inventory. Skipping the inference of Garage Type.")
+            garage_df = pd.DataFrame({i: bldg_properties_df[garage_key] for i in range(n_pw)})
+
+        else:
+            print(f"{garage_key} info not found in the inventory. Making inference using Hazus 6.")
+
+            #bldg_properties_df["garage_type"] = ""
+            garage_df = pd.DataFrame(np.nan, index=bldg_properties_df.index, columns=range(n_pw))
+            region_list = list(set(bldg_properties_df['region']))
+
+            #for npp in range(n_pw):
+            for region in region_list: # for all regions that appear at least once in inventory
+                
+                subset_inventory = bldg_properties_df[bldg_properties_df['region']==region]
+                nbldg_subset = len(subset_inventory)
+
+                weights = np.array(census_to_garage_weight[region])/100.
+                garage_type = np.array(garage_type_list)
+
+                if n_pw==0:
+                    # most likely struct
+                    garage_pick = [garage[np.argmax(weights)]]*nbldg_subset            
+                else:                
+                    # sample nbldg x n_pw          
+                    garage_pick = np.random.choice(garage_type, size=[nbldg_subset, n_pw], replace=True, p=weights ).tolist()
+                
+                #bldg_properties_df[subset_inventory.index,"garage_type"] = garage_pick
+                garage_df.loc[subset_inventory.index, range(n_pw)] = garage_pick
+
+        
+
+        #
+        # From 'Income Group' to 'Construction Class' (random sampling)
+        #
+
+        #bldg_properties_df["const_class"] = ""
+
+        if const_class_key in bldg_properties_df.columns:
+            print(f"{const_class_key} info found in the inventory. Skipping the inference of Garage Type.")
+            const_class_df = pd.DataFrame({i: bldg_properties_df[const_class_key] for i in range(n_pw)})
+
+
+        else:
+            print(f"{const_class_key} info not found in the inventory. Making inference using Hazus 6.")
+
+            const_class_df = pd.DataFrame(np.nan, index=bldg_properties_df.index, columns=range(n_pw))
+            income_group_list = list(set(bldg_properties_df['income_group']))
+
+            for income_group in income_group_list: # for all regions that appear at least once in inventory
+                
+                subset_inventory =  bldg_properties_df[bldg_properties_df['income_group']==income_group]
+                nbldg_subset = len(subset_inventory)
+
+                weights = np.array(income_to_const_class_weight[income_group])/100.
+                const_class = np.array(const_class_list)
+
+                if n_pw==0:
+                    # most likely struct
+                    const_class_pick = [const_class[np.argmax(weights)]]*nbldg_subset            
+                else:                
+                    # sample nbldg x n_pw          
+                    const_class_pick = np.random.choice(const_class, size=[nbldg_subset, n_pw], replace=True, p=weights ).tolist()
+                
+                #bldg_properties_df[subset_inventory.index,"const_class"] = struct_pick
+                const_class_df.loc[subset_inventory.index, range(n_pw)] = const_class_pick
+
+        #
+        # From 'occtype' and 'height Class' to 'basecost'
+        #
+
+        new_prop = {}
+        #for i,row in enumerate(bldg_properties_df.values):
+        #print(garage_df)
+
+        for i, occ, fparea, height, region in zip(bldg_properties_df.index, bldg_properties_df[occ_key], bldg_properties_df[planarea_key], bldg_properties_df['height_class'], bldg_properties_df['region']):
+            #occ = row[occ_key]
+            #fparea = row[planarea_key]
+            if occ=='RES1':
+                base_cost = np.zeros((n_pw,))
+                garage_cost = np.zeros(n_pw,)
+                for npp in range(n_pw):
+                    #const = row['const_class']
+                    #garage = row['garage_type']
+                    const = const_class_df.loc[i,npp]
+                    garage = garage_df.loc[i,npp]
+                    #height = row['height']
+                    base_cost[npp] = replacement_cost_per_ft2[occ][const][height]['finished']*fparea # TODO-ADAM: assuming finished
+                    #print(garage_cost_per_residence[const])
+                    garage_cost[npp] = garage_cost_per_residence[const][garage]
+                final_cost = (base_cost+garage_cost).tolist()
+            elif occ=='RES2':
+                #region = row['region']
+                final_cost = replacement_cost_per_ft2[occ][region]*fparea
+            else:
+                final_cost = replacement_cost_per_ft2[occ]*fparea
+
+            #row['replace_cost'] = base_cost + garage_cost
+            new_prop[i] = { repcost_key : final_cost}
+
+        # 
+        # Below is potentially faster?
+        #
+
+        # bldg_properties_df["base_rep_cost_per_ft2"] = ""
+        # occtype_group_list = list(set(bldg_properties_df['occtype']))
+
+        # for occ in occtype_group_list: # for all regions that appear at least once in inventory
+            
+        #     subset_inventory =  bldg_properties_df[bldg_properties_df[occ_key]==occ]
+        #     nbldg_subset = len(subset_inventory)
+
+        #     if not (occ=="RES1"):
+        #         cost = np.array(replacement_cost_per_ft2[occ])/100.
+
+        #     else:
+        #         const_class_list = list(set(subset_inventory['const_class']))
+        #         height_class_list = list(set(subset_inventory['height_class']))
+        #         classes_in_inventory = list(product(const_class_list,height_class_list))
+
+        #         for const, height in classes_in_inventory: # for all regions that appear at least once in inventory
+                    
+        #             subset_inventory2 = subset_inventory[(subset_inventory['const_class']==const) & (subset_inventory['height_class']==height)]
+        #             nbldg_subset2 = len(subset_inventory2)
+
+        #             cost = np.array(replacement_cost_per_ft2[occ][occ])/100.
+
+        return new_prop, bldg_properties_df

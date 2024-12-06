@@ -90,7 +90,7 @@ def get_hazus_occ_type_mapping():
             "low_rise":
             {
                 "pre_1950": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100],
-                "1950_to_1970": [72,0,1,2,2,0,1,0,6,2,0,0,8,0,3,3],
+                "1950_to_1970": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100],
                 "post_1970": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
             },
             "mid_rise":
@@ -684,6 +684,7 @@ def get_hazus_occ_type_mapping():
     # https://www.fema.gov/sites/default/files/documents/fema_hazus-6-inventory-technical-manual.pdf
     
     type_lists_mid = {
+
         'low_rise': ['W1','W2','S1','S2','S3','S4','S5','C1','C2','C3','PC1','PC2','RM1','RM2','URM','MH'],
         'mid_rise': ['S1','S2','S4','S5','C1','C2','C3','PC2','RM1','RM2','URM'],
         'high_rise':['S1','S2','S4','S5','C1','C2','C3','PC2','RM2'],
@@ -1423,42 +1424,104 @@ def get_hazus_year_classes():
 
 
 #
-# Below for replacement cost
+# ========================== Below for replacement cost
 #
 
-def get_hazus_base_replacement_cost_per_ft2():
+def get_hazus_base_replacement_cost():
 
-    labels_RESA = ['none','finished','unfinished'] # to be sampled from disti
-
-    replacement_cost_per_ft2_RESA = {
-      "Economy": {
-        "One-story": [114.63, 148.48, 125.03],
-        "Two-story": [121.00, 139.95, 127.75],
-        "Three-story": [121.00, 139.95, 127.75],
-        "Split level": [111.49, 130.44, 118.24]
-      },
-      "Average": {
-        "One-story": [128.20, 168.75, 140.95],
-        "Two-story": [132.88, 158.08, 140.98],
-        "Three-story": [137.43, 156.88, 143.73],
-        "Split level": [122.86, 148.06, 130.96]
-      },
-      "Custom": {
-        "One-story": [172.73, 234.63, 196.98],
-        "Two-story": [174.96, 210.21, 189.21],
-        "Three-story": [179.34, 204.94, 189.84],
-        "Split level": [162.83, 198.08, 177.08]
-      },
-      "Luxury": {
-        "One-story": [209.44, 274.34, 234.29],
-        "Two-story": [212.86, 250.56, 227.86],
-        "Three-story": [218.28, 245.93, 229.53],
-        "Split level": [197.95, 235.65, 212.95]
-      }
+    replacement_cost_per_ft2_RES1 = {
+        "Economy": {
+            "One-story": {
+                "none": 114.63,
+                "finished": 148.48,
+                "unfinished": 125.03
+            },
+            "Two-story": {
+                "none": 121.00,
+                "finished": 139.95,
+                "unfinished": 127.75
+            },
+            "Three-story": {
+                "none": 121.00,
+                "finished": 139.95,
+                "unfinished": 127.75
+            },
+            "Split level": {
+                "none": 111.49,
+                "finished": 130.44,
+                "unfinished": 118.24
+            }
+        },
+        "Average": {
+            "One-story": {
+                "none": 128.20,
+                "finished": 168.75,
+                "unfinished": 140.95
+            },
+            "Two-story": {
+                "none": 132.88,
+                "finished": 158.08,
+                "unfinished": 140.98
+            },
+            "Three-story": {
+                "none": 137.43,
+                "finished": 156.88,
+                "unfinished": 143.73
+            },
+            "Split level": {
+                "none": 122.86,
+                "finished": 148.06,
+                "unfinished": 130.96
+            }
+        },
+        "Custom": {
+            "One-story": {
+                "none": 172.73,
+                "finished": 234.63,
+                "unfinished": 196.98
+            },
+            "Two-story": {
+                "none": 174.96,
+                "finished": 210.21,
+                "unfinished": 189.21
+            },
+            "Three-story": {
+                "none": 179.34,
+                "finished": 204.94,
+                "unfinished": 189.84
+            },
+            "Split level": {
+                "none": 162.83,
+                "finished": 198.08,
+                "unfinished": 177.08
+            }
+        },
+        "Luxury": {
+            "One-story": {
+                "none": 209.44,
+                "finished": 274.34,
+                "unfinished": 234.29
+            },
+            "Two-story": {
+                "none": 212.86,
+                "finished": 250.56,
+                "unfinished": 227.86
+            },
+            "Three-story": {
+                "none": 218.28,
+                "finished": 245.93,
+                "unfinished": 229.53
+            },
+            "Split level": {
+                "none": 197.95,
+                "finished": 235.65,
+                "unfinished": 212.95
+            }
+        }
     }
 
     replacement_cost_per_ft2 = {
-        "RES1" : replacement_cost_per_ft2_RESA,
+        "RES1" : replacement_cost_per_ft2_RES1,
         "RES2": {
             "Northeast": 68.65,
             "Midwest": 59.14,
@@ -1498,3 +1561,137 @@ def get_hazus_base_replacement_cost_per_ft2():
         "EDU2": 197.10
     }
 
+    #TODO-ADAM: what does per residence mean here?
+    # 6-4
+    garage_cost_per_residence = {
+          "Economy": {
+            "One-car": 19394,
+            "Two-car": 30397,
+            "Three-car": 41125,
+            "Carport": 0,
+            "None": 0
+          },
+          "Average": {
+            "One-car": 20313,
+            "Two-car": 31600,
+            "Three-car": 42613,
+            "Carport": 0,
+            "None": 0
+          },
+          "Custom": {
+            "One-car": 22377,
+            "Two-car": 35519,
+            "Three-car": 48307,
+            "Carport": 0,
+            "None": 0
+          },
+          "Luxury": {
+            "One-car": 28233,
+            "Two-car": 44515,
+            "Three-car": 60444,
+            "Carport": 0,
+            "None": 0
+          }
+        }
+
+
+    return replacement_cost_per_ft2, garage_cost_per_residence
+
+def get_hazus_region_to_garage():
+
+    #census region
+    garage_type_list = ['One-car','Two-car','Three-car','Carport','None']
+    census_to_garage_weight = {
+        "Northeast":[29,31,5,2,33],
+        "Midwest":[21,51,9,2,17],
+        "South":[14,39,4,8,35],
+        "West":[16,51,11,6,16],
+    }
+
+    return garage_type_list, census_to_garage_weight
+
+
+def get_hazus_income_to_const_class():
+
+    # Table 6-5 (Hazus 6)
+    income_ratio_thres = [0, 0.5, 0.85, 1.25, 2.0, 1.e15]
+    income_group_list = ['Group1', 'Group2', 'Group3', 'Group4','Group5']
+    const_class_list = ['Luxury', 'Custom','Average','Economy']
+    income_to_const_class_weight = {
+        'Group1': [0,0,0,100],
+        'Group2': [0,0,25,75],
+        'Group3': [0,25,75,0],
+        'Group4': [0,100,0,0],
+        'Group5': [100,0,0,0]        
+        } 
+
+    # Table 5-26 (Hazus 6)
+    state_average_income = {
+      "Alabama": 52035,
+      "Alaska": 77790,
+      "Arizona": 61529,
+      "Arkansas": 49475,
+      "California": 78672,
+      "Colorado": 75231,
+      "Connecticut": 79855,
+      "Delaware": 69110,
+      "District of Columbia": 90842,
+      "Florida": 57703,
+      "Georgia": 61224,
+      "Hawaii": 83173,
+      "Idaho": 58915,
+      "Illinois": 68428,
+      "Indiana": 58235,
+      "Iowa": 61836,
+      "Kansas": 61091,
+      "Kentucky": 52238,
+      "Louisiana": 50800,
+      "Maine": 59489,
+      "Maryland": 87063,
+      "Massachusetts": 84385,
+      "Michigan": 59234,
+      "Minnesota": 73382,
+      "Mississippi": 46511,
+      "Missouri": 57290,
+      "Montana": 56539,
+      "Nebraska": 63015,
+      "Nevada": 62043,
+      "New Hampshire": 77923,
+      "New Jersey": 85245,
+      "New Mexico": 51243,
+      "New York": 71117,
+      "North Carolina": 56642,
+      "North Dakota": 65315,
+      "Ohio": 58116,
+      "Oklahoma": 53840,
+      "Oregon": 65667,
+      "Pennsylvania": 63627,
+      "Rhode Island": 70305,
+      "South Carolina": 54864,
+      "South Dakota": 59896,
+      "Tennessee": 54833,
+      "Texas": 63826,
+      "Utah": 74197,
+      "Vermont": 63477,
+      "Virginia": 76398,
+      "Washington": 77006,
+      "West Virginia": 48037,
+      "Wisconsin": 63293,
+      "Wyoming": 65304,
+      "Puerto Rico": 21058
+    }
+
+
+    return income_ratio_thres, income_group_list, const_class_list, income_to_const_class_weight, state_average_income
+
+
+def get_hazus_height_classes_RES1():
+
+    # provide the rules
+    res1_height_classes = {
+        'One-story': [1],
+        'Two-story': [2],
+        'Three-story': list(range(3,200)) # TODO-ADAM: double check
+    }
+
+    return res1_height_classes
