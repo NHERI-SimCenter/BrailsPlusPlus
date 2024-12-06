@@ -71,34 +71,54 @@ class KnnImputer(Imputation):
     Methods:
 
 
-
-
-
     """
 
-    def __init__(self):
-        pass
-
-    def impute(
-        self,
-        input_inventory: AssetInventory,
-        n_possible_worlds=1,
-        create_correlation=True,
-        exclude_features=[],
-        seed=1,
-        batch_size=50,
-        k_nn=5,
-        nbldg_per_cluster=500
-    ) -> AssetInventory:
+    def __init__(self,
+                input_inventory: AssetInventory,
+                n_possible_worlds=1,
+                create_correlation=True,
+                exclude_features=[],
+                seed=1,
+                batch_size=50,
+                k_nn=5,
+                nbldg_per_cluster=500
+    ):
+        self.input_inventory = input_inventory
         self.n_pw = n_possible_worlds
-        self.batch_size = batch_size
+        self.create_correlation = create_correlation
+        self.exclude_features = exclude_features
         self.seed = seed
-        self.k_nn = k_nn  # knn
-        if create_correlation:
+        self.batch_size = batch_size
+        self.k_nn = k_nn
+        self.nbldg_per_cluster = nbldg_per_cluster
+
+    # def impute(
+    #     self,
+    #     input_inventory: AssetInventory,
+    #     n_possible_worlds=1,
+    #     create_correlation=True,
+    #     exclude_features=[],
+    #     seed=1,
+    #     batch_size=50,
+    #     k_nn=5,
+    #     nbldg_per_cluster=500
+    # ) -> AssetInventory:
+
+    def impute(self)-> AssetInventory:
+
+        #self.n_pw = n_possible_worlds
+        #self.batch_size = batch_size
+        #self.seed = seed
+        #self.k_nn = k_nn  # knn
+
+        if self.create_correlation:
             self.gen_method = "sequential"
         else:
             self.gen_method = "non-sequential"
 
+        exclude_features = self.exclude_features
+        nbldg_per_cluster = self.nbldg_per_cluster
+        input_inventory = self.input_inventory
         #
         # set seed
         #
