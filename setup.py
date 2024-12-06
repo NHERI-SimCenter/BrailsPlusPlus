@@ -34,10 +34,13 @@ setup(
         'Cython',
         'ftfy',
         'matplotlib',
+        'opencv-python',
+        'pandas',
         'pillow',
         'plotly',
         'pycocotools',
         'requests',
+        'scikit-learn',
         'seaborn',
         'shapely',
         'supervision',
@@ -49,11 +52,9 @@ setup(
         'transformers',
         'typing',
         'wget',
-        'yapf',
         'yacs',
         'webcolors',
-        'opencv-python',
-        'pandas'
+        'yapf'
     ],
     extras_require={
         'development': [
