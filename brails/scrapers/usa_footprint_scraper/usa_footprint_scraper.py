@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 11-06-2024
+# 11-07-2024
 
 """
 This module defines the class object for downloading FEMA USA Structures data.
@@ -142,11 +142,16 @@ class USA_FootprintScraper(FootprintScraper):
         # Obtain the boundary polygon, print name, and OSM ID of the region:
         bpoly, queryarea_printname, _ = region.get_boundary()
 
+        # Get the number of elements allowed per cell by the API:
+        max_record_count = self._fetch_max_records_per_query(API_ENDPOINT)
+
         plot_cells = False  # Set to True for debugging purposes to plot cells
 
         # Split the region polygon into smaller cells (initial stage):
         print("\nMeshing the defined area...")
-        preliminary_cells = self._split_polygon_into_cells(bpoly)
+        preliminary_cells = self._split_polygon_into_cells(
+            bpoly, max_elements_per_cell=max_record_count
+        )
 
         # If there are multiple cells, categorize and split them based on the
         # element count in each cell:
@@ -158,7 +163,7 @@ class USA_FootprintScraper(FootprintScraper):
             # limit:
             while len(split_cells) != 0:
                 cells_to_keep, split_cells = self._categorize_and_split_cells(
-                    split_cells)
+                    split_cells, max_elements_per_cell=max_record_count)
                 final_cells += cells_to_keep
             print(f'\nMeshing complete. Split {queryarea_printname} into '
                   '{len(final_cells)} cells')
@@ -342,7 +347,7 @@ class USA_FootprintScraper(FootprintScraper):
         bbox = cell.bounds
 
         # Parameters for querying the ArcGIS API, specifying the geometry and
-        # desired fields
+        # desired fields:
         params = {
             'geometry': f'{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}',
             'geometryType': 'esriGeometryEnvelope',
@@ -598,7 +603,7 @@ class USA_FootprintScraper(FootprintScraper):
             'f': 'json',
         }
 
-        # Set up a session with retry logic
+        # Set up a session with retry logic:
         with requests.Session() as session:
             session.mount('https://',
                           HTTPAdapter(max_retries=REQUESTS_RETRY_STRATEGY)
@@ -609,3 +614,66 @@ class USA_FootprintScraper(FootprintScraper):
         # Return the count from the API response. If the response does not
         # include the 'count' key, count defaults to 0:
         return response.json().get('count', 0)
+
+    def _fetch_max_records_per_query(self, api_endpoint_url: str) -> int:
+        """
+        Retrieve the maximum number of records returned by the API per query.
+
+        This function sends a request to the specified API endpoint and parses
+        the response to determine the maximum number of records that can be
+        returned in a single query. If the API does not provide this
+        information or returns a value of 0, it raises an error.
+
+        Args:
+            api_endpoint_url (str):
+                The base URL of the API endpoint to query. The function
+                automatically appends the necessary query parameters to this
+                URL.
+
+        Returns:
+            int:
+                The maximum number of elements the API allows per query.
+
+        Raises:
+            ValueError:
+                If the API returns a value of 0 for the maximum number of
+                elements, indicating an issue with the API or its response.
+            HTTPError:
+                If the HTTP request fails (e.g., due to connectivity issues or
+                a server error).
+
+        Example:
+            >>> max_records = _get_max_records_returned(
+                "https://api.example.com/data/query")
+            >>> print(max_records)
+            1000
+
+        Notes:
+            - The function expects the API to return a JSON response containing
+              a `maxRecordCount` key.
+            - A retry strategy is implemented for the HTTPS request to handle
+              transient network issues.
+        """
+        # Get the number of elements allowed per cell by the API:
+        api_reference_url = api_endpoint_url.removesuffix(
+            '/query') + '?f=pjson'
+
+        # Set up a session with retry logic:
+        with requests.Session() as session:
+            session.mount('https://',
+                          HTTPAdapter(max_retries=REQUESTS_RETRY_STRATEGY)
+                          )
+            response = session.get(api_reference_url)
+            response.raise_for_status()
+
+        # Return the maximum record count from the API response. If the
+        # response does not include the 'maxRecordCount' key, count
+        # defaults to 0 and a ValueError is raised:
+        max_record_count = response.json().get('maxRecordCount', 0)
+        if max_record_count == 0:
+            raise ValueError('The API reported a value of 0 for the maximum '
+                             'number of elements returned per query, '
+                             'indicating a potential problem with the '
+                             'response or the API service.')
+
+        return max_record_count
