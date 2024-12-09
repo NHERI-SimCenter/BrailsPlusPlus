@@ -67,13 +67,9 @@ logger = logging.getLogger(__name__)
 
 class HazusInferer(InferenceEngine):
     """
-    Imputes dataset based on k-nearest neighbors in the feature-agmented space. Sequentially generate inventory
+    Make inference based on Hazus 6 rulesets
 
     Attributes:
-        n_pw (int):
-                The number of possible worlds (i.e. samples or realizations)
-        seed (int):
-                For reproducibility
 
     Methods:
 
@@ -98,7 +94,7 @@ class HazusInferer(InferenceEngine):
                 repcost_key= 'replacementcost'):
 
         """
-        Make inference using Hazus 6 rulesets
+        Make inference based on Hazus 6 rulesets
 
         """
 
@@ -148,6 +144,7 @@ class HazusInferer(InferenceEngine):
         #
         # set some variables : TODO: move to the constructer
         #
+        
         #self.n_pw = n_possible_worlds
         #self.seed = seed
         #self.overwirte_existing = overwirte_existing

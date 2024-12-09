@@ -64,13 +64,9 @@ logger = logging.getLogger(__name__)
 
 class SimCenterInferer(HazusInferer):
     """
-    Imputes dataset based on k-nearest neighbors in the feature-agmented space. Sequentially generate inventory
+    Make inference based on Hazus 6 rulesets. Additionally make some heuristic adjustments
 
     Attributes:
-        n_pw (int):
-                The number of possible worlds (i.e. samples or realizations)
-        seed (int):
-                For reproducibility
 
     Methods:
 
@@ -78,9 +74,9 @@ class SimCenterInferer(HazusInferer):
     """
     # 
 
-    def __init__(self,**kwargs):
+    def __init__(self, options = ['no_urm', 'allow_mh_only_for_res2', 'res3_AB_to_res1'],**kwargs):
         super().__init__(**kwargs)
-        self.options = ['no_urm', 'allow_mh_only_for_res2', 'res3_AB_to_res1']
+        self.options = options
 
     def modulate_weights(self, weights, structure_types, region, occ, year_class, height):
 
