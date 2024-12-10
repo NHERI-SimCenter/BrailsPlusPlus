@@ -39,8 +39,8 @@ inventory.read_from_csv(file_path,keep_existing=True, id_column='index')
 print(f'INCOMPLETE ASSET: {inventory.get_asset_features(4)[1]}')
 
 knn_imputer_class = importer.get_class("KnnImputer")
-imputer=knn_imputer_class()
-new_inventory = imputer.impute(inventory,n_possible_worlds=10)
+imputer=knn_imputer_class(inventory,n_possible_worlds=10)
+new_inventory = imputer.impute()
 
 #
 # Saving the imputed database into a geojson file 

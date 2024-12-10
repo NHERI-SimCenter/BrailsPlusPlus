@@ -62,6 +62,7 @@ from brails.utils import InputValidator
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from copy import deepcopy
 
 class Asset:
     """
@@ -116,14 +117,58 @@ class Asset:
             overwrite (bool, optional): Whether to overwrite existing features.
                 Defaults to True.
         """
+        
+        n_pw=1
+
         if overwrite:
             # Overwrite existing features with new ones:
             self.features.update(additional_features)
+
+            # count # possible worlds
+            for key, val in additional_features.items():
+                    if isinstance(val,list):
+                        if (n_pw==1) or (n_pw==len(val)):
+                            n_pw = len(val)
+                        else:
+                            logger.warning(f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong.")
+                            n_pw = len(val)
+
+            updated = True
+
         else:
             # Only update with new keys, do not overwrite existing keys:
-            for key, value in additional_features.items():
+            updated = False
+            for key, val in additional_features.items():
                 if key not in self.features:
-                    self.features[key] = value
+                    # write
+                    self.features[key] = val
+
+                    # count # possible worlds
+                    if isinstance(val,list):
+                        if (n_pw==1) or (n_pw==len(val)):
+                            n_pw = len(val)
+                        else:
+                            logger.warning(f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong.")
+                            n_pw = len(val)
+
+                    updated = True
+                    
+        return updated, n_pw
+
+    def remove_features(self, feature_list: list[str]):
+        """
+        Update the existing features in the asset.
+
+        Args:
+            feature_list (dict[str, any]): List of features to be removed
+
+        Return:
+            bool: True if features are removed
+        """
+        for key in feature_list:
+            self.features.pop(key,None)
+
+        return True
 
     def print_info(self):
         """Print the coordinates and features of the asset."""
@@ -143,9 +188,10 @@ class AssetInventory:
         add_asset(asset_id, Asset): Add an asset to the inventory.
         add_asset_coordinates(asset_id, coordinates): Add an asset to the
             inventory with just a list of coordinates.
-        add_asset_features(asset_id, features): Append new features to the
+        add_asset_features(asset_id, features, overwrite): Append new features to the
             asset.
         remove_asset(asset_id): Remove an asset to the inventory.
+        remove_feature(feature_list): Remove features from the inventory.
         get_asset_features(asset_id): Get coordinates of a particular assset.
         get_asset_coordinates(asset_id): Get features of a particular assset.
         get_asset_ids(): Return the asset ids as a list.
@@ -163,6 +209,7 @@ class AssetInventory:
     def __init__(self):
         """Initialize AssetInventory with an empty inventory dictionary."""
         self.inventory = {}
+        self.n_pw = 1
 
     def print_info(self):
         """Print the asset inventory."""
@@ -245,7 +292,15 @@ class AssetInventory:
                            'features not added.', asset_id)
             return False
 
-        return asset.add_features(new_features, overwrite)
+        status, n_pw = asset.add_features(new_features, overwrite)
+        if (n_pw==1):
+            pass
+        elif ((n_pw==self.n_pw) or (self.n_pw==1)):
+            self.n_pw = n_pw
+        else:
+            logger.warning(f'# possible worlds was {self.n_pw} but is now {n_pw}. Something went wrong.')
+            self.n_pw = n_pw
+        return status
 
     def remove_asset(self, asset_id: str | int) -> bool:
         """
@@ -260,6 +315,38 @@ class AssetInventory:
         del self.inventory[asset_id]
 
         return True
+
+    def remove_features(self, feature_list: list[str]) -> bool:
+        """
+        Remove feaures from the inventory.
+
+        Args:
+            feature_list: The unique identifier for the asset.
+
+        Returns:
+            bool: True if features were removed, False otherwise.
+        """
+
+        for key, asset in self.inventory.items():
+            asset.remove_features(feature_list)
+
+        return True
+
+    # def remove_asset_features(self, asset_id: str | int, feature_list: list) -> tuple[bool, dict]:
+    #     """
+    #     Get features of a particular asset.
+
+    #     Args:
+    #         asset_id (str|int): The unique identifier for the asset.
+    #         feature_list (list): The list of features to be removed 
+
+    #     Returns:
+    #         bool: True if features were removed, False otherwise.
+    #     """
+    #     asset = self.inventory.get(asset_id, None)
+    #     asset.remove_features(feature_list)
+
+    #    return True
 
     def get_asset_features(self, asset_id: str | int) -> tuple[bool, dict]:
         """
@@ -367,9 +454,14 @@ class AssetInventory:
                 each asset represented as a feature. Each feature includes the
                 geometry (Point or Polygon) and associated properties.
         """
+        try:
+            brails_version = version('BRAILS')
+        except Exception as e:
+            brails_version = 'NA'
+
         geojson = {'type': 'FeatureCollection',
                    'generated': str(datetime.now()),
-                   'brails_version': version('BRAILS'),
+                   'brails_version': brails_version,
                    'crs': {'type': 'name',
                            'properties': {
                                'name': 'urn:ogc:def:crs:OGC:1.3:CRS84'}
@@ -406,8 +498,6 @@ class AssetInventory:
             #    feature['type'] = asset.features['type']
 
             geojson['features'].append(feature)
-            # TODO: Note from SY here we could put in NA! for imputation and
-            # ensure all features have same set of keys!!
 
         return geojson
 
@@ -479,7 +569,7 @@ class AssetInventory:
 
         # Check if latitude/longitude exist
         lat = ['latitude', 'lat']
-        lon = ['longitude', 'lon']
+        lon = ['longitude', 'lon', 'long']
         key_names = csv_reader.fieldnames
         lat_id = np.where([y.lower() in lat for y in key_names])[0]
         lon_id = np.where([x.lower() in lon for x in key_names])[0]
@@ -572,20 +662,18 @@ class AssetInventory:
 
         return True
 
-    def get_dataframe(self, n_possible_worlds=1, features_possible_worlds=[]) -> bool:
+    def get_dataframe(self) -> bool:
         """
         Read inventory data from a CSV file and add it to the inventory.
 
         Args:
-            n_possible_worlds (int):
-                  Number of possible worlds
-            features_possible_worlds (list of str):
-                  Indicate the features with multiple possible worlds
 
         Returns:
             bool:
                   True if assets were addded, False otherwise.
         """
+
+        n_possible_worlds = self.get_n_pw()
 
         features_json = self.get_geojson()['features']
         bldg_properties = [(self.inventory[i].features | {
@@ -632,10 +720,23 @@ class AssetInventory:
         #  get centoried
         lat_values = [None] * nbldg
         lon_values = [None] * nbldg
+
         for idx in range(nbldg):
             polygon_coordinate = features_json[idx]['geometry']['coordinates']
-            latitudes = [coord[1] for coord in polygon_coordinate]
-            longitudes = [coord[0] for coord in polygon_coordinate]
+
+            if isinstance(polygon_coordinate[0], list):
+                if isinstance(polygon_coordinate[0][0], list):
+                    # multipolygon
+                    latitudes = [coord[0][1] for coord in polygon_coordinate]
+                    longitudes = [coord[0][0] for coord in polygon_coordinate]
+                else:
+                    # polygon or point    
+                    latitudes = [coord[1] for coord in polygon_coordinate]
+                    longitudes = [coord[0] for coord in polygon_coordinate]
+            else:
+                # point?
+                latitude = [polygon_coordinate[1]]
+                longitudes = [polygon_coordinate[0]]
             lat_values[idx] = sum(latitudes) / len(latitudes)
             lon_values[idx] = sum(longitudes) / len(longitudes)
 
@@ -651,3 +752,72 @@ class AssetInventory:
         bldg_geometries_df = bldg_geometries_df.set_index("index")
 
         return bldg_properties_df, bldg_geometries_df, nbldg
+
+
+
+    def get_world_realization(self, id=0):
+
+        new_inventory = deepcopy(self)
+
+        if self.n_pw==1 and id>0:
+            raise Exception("Cannot retrive different realizations as the inventory contains only a single realization. Consider setting id=0")
+
+        pw_found = False
+        for i in self.get_asset_ids():
+            flag, features = self.get_asset_features(i)
+            for key, val in features.items():
+                if isinstance(val, list):
+                    if len(val)>id:
+                        new_inventory.add_asset_features(i,{key:val[id]},overwrite=True)
+                    elif len(val)==id:
+                        errmsg = f"The world index {id} should be smaller than the existing number of worlds {len(val)}, as the index starts from zero."
+                        raise Exception(errmsg)
+
+                    else:
+                        errmsg = f"The world index {id} should be smaller than the existing number of worlds, e.g. asset id {i}, feature {key} contains only {len(val)} realizations."
+                        raise Exception(errmsg)
+
+        return new_inventory
+
+
+
+
+    def get_n_pw(self): # move to asset
+
+        # #
+        # # Count the number of possible worlds in inventory
+        # #
+
+        # n_pw = None
+        # for i in self.get_asset_ids():
+        #     flag, features = self.get_asset_features(i)
+        #     for key, val in features.items():
+        #         if isinstance(val, list):
+        #             if n_pw == None:
+        #                 # set n_pw
+        #                 n_pw = len(val)
+        #             else:
+        #                 # check if it is constant
+        #                 if not (n_pw==len(val)):
+        #                     print(f"ERROR: number of possible worlds are not consistant. Asset id {i} have {len(val)} realizations whereas all the previous assets had {n_pw} realizations. This may give an error in the later brails process.")
+        #                     return None
+
+        # if n_pw==None:
+        #     n_pw = 1
+
+        return self.n_pw
+
+    def get_multi_keys(self): # move to asset
+
+        # 
+        #  Gives the features with multiple realizations
+        # 
+        multi_keys = []
+        for i in self.get_asset_ids():
+            flag, features = self.get_asset_features(i)
+            for key, val in features.items():
+                if isinstance(val, list):
+                    if key not in multi_keys:
+                        multi_keys += [key]
+                    
+        return multi_keys
