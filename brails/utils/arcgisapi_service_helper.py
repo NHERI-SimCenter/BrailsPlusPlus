@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 11-07-2024
+# 12-19-2024
 
 """
 This module defines a class for retrieving data from ArcGIS services APIs.
@@ -135,11 +135,16 @@ class ArcgisAPIServiceHelper:
                 fetched from the API.
         """
         self.api_endpoint_url = api_endpoint_url
-        self.max_elements_per_cell = self.fetch_max_records_per_query(
-            api_endpoint_url
-        )
+        try:
+            self.max_elements_per_cell = self.fetch_max_records_per_query()
+        except Exception as e:
+            raise ValueError(
+                f"An error occurred while accessing the API endpoint: {e}. "
+                "Please verify that the provided URL and parameters are "
+                "correct."
+            ) from e
 
-    def fetch_max_records_per_query(self, api_endpoint_url: str) -> int:
+    def fetch_max_records_per_query(self) -> int:
         """
         Retrieve the maximum number of records returned by the API per query.
 
@@ -148,11 +153,6 @@ class ArcgisAPIServiceHelper:
         returned in a single query. If the API does not provide this
         information or returns a value of 0, it raises an error.
 
-        Args:
-            api_endpoint_url (str):
-                The base URL of the API endpoint to query. The function
-                automatically appends the necessary query parameters to this
-                URL.
 
         Returns:
             int:
@@ -167,8 +167,9 @@ class ArcgisAPIServiceHelper:
                 a server error).
 
         Example:
-            >>> max_records = _get_max_records_returned(
+            >>> api_tools = ArcgisAPIServiceHelper(
                 "https://api.example.com/data/query")
+            >>> max_records = api_tools.fetch_max_records_per_query()
             >>> print(max_records)
             1000
 
@@ -179,7 +180,7 @@ class ArcgisAPIServiceHelper:
               transient network issues.
         """
         # Get the number of elements allowed per cell by the API:
-        api_reference_url = api_endpoint_url.removesuffix(
+        api_reference_url = self.api_endpoint_url.removesuffix(
             '/query') + '?f=pjson'
 
         # Set up a session with retry logic:
@@ -196,6 +197,77 @@ class ArcgisAPIServiceHelper:
                              'response or the API service.')
 
         return max_record_count
+
+    def download_attr_from_api(self,
+                               cell: Polygon,
+                               requested_fields: list[str] | str) -> list:
+        """
+        Download specified fields from the API for a given cell.
+
+        Args:
+            cell (Polygon):
+                A Shapely Polygon object representing the area of interest.
+            requested_fields (list[str] or str):
+                A list of attribute names or the string 'all'.
+
+        Returns:
+            list[dict]:
+                A list of features (attributes) fetched from the API.
+
+        Raises:
+            ValueError:
+                If the input 'cell' is not a valid Polygon or
+                'requested_fields' is not valid.
+        """
+        # Validate the 'cell' input and get its bounding box coordinates:
+        if not isinstance(cell, Polygon):
+            raise ValueError("Invalid input: The 'cell' parameter must be a "
+                             'valid Shapely Polygon object.')
+        bbox = cell.bounds
+
+        # Reformat the requested fields for API consumption:
+        error_message = (
+            "Invalid value for 'requested_fields'.\n"
+            'Allowable values are:\n'
+            '- A list of string values representing the requested attribute '
+            'names.\n'
+            "- The string 'all' to request all attributes available from the "
+            'API.'
+        )
+        if isinstance(requested_fields, str):
+            if requested_fields.lower() == 'all':
+                output_fields = '*'
+            else:
+                raise ValueError(error_message)
+        elif isinstance(requested_fields, list):
+            # Ensure all elements in the list are strings
+            if not all(isinstance(field, str) for field in requested_fields):
+                raise ValueError(
+                    "All elements in the 'requested_fields' list must be "
+                    'strings.'
+                )
+            output_fields = ','.join(requested_fields)
+        else:
+            raise ValueError(error_message)
+
+        # Parameters for querying the ArcGIS API, specifying the geometry and
+        # desired fields:
+        params = {
+            'geometry': f'{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}',
+            'geometryType': 'esriGeometryEnvelope',
+            'inSR': '4326',
+            'outSR': '4326',
+            'spatialRel': 'esriSpatialRelIntersects',
+            'outFields': output_fields,
+            'f': 'json',
+        }
+
+        response = self._make_request_with_retry(self.api_endpoint_url, params)
+
+        # Parse the response JSON and extract features:
+        datalist = response.json().get('features', [])
+
+        return datalist
 
     def categorize_and_split_cells(self,
                                    preliminary_cells: list[Polygon]
@@ -268,8 +340,7 @@ class ArcgisAPIServiceHelper:
             # cells. The method returns a list of new cells (rectangles) after
             # splitting:
             rectangles = self.split_polygon_into_cells(
-                cell, element_count=results[cell],
-                max_elements_per_cell=self.max_elements_per_cell)
+                cell, element_count=results[cell])
 
             # Add the resulting split cells (rectangles) to the split_cells
             # list:
