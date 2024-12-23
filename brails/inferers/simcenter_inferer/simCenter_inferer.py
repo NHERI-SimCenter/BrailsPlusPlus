@@ -39,24 +39,11 @@
 # Last updated:
 # 11-12-2024
 
-import time
-
-import os
-import sys
-import copy
-import json
 
 import numpy as np
-from copy import deepcopy
 import logging
 
-from brails.types.asset_inventory import AssetInventory
-from brails.inferers.inferenceEngine import InferenceEngine
 from brails.inferers.hazus_inferer.hazus_inferer import HazusInferer
-
-from itertools import product
-
-import reverse_geocode # sy - note this may not be the most accurate package but it's fast
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
@@ -90,7 +77,6 @@ class SimCenterInferer(HazusInferer):
             if (not (occ=="RES2")) and ('MH' in structure_types):
                 # find MH and remove it from the list
                 MHidx = np.argmax(structure_types == 'MH')
-                #MHidx = structure_types.index('MH')
                 if weights[MHidx]>0:
                     structure_types = np.delete(structure_types, MHidx)
                     weights = np.delete(weights, MHidx)
@@ -100,7 +86,6 @@ class SimCenterInferer(HazusInferer):
         if "no_urm" in self.options:
             if "URM" in structure_types:
                 URMidx = np.argmax(structure_types == 'URM')
-                #URMidx = structure_types.index('URM')
                 if weights[URMidx]>0:
                     structure_types = np.delete(structure_types, URMidx)
                     weights = np.delete(weights, URMidx)

@@ -26,7 +26,7 @@ def get_hazus_occ_type_mapping():
         'low_rise': ['W1','W2','S1','S2','S3','S4','S5','C1','C2','C3','PC1','PC2','RM1','RM2','URM','MH'],
         'mid_rise': ['S1','S2','S4','S5','C1','C2','C3','PC2','RM1','RM2','URM'],
         'high_rise': ['S1','S2','S4','S5','C1','C2','C3','PC2','RM2'],
-        'RES1': ['W1','S3','S5L','C2L','RM1','URM']
+        'RES1': ['W1','S3','S5','C2','RM1','URM']
     }
     
     type_weights_west = {

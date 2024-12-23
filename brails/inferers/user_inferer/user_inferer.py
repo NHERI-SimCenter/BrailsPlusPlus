@@ -39,22 +39,13 @@
 # Last updated:
 # 11-12-2024
 
-import time
-
 import os
 import sys
 import copy
-import json
-
-import numpy as np
-from copy import deepcopy
 
 from brails.types.asset_inventory import AssetInventory
 from brails.inferers.inferenceEngine import InferenceEngine
 
-from itertools import product
-
-import sys
 import importlib.util
 import logging
 
@@ -91,6 +82,7 @@ class UserInferer(InferenceEngine):
         #
         # read the user-defined function named "user_inferer"
         #
+
         input_inventory = self.input_inventory
         module_name = os.path.splitext(os.path.basename(self.user_path))[0]
         spec = importlib.util.spec_from_file_location(module_name, self.user_path)
@@ -101,12 +93,12 @@ class UserInferer(InferenceEngine):
             msg = f"Function 'user_inferer' should exist in {self.user_path}."
             raise Exception(msg)
         
-
         prop = {}
         n_pw = input_inventory.get_n_pw()
         for nw in range(n_pw):
 
             this_inventory = input_inventory.get_world_realization(nw)
+
             #
             # convert to json
             #
@@ -135,16 +127,15 @@ class UserInferer(InferenceEngine):
             count += updated
 
         if len(prop)==0:
-            logger.warning(f"Nothing happened to the inventory.")   
+            logger.warning("Nothing happened to the inventory.")   
         elif count==0:
-            logger.warning(f"Nothing happened to the inventory. Did you want to turn on the overwriting?")   
+            logger.warning("Nothing happened to the inventory. Did you want to turn on the overwriting?")   
         elif count<len(prop):
             print(f"{count/len(prop)*100} % of assets are updated")   
         else:
             print("All assets are updated")
 
         return output_inventory
-
 
     def merge_two_json(self,A,B,shrink=False):
 
@@ -162,6 +153,7 @@ class UserInferer(InferenceEngine):
 
             # Loop through each feature in A and B
             for feature in A[key]:
+
                 # Get the value from A, ensure it's a list
                 value_a = A[key][feature]
                 if not isinstance(value_a, list):
@@ -173,8 +165,7 @@ class UserInferer(InferenceEngine):
                     value_b = [value_b]
 
                 # Merge the two lists
-
-                if shrink==False:
+                if not shrink:
                     merged_values[feature] = value_a + value_b
                 else:
                     val = value_a + value_b
@@ -182,7 +173,6 @@ class UserInferer(InferenceEngine):
                         merged_values[feature] = val[0]
                     else:
                         merged_values[feature] = val
-
 
             # Assign the merged values for the current key to C
             C[key] = merged_values
@@ -208,7 +198,7 @@ class UserInferer(InferenceEngine):
                        }
             if 'type' in asset.features:
                 feature['type'] = asset.features['type']
-
+                
             inventory_json[key] = feature
 
         return inventory_json
