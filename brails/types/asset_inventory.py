@@ -58,6 +58,9 @@ import numpy as np
 import pandas as pd
 from brails.utils import InputValidator
 
+from shapely.geometry import shape
+import json
+
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -204,6 +207,7 @@ class AssetInventory:
             inventory dataset from a csv table
         add_asset_features_from_csv(file_path, id_column): Add asset features
             from a csv file.
+        update_feature_names(name_mapping) : Change the name of features 
     """
 
     def __init__(self):
@@ -445,7 +449,7 @@ class AssetInventory:
 
         return result_coordinates, result_keys
 
-    def get_geojson(self) -> dict:
+    def get_geojson(self, convert_to_centroid = False) -> dict:
         """
         Generate a GeoJSON representation of the assets in the inventory.
 
@@ -488,6 +492,14 @@ class AssetInventory:
                                 'coordinates': asset.coordinates
                                 }
 
+            if convert_to_centroid and not geometry["type"]=="Point":
+                centroid = shape(geometry).centroid
+                geometry = {"type": "Point",
+                            "coordinates": [centroid.x, centroid.y]
+                            }
+
+
+            
             feature = {'type': 'Feature',
                        'properties': asset.features,
                        'geometry': geometry
@@ -501,7 +513,7 @@ class AssetInventory:
 
         return geojson
 
-    def write_to_geojson(self, output_file: str = '') -> dict:
+    def write_to_geojson(self, output_file: str = '', convert_to_centroid: bool = False) -> dict:
         """
         Write an inventory to a GeoJSON file.
 
@@ -509,7 +521,7 @@ class AssetInventory:
             output_file(str):
                 Path of the GeoJSON output file.
         """
-        geojson = self.get_geojson()
+        geojson = self.get_geojson(convert_to_centroid = convert_to_centroid)
 
         # Write the created GeoJSON dictionary into a GeoJSON file:
         if output_file:
@@ -662,9 +674,9 @@ class AssetInventory:
 
         return True
 
-    def get_dataframe(self) -> bool:
+    def get_dataframe(self, convert_footprint_to_centroid=False) -> bool:
         """
-        Read inventory data from a CSV file and add it to the inventory.
+        Create dataframe from inventory objective
 
         Args:
 
@@ -675,7 +687,9 @@ class AssetInventory:
 
         n_possible_worlds = self.get_n_pw()
 
-        features_json = self.get_geojson()['features']
+
+        asset_json = self.get_geojson(convert_to_centroid = convert_footprint_to_centroid)
+        features_json = asset_json['features']
         bldg_properties = [(self.inventory[i].features | {
             "index": i}) for dummy, i in enumerate(self.inventory)]
 
@@ -715,7 +729,8 @@ class AssetInventory:
 
             bldg_properties_df = pd.DataFrame(flat_data)
 
-        bldg_properties_df.drop(columns=['type'], inplace=True)
+        if 'type' in bldg_properties_df.columns:
+            bldg_properties_df.drop(columns=['type'], inplace=True)
 
         #  get centoried
         lat_values = [None] * nbldg
@@ -735,7 +750,7 @@ class AssetInventory:
                     longitudes = [coord[0] for coord in polygon_coordinate]
             else:
                 # point?
-                latitude = [polygon_coordinate[1]]
+                latitudes = [polygon_coordinate[1]]
                 longitudes = [polygon_coordinate[0]]
             lat_values[idx] = sum(latitudes) / len(latitudes)
             lon_values[idx] = sum(longitudes) / len(longitudes)
@@ -784,27 +799,6 @@ class AssetInventory:
 
     def get_n_pw(self): # move to asset
 
-        # #
-        # # Count the number of possible worlds in inventory
-        # #
-
-        # n_pw = None
-        # for i in self.get_asset_ids():
-        #     flag, features = self.get_asset_features(i)
-        #     for key, val in features.items():
-        #         if isinstance(val, list):
-        #             if n_pw == None:
-        #                 # set n_pw
-        #                 n_pw = len(val)
-        #             else:
-        #                 # check if it is constant
-        #                 if not (n_pw==len(val)):
-        #                     print(f"ERROR: number of possible worlds are not consistant. Asset id {i} have {len(val)} realizations whereas all the previous assets had {n_pw} realizations. This may give an error in the later brails process.")
-        #                     return None
-
-        # if n_pw==None:
-        #     n_pw = 1
-
         return self.n_pw
 
     def get_multi_keys(self): # move to asset
@@ -813,11 +807,26 @@ class AssetInventory:
         #  Gives the features with multiple realizations
         # 
         multi_keys = []
+        all_keys =[]
         for i in self.get_asset_ids():
             flag, features = self.get_asset_features(i)
+
             for key, val in features.items():
                 if isinstance(val, list):
                     if key not in multi_keys:
                         multi_keys += [key]
+
+                if key not in all_keys:
+                    all_keys += [key]
                     
-        return multi_keys
+        return multi_keys, all_keys
+
+    def update_feature_names(self, key_mapping): # move to asset
+
+        for i in self.get_asset_ids():
+            flag, features = self.get_asset_features(i)
+
+            for old_key, new_key in key_mapping.items():
+                if old_key in features:
+                    features[new_key] = features.pop(old_key)
+
