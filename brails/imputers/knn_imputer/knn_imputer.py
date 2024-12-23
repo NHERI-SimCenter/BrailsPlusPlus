@@ -73,15 +73,16 @@ class KnnImputer(Imputation):
 
     """
 
-    def __init__(self,
-                input_inventory: AssetInventory,
-                n_possible_worlds=1,
-                create_correlation=True,
-                exclude_features=[],
-                seed=1,
-                batch_size=50,
-                k_nn=5,
-                nbldg_per_cluster=500
+    def __init__(
+        self,
+        input_inventory: AssetInventory,
+        n_possible_worlds=1,
+        create_correlation=True,
+        exclude_features=[],
+        seed=1,
+        batch_size=50,
+        k_nn=5,
+        nbldg_per_cluster=500,
     ):
         self.input_inventory = input_inventory
         self.n_pw = n_possible_worlds
@@ -104,12 +105,11 @@ class KnnImputer(Imputation):
     #     nbldg_per_cluster=500
     # ) -> AssetInventory:
 
-    def impute(self)-> AssetInventory:
-
-        #self.n_pw = n_possible_worlds
-        #self.batch_size = batch_size
-        #self.seed = seed
-        #self.k_nn = k_nn  # knn
+    def impute(self) -> AssetInventory:
+        # self.n_pw = n_possible_worlds
+        # self.batch_size = batch_size
+        # self.seed = seed
+        # self.k_nn = k_nn  # knn
 
         if self.create_correlation:
             self.gen_method = "sequential"
@@ -153,7 +153,7 @@ class KnnImputer(Imputation):
         # replace empty or "NA" with nan & drop entirely missing columns
         #
 
-        #pd.set_option("future.no_silent_downcasting", True)
+        # pd.set_option("future.no_silent_downcasting", True)
         bldg_properties_df = bldg_properties_df.replace("NA", np.nan, inplace=False)
         bldg_properties_df = bldg_properties_df.replace("", np.nan, inplace=False)
         mask = bldg_properties_df.isnull()  # for missing
@@ -241,7 +241,9 @@ class KnnImputer(Imputation):
 
             cluster_idx = np.where(cluster_ids == ci)[0]
 
-            corrMat = np.array(bldg_properties_encoded.iloc[cluster_idx].corr(numeric_only=False))
+            corrMat = np.array(
+                bldg_properties_encoded.iloc[cluster_idx].corr(numeric_only=False)
+            )
             const_idx = np.where(bldg_properties_encoded.iloc[cluster_idx].var() == 0)[
                 0
             ]
@@ -537,15 +539,17 @@ class KnnImputer(Imputation):
                 # sample indices
                 #
 
-                distances[distances==0] = np.min(distances[distances!=0])/100 # if dist is zero
-                
-                ndup = np.sum(distances==0)
-                if ndup>0:
-                    print(f'Warning: Found {ndup} duplicated assets that has distance 0.')
+                distances[distances == 0] = (
+                    np.min(distances[distances != 0]) / 100
+                )  # if dist is zero
 
+                ndup = np.sum(distances == 0)
+                if ndup > 0:
+                    print(
+                        f"Warning: Found {ndup} duplicated assets that has distance 0."
+                    )
 
                 invdistance = 1 / distances
-
 
                 row_sums = invdistance.sum(axis=1)
                 weights = invdistance / row_sums[:, np.newaxis]
@@ -571,7 +575,7 @@ class KnnImputer(Imputation):
                         surrounding_building_sample = np.random.choice(
                             building_ids[nb, :], size=1, replace=True, p=weights[nb, :]
                         )
-                    except Exception as e:
+                    except Exception:
                         print(weights[nb, :])
                         print(row_sums[nb, np.newaxis])
                         print(invdistance[nb, :])

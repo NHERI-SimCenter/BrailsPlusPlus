@@ -53,6 +53,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class UserInferer(InferenceEngine):
     """
     Executes the inference model provided by the user
@@ -68,17 +69,17 @@ class UserInferer(InferenceEngine):
 
     """
 
-    def __init__(self,
+    def __init__(
+        self,
         input_inventory: AssetInventory,
         user_path,
         overwrite=True,
     ):
         self.input_inventory = input_inventory
-        self.overwrite=overwrite
-        self.user_path=user_path
+        self.overwrite = overwrite
+        self.user_path = user_path
 
     def infer(self) -> AssetInventory:
-
         #
         # read the user-defined function named "user_inferer"
         #
@@ -89,14 +90,13 @@ class UserInferer(InferenceEngine):
         user_module = importlib.util.module_from_spec(spec)
         sys.modules[module_name] = user_module
         spec.loader.exec_module(user_module)
-        if not hasattr(user_module, 'user_inferer'):
+        if not hasattr(user_module, "user_inferer"):
             msg = f"Function 'user_inferer' should exist in {self.user_path}."
             raise Exception(msg)
-        
+
         prop = {}
         n_pw = input_inventory.get_n_pw()
         for nw in range(n_pw):
-
             this_inventory = input_inventory.get_world_realization(nw)
 
             #
@@ -111,10 +111,10 @@ class UserInferer(InferenceEngine):
 
             prop_world_i = user_module.user_inferer(inventory_json)
 
-            if nw==0:
+            if nw == 0:
                 prop = prop_world_i
             else:
-                prop = self.merge_two_json(prop, prop_world_i,shrink=(nw==n_pw-1))
+                prop = self.merge_two_json(prop, prop_world_i, shrink=(nw == n_pw - 1))
 
         #
         # Update the inventory
@@ -123,29 +123,32 @@ class UserInferer(InferenceEngine):
         output_inventory = copy.deepcopy(input_inventory)
         count = 0
         for index, feature in prop.items():
-            updated = output_inventory.add_asset_features(index, feature, overwrite=self.overwrite)
+            updated = output_inventory.add_asset_features(
+                index, feature, overwrite=self.overwrite
+            )
             count += updated
 
-        if len(prop)==0:
-            logger.warning("Nothing happened to the inventory.")   
-        elif count==0:
-            logger.warning("Nothing happened to the inventory. Did you want to turn on the overwriting?")   
-        elif count<len(prop):
-            print(f"{count/len(prop)*100} % of assets are updated")   
+        if len(prop) == 0:
+            logger.warning("Nothing happened to the inventory.")
+        elif count == 0:
+            logger.warning(
+                "Nothing happened to the inventory. Did you want to turn on the overwriting?"
+            )
+        elif count < len(prop):
+            print(f"{count/len(prop)*100} % of assets are updated")
         else:
             print("All assets are updated")
 
         return output_inventory
 
-    def merge_two_json(self,A,B,shrink=False):
-
-        if A=={}:
+    def merge_two_json(self, A, B, shrink=False):
+        if A == {}:
             return B
 
-        if B=={}:
+        if B == {}:
             return A
 
-        C={}
+        C = {}
 
         for key in A:
             # Initialize the merged values for the current key
@@ -153,7 +156,6 @@ class UserInferer(InferenceEngine):
 
             # Loop through each feature in A and B
             for feature in A[key]:
-
                 # Get the value from A, ensure it's a list
                 value_a = A[key][feature]
                 if not isinstance(value_a, list):
@@ -179,26 +181,22 @@ class UserInferer(InferenceEngine):
 
         return C
 
-    def to_json(self,this_inventory):
-
+    def to_json(self, this_inventory):
         inventory_json = {}
         for key, asset in this_inventory.inventory.items():
             if len(asset.coordinates) == 1:
-                geometry = {"type": "Point",
-                            "coordinates": [asset.coordinates[0][:]]
-                            }
+                geometry = {"type": "Point", "coordinates": [asset.coordinates[0][:]]}
             else:
-                geometry = {'type': 'Polygon',
-                            'coordinates': asset.coordinates
-                            }
+                geometry = {"type": "Polygon", "coordinates": asset.coordinates}
 
-            feature = {'type': 'Feature',
-                       'properties': asset.features,
-                       'geometry': geometry
-                       }
-            if 'type' in asset.features:
-                feature['type'] = asset.features['type']
-                
+            feature = {
+                "type": "Feature",
+                "properties": asset.features,
+                "geometry": geometry,
+            }
+            if "type" in asset.features:
+                feature["type"] = asset.features["type"]
+
             inventory_json[key] = feature
 
         return inventory_json
