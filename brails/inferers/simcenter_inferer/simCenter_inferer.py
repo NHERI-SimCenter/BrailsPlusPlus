@@ -39,87 +39,71 @@
 # Last updated:
 # 11-12-2024
 
-import time
-
-import os
-import sys
-import copy
-import json
 
 import numpy as np
-from copy import deepcopy
 import logging
 
-from brails.types.asset_inventory import AssetInventory
-from brails.inferers.inferenceEngine import InferenceEngine
 from brails.inferers.hazus_inferer.hazus_inferer import HazusInferer
-
-from itertools import product
-
-import reverse_geocode # sy - note this may not be the most accurate package but it's fast
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class SimCenterInferer(HazusInferer):
     """
-    Imputes dataset based on k-nearest neighbors in the feature-agmented space. Sequentially generate inventory
+    Make inference based on Hazus 6 rulesets. Additionally make some heuristic adjustments
 
     Attributes:
-        n_pw (int):
-                The number of possible worlds (i.e. samples or realizations)
-        seed (int):
-                For reproducibility
 
     Methods:
 
 
     """
-    # 
 
-    def __init__(self,**kwargs):
+    #
+
+    def __init__(
+        self, options=["no_urm", "allow_mh_only_for_res2", "res3_AB_to_res1"], **kwargs
+    ):
         super().__init__(**kwargs)
-        self.options = ['no_urm', 'allow_mh_only_for_res2', 'res3_AB_to_res1']
+        self.options = options
 
-    def modulate_weights(self, weights, structure_types, region, occ, year_class, height):
-
-        if len(weights)==0:
+    def modulate_weights(
+        self, weights, structure_types, region, occ, year_class, height
+    ):
+        if len(weights) == 0:
             # do nothing
             return weights, structure_types
 
-        
         # if not RES2, turn off mobile home
         if "allow_mh_only_for_res2" in self.options:
-            if (not (occ=="RES2")) and ('MH' in structure_types):
+            if (not (occ == "RES2")) and ("MH" in structure_types):
                 # find MH and remove it from the list
-                MHidx = np.argmax(structure_types == 'MH')
-                #MHidx = structure_types.index('MH')
-                if weights[MHidx]>0:
+                MHidx = np.argmax(structure_types == "MH")
+                if weights[MHidx] > 0:
                     structure_types = np.delete(structure_types, MHidx)
                     weights = np.delete(weights, MHidx)
-                    weights = weights/np.sum(weights)
+                    weights = weights / np.sum(weights)
 
         # turn of urm
         if "no_urm" in self.options:
             if "URM" in structure_types:
-                URMidx = np.argmax(structure_types == 'URM')
-                #URMidx = structure_types.index('URM')
-                if weights[URMidx]>0:
+                URMidx = np.argmax(structure_types == "URM")
+                if weights[URMidx] > 0:
                     structure_types = np.delete(structure_types, URMidx)
                     weights = np.delete(weights, URMidx)
-                    weights = weights/np.sum(weights)
-        
+                    weights = weights / np.sum(weights)
+
         return weights, structure_types
 
     def modulate_occ(self, s):
-
         # if RES3 and unit<4 (i.e. RES3A or RES3B), change it to RES1
         if "res3_AB_to_res1" in self.options:
             if not s[-1].isdigit():  # Check if the last character is not a digit
-                if s in ['RES3A','RES3B']:
+                if s in ["RES3A", "RES3B"]:
                     s = "RES1"
-                elif s in ['RES3C','RES3D','RES3E','RES3F']:
+                elif s in ["RES3C", "RES3D", "RES3E", "RES3F"]:
                     s = "RES3"
         else:
             s = super().modulate_occ(s)
