@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 01-06-2025
+# 01-08-2025
 
 """
 This module defines the class scraping data from Overture Maps.
@@ -45,20 +45,42 @@ This module defines the class scraping data from Overture Maps.
     OvertureMapsScraper
 """
 
-import urllib.request
 import re
-import pandas as pd
+import urllib.request
 
+import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.fs as fs
-
 from shapely import wkb
 
+from brails.types.asset_inventory import AssetInventory
+from brails.types.region_boundary import RegionBoundary
 
-class OvertureMapsScraper
-   def __init__(self, input_dict: dict):
+TYPE_THEME_MAP = {
+    'address': 'addresses',
+    'bathymetry': 'base',
+    'building': 'buildings',
+    'building_part': 'buildings',
+    'division': 'divisions',
+    'division_area': 'divisions',
+    'division_boundary': 'divisions',
+    'place': 'places',
+    'segment': 'transportation',
+    'connector': 'transportation',
+    'infrastructure': 'base',
+    'land': 'base',
+    'land_cover': 'base',
+    'land_use': 'base',
+    'water': 'base',
+}
+
+EXCLUDE_COLUMNS = ['geometry', 'id', 'bbox', 'version', 'sources']
+
+
+class OvertureMapsScraper:
+    def __init__(self, input_dict: dict):
         """
         Initialize the class object with length units.
 
@@ -69,14 +91,120 @@ class OvertureMapsScraper
         """
         self.length_unit = input_dict.get('length', 'ft')
 
-    def get_latest_release():
+    @staticmethod
+    def get_available_element_types(return_types: bool = False) -> list | None:
         """
-        Fetches the version number from the title of a webpage.
+        Retrieve list of element types that can be returned by the scraper.
+
+        This method returns a list of element types that can be returned by
+        this scraper and enabled in Overture Maps. Optionally, it can return
+        the list of  available element types when the `return_types` flag is
+        set to True.
+
+        Args:
+            return_types (bool):
+                If True, the method will return the list of available element
+                types. If False (default), the method only prints the available
+                types.
+
+        Returns:
+            list | None:
+                A list of available element types if `return_types` is True,
+                otherwise None.
+
+        Example:
+            get_available_element_types()     # Prints the types, returns None.
+            get_available_element_types(True) # Returns a list of available
+                                                element types.
+        """
+        available_types = ', '.join(
+            f"'{key}'" for key in TYPE_THEME_MAP.keys()
+        )
+        print('The elements types that can be returned by this scraper are: '
+              f'{available_types}')
+        if return_types:
+            return available_types
+
+    def get_elements(self,
+                     region: RegionBoundary,
+                     requested_elements: list) -> AssetInventory:
+
+        # TODO: Run queries and create an inventory for multiple requested
+        # elements
+        # TODO: Return only the elements within the RegionBoundary
+
+        # bbox = (-118.50647, 34.01793, -118.47420, 34.03404)
+
+        overture_type = requested_elements[0]
+        theme = TYPE_THEME_MAP[overture_type]
+
+        release = self._get_latest_release()
+
+        path = (f'overturemaps-us-west-2/release/{release}/theme={theme}'
+                f'/type={overture_type}/')
+
+        bpoly, queryarea_printname, osmid = region.get_boundary()
+        bbox_coords = bpoly.bounds
+        bbox = (bbox_coords[1], bbox_coords[0], bbox_coords[3], bbox_coords[2])
+        xmin, ymin, xmax, ymax = bbox
+        filter = (
+            (pc.field("bbox", "xmin") < xmax)
+            & (pc.field("bbox", "xmax") > xmin)
+            & (pc.field("bbox", "ymin") < ymax)
+            & (pc.field("bbox", "ymax") > ymin)
+        )
+
+        dataset = ds.dataset(
+            path, filesystem=fs.S3FileSystem(
+                anonymous=True, region="us-west-2")
+        )
+        batches = dataset.to_batches(filter=filter)
+
+        non_empty_batches = (b for b in batches if b.num_rows > 0)
+
+        geoarrow_schema = self._geoarrow_schema_adapter(dataset.schema)
+        reader = pa.RecordBatchReader.from_batches(
+            geoarrow_schema, non_empty_batches)
+
+        dfs = []
+        for record_batch in reader:
+            # Convert each RecordBatch to a pandas DataFrame
+            df = record_batch.to_pandas()
+
+            if 'geometry' in df.columns:
+                df['geometry'] = df['geometry'].apply(
+                    lambda x: wkb.loads(x) if x is not None else None)
+
+            dfs.append(df)
+
+        # Concatenate all DataFrames if needed
+        final_df = pd.concat(dfs, ignore_index=True)
+
+        footprints = []
+        attributes = {col: []
+                      for col in df.columns if col not in EXCLUDE_COLUMNS}
+        for index, row in final_df.iterrows():
+            geometry = row['geometry']
+            if geometry is not None:
+                coords = list(geometry.exterior.coords)  # Extract coordinates
+                footprints.append(coords)
+                attributes_dict = row.drop(EXCLUDE_COLUMNS).to_dict()
+                for key, value in attributes_dict.items():
+                    attributes[key].append(value)
+
+        return self._create_asset_inventory(footprints,
+                                            attributes,
+                                            self.length_unit)
+
+    @staticmethod
+    def _get_latest_release():
+        """
+        Fetch version number from the title of Overture releases webpage.
 
         Returns:
             str:
-                The version number of the latest release or raises an error if not
-                found.
+                The version number of the latest release or raises an error if
+                not found.
 
         Raises:
             ValueError:
@@ -101,29 +229,28 @@ class OvertureMapsScraper
                 else:
                     raise ValueError('Version number is empty.')
             else:
-                raise ValueError('The version number for the latest release could '
-                                 'not be extracted from the title.')
+                raise ValueError('The version number for the latest release '
+                                 'could not be extracted from the title.')
 
         except urllib.error.URLError as e:
             raise ValueError(f'Error fetching the webpage: {e}')
         except Exception as e:
             raise ValueError(f'An error occurred: {e}')
 
-    def geoarrow_schema_adapter(schema: pa.Schema) -> pa.Schema:
+    @staticmethod
+    def _geoarrow_schema_adapter(schema: pa.Schema) -> pa.Schema:
         """
-        Convert a geoarrow-compatible schema to a proper geoarrow schema
+        Convert a geoarrow-compatible schema to a proper geoarrow schema.
 
         This assumes there is a single "geometry" column with WKB formatting
 
-        Parameters
-        ----------
-        schema: pa.Schema
+        Args:
+            schema: pa.Schema
 
-        Returns
-        -------
-        pa.Schema
-        A copy of the input schema with the geometry field replaced with
-        a new one with the proper geoarrow ARROW:extension metadata
+        Returns:
+            pa.Schema
+            A copy of the input schema with the geometry field replaced with
+            a new one with the proper geoarrow ARROW:extension metadata
 
         """
         geometry_field_index = schema.get_field_index("geometry")
@@ -136,86 +263,3 @@ class OvertureMapsScraper
             geometry_field_index, geoarrow_geometry_field)
 
         return geoarrow_schema
-
-    def get_footprints(self, region: RegionBoundary) -> AssetInventory:
-        type_theme_map = {
-            "address": "addresses",
-            "bathymetry": "base",
-            "building": "buildings",
-            "building_part": "buildings",
-            "division": "divisions",
-            "division_area": "divisions",
-            "division_boundary": "divisions",
-            "place": "places",
-            "segment": "transportation",
-            "connector": "transportation",
-            "infrastructure": "base",
-            "land": "base",
-            "land_cover": "base",
-            "land_use": "base",
-            "water": "base",
-        }
-
-        #bbox = (-118.50647, 34.01793, -118.47420, 34.03404)
-
-        overture_type = 'building'
-        theme = type_theme_map[overture_type]
-
-        release = get_latest_release()
-
-        path = f'overturemaps-us-west-2/release/{release}/theme={theme}/type={overture_type}/'
-
-        bpoly, queryarea_printname, osmid = region.get_boundary()
-        bbox_coords = bpoly.bounds
-        bbox = (bbox_coords[1],bbox_coords[0],bbox_coords[3],bbox_coords[2])
-        xmin, ymin, xmax, ymax = bbox
-        filter = (
-            (pc.field("bbox", "xmin") < xmax)
-            & (pc.field("bbox", "xmax") > xmin)
-            & (pc.field("bbox", "ymin") < ymax)
-            & (pc.field("bbox", "ymax") > ymin)
-        )
-
-
-        dataset = ds.dataset(
-            path, filesystem=fs.S3FileSystem(
-                anonymous=True, region="us-west-2")
-        )
-        batches = dataset.to_batches(filter=filter)
-
-        non_empty_batches = (b for b in batches if b.num_rows > 0)
-
-        geoarrow_schema = geoarrow_schema_adapter(dataset.schema)
-        reader = pa.RecordBatchReader.from_batches(
-            geoarrow_schema, non_empty_batches)
-
-        dfs = []
-        for record_batch in reader:
-            # Convert each RecordBatch to a pandas DataFrame
-            df = record_batch.to_pandas()
-
-            if 'geometry' in df.columns:
-                df['geometry'] = df['geometry'].apply(
-                    lambda x: wkb.loads(x) if x is not None else None)
-
-            dfs.append(df)
-
-        # Concatenate all DataFrames if needed
-        final_df = pd.concat(dfs, ignore_index=True)
-
-        footprints = []
-        exclude_columns = ['geometry', 'id', 'bbox', 'version', 'sources']
-        attributes = {col: []
-            for col in df.columns if col not in exclude_columns}
-        for index, row in final_df.iterrows():
-            geometry = row['geometry']
-            if geometry is not None:
-                coords = list(geometry.exterior.coords)  # Extract coordinates
-                footprints.append(coords)
-                attributes_dict = row.drop(exclude_columns).to_dict()
-                for key, value in attributes_dict.items():
-                    attributes[key].append(value)
-
-        return self._create_asset_inventory(footprints,
-                                            attributes,
-                                        self.length_unit)
