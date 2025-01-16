@@ -39,6 +39,7 @@ setup(
         'pillow',
         'plotly',
         'pycocotools',
+        'pyarrow',
         'requests',
         'scikit-learn',
         'seaborn',
