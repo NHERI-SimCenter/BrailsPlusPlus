@@ -735,7 +735,7 @@ class AssetInventory:
                     longitudes = [coord[0] for coord in polygon_coordinate]
             else:
                 # point?
-                latitude = [polygon_coordinate[1]]
+                latitudes = [polygon_coordinate[1]]
                 longitudes = [polygon_coordinate[0]]
             lat_values[idx] = sum(latitudes) / len(latitudes)
             lon_values[idx] = sum(longitudes) / len(longitudes)
