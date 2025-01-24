@@ -562,7 +562,7 @@ class AssetInventory:
 
         if keep_existing:
             if len(self.inventory) == 0:
-                print("No existing inventory found. Creating a new inventory")
+                print("No existing inventory found. Reading in the new inventory from the file.")
                 id_counter = 1
             else:
                 # we don't want a duplicate the id
@@ -577,7 +577,7 @@ class AssetInventory:
                 csv_reader = csv.DictReader(csvfile)
                 rows = list(csv_reader)
         except FileNotFoundError:
-            raise Exception("The file {} does not exist.".format(csvfile))
+            raise Exception("The file {} does not exist.".format(file_path))
 
         # Check if latitude/longitude exist
         lat = ['latitude', 'lat']
