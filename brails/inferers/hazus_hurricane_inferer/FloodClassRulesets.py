@@ -76,7 +76,7 @@ def FL_config(BIM):
     if flood_type in ['raz', 'caz']:
         FFE = BIM['FirstFloorElevation']
     else:
-        FFE = BIM['FirstFloorElevation'] - 1.0
+        FFE = BIM['FirstFloorElevation'] - 1.0  # noqa: F841
 
     # PostFIRM
     PostFIRM = False # Default
@@ -104,7 +104,7 @@ def FL_config(BIM):
         bmt_type = 'bw' # Default
 
     # Duration
-    dur = 'short'
+    dur = 'short'  # noqa: F841
 
     # Occupancy Type
     if BIM['OccupancyClass'] == 'RES1':
@@ -130,7 +130,7 @@ def FL_config(BIM):
                 elif flood_type == 'cvz':
                     OT = 'SF2SV'
     elif 'RES3' in BIM['OccupancyClass']:
-        OT = 'APT'
+        OT = 'APT'  # noqa: F841
     else:
         ap_OT = {
             'RES2': 'MH',
@@ -163,7 +163,7 @@ def FL_config(BIM):
         ap_OT[BIM['OccupancyClass']]
 
 
-    if not (BIM['OccupancyClass'] in ['RES1', 'RES2']):
+    if BIM['OccupancyClass'] not in ['RES1', 'RES2']:
         if 'RES3' in BIM['OccupancyClass']:
             fl_config = f"{'fl'}_" \
                         f"{'RES3'}"

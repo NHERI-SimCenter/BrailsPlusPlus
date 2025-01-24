@@ -238,16 +238,16 @@ def MMUH_config(BIM):
     # extend the BIM dictionary
     BIM.update(dict(essential_features))
 
-    bldg_config = f"M.MUH." \
-                  f"{int(stories)}." \
-                  f"{BIM['RoofShape']}." \
-                  f"{int(SWR)}." \
-                  f"{roof_cover}." \
-                  f"{roof_quality}." \
-                  f"{RDA}." \
-                  f"{RWC}." \
-                  f"{int(shutters)}." \
-                  f"{int(BIM['MasonryReinforcing'])}." \
-                  f"{int(BIM['TerrainRoughness'])}"
+    # bldg_config = f"M.MUH." \
+    #               f"{int(stories)}." \
+    #               f"{BIM['RoofShape']}." \
+    #               f"{int(SWR)}." \
+    #               f"{roof_cover}." \
+    #               f"{roof_quality}." \
+    #               f"{RDA}." \
+    #               f"{RWC}." \
+    #               f"{int(shutters)}." \
+    #               f"{int(BIM['MasonryReinforcing'])}." \
+    #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features

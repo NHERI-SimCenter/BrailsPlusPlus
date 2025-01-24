@@ -44,7 +44,6 @@
 # Tracy Kijewski-Correa
 
 import random
-import numpy as np
 import datetime
 
 def MLRM_config(BIM):
@@ -188,17 +187,17 @@ def MLRM_config(BIM):
         BIM.update(dict(essential_features))
 
         # if it's MLRM1, configure outputs
-        bldg_config = f"M.LRM.1." \
-                      f"{roof_cover}." \
-                      f"{int(shutters)}." \
-                      f"{int(BIM['MasonryReinforcing'])}." \
-                      f"{WIDD}." \
-                      f"{BIM['RoofFrameType']}." \
-                      f"{RDA}." \
-                      f"{RWC}." \
-                      f"{DQ}." \
-                      f"{MRDA}." \
-                      f"{int(BIM['TerrainRoughness'])}"
+        # bldg_config = f"M.LRM.1." \
+        #               f"{roof_cover}." \
+        #               f"{int(shutters)}." \
+        #               f"{int(BIM['MasonryReinforcing'])}." \
+        #               f"{WIDD}." \
+        #               f"{BIM['RoofFrameType']}." \
+        #               f"{RDA}." \
+        #               f"{RWC}." \
+        #               f"{DQ}." \
+        #               f"{MRDA}." \
+        #               f"{int(BIM['TerrainRoughness'])}"
 
     else:
         unit_tag = 'null'
@@ -233,18 +232,18 @@ def MLRM_config(BIM):
         # extend the BIM dictionary
         BIM.update(dict(essential_features))
 
-        bldg_config = f"M.LRM.2." \
-                      f"{roof_cover}." \
-                      f"{int(shutters)}." \
-                      f"{int(BIM['MasonryReinforcing'])}." \
-                      f"{WIDD}." \
-                      f"{BIM['RoofFrameType']}." \
-                      f"{RDA}." \
-                      f"{RWC}." \
-                      f"{DQ}." \
-                      f"{MRDA}." \
-                      f"{unit_tag}." \
-                      f"{joist_spacing}." \
-                      f"{int(BIM['TerrainRoughness'])}"
+        # bldg_config = f"M.LRM.2." \
+        #               f"{roof_cover}." \
+        #               f"{int(shutters)}." \
+        #               f"{int(BIM['MasonryReinforcing'])}." \
+        #               f"{WIDD}." \
+        #               f"{BIM['RoofFrameType']}." \
+        #               f"{RDA}." \
+        #               f"{RWC}." \
+        #               f"{DQ}." \
+        #               f"{MRDA}." \
+        #               f"{unit_tag}." \
+        #               f"{joist_spacing}." \
+        #               f"{int(BIM['TerrainRoughness'])}"
         
     return essential_features

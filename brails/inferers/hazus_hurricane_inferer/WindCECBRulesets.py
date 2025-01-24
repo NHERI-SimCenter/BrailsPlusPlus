@@ -44,8 +44,6 @@
 # Tracy Kijewski-Correa
 
 import random
-import numpy as np
-import datetime
 
 def CECB_config(BIM):
     """
@@ -134,12 +132,12 @@ def CECB_config(BIM):
         
     BIM.update(dict(essential_features))
 
-    bldg_config = f"{bldg_tag}." \
-                  f"{roof_cover}." \
-                  f"{int(shutters)}." \
-                  f"{WIDD}." \
-                  f"{WWR}." \
-                  f"{int(BIM['TerrainRoughness'])}"
+    # bldg_config = f"{bldg_tag}." \
+    #               f"{roof_cover}." \
+    #               f"{int(shutters)}." \
+    #               f"{WIDD}." \
+    #               f"{WWR}." \
+    #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features
 

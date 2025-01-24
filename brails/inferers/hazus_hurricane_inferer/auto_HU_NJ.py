@@ -44,21 +44,11 @@
 # Meredith Lockhead
 # Tracy Kijewski-Correa
 
-import random
-import numpy as np
-import pandas as pd
-import datetime
-import math
-import sys
 
 from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import add_default
 from brails.inferers.hazus_hurricane_inferer.BuildingClassRulesets import building_class
-from brails.inferers.hazus_hurricane_inferer.FloodAssmRulesets import Assm_config
-from brails.inferers.hazus_hurricane_inferer.FloodClassRulesets import FL_config
-from brails.inferers.hazus_hurricane_inferer.FloodRulesets import FL_config
 from brails.inferers.hazus_hurricane_inferer.WindCECBRulesets import CECB_config
 from brails.inferers.hazus_hurricane_inferer.WindCERBRulesets import CERB_config
-from brails.inferers.hazus_hurricane_inferer.WindEFRulesets import HUEFFS_config, HUEFSS_config, HUEFH_config, HUEFS_config
 from brails.inferers.hazus_hurricane_inferer.WindMECBRulesets import MECB_config
 from brails.inferers.hazus_hurricane_inferer.WindMERBRulesets import MERB_config
 from brails.inferers.hazus_hurricane_inferer.WindMHRulesets import MH_config

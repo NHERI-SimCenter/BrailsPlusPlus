@@ -184,7 +184,7 @@ def MSF_config(BIM):
         stories = min(BIM['NumberOfStories'], 2)
 
         essential_features = dict(
-            BuildingTag = bldg_tag, 
+            BuildingTag = "M.SF.", 
             TerrainRoughness=int(BIM['TerrainRoughness']),
             RoofShape=BIM['RoofShape'],
             SecondaryWaterResistance = int(SWR),
@@ -200,18 +200,18 @@ def MSF_config(BIM):
         # extend the BIM dictionary
         BIM.update(essential_features)
 
-        bldg_config = f"M.SF." \
-                      f"{int(stories)}." \
-                      f"{BIM['RoofShape']}." \
-                      f"{RWC}." \
-                      f"{BIM['RoofFrameType']}." \
-                      f"{RDA}." \
-                      f"{int(shutters)}." \
-                      f"{int(SWR)}." \
-                      f"{garage}." \
-                      f"{int(BIM['MasonryReinforcing'])}." \
-                      f"null." \
-                      f"{int(BIM['TerrainRoughness'])}"
+        # bldg_config = f"M.SF." \
+        #               f"{int(stories)}." \
+        #               f"{BIM['RoofShape']}." \
+        #               f"{RWC}." \
+        #               f"{BIM['RoofFrameType']}." \
+        #               f"{RDA}." \
+        #               f"{int(shutters)}." \
+        #               f"{int(SWR)}." \
+        #               f"{garage}." \
+        #               f"{int(BIM['MasonryReinforcing'])}." \
+        #               f"null." \
+        #               f"{int(BIM['TerrainRoughness'])}"
 
     else:
         # Roof system = OSJW
@@ -263,17 +263,17 @@ def MSF_config(BIM):
         # extend the BIM dictionary
         BIM.update(dict(essential_features))
 
-        bldg_config = f"M.SF." \
-                      f"{int(stories)}." \
-                      f"{BIM['RoofShape']}." \
-                      f"{RWC}." \
-                      f"{BIM['RoofFrameType']}." \
-                      f"{RDA}." \
-                      f"{int(shutters)}." \
-                      f"{SWR}." \
-                      f"null." \
-                      f"null." \
-                      f"{roof_cover}." \
-                      f"{int(BIM['TerrainRoughness'])}"
+        # bldg_config = f"M.SF." \
+        #               f"{int(stories)}." \
+        #               f"{BIM['RoofShape']}." \
+        #               f"{RWC}." \
+        #               f"{BIM['RoofFrameType']}." \
+        #               f"{RDA}." \
+        #               f"{int(shutters)}." \
+        #               f"{SWR}." \
+        #               f"null." \
+        #               f"null." \
+        #               f"{roof_cover}." \
+        #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features

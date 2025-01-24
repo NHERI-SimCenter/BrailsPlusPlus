@@ -43,9 +43,6 @@
 # Meredith Lockhead
 # Tracy Kijewski-Correa
 
-import random
-import numpy as np
-import datetime
 from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
 
 

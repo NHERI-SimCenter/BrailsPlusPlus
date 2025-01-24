@@ -44,14 +44,11 @@ import copy
 import sys
 
 import numpy as np
-import pandas as pd
 
 from brails.types.asset_inventory import AssetInventory
 from brails.inferers.inferenceEngine import InferenceEngine
-from itertools import product
 from brails.inferers.hazus_hurricane_inferer.auto_HU_NJ import auto_populate
 
-import reverse_geocode  # sy - note this may not be the most accurate package but it's fast
 
 # To be replaced with old brails ++ codes
 import warnings
@@ -89,7 +86,7 @@ class HazusHurricaneInferer(InferenceEngine):
         buildingMaterial_key = "BuildingMaterial",
         designLevel_H_key = "DesignLevel_H",
         yearBuilt_key = "YearBuilt",
-        roofSystem_key = "RoofSystem",
+        roofSystem_key = "RoofFrameType",
         roofShape_key = "RoofShape",
         roofSlope_key = "RoofSlope",
         avgJanTemp_key = "AvgJanTemp",
@@ -115,26 +112,29 @@ class HazusHurricaneInferer(InferenceEngine):
         self.seed = seed
         self.overwirte_existing = overwirte_existing
 
-        self.numberOfStories_key = numberOfStories_key
-        self.planArea_key = planArea_key
-        self.occupancyClass_key = occupancyClass_key
-        self.buildingMaterial_key = buildingMaterial_key
-        self.designLevel_H_key = designLevel_H_key
-        self.roofSystem_key = roofSystem_key
-        self.roofShape_key = roofShape_key
-        self.yearBuilt_key = yearBuilt_key
-        self.roofSlope_key = roofSlope_key
-        self.avgJanTemp_key = avgJanTemp_key
-        self.meanRoofHt_key = meanRoofHt_key
-        self.windowArea_key = windowArea_key
-        self.numberOfUnits_key = numberOfUnits_key
-        self.garage_key = garage_key
-        self.floodZone_key = floodZone_key
-        self.windZone_key = windZone_key
-        self.designWindSpeed_key = designWindSpeed_key
-        self.LULC_key = LULC_key
-        self.z0_key = z0_key
-        self.sheathingThickness_key = sheathingThickness_key
+        self.name_mapping = {
+            planArea_key: "PlanArea",
+            numberOfStories_key: "NumberOfStories",
+            occupancyClass_key: "OccupancyClass",
+            buildingMaterial_key: "BuildingMaterial",
+            designLevel_H_key: "DesignLevel_H",
+            yearBuilt_key: "YearBuilt",
+            roofSystem_key: "RoofFrameType",
+            roofShape_key: "RoofShape",
+            roofSlope_key: "RoofSlope",
+            avgJanTemp_key: "AvgJanTemp",
+            meanRoofHt_key: "MeanRoofHt",
+            windowArea_key: "WindowArea",
+            numberOfUnits_key: "NumberOfUnits",
+            garage_key: "Garage",
+            floodZone_key: "FloodZone",
+            windZone_key: "WindZone",
+            designWindSpeed_key: "DesignWindSpeed",
+            LULC_key: "LULC",
+            z0_key: "Z0",
+            sheathingThickness_key: "SheathingThickness"
+        }
+
         self.clean_features = clean_features
 
     def infer(self) -> AssetInventory:
@@ -176,6 +176,9 @@ class HazusHurricaneInferer(InferenceEngine):
         #
 
 
+        #
+        # TODO utilize n possible worlds
+        #
 
         #
         # set seed
@@ -189,21 +192,17 @@ class HazusHurricaneInferer(InferenceEngine):
 
         input_inventory_subset = input_inventory.get_world_realization(0)
         input_inventory_json = self.to_json(input_inventory_subset)
-        essential_features = self.infer_building_one_by_one(input_inventory_json)
+        essential_features = self.infer_building_one_by_one(input_inventory_json,n_pw)
 
         #
         # loop over the second ~ n_pw worlds if needed
-        #
-
-        #
-        # TODO: Note that there may be inefficiency. Even if you have a probablistic inventory, if year, occ, nstory is non-probablistic, you really don't need to run it 10 times.
         #
 
         for nw in range(1, existing_worlds):
             # get inventory realization
             inventory_realization = input_inventory.get_world_realization(nw)
             input_inventory_json = self.to_json(inventory_realization)
-            essential_features_tmp = self.infer_building_one_by_one(input_inventory_json)
+            essential_features_tmp = self.infer_building_one_by_one(input_inventory_json,n_pw)
 
             essential_features = self.merge_two_json(
                 essential_features_tmp, essential_features, shrink=(nw == existing_worlds - 1)
@@ -226,7 +225,6 @@ class HazusHurricaneInferer(InferenceEngine):
             for index, feature in essential_features.items():
                 output_inventory.add_asset_features(index, feature, overwrite=True)
                 updated = True
-
 
         #
         # Return the valuee
@@ -281,7 +279,10 @@ class HazusHurricaneInferer(InferenceEngine):
 
         return C
 
-    def infer_building_one_by_one(self, inventory_json):
+    def infer_building_one_by_one(self, inventory_json,n_pw):
+
+        # TODO: utilize n_pw
+
         new_features = {}
 
         for key, bldg in inventory_json.items():
@@ -298,8 +299,6 @@ class HazusHurricaneInferer(InferenceEngine):
             new_features[key] = essential_features
 
         return new_features
-
-
 
     def to_json(self, this_inventory):
         inventory_json = {}

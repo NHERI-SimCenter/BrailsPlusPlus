@@ -134,12 +134,12 @@ def MECB_config(BIM):
     # extend the BIM dictionary
     BIM.update(dict(essential_features))
 
-    bldg_config = f"{bldg_tag}." \
-                  f"{roof_cover}." \
-                  f"{int(shutters)}." \
-                  f"{WIDD}." \
-                  f"{MRDA}." \
-                  f"{WWR}." \
-                  f"{int(BIM['TerrainRoughness'])}"
+    # bldg_config = f"{bldg_tag}." \
+    #               f"{roof_cover}." \
+    #               f"{int(shutters)}." \
+    #               f"{WIDD}." \
+    #               f"{MRDA}." \
+    #               f"{WWR}." \
+    #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features

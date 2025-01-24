@@ -44,7 +44,6 @@
 # Tracy Kijewski-Correa
 
 import random
-import numpy as np
 import datetime
 
 
@@ -107,14 +106,14 @@ def HUEFFS_config(BIM):
     BIM.update(essential_features)
 
 
-    bldg_tag = 'HUEF.FS'
-    bldg_config = f"{bldg_tag}." \
-                  f"{roof_cover}." \
-                  f"{shutters}." \
-                  f"{WIDD}." \
-                  f"{DQ}." \
-                  f"{MRDA}." \
-                  f"{int(BIM['TerrainRoughness'])}"
+    # bldg_tag = 'HUEF.FS'
+    # bldg_config = f"{bldg_tag}." \
+    #               f"{roof_cover}." \
+    #               f"{shutters}." \
+    #               f"{WIDD}." \
+    #               f"{DQ}." \
+    #               f"{MRDA}." \
+    #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features
 
@@ -178,14 +177,14 @@ def HUEFSS_config(BIM):
     BIM.update(essential_features)
     # extend the BIM dictionary
 
-    bldg_tag = 'HUEF.S.S'
-    bldg_config = f"{bldg_tag}." \
-                  f"{roof_cover}." \
-                  f"{int(shutters)}." \
-                  f"{WIDD}." \
-                  f"{DQ}." \
-                  f"{MRDA}." \
-                  f"{int(BIM['TerrainRoughness'])}"
+    # bldg_tag = 'HUEF.S.S'
+    # bldg_config = f"{bldg_tag}." \
+    #               f"{roof_cover}." \
+    #               f"{int(shutters)}." \
+    #               f"{WIDD}." \
+    #               f"{DQ}." \
+    #               f"{MRDA}." \
+    #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features
 
@@ -250,12 +249,12 @@ def HUEFH_config(BIM):
 
     BIM.update(essential_features)
 
-    bldg_config = f"{bldg_tag}." \
-                  f"{roof_cover}." \
-                  f"{WIDD}." \
-                  f"{MRDA}." \
-                  f"{int(shutters)}." \
-                  f"{int(BIM['TerrainRoughness'])}"
+    # bldg_config = f"{bldg_tag}." \
+    #               f"{roof_cover}." \
+    #               f"{WIDD}." \
+    #               f"{MRDA}." \
+    #               f"{int(shutters)}." \
+    #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features
 
@@ -324,12 +323,12 @@ def HUEFS_config(BIM):
 
     BIM.update(essential_features)
 
-    bldg_config = f"{bldg_tag}." \
-                  f"{roof_cover}." \
-                  f"{int(shutters)}." \
-                  f"{WIDD}." \
-                  f"null." \
-                  f"{MRDA}." \
-                  f"{int(BIM['TerrainRoughness'])}"
+    # bldg_config = f"{bldg_tag}." \
+    #               f"{roof_cover}." \
+    #               f"{int(shutters)}." \
+    #               f"{WIDD}." \
+    #               f"null." \
+    #               f"{MRDA}." \
+    #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features # sy - modifting this

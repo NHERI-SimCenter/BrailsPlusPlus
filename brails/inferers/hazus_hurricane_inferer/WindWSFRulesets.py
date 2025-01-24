@@ -320,7 +320,7 @@ def WSF_config(BIM):
                     garage = 'wkd' # Weak
 
     # come back to update shutters
-    if not "Shutters" in BIM:
+    if "Shutters" not in BIM:
         if garage == 'sup':
             shutters = True # HAZUS ties SFBC 1994 to with shutters
         elif (garage == 'std') or (garage == 'wkd'):
@@ -342,15 +342,15 @@ def WSF_config(BIM):
     BIM.update(dict(essential_features))
 
     # building configuration tag
-    bldg_config = f"W.SF." \
-                  f"{int(min(BIM['NumberOfStories'],2))}." \
-                  f"{BIM['RoofShape']}." \
-                  f"{int(SWR)}." \
-                  f"{RDA}." \
-                  f"{RWC}." \
-                  f"{garage}." \
-                  f"{int(shutters)}." \
-                  f"{int(BIM['TerrainRoughness'])}"
+    # bldg_config = f"W.SF." \
+    #               f"{int(min(BIM['NumberOfStories'],2))}." \
+    #               f"{BIM['RoofShape']}." \
+    #               f"{int(SWR)}." \
+    #               f"{RDA}." \
+    #               f"{RWC}." \
+    #               f"{garage}." \
+    #               f"{int(shutters)}." \
+    #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features
 

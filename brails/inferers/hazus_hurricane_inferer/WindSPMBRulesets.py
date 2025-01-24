@@ -44,7 +44,6 @@
 # Tracy Kijewski-Correa
 
 import random
-import numpy as np
 import datetime
 from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
 
@@ -145,11 +144,11 @@ def SPMB_config(BIM):
     # extend the BIM dictionary
     BIM.update(dict(essential_features))
 
-    bldg_config = f"{bldg_tag}." \
-                  f"{int(shutters)}." \
-                  f"{roof_quality}." \
-                  f"{MRDA}." \
-                  f"{int(BIM['TerrainRoughness'])}"
+    # bldg_config = f"{bldg_tag}." \
+    #               f"{int(shutters)}." \
+    #               f"{roof_quality}." \
+    #               f"{MRDA}." \
+    #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features
 
