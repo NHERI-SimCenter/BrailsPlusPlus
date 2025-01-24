@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2024 The Regents of the University of California
 #
 # This file is part of BRAILS++.
@@ -30,20 +32,3 @@
 #
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
-
-"""
-utils module of the brails package.
-
-Available classes:
-- Importer: Class for importing class files.
-- GeoTools: Class containing static methods geospatial analysis & operations.
-- ArcgisAPIServiceHelper: Class for interacting with an ArcGIS API service.
-- PlotTools: Class for creating visually-appealing figures.
-- InputValidator: Class for validating BRAILS input data.
-
-"""
-from .importer import Importer
-from .geo_tools import GeoTools
-from .arcgisapi_service_helper import ArcgisAPIServiceHelper
-from .plot_tools import PlotTools
-from .input_validator import InputValidator
