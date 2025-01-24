@@ -64,10 +64,7 @@ def SPMB_config(BIM):
         class.
     """
 
-    year = BIM['YearBuilt'] # just for the sake of brevity
     available_features = BIM.keys()
-
-
 
 
     if "RoofQuality" in BIM:
@@ -88,7 +85,7 @@ def SPMB_config(BIM):
     elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "Shutters"):
 
         # shutters
-        if year >= 2000:
+        if BIM['YearBuilt'] >= 2000:
             shutters = BIM['WindBorneDebris']
         # BOCA 1996 and earlier:
         # Shutters were not required by code until the 2000 IBC. Before 2000, the
