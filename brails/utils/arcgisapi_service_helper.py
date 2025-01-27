@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 12-19-2024
+# 02-27-2024
 
 """
 This module defines a class for retrieving data from ArcGIS services APIs.
@@ -266,6 +266,14 @@ class ArcgisAPIServiceHelper:
 
         # Parse the response JSON and extract features:
         datalist = response.json().get('features', [])
+
+        # If no features are returned, adjust the bounding box definition
+        # and try again:
+        if not datalist:
+            params['geometry'] = f'{bbox[0]},{bbox[1]},{bbox[3]},{bbox[2]}'
+            response = self._make_request_with_retry(self.api_endpoint_url,
+                                                     params)
+            datalist = response.json().get('features', [])
 
         return datalist
 
