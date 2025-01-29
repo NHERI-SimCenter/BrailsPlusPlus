@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 12-05-2024
+# 12-28-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -49,6 +49,7 @@ This module defines classes associated with asset inventories.
 
 import random
 import json
+from copy import deepcopy
 from datetime import datetime
 from importlib.metadata import version
 from typing import Any
@@ -56,13 +57,13 @@ import csv
 import logging
 import numpy as np
 import pandas as pd
+from shapely import box
 from brails.utils import InputValidator
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from copy import deepcopy
 
 class Asset:
     """
@@ -117,8 +118,8 @@ class Asset:
             overwrite (bool, optional): Whether to overwrite existing features.
                 Defaults to True.
         """
-        
-        n_pw=1
+
+        n_pw = 1
 
         if overwrite:
             # Overwrite existing features with new ones:
@@ -126,12 +127,13 @@ class Asset:
 
             # count # possible worlds
             for key, val in additional_features.items():
-                    if isinstance(val,list):
-                        if (n_pw==1) or (n_pw==len(val)):
-                            n_pw = len(val)
-                        else:
-                            logger.warning(f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong.")
-                            n_pw = len(val)
+                if isinstance(val, list):
+                    if (n_pw == 1) or (n_pw == len(val)):
+                        n_pw = len(val)
+                    else:
+                        logger.warning(
+                            f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong.")
+                        n_pw = len(val)
 
             updated = True
 
@@ -144,15 +146,16 @@ class Asset:
                     self.features[key] = val
 
                     # count # possible worlds
-                    if isinstance(val,list):
-                        if (n_pw==1) or (n_pw==len(val)):
+                    if isinstance(val, list):
+                        if (n_pw == 1) or (n_pw == len(val)):
                             n_pw = len(val)
                         else:
-                            logger.warning(f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong.")
+                            logger.warning(
+                                f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong.")
                             n_pw = len(val)
 
                     updated = True
-                    
+
         return updated, n_pw
 
     def remove_features(self, feature_list: list[str]):
@@ -166,7 +169,7 @@ class Asset:
             bool: True if features are removed
         """
         for key in feature_list:
-            self.features.pop(key,None)
+            self.features.pop(key, None)
 
         return True
 
@@ -188,15 +191,19 @@ class AssetInventory:
         add_asset(asset_id, Asset): Add an asset to the inventory.
         add_asset_coordinates(asset_id, coordinates): Add an asset to the
             inventory with just a list of coordinates.
-        add_asset_features(asset_id, features, overwrite): Append new features to the
-            asset.
+        add_asset_features(asset_id, features, overwrite): Append new features
+            to the asset.
+        change_feature_names(feature_name_mapping): Rename feature names in an
+            AssetInventory using user-specified mapping.
         remove_asset(asset_id): Remove an asset to the inventory.
         remove_feature(feature_list): Remove features from the inventory.
-        get_asset_features(asset_id): Get coordinates of a particular assset.
-        get_asset_coordinates(asset_id): Get features of a particular assset.
+        get_asset_features(asset_id): Get features of a particular assset.
+        get_asset_coordinates(asset_id): Get coordinates of a particular
+            assset.
         get_asset_ids(): Return the asset ids as a list.
         get_random_sample(size, seed): Get subset of the inventory.
         get_coordinates(): Return a list of footprints.
+        get_extent(buffer): Calculate the geographical extent of the inventory.
         get_geojson(): Return inventory as a geojson dict.
         write_to_geojson(): Write inventory to file in GeoJSON format. Also
                             return inventory as a geojson dict.
@@ -293,14 +300,57 @@ class AssetInventory:
             return False
 
         status, n_pw = asset.add_features(new_features, overwrite)
-        if (n_pw==1):
+        if (n_pw == 1):
             pass
-        elif ((n_pw==self.n_pw) or (self.n_pw==1)):
+        elif ((n_pw == self.n_pw) or (self.n_pw == 1)):
             self.n_pw = n_pw
         else:
-            logger.warning(f'# possible worlds was {self.n_pw} but is now {n_pw}. Something went wrong.')
+            logger.warning(
+                f'# possible worlds was {self.n_pw} but is now {n_pw}. Something went wrong.')
             self.n_pw = n_pw
         return status
+
+    def change_feature_names(self, feature_name_mapping: dict):
+        """
+        Rename feature names in an AssetInventory using user-specified mapping.
+
+        Args:
+            feature_name_mapping (dict):
+                A dictionary where keys are the original feature names and
+                values are the new feature names.
+
+        Raises:
+            ValueError:
+                If the mapping is not a dictionary or contains invalid
+                key-value pairs.
+        """
+        # Validate that feature_name_mapping is a dictionary:
+        if not isinstance(feature_name_mapping, dict):
+            raise ValueError(
+                "The 'feature_name_mapping' must be a dictionary.")
+
+        # Validate that all keys and values are strings:
+        for original_name, new_name in feature_name_mapping.items():
+            if not isinstance(original_name, str) or \
+                    not isinstance(new_name, str):
+                raise ValueError('Both original and feature new names must be '
+                                 f'strings. Invalid pair: ({original_name}, '
+                                 f'{new_name})')
+
+        # Iterate over each asset in the AssetInventory:
+        for asset in self.inventory.values():
+
+            # Iterate over the defined name mappings in feature_name_mapping:
+            for original_name, new_name in feature_name_mapping.items():
+
+                # If the original_name for a feature name exists in the asset's
+                # features:
+                if original_name in asset.features:
+
+                    # Rename the feature by popping the old key and adding it
+                    # under the new key:
+                    asset.features[new_name] = asset.features.pop(
+                        original_name)
 
     def remove_asset(self, asset_id: str | int) -> bool:
         """
@@ -338,7 +388,7 @@ class AssetInventory:
 
     #     Args:
     #         asset_id (str|int): The unique identifier for the asset.
-    #         feature_list (list): The list of features to be removed 
+    #         feature_list (list): The list of features to be removed
 
     #     Returns:
     #         bool: True if features were removed, False otherwise.
@@ -444,6 +494,53 @@ class AssetInventory:
             result_keys.append(key)
 
         return result_coordinates, result_keys
+
+    def get_extent(self, buffer: str | list[int] = 'default') -> box:
+        """
+        Calculate the geographical extent of the inventory.
+
+        Args:
+            buffer (str or list[int]):
+                A string or a list of 4 integers.
+                - 'default' applies preset buffer values.
+                - 'none' applies zero buffer values.
+                - A list of 4 integers defines custom buffer values for each
+                  edge of the bounding box in the order minlon, maxlon, minlat,
+                  maxlat.
+
+        Returns:
+            shapely.geometry.box:
+                A Shapely polygon representing the extent of the inventory,
+                with buffer applied.
+
+        Raises:
+            ValueError: If the buffer input is invalid.
+        """
+        # Check buffer input:
+        buffer_levels = buffer.lower()
+
+        if buffer == 'default':
+            buffer_levels = [0.0002, 0.0001, 0.0002, 0.0001]
+        elif buffer == 'none':
+            buffer_levels = [0, 0, 0, 0]
+        elif isinstance(buffer, list) and len(buffer) == 4 and \
+                all(isinstance(x, int) for x in buffer):
+            buffer_levels = buffer.copy()
+        else:
+            raise ValueError('Invalid buffer input. Valid options for the '
+                             "buffer input are 'default', 'none', or a list of"
+                             ' 4 integers.')
+
+        # Determine the geographical extent of the inventory:
+        minlon, maxlon, minlat, maxlat = 180, -180, 90, -90
+        for asset in self.inventory.values():
+            for lon, lat in asset.coordinates:
+                minlon, maxlon = min(minlon, lon), max(maxlon, lon)
+                minlat, maxlat = min(minlat, lat), max(maxlat, lat)
+
+        # Create a Shapely polygon from the determined extent:
+        return box(minlon - buffer_levels[0], minlat - buffer_levels[1],
+                   maxlon + buffer_levels[2], maxlat + buffer_levels[3])
 
     def get_geojson(self) -> dict:
         """
@@ -730,7 +827,7 @@ class AssetInventory:
                     latitudes = [coord[0][1] for coord in polygon_coordinate]
                     longitudes = [coord[0][0] for coord in polygon_coordinate]
                 else:
-                    # polygon or point    
+                    # polygon or point
                     latitudes = [coord[1] for coord in polygon_coordinate]
                     longitudes = [coord[0] for coord in polygon_coordinate]
             else:
@@ -753,23 +850,23 @@ class AssetInventory:
 
         return bldg_properties_df, bldg_geometries_df, nbldg
 
-
-
     def get_world_realization(self, id=0):
 
         new_inventory = deepcopy(self)
 
-        if self.n_pw==1 and id>0:
-            raise Exception("Cannot retrive different realizations as the inventory contains only a single realization. Consider setting id=0")
+        if self.n_pw == 1 and id > 0:
+            raise Exception(
+                "Cannot retrive different realizations as the inventory contains only a single realization. Consider setting id=0")
 
         pw_found = False
         for i in self.get_asset_ids():
             flag, features = self.get_asset_features(i)
             for key, val in features.items():
                 if isinstance(val, list):
-                    if len(val)>id:
-                        new_inventory.add_asset_features(i,{key:val[id]},overwrite=True)
-                    elif len(val)==id:
+                    if len(val) > id:
+                        new_inventory.add_asset_features(
+                            i, {key: val[id]}, overwrite=True)
+                    elif len(val) == id:
                         errmsg = f"The world index {id} should be smaller than the existing number of worlds {len(val)}, as the index starts from zero."
                         raise Exception(errmsg)
 
@@ -779,10 +876,7 @@ class AssetInventory:
 
         return new_inventory
 
-
-
-
-    def get_n_pw(self): # move to asset
+    def get_n_pw(self):  # move to asset
 
         # #
         # # Count the number of possible worlds in inventory
@@ -807,11 +901,11 @@ class AssetInventory:
 
         return self.n_pw
 
-    def get_multi_keys(self): # move to asset
+    def get_multi_keys(self):  # move to asset
 
-        # 
+        #
         #  Gives the features with multiple realizations
-        # 
+        #
         multi_keys = []
         for i in self.get_asset_ids():
             flag, features = self.get_asset_features(i)
@@ -819,5 +913,5 @@ class AssetInventory:
                 if isinstance(val, list):
                     if key not in multi_keys:
                         multi_keys += [key]
-                    
+
         return multi_keys
