@@ -61,12 +61,10 @@ from shapely import box
 from brails.utils import InputValidator
 
 from shapely.geometry import shape
-import json
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 
 class Asset:
@@ -160,7 +158,8 @@ class Asset:
                             n_pw = len(val)
                         else:
                             logger.warning(
-                                f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong.")
+                                f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong."
+                            )
                             n_pw = len(val)
 
                     updated = True
@@ -313,13 +312,14 @@ class AssetInventory:
             return False
 
         status, n_pw = asset.add_features(new_features, overwrite)
-        if (n_pw == 1):
+        if n_pw == 1:
             pass
-        elif ((n_pw == self.n_pw) or (self.n_pw == 1)):
+        elif (n_pw == self.n_pw) or (self.n_pw == 1):
             self.n_pw = n_pw
         else:
             logger.warning(
-                f'# possible worlds was {self.n_pw} but is now {n_pw}. Something went wrong.')
+                f"# possible worlds was {self.n_pw} but is now {n_pw}. Something went wrong."
+            )
             self.n_pw = n_pw
         return status
 
@@ -339,31 +339,27 @@ class AssetInventory:
         """
         # Validate that feature_name_mapping is a dictionary:
         if not isinstance(feature_name_mapping, dict):
-            raise ValueError(
-                "The 'feature_name_mapping' must be a dictionary.")
+            raise ValueError("The 'feature_name_mapping' must be a dictionary.")
 
         # Validate that all keys and values are strings:
         for original_name, new_name in feature_name_mapping.items():
-            if not isinstance(original_name, str) or \
-                    not isinstance(new_name, str):
-                raise ValueError('Both original and feature new names must be '
-                                 f'strings. Invalid pair: ({original_name}, '
-                                 f'{new_name})')
+            if not isinstance(original_name, str) or not isinstance(new_name, str):
+                raise ValueError(
+                    "Both original and feature new names must be "
+                    f"strings. Invalid pair: ({original_name}, "
+                    f"{new_name})"
+                )
 
         # Iterate over each asset in the AssetInventory:
         for asset in self.inventory.values():
-
             # Iterate over the defined name mappings in feature_name_mapping:
             for original_name, new_name in feature_name_mapping.items():
-
                 # If the original_name for a feature name exists in the asset's
                 # features:
                 if original_name in asset.features:
-
                     # Rename the feature by popping the old key and adding it
                     # under the new key:
-                    asset.features[new_name] = asset.features.pop(
-                        original_name)
+                    asset.features[new_name] = asset.features.pop(original_name)
 
     def remove_asset(self, asset_id: str | int) -> bool:
         """
@@ -507,7 +503,7 @@ class AssetInventory:
 
         return result_coordinates, result_keys
 
-    def get_extent(self, buffer: str | list[int] = 'default') -> box:
+    def get_extent(self, buffer: str | list[int] = "default") -> box:
         """
         Calculate the geographical extent of the inventory.
 
@@ -531,17 +527,22 @@ class AssetInventory:
         # Check buffer input:
         buffer_levels = buffer.lower()
 
-        if buffer == 'default':
+        if buffer == "default":
             buffer_levels = [0.0002, 0.0001, 0.0002, 0.0001]
-        elif buffer == 'none':
+        elif buffer == "none":
             buffer_levels = [0, 0, 0, 0]
-        elif isinstance(buffer, list) and len(buffer) == 4 and \
-                all(isinstance(x, int) for x in buffer):
+        elif (
+            isinstance(buffer, list)
+            and len(buffer) == 4
+            and all(isinstance(x, int) for x in buffer)
+        ):
             buffer_levels = buffer.copy()
         else:
-            raise ValueError('Invalid buffer input. Valid options for the '
-                             "buffer input are 'default', 'none', or a list of"
-                             ' 4 integers.')
+            raise ValueError(
+                "Invalid buffer input. Valid options for the "
+                "buffer input are 'default', 'none', or a list of"
+                " 4 integers."
+            )
 
         # Determine the geographical extent of the inventory:
         minlon, maxlon, minlat, maxlat = 180, -180, 90, -90
@@ -551,8 +552,12 @@ class AssetInventory:
                 minlat, maxlat = min(minlat, lat), max(maxlat, lat)
 
         # Create a Shapely polygon from the determined extent:
-        return box(minlon - buffer_levels[0], minlat - buffer_levels[1],
-                   maxlon + buffer_levels[2], maxlat + buffer_levels[3])
+        return box(
+            minlon - buffer_levels[0],
+            minlat - buffer_levels[1],
+            maxlon + buffer_levels[2],
+            maxlat + buffer_levels[3],
+        )
 
     def get_geojson(self) -> dict:
         """
@@ -565,7 +570,7 @@ class AssetInventory:
         """
         try:
             brails_version = version("BRAILS")
-        except Exception as e:
+        except Exception:
             brails_version = "NA"
 
         geojson = {
@@ -583,7 +588,10 @@ class AssetInventory:
             if len(asset.coordinates) == 1:
                 geometry = {"type": "Point", "coordinates": asset.coordinates[0]}
             elif len(asset.coordinates) == 2:
-                geometry = {"type": "LineString", "coordinates": asset.coordinates} # Line does not exist?
+                geometry = {
+                    "type": "LineString",
+                    "coordinates": asset.coordinates,
+                }  # Line does not exist?
             else:
                 if asset.coordinates[0] == asset.coordinates[-1]:
                     geometry = {"type": "Polygon", "coordinates": [asset.coordinates]}
@@ -716,7 +724,7 @@ class AssetInventory:
                 bldg_features["type"] = str_type
 
             # is the id provided by user?
-            if id_column == None:
+            if id_column is None:
                 # if not we assin the id
                 id = id_counter
             else:
@@ -883,14 +891,14 @@ class AssetInventory:
                 "Cannot retrive different realizations as the inventory contains only a single realization. Consider setting id=0"
             )
 
-        pw_found = False
         for i in self.get_asset_ids():
             flag, features = self.get_asset_features(i)
             for key, val in features.items():
                 if isinstance(val, list):
                     if len(val) > id:
                         new_inventory.add_asset_features(
-                            i, {key: val[id]}, overwrite=True)
+                            i, {key: val[id]}, overwrite=True
+                        )
                     elif len(val) == id:
                         errmsg = f"The world index {id} should be smaller than the existing number of worlds {len(val)}, as the index starts from zero."
                         raise Exception(errmsg)
@@ -928,7 +936,6 @@ class AssetInventory:
         return self.n_pw
 
     def get_multi_keys(self):  # move to asset
-
         #
         #  Gives the features with multiple realizations
         #
