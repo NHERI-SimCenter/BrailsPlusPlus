@@ -306,7 +306,7 @@ class Infer_features_for_HazusDL(InferenceEngine):
         # Change names
         #
         print(">> Step4 : Changing feature names to what R2D (pelicun) can recognize")
-        output_inventory.update_feature_names(target_keys_json)
+        output_inventory.change_feature_names(target_keys_json)
 
         #
         # Clean_up_unnessesary
