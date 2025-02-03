@@ -449,7 +449,7 @@ class AssetInventory:
 
         return result_coordinates, result_keys
 
-    def get_geojson(self, convert_to_centroid = False) -> dict:
+    def get_geojson(self) -> dict:
         """
         Generate a GeoJSON representation of the assets in the inventory.
 
@@ -491,14 +491,6 @@ class AssetInventory:
                     geometry = {'type': 'LineString',
                                 'coordinates': asset.coordinates
                                 }
-
-            if convert_to_centroid and not geometry["type"]=="Point":
-                centroid = shape(geometry).centroid
-                geometry = {"type": "Point",
-                            "coordinates": [centroid.x, centroid.y]
-                            }
-
-
             
             feature = {'type': 'Feature',
                        'properties': asset.features,
@@ -513,7 +505,7 @@ class AssetInventory:
 
         return geojson
 
-    def write_to_geojson(self, output_file: str = '', convert_to_centroid: bool = False) -> dict:
+    def write_to_geojson(self, output_file: str = '') -> dict:
         """
         Write an inventory to a GeoJSON file.
 
@@ -521,7 +513,7 @@ class AssetInventory:
             output_file(str):
                 Path of the GeoJSON output file.
         """
-        geojson = self.get_geojson(convert_to_centroid = convert_to_centroid)
+        geojson = self.get_geojson()
 
         # Write the created GeoJSON dictionary into a GeoJSON file:
         if output_file:
@@ -674,7 +666,7 @@ class AssetInventory:
 
         return True
 
-    def get_dataframe(self, convert_footprint_to_centroid=False) -> bool:
+    def get_dataframe(self) -> bool:
         """
         Create dataframe from inventory objective
 
@@ -688,7 +680,7 @@ class AssetInventory:
         n_possible_worlds = self.get_n_pw()
 
 
-        asset_json = self.get_geojson(convert_to_centroid = convert_footprint_to_centroid)
+        asset_json = self.get_geojson()
         features_json = asset_json['features']
         bldg_properties = [(self.inventory[i].features | {
             "index": i}) for dummy, i in enumerate(self.inventory)]
@@ -794,6 +786,35 @@ class AssetInventory:
 
         return new_inventory
 
+    def convert_polygons_to_centroids(self):
+        """
+        Convert polygons in GeoJson to centorid points
+
+        Args:
+            inventory_geo_json (dict): A geojson file
+
+        """
+        for key, asset in self.inventory.items():
+
+            if len(asset.coordinates) == 1:
+                continue
+                
+            elif len(asset.coordinates) == 2:
+                geometry = {"type": "Line",
+                            "coordinates": asset.coordinates
+                            }
+            else:
+                if asset.coordinates[0] == asset.coordinates[-1]:
+                    geometry = {'type': 'Polygon',
+                                'coordinates': [asset.coordinates]
+                                }
+                else:
+                    geometry = {'type': 'LineString',
+                                'coordinates': asset.coordinates
+                                }
+
+            centroid = shape(geometry).centroid
+            asset.coordinates = centroid
 
 
 
