@@ -58,7 +58,7 @@ class DamageDetection_StreetLevel(CLIPClassifier):
             A list of class labels representing the damage states.
     """
 
-    def __init__(self, input_dict: dict):
+    def __init__(self, input_dict: dict = None):
         """
         Initialize the DamageDetection_StreetLevel classifier.
 

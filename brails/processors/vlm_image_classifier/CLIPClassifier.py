@@ -88,7 +88,7 @@ class CLIPClassifier:
         if (input_dict is not None):
             self.model_arch = input_dict['model_arch']
         else:
-            self.model_arch = "ViT-B/32"
+            self.model_arch = 'RN50x16'
 
         # Set default model path based on model architecture:
         self.model_path = f'tmp/models/{self.model_arch.replace("/", "-")}.pth'
@@ -119,7 +119,7 @@ class CLIPClassifier:
                 A dictionary mapping image keys to their predicted classes.
 
         Raises:
-            AssertionError:
+            TypeError or ValueError:
                 If the conditions on classes and text_prompts are not met.
         """
         # Validate method inputs:
