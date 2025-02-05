@@ -60,6 +60,8 @@ import pandas as pd
 from shapely import box
 from brails.utils import InputValidator
 
+from shapely.geometry import shape
+
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -82,10 +84,12 @@ class Asset:
         print_info(): Print the coordinates and features of the asset.
     """
 
-    def __init__(self,
-                 asset_id: str | int,
-                 coordinates: list[list[float]],
-                 features: dict[str, Any] = None):
+    def __init__(
+        self,
+        asset_id: str | int,
+        coordinates: list[list[float]],
+        features: dict[str, Any] = None,
+    ):
         """
         Initialize an Asset with an asset ID, coordinates, and features.
 
@@ -97,13 +101,15 @@ class Asset:
             features (dict[str, Any], optional): A dictionary of features.
                 Defaults to an empty dict.
         """
-        coords_check, output_msg = InputValidator.validate_coordinates(
-            coordinates)
+        coords_check, output_msg = InputValidator.validate_coordinates(coordinates)
         if coords_check:
             self.coordinates = coordinates
         else:
-            logger.warning('%s Setting coordinates for asset %s to an empty '
-                           'list.', output_msg, asset_id)
+            logger.warning(
+                "%s Setting coordinates for asset %s to an empty " "list.",
+                output_msg,
+                asset_id,
+            )
             self.coordinates = []
 
         self.features = features if features is not None else {}
@@ -132,7 +138,8 @@ class Asset:
                         n_pw = len(val)
                     else:
                         logger.warning(
-                            f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong.")
+                            f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong."
+                        )
                         n_pw = len(val)
 
             updated = True
@@ -151,7 +158,8 @@ class Asset:
                             n_pw = len(val)
                         else:
                             logger.warning(
-                                f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong.")
+                                f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong."
+                            )
                             n_pw = len(val)
 
                     updated = True
@@ -175,8 +183,8 @@ class Asset:
 
     def print_info(self):
         """Print the coordinates and features of the asset."""
-        print('\t Coordinates: ', self.coordinates)
-        print('\t Features: ', self.features)
+        print("\t Coordinates: ", self.coordinates)
+        print("\t Features: ", self.features)
 
 
 class AssetInventory:
@@ -240,17 +248,18 @@ class AssetInventory:
         existing_asset = self.inventory.get(asset_id, None)
 
         if existing_asset is not None:
-            logger.warning('Asset with id %s already exists. Asset was not '
-                           'added', asset_id)
+            logger.warning(
+                "Asset with id %s already exists. Asset was not " "added", asset_id
+            )
             return False
 
         self.inventory[asset_id] = asset
 
         return True
 
-    def add_asset_coordinates(self,
-                              asset_id: str | int,
-                              coordinates: list[list[float]]) -> bool:
+    def add_asset_coordinates(
+        self, asset_id: str | int, coordinates: list[list[float]]
+    ) -> bool:
         """
         Add an Asset to the inventory by adding its coordinate information.
 
@@ -266,8 +275,10 @@ class AssetInventory:
         existing_asset = self.inventory.get(asset_id, None)
 
         if existing_asset is not None:
-            logger.warning('Asset with id %s already exists. Coordinates were '
-                           'not added', asset_id)
+            logger.warning(
+                "Asset with id %s already exists. Coordinates were " "not added",
+                asset_id,
+            )
             return False
 
         # Create asset and add using id as the key:
@@ -276,10 +287,9 @@ class AssetInventory:
 
         return True
 
-    def add_asset_features(self,
-                           asset_id: str | int,
-                           new_features: dict,
-                           overwrite=True) -> bool:
+    def add_asset_features(
+        self, asset_id: str | int, new_features: dict, overwrite=True
+    ) -> bool:
         """
         Add new asset features to the Asset with the specified ID.
 
@@ -295,18 +305,21 @@ class AssetInventory:
         """
         asset = self.inventory.get(asset_id, None)
         if asset is None:
-            logger.warning('No existing Asset with id % s found. Asset '
-                           'features not added.', asset_id)
+            logger.warning(
+                "No existing Asset with id % s found. Asset " "features not added.",
+                asset_id,
+            )
             return False
 
         status, n_pw = asset.add_features(new_features, overwrite)
-        if (n_pw == 1):
+        if n_pw == 1:
             pass
-        elif ((n_pw == self.n_pw) or (self.n_pw == 1)):
+        elif (n_pw == self.n_pw) or (self.n_pw == 1):
             self.n_pw = n_pw
         else:
             logger.warning(
-                f'# possible worlds was {self.n_pw} but is now {n_pw}. Something went wrong.')
+                f"# possible worlds was {self.n_pw} but is now {n_pw}. Something went wrong."
+            )
             self.n_pw = n_pw
         return status
 
@@ -326,31 +339,27 @@ class AssetInventory:
         """
         # Validate that feature_name_mapping is a dictionary:
         if not isinstance(feature_name_mapping, dict):
-            raise ValueError(
-                "The 'feature_name_mapping' must be a dictionary.")
+            raise ValueError("The 'feature_name_mapping' must be a dictionary.")
 
         # Validate that all keys and values are strings:
         for original_name, new_name in feature_name_mapping.items():
-            if not isinstance(original_name, str) or \
-                    not isinstance(new_name, str):
-                raise ValueError('Both original and feature new names must be '
-                                 f'strings. Invalid pair: ({original_name}, '
-                                 f'{new_name})')
+            if not isinstance(original_name, str) or not isinstance(new_name, str):
+                raise ValueError(
+                    "Both original and feature new names must be "
+                    f"strings. Invalid pair: ({original_name}, "
+                    f"{new_name})"
+                )
 
         # Iterate over each asset in the AssetInventory:
         for asset in self.inventory.values():
-
             # Iterate over the defined name mappings in feature_name_mapping:
             for original_name, new_name in feature_name_mapping.items():
-
                 # If the original_name for a feature name exists in the asset's
                 # features:
                 if original_name in asset.features:
-
                     # Rename the feature by popping the old key and adding it
                     # under the new key:
-                    asset.features[new_name] = asset.features.pop(
-                        original_name)
+                    asset.features[new_name] = asset.features.pop(original_name)
 
     def remove_asset(self, asset_id: str | int) -> bool:
         """
@@ -448,9 +457,9 @@ class AssetInventory:
         """
         return list(self.inventory.keys())
 
-    def get_random_sample(self,
-                          nsamples: int,
-                          seed: int | float | str | bytes | bytearray = None):
+    def get_random_sample(
+        self, nsamples: int, seed: int | float | str | bytes | bytearray = None
+    ):
         """
         Generate a smaller AssetInventory with a random selection of assets.
 
@@ -475,8 +484,7 @@ class AssetInventory:
 
         return result
 
-    def get_coordinates(self) -> tuple[list[list[list[float, float]]],
-                                       list[str | int]]:
+    def get_coordinates(self) -> tuple[list[list[list[float, float]]], list[str | int]]:
         """
         Get geometry (coordinates) and keys of all assets in the inventory.
 
@@ -495,7 +503,7 @@ class AssetInventory:
 
         return result_coordinates, result_keys
 
-    def get_extent(self, buffer: str | list[int] = 'default') -> box:
+    def get_extent(self, buffer: str | list[int] = "default") -> box:
         """
         Calculate the geographical extent of the inventory.
 
@@ -519,17 +527,22 @@ class AssetInventory:
         # Check buffer input:
         buffer_levels = buffer.lower()
 
-        if buffer == 'default':
+        if buffer == "default":
             buffer_levels = [0.0002, 0.0001, 0.0002, 0.0001]
-        elif buffer == 'none':
+        elif buffer == "none":
             buffer_levels = [0, 0, 0, 0]
-        elif isinstance(buffer, list) and len(buffer) == 4 and \
-                all(isinstance(x, int) for x in buffer):
+        elif (
+            isinstance(buffer, list)
+            and len(buffer) == 4
+            and all(isinstance(x, int) for x in buffer)
+        ):
             buffer_levels = buffer.copy()
         else:
-            raise ValueError('Invalid buffer input. Valid options for the '
-                             "buffer input are 'default', 'none', or a list of"
-                             ' 4 integers.')
+            raise ValueError(
+                "Invalid buffer input. Valid options for the "
+                "buffer input are 'default', 'none', or a list of"
+                " 4 integers."
+            )
 
         # Determine the geographical extent of the inventory:
         minlon, maxlon, minlat, maxlat = 180, -180, 90, -90
@@ -539,8 +552,12 @@ class AssetInventory:
                 minlat, maxlat = min(minlat, lat), max(maxlat, lat)
 
         # Create a Shapely polygon from the determined extent:
-        return box(minlon - buffer_levels[0], minlat - buffer_levels[1],
-                   maxlon + buffer_levels[2], maxlat + buffer_levels[3])
+        return box(
+            minlon - buffer_levels[0],
+            minlat - buffer_levels[1],
+            maxlon + buffer_levels[2],
+            maxlat + buffer_levels[3],
+        )
 
     def get_geojson(self) -> dict:
         """
@@ -552,53 +569,50 @@ class AssetInventory:
                 geometry (Point or Polygon) and associated properties.
         """
         try:
-            brails_version = version('BRAILS')
-        except Exception as e:
-            brails_version = 'NA'
+            brails_version = version("BRAILS")
+        except Exception:
+            brails_version = "NA"
 
-        geojson = {'type': 'FeatureCollection',
-                   'generated': str(datetime.now()),
-                   'brails_version': brails_version,
-                   'crs': {'type': 'name',
-                           'properties': {
-                               'name': 'urn:ogc:def:crs:OGC:1.3:CRS84'}
-                           },
-                   'features': []
-                   }
+        geojson = {
+            "type": "FeatureCollection",
+            "generated": str(datetime.now()),
+            "brails_version": brails_version,
+            "crs": {
+                "type": "name",
+                "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"},
+            },
+            "features": [],
+        }
 
         for key, asset in self.inventory.items():
             if len(asset.coordinates) == 1:
-                geometry = {"type": "Point",
-                            "coordinates": asset.coordinates[0]
-                            }
+                geometry = {"type": "Point", "coordinates": asset.coordinates[0]}
             elif len(asset.coordinates) == 2:
-                geometry = {"type": "Line",
-                            "coordinates": asset.coordinates
-                            }
+                geometry = {
+                    "type": "LineString",
+                    "coordinates": asset.coordinates,
+                }  # Line does not exist?
             else:
                 if asset.coordinates[0] == asset.coordinates[-1]:
-                    geometry = {'type': 'Polygon',
-                                'coordinates': [asset.coordinates]
-                                }
+                    geometry = {"type": "Polygon", "coordinates": [asset.coordinates]}
                 else:
-                    geometry = {'type': 'LineString',
-                                'coordinates': asset.coordinates
-                                }
+                    geometry = {"type": "LineString", "coordinates": asset.coordinates}
 
-            feature = {'type': 'Feature',
-                       'properties': asset.features,
-                       'geometry': geometry
-                       }
+            feature = {
+                "type": "Feature",
+                "properties": asset.features,
+                "geometry": geometry,
+            }
 
             # fmk - NOPE - not geojson
             # if 'type' in asset.features:
             #    feature['type'] = asset.features['type']
 
-            geojson['features'].append(feature)
+            geojson["features"].append(feature)
 
         return geojson
 
-    def write_to_geojson(self, output_file: str = '') -> dict:
+    def write_to_geojson(self, output_file: str = "") -> dict:
         """
         Write an inventory to a GeoJSON file.
 
@@ -610,12 +624,14 @@ class AssetInventory:
 
         # Write the created GeoJSON dictionary into a GeoJSON file:
         if output_file:
-            with open(output_file, 'w', encoding='utf-8') as file_out:
+            with open(output_file, "w", encoding="utf-8") as file_out:
                 json.dump(geojson, file_out, indent=2)
 
         return geojson
 
-    def read_from_csv(self, file_path, keep_existing, str_type="building", id_column=None) -> bool:
+    def read_from_csv(
+        self, file_path, keep_existing, str_type="building", id_column=None
+    ) -> bool:
         """
         Read inventory data from a CSV file and add it to the inventory.
 
@@ -647,7 +663,9 @@ class AssetInventory:
 
         if keep_existing:
             if len(self.inventory) == 0:
-                print("No existing inventory found. Creating a new inventory")
+                print(
+                    "No existing inventory found. Reading in the new inventory from the file."
+                )
                 id_counter = 1
             else:
                 # we don't want a duplicate the id
@@ -662,26 +680,27 @@ class AssetInventory:
                 csv_reader = csv.DictReader(csvfile)
                 rows = list(csv_reader)
         except FileNotFoundError:
-            raise Exception("The file {} does not exist.".format(csvfile))
+            raise Exception("The file {} does not exist.".format(file_path))
 
         # Check if latitude/longitude exist
-        lat = ['latitude', 'lat']
-        lon = ['longitude', 'lon', 'long']
+        lat = ["latitude", "lat"]
+        lon = ["longitude", "lon", "long"]
         key_names = csv_reader.fieldnames
         lat_id = np.where([y.lower() in lat for y in key_names])[0]
         lon_id = np.where([x.lower() in lon for x in key_names])[0]
         if len(lat_id) == 0:
             raise Exception(
-                "The key 'Latitude' or 'Lat' (case insensitive) not found. Please specify the building coordinate.")
+                "The key 'Latitude' or 'Lat' (case insensitive) not found. Please specify the building coordinate."
+            )
         if len(lon_id) == 0:
             raise Exception(
-                "The key 'Longitude' or 'Lon' (case insensitive) not found. Please specify the building coordinate.")
+                "The key 'Longitude' or 'Lon' (case insensitive) not found. Please specify the building coordinate."
+            )
         lat_key = key_names[lat_id[0]]
         lon_key = key_names[lon_id[0]]
 
         for bldg_features in rows:
             for i, key in enumerate(bldg_features):
-
                 # converting to a number
                 val = bldg_features[key]
                 if val.isdigit():
@@ -696,21 +715,23 @@ class AssetInventory:
             bldg_features.pop(lon_key)
 
             # TODO: what should the types be?
-            if 'type' in bldg_features.keys():
-                if bldg_features['type'] not in ["building", "bridge"]:
+            if "type" in bldg_features.keys():
+                if bldg_features["type"] not in ["building", "bridge"]:
                     raise Exception(
-                        "The csv file {file_path} cannot have a column named 'type'")
+                        "The csv file {file_path} cannot have a column named 'type'"
+                    )
             else:
-                bldg_features['type'] = str_type
+                bldg_features["type"] = str_type
 
             # is the id provided by user?
-            if id_column == None:
+            if id_column is None:
                 # if not we assin the id
                 id = id_counter
             else:
                 if id_column not in bldg_features.keys():
                     raise Exception(
-                        "The key '{}' not found in {}".format(id_column, file_path))
+                        "The key '{}' not found in {}".format(id_column, file_path)
+                    )
                 id = bldg_features[id_column]
 
             asset = Asset(id, coordinates, bldg_features)
@@ -752,7 +773,8 @@ class AssetInventory:
 
             if id_column not in bldg_features.keys():
                 raise Exception(
-                    "The key '{}' not found in {}".format(id_column, file_path))
+                    "The key '{}' not found in {}".format(id_column, file_path)
+                )
             id = bldg_features[id_column]
 
             self.add_asset_features(id, bldg_features)
@@ -761,7 +783,7 @@ class AssetInventory:
 
     def get_dataframe(self) -> bool:
         """
-        Read inventory data from a CSV file and add it to the inventory.
+        Create dataframe from inventory objective
 
         Args:
 
@@ -772,9 +794,12 @@ class AssetInventory:
 
         n_possible_worlds = self.get_n_pw()
 
-        features_json = self.get_geojson()['features']
-        bldg_properties = [(self.inventory[i].features | {
-            "index": i}) for dummy, i in enumerate(self.inventory)]
+        asset_json = self.get_geojson()
+        features_json = asset_json["features"]
+        bldg_properties = [
+            (self.inventory[i].features | {"index": i})
+            for dummy, i in enumerate(self.inventory)
+        ]
 
         # [bldg_features['properties'] for bldg_features in features_json]
 
@@ -789,37 +814,45 @@ class AssetInventory:
             vector_columns = set()
             for entry in bldg_properties:
                 vector_columns.update(
-                    [key for key, value in entry.items() if isinstance(value, list)])
+                    [key for key, value in entry.items() if isinstance(value, list)]
+                )
 
             flat_data = []
             for entry in bldg_properties:
-                row = {key: value for key, value in entry.items() if (
-                    key not in vector_columns)}  # stays the same
+                row = {
+                    key: value
+                    for key, value in entry.items()
+                    if (key not in vector_columns)
+                }  # stays the same
                 for key in vector_columns:
                     value = entry[key]
                     if isinstance(value, list):
                         if not len(value) == n_possible_worlds:
-                            raise ValueError("The specified # of possible worlds are {} but {} constains {} realizations in {}".format(
-                                n_possible_worlds, key, len(value), entry))
+                            raise ValueError(
+                                "The specified # of possible worlds are {} but {} constains {} realizations in {}".format(
+                                    n_possible_worlds, key, len(value), entry
+                                )
+                            )
 
                         for i in range(n_possible_worlds):
-                            row[f'{key}_{i+1}'] = value[i]
+                            row[f"{key}_{i+1}"] = value[i]
                     else:
                         for i in range(n_possible_worlds):
-                            row[f'{key}_{i+1}'] = value
+                            row[f"{key}_{i+1}"] = value
 
                 flat_data.append(row)
 
             bldg_properties_df = pd.DataFrame(flat_data)
 
-        bldg_properties_df.drop(columns=['type'], inplace=True)
+        if "type" in bldg_properties_df.columns:
+            bldg_properties_df.drop(columns=["type"], inplace=True)
 
         #  get centoried
         lat_values = [None] * nbldg
         lon_values = [None] * nbldg
 
         for idx in range(nbldg):
-            polygon_coordinate = features_json[idx]['geometry']['coordinates']
+            polygon_coordinate = features_json[idx]["geometry"]["coordinates"]
 
             if isinstance(polygon_coordinate[0], list):
                 if isinstance(polygon_coordinate[0][0], list):
@@ -851,21 +884,21 @@ class AssetInventory:
         return bldg_properties_df, bldg_geometries_df, nbldg
 
     def get_world_realization(self, id=0):
-
         new_inventory = deepcopy(self)
 
         if self.n_pw == 1 and id > 0:
             raise Exception(
-                "Cannot retrive different realizations as the inventory contains only a single realization. Consider setting id=0")
+                "Cannot retrive different realizations as the inventory contains only a single realization. Consider setting id=0"
+            )
 
-        pw_found = False
         for i in self.get_asset_ids():
             flag, features = self.get_asset_features(i)
             for key, val in features.items():
                 if isinstance(val, list):
                     if len(val) > id:
                         new_inventory.add_asset_features(
-                            i, {key: val[id]}, overwrite=True)
+                            i, {key: val[id]}, overwrite=True
+                        )
                     elif len(val) == id:
                         errmsg = f"The world index {id} should be smaller than the existing number of worlds {len(val)}, as the index starts from zero."
                         raise Exception(errmsg)
@@ -876,42 +909,47 @@ class AssetInventory:
 
         return new_inventory
 
+    def convert_polygons_to_centroids(self):
+        """
+        Convert polygons in GeoJson to centorid points
+
+        Args:
+            inventory_geo_json (dict): A geojson file
+
+        """
+        for key, asset in self.inventory.items():
+            if len(asset.coordinates) == 1:
+                continue
+
+            elif len(asset.coordinates) == 2:
+                geometry = {"type": "LineString", "coordinates": asset.coordinates}
+            else:
+                if asset.coordinates[0] == asset.coordinates[-1]:
+                    geometry = {"type": "Polygon", "coordinates": [asset.coordinates]}
+                else:
+                    geometry = {"type": "LineString", "coordinates": asset.coordinates}
+
+            centroid = shape(geometry).centroid
+            asset.coordinates = [[centroid.x, centroid.y]]
+
     def get_n_pw(self):  # move to asset
-
-        # #
-        # # Count the number of possible worlds in inventory
-        # #
-
-        # n_pw = None
-        # for i in self.get_asset_ids():
-        #     flag, features = self.get_asset_features(i)
-        #     for key, val in features.items():
-        #         if isinstance(val, list):
-        #             if n_pw == None:
-        #                 # set n_pw
-        #                 n_pw = len(val)
-        #             else:
-        #                 # check if it is constant
-        #                 if not (n_pw==len(val)):
-        #                     print(f"ERROR: number of possible worlds are not consistant. Asset id {i} have {len(val)} realizations whereas all the previous assets had {n_pw} realizations. This may give an error in the later brails process.")
-        #                     return None
-
-        # if n_pw==None:
-        #     n_pw = 1
-
         return self.n_pw
 
     def get_multi_keys(self):  # move to asset
-
         #
         #  Gives the features with multiple realizations
         #
         multi_keys = []
+        all_keys = []
         for i in self.get_asset_ids():
             flag, features = self.get_asset_features(i)
+
             for key, val in features.items():
                 if isinstance(val, list):
                     if key not in multi_keys:
                         multi_keys += [key]
 
-        return multi_keys
+                if key not in all_keys:
+                    all_keys += [key]
+
+        return multi_keys, all_keys
