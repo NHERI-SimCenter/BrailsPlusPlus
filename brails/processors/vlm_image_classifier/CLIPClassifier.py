@@ -38,16 +38,16 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-11-2024
+# 02-05-2025
 
 
-import torch
 import os
+from math import ceil
+import torch
 from PIL import Image
 from .clip.clip import load, tokenize
 from .clip.utils import compute_similarity, aggregate_predictions
 from brails.types.image_set import ImageSet
-from typing import Optional, List, Dict
 
 
 class CLIPClassifier:
@@ -58,29 +58,31 @@ class CLIPClassifier:
     and make predictions for the entered textual prompts. It supports
     customizable classes and prompts to enhance prediction accuracy.
 
-    Attributes__
-        model_arch (str): The architecture of the model to be used. Available
+    Attributes:
+        model_arch (str):
+            The architecture of the model to be used. Available
             model architectures are 'ViT-B/32' (default), RN50', 'RN101',
             'RN50x4','RN50x16', 'RN50x64', 'ViT-B/16', 'ViT-L/14', and
             'ViT-L/14@336px'.
-        device (torch.device): The device (CPU or GPU) used for computations.
-        preds (Optional[Dict[str, str]]): A dictionary to hold predictions.
-        batch_size (int): The number of images processed in a single batch.
-        template (str): A template for formatting text prompts.
+        device (torch.device):
+            The device (CPU or GPU) used for computations.
+        batch_size (int):
+            The number of images processed in a single batch.
+        template (str):
+            A template for formatting text prompts.
 
-    Args__
-        task (str): The task for which the classifier is being used.
+    Args:
         input_dict (Optional[dict]): A dictionary containing model architecture
             and other configuration parameters.
     """
 
-    def __init__(self, task: str, input_dict: Optional[dict] = None):
+    def __init__(self, input_dict: dict = None):
         """
         Initialize CLIPClassifier.
 
         Args__
             task (str): The task for which the classifier is being used.
-            input_dict (Optional[dict]): A dictionary containing model
+            input_dict (dict): A dictionary containing model
                 architecture and other configuration parameters.
         """
         if (input_dict is not None):
@@ -93,56 +95,51 @@ class CLIPClassifier:
 
         self.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu")
-        self.preds = None
         self.batch_size = 20
-        self.template = "a photo of a {}"
+        self.template = "This is a photo of a {}"
 
     def predict(self,
                 images: ImageSet,
-                model_path: str = '',
-                classes: Optional[List[str]] = None,
-                text_prompts: Optional[List[str]] = None
-                ) -> Dict[str, str]:
+                classes: list[str],
+                text_prompts: list[str]
+                ) -> dict[str, str]:
         """
         Predicts classes for the given images using the CLIP model.
 
-        Args__
-            images (ImageSet): An object containing the images to classify.
-            model_path (str): The path to the pre-trained model.
-            classes (Optional[List[str]]): A list of class names.
-            text_prompts (Optional[List[str]]): A list of text prompts
-                corresponding to the classes.
+        Args:
+            images (ImageSet):
+                An object containing the images to classify.
+            classes (list[str]):
+                A list of class names.
+            text_prompts (list[str]):
+                A list of text prompts corresponding to the classes.
 
-        Returns__
-            Dict[str, str]: A dictionary mapping image keys to their predicted
-                classes.
+        Returns:
+            dict[str, str]:
+                A dictionary mapping image keys to their predicted classes.
 
-        Raises__
-            AssertionError: If the conditions on classes and text_prompts are
-                not met.
+        Raises:
+            AssertionError:
+                If the conditions on classes and text_prompts are not met.
         """
-        assert (
-            classes is None or
-            (classes is not None and text_prompts is None)
-        ), 'Customized classes provide customized prompts (text_prompts cannot'
-        ' be None)'
-        if (classes is not None):
-            assert (
-                len(text_prompts) % len(classes) == 0
-            ), 'Number of text prompts should be equal across classes (i.e.,'
-            ' the number of text prompts should be a multiple of the number'
-            ' of classes)'
+        # Validate method inputs:
+        if not isinstance(images, ImageSet):
+            raise TypeError('images must be an ImageSet')
+        if not isinstance(classes, list):
+            raise TypeError('classes must be a list of at least two strings.')
+        if len(classes) < 2:
+            raise ValueError('classes must contain at least two elements.')
 
-        if (classes is not None):
-            self.classes, self.text_prompts = classes, text_prompts
+        if not isinstance(text_prompts, list):
+            raise TypeError('text_prompts must be a list of at least two '
+                            'strings.')
+        if len(text_prompts) % len(classes) != 0:
+            raise ValueError('The number of text_prompts must be a multiple '
+                             'of the number of classes.')
 
-        if model_path:
-            self.model_path = model_path
-        else:
-            model_path = self.model_path
+        self.classes, self.text_prompts = classes, text_prompts
 
-        def isImage(im: str) -> bool:
-            return im.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))
+        model_path = self.model_path
 
         # Download CLIP model & load to device:
         if (os.path.exists(model_path)):
@@ -155,6 +152,8 @@ class CLIPClassifier:
             model, data_transforms = load(
                 self.model_arch, self.device, download_root=download_root)
         model.eval()
+
+        input_resolution = model.visual.input_resolution
 
         # Tokenize text prompts:
         text_input = torch.cat([tokenize(self.template.format(c))
@@ -170,9 +169,13 @@ class CLIPClassifier:
                   'directory')
 
         for idx, (key, im) in enumerate(images.images.items()):
-            if isImage(im.filename):
+            if self._is_image(im.filename):
                 image = Image.open(os.path.join(
                     data_dir, im.filename)).convert("RGB")
+                factor = min(image.size)/input_resolution
+                x, y = image.size
+                image = image.resize((ceil(x/factor), ceil(y/factor)),
+                                     Image.BILINEAR)
                 image = data_transforms(image).float()
                 image = image.to(self.device)
                 image = image.unsqueeze(0)
@@ -199,6 +202,22 @@ class CLIPClassifier:
 
                 batch_imgs, batch_keys = [], []
         return preds
+
+    @staticmethod
+    def _is_image(im: str) -> bool:
+        """
+        Check if a filename corresponds to an image based on its extension.
+
+        Parameters:
+        im (str):
+            The filename or file path as a string.
+
+        Returns:
+            bool:
+                True if the file has an image extension (.png, .jpg, .jpeg,
+                .bmp), False otherwise.
+        """
+        return im.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))
 
 
 if __name__ == '__main__':
