@@ -40,6 +40,7 @@ setup(
         'plotly',
         'pycocotools',
         'pyarrow',
+        'reverse-geocode',
         'requests',
         'scikit-learn',
         'seaborn',
