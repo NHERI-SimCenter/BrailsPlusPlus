@@ -151,6 +151,7 @@ def HUEFSS_config(BIM):
         class.
     """
 
+    available_features = BIM.keys()
 
     if "RoofCover" in BIM:
         roof_cover = BIM["RoofCover"]
@@ -243,6 +244,7 @@ def HUEFH_config(BIM):
         class.
     """
 
+    available_features = BIM.keys()
     if "RoofCover" in BIM:
         roof_cover = BIM["RoofCover"]
 
@@ -325,6 +327,7 @@ def HUEFS_config(BIM):
         class.
     """
 
+    available_features = BIM.keys()
     if "RoofCover" in BIM:
         roof_cover = BIM["RoofCover"]
 
