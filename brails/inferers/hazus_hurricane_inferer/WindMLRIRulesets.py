@@ -44,6 +44,7 @@
 # Tracy Kijewski-Correa
 
 import datetime
+from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
 
 def MLRI_config(BIM):
     """
@@ -60,11 +61,14 @@ def MLRI_config(BIM):
         A string that identifies a specific configration within this buidling
         class.
     """
-
-    year = BIM['YearBuilt'] # just for the sake of brevity
+    available_features = BIM.keys()
 
     # Shutters
-    shutters = False
+
+    if "Shutters" in BIM:
+        shutters = BIM["Shutters"]
+    else:
+        shutters = False
 
     # Metal RDA
     # 1507.2.8.1 High Wind Attachment.
@@ -73,28 +77,42 @@ def MLRI_config(BIM):
     #  be applied with corrosion-resistant fasteners in accordance with
     # the manufacturer’s instructions. Fasteners are to be applied along
     # the overlap not more than 36 inches on center.
-    if BIM['DesignWindSpeed'] > 142:
-        MRDA = 'std'  # standard
-    else:
-        MRDA = 'sup'  # superior
 
-    if BIM['RoofShape'] in ['gab', 'hip']:
-        #roof_cover = 'null'
-        roof_quality = 'god' # default supported by HAZUS
-    else:
-        if year >= 1975:
-            #roof_cover = 'spm'
-            if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
-                roof_quality = 'god'
-            else:
-                roof_quality = 'por'
+    if "RoofDeckAttachmentM" in BIM:
+        MRDA = BIM["RoofDeckAttachmentM"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+        if BIM['DesignWindSpeed'] > 142:
+            MRDA = 'std'  # standard
         else:
-            # year < 1975
-            #roof_cover = 'bur'
-            if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
-                roof_quality = 'god'
+            MRDA = 'sup'  # superior
+
+
+
+    if "RoofQuality" in BIM:
+        roof_quality = BIM["RoofQuality"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofShape"], inferred_feature= "RoofQuality"):
+        if BIM['RoofShape'] in ['gab', 'hip']:
+            #roof_cover = 'null'
+            roof_quality = 'god' # default supported by HAZUS
+        else:
+
+            is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofQuality")
+            if BIM['YearBuilt'] >= 1975:
+                #roof_cover = 'spm'
+                if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
+                    roof_quality = 'god'
+                else:
+                    roof_quality = 'por'
             else:
-                roof_quality = 'por'
+                # year < 1975
+                #roof_cover = 'bur'
+                if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
+                    roof_quality = 'god'
+                else:
+                    roof_quality = 'por'
+
     
     essential_features = dict(
         BuildingTag = "M.LRI.", 

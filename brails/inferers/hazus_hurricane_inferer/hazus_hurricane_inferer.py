@@ -79,7 +79,6 @@ class HazusHurricaneInferer(InferenceEngine):
         seed=1,
         overwirte_existing=True,
         clean_features=False,
-
         planArea_key = "PlanArea",
         numberOfStories_key = "NumberOfStories",
         occupancyClass_key = "OccupancyClass",
