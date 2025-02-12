@@ -44,6 +44,7 @@
 # Tracy Kijewski-Correa
 
 import random
+from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
 
 def CECB_config(BIM):
     """
@@ -61,55 +62,79 @@ def CECB_config(BIM):
         class.
     """
 
-    year = BIM['YearBuilt'] # just for the sake of brevity
+    available_features = BIM.keys()
 
-    # Roof cover
-    if BIM['RoofShape'] in ['gab', 'hip']:
-        roof_cover = 'bur'
-        # Warning: HAZUS does not have N/A option for CECB, so here we use bur
-    else:
-        if year >= 1975:
-            roof_cover = 'spm'
-        else:
-            # year < 1975
+
+    if "RoofCover" in BIM:
+        roof_cover = BIM["RoofCover"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","RoofShape"], inferred_feature= "RoofCover"):
+        # Roof cover
+        if BIM['RoofShape'] in ['gab', 'hip']:
             roof_cover = 'bur'
-
-    # shutters
-    if year >= 2000:
-        shutters = BIM['WindBorneDebris']
-    # BOCA 1996 and earlier:
-    # Shutters were not required by code until the 2000 IBC. Before 2000, the
-    # percentage of commercial buildings that have shutters is assumed to be
-    # 46%. This value is based on a study on preparedness of small businesses
-    # for hurricane disasters, which says that in Sarasota County, 46% of
-    # business owners had taken action to wind-proof or flood-proof their
-    # facilities. In addition to that, 46% of business owners reported boarding
-    # up their businesses before Hurricane Katrina. In addition, compliance
-    # rates based on the Homeowners Survey data hover between 43 and 50 percent.
-    else:
-        if BIM['WindBorneDebris']:
-            shutters = random.random() < 0.46
+            # Warning: HAZUS does not have N/A option for CECB, so here we use bur
         else:
-            shutters = False
+            if BIM['YearBuilt'] >= 1975:
+                roof_cover = 'spm'
+            else:
+                # year < 1975
+                roof_cover = 'bur'
 
-    # Wind Debris (widd in HAZSU)
-    # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
-    WIDD = 'C' # residential (default)
-    if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C',
-                                  'RES3D']:
-        WIDD = 'C' # residential
-    elif BIM['OccupancyClass'] == 'AGR1':
-        WIDD = 'D' # None
-    else:
-        WIDD = 'A' # Res/Comm
+    if "Shutters" in BIM:
+        shutters = BIM["Shutters"]
 
-    # Window area ratio
-    if BIM['WindowArea'] < 0.33:
-        WWR = 'low'
-    elif BIM['WindowArea'] < 0.5:
-        WWR = 'med'
-    else:
-        WWR = 'hig'
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "Shutters"):
+    
+        # shutters
+        if BIM['YearBuilt'] >= 2000:
+            shutters = BIM['WindBorneDebris']
+        # BOCA 1996 and earlier:
+        # Shutters were not required by code until the 2000 IBC. Before 2000, the
+        # percentage of commercial buildings that have shutters is assumed to be
+        # 46%. This value is based on a study on preparedness of small businesses
+        # for hurricane disasters, which says that in Sarasota County, 46% of
+        # business owners had taken action to wind-proof or flood-proof their
+        # facilities. In addition to that, 46% of business owners reported boarding
+        # up their businesses before Hurricane Katrina. In addition, compliance
+        # rates based on the Homeowners Survey data hover between 43 and 50 percent.
+        else:
+            if BIM['WindBorneDebris']:
+                shutters = random.random() < 0.46
+            else:
+                shutters = False
+
+
+    if "WindDebrisClass" in BIM:
+        WIDD = BIM["WindDebrisClass"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["OccupancyClass"], inferred_feature= "WindDebrisClass"):
+     
+        # Wind Debris (widd in HAZSU)
+        # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
+        WIDD = 'C' # residential (default)
+        if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C','RES3D']:
+            WIDD = 'C' # residential
+        elif BIM['OccupancyClass'] == 'AGR1':
+            WIDD = 'D' # None
+        else:
+            WIDD = 'A' # Res/Comm
+
+
+    if "WindowAreaRatio" in BIM:
+        WWR = BIM["WindowAreaRatio"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
+         
+        # Window area ratio
+        if BIM['WindowArea'] < 0.33:
+            WWR = 'low'
+        elif BIM['WindowArea'] < 0.5:
+            WWR = 'med'
+        else:
+            WWR = 'hig'
+
+
+    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "BuildingTag for C.ECB")
 
     if BIM['NumberOfStories'] <= 2:
         bldg_tag = 'C.ECB.L'

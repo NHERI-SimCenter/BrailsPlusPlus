@@ -69,14 +69,14 @@ def building_class(BIM, hazard):
 
     # just for brevity
     def quick_check_keys(needed_features):
-        return is_ready_to_infer(available_features=BIM.keys(), needed_features = needed_features,inferred_feature= "BuildingTag")
+        return is_ready_to_infer(available_features=BIM.keys(), needed_features = needed_features,inferred_feature= "BuildingClass")
 
 
     if hazard == 'wind':
 
         quick_check_keys(['BuildingMaterial'])
-        if BIM['BuildingMaterial'] == 'Wood':
-
+        if BIM['BuildingMaterial'].startswith('W'):
+            #Wood
             quick_check_keys(['OccupancyClass','RoofShape'])
             if ((BIM['OccupancyClass'] == 'RES1') or
                 ((BIM['RoofShape'] != 'flt') and (BIM['OccupancyClass'] == 'RES1'))):
@@ -93,8 +93,8 @@ def building_class(BIM, hazard):
                 # OccupancyClass = RES3, RES5, RES6, or COM8
                 # Wood Multi-Unit Hotel (WMUH1, WMUH2, or WMUH3)
                 bldg_class = 'WMUH'
-        elif BIM['BuildingMaterial'] == 'Steel':
-
+        elif BIM['BuildingMaterial'].startswith('S'):
+            #Steel
             quick_check_keys(['OccupancyClass','DesignLevel'])
             if ((BIM['DesignLevel'] == 'E') and
                 (BIM['OccupancyClass'] in ['RES3A', 'RES3B', 'RES3C', 'RES3D',
@@ -116,8 +116,8 @@ def building_class(BIM, hazard):
                 bldg_class = 'SPMB'
             else:
                 bldg_class = 'SECB'
-        elif BIM['BuildingMaterial'] == 'Concrete':
-
+        elif BIM['BuildingMaterial'].startswith('C'):
+            #Concrete
             quick_check_keys(['OccupancyClass','DesignLevel'])
             if ((BIM['DesignLevel'] == 'E') and
                 (BIM['OccupancyClass'] in ['RES3A', 'RES3B', 'RES3C', 'RES3D',
@@ -133,9 +133,13 @@ def building_class(BIM, hazard):
                 bldg_class = 'CECB'
             else:
                 bldg_class = 'CECB'
-        elif BIM['BuildingMaterial'] == 'Masonry':
 
-            quick_check_keys(['OccupancyClass','NumberOfStories'])
+        elif BIM['BuildingMaterial'] == 'Manufactured':
+            bldg_class = 'MH'
+
+        elif BIM['BuildingMaterial'].startswith('M'):
+            #Masonry
+            quick_check_keys(['OccupancyClass','NumberOfStories','DesignLevel'])
             if BIM['OccupancyClass'] == 'RES1':
                 # BuildingType = 3004
                 # OccupancyClass = RES1
@@ -176,8 +180,6 @@ def building_class(BIM, hazard):
             #    # Masonry Multi-Unit Hotel/Motel Non-Engineered
             #    # (MMUH1NE, MMUH2NE, or MMUH3NE)
             #    return 'MMUHNE'
-        elif BIM['BuildingMaterial'] == 'Manufactured':
-            bldg_class = 'MH'
 
         else:
             bldg_class = 'WMUH'

@@ -45,6 +45,7 @@
 
 import random
 import datetime
+from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
 
 def MLRM_config(BIM):
     """
@@ -61,114 +62,171 @@ def MLRM_config(BIM):
         A string that identifies a specific configration within this buidling
         class.
     """
+    available_features = BIM.keys()
 
-    year = BIM['YearBuilt'] # just for the sake of brevity
 
     # Note the only roof option for commercial masonry in NJ appraisers manual
     # is OSWJ, so this suggests they do not even see alternate roof system
     # ref: Custom Inventory google spreadsheet H-37 10/01/20
     # This could be commented for other regions if detailed data are available
-    BIM['RoofFrameType'] = 'ows'
-
-    # Roof cover
-    # Roof cover does not apply to gable and hip roofs
-    if year >= 1975:
-        roof_cover = 'spm'
-    else:
-        # year < 1975
-        roof_cover = 'bur'
-
-    # Shutters
-    # IRC 2000-2015:
-    # R301.2.1.2 in NJ IRC 2015 says protection of openings required for
-    # buildings located in WindBorneDebris regions, mentions impact-rated protection for
-    # glazing, impact-resistance for garage door glazed openings, and finally
-    # states that wood structural panels with a thickness > 7/16" and a
-    # span <8' can be used, as long as they are precut, attached to the framing
-    # surrounding the opening, and the attachments are resistant to corrosion
-    # and are able to resist component and cladding loads;
-    # Earlier IRC editions provide similar rules.
-    shutters = BIM['WindBorneDebris']
+    
+    if "RoofFrameType" not in BIM:
+        BIM['RoofFrameType'] = 'ows'
 
 
-    # Wind Debris (widd in HAZSU)
-    # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
-    WIDD = 'C' # residential (default)
-    if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C',
-                                 'RES3D']:
-        WIDD = 'C' # residential
-    elif BIM['OccupancyClass'] == 'AGR1':
-        WIDD = 'D' # None
-    else:
-        WIDD = 'A' # Res/Comm
 
-    if BIM['RoofFrameType'] == 'ows':
-        # RDA
-        RDA = 'null' # Doesn't apply to OWSJ
+    if "RoofCover" in BIM:
+        roof_cover = BIM["RoofCover"]
 
-        # Roof deck age (DQ)
-        # Average lifespan of a steel joist roof is roughly 50 years according
-        # to the source below. Therefore, if constructed 50 years before the
-        # current year, the roof deck should be considered old.
-        # https://www.metalroofing.systems/metal-roofing-pros-cons/
-        if year >= (datetime.datetime.now().year - 50):
-            DQ = 'god' # new or average
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofCover"):
+        # Roof cover
+        # Roof cover does not apply to gable and hip roofs
+        if BIM['YearBuilt'] >= 1975:
+            roof_cover = 'spm'
         else:
-            DQ = 'por' # old
+            # year < 1975
+            roof_cover = 'bur'
 
-        # RWC
-        RWC = 'null'  # Doesn't apply to OWSJ
+    if "Shutters" in BIM:
+        roof_cover = BIM["Shutters"]
 
-        # Metal RDA
-        # 1507.2.8.1 High Wind Attachment.
-        # Underlayment applied in areas subject to high winds (Vasd greater
-        # than 110 mph as determined in accordance with Section 1609.3.1) shall
-        #  be applied with corrosion-resistant fasteners in accordance with
-        # the manufacturer’s instructions. Fasteners are to be applied along
-        # the overlap not more than 36 inches on center.
-        if BIM['DesignWindSpeed'] > 142:
-            MRDA = 'std'  # standard
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindBorneDebris"], inferred_feature= "Shutters"):
+        # Shutters
+        # IRC 2000-2015:
+        # R301.2.1.2 in NJ IRC 2015 says protection of openings required for
+        # buildings located in WindBorneDebris regions, mentions impact-rated protection for
+        # glazing, impact-resistance for garage door glazed openings, and finally
+        # states that wood structural panels with a thickness > 7/16" and a
+        # span <8' can be used, as long as they are precut, attached to the framing
+        # surrounding the opening, and the attachments are resistant to corrosion
+        # and are able to resist component and cladding loads;
+        # Earlier IRC editions provide similar rules.
+        shutters = BIM['WindBorneDebris']
+
+
+
+    if "WindDebrisClass" in BIM:
+        WIDD = BIM["WindDebrisClass"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["OccupancyClass"], inferred_feature= "WindDebrisClass"):
+
+        # Wind Debris (widd in HAZSU)
+        # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
+        WIDD = 'C' # residential (default)
+        if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C',
+                                     'RES3D']:
+            WIDD = 'C' # residential
+        elif BIM['OccupancyClass'] == 'AGR1':
+            WIDD = 'D' # None
         else:
-            MRDA = 'sup'  # superior
+            WIDD = 'A' # Res/Comm
 
-    elif BIM['RoofFrameType'] == 'trs':
-        # This clause should not be activated for NJ
-        # RDA
-        if BIM['TerrainRoughness'] >= 35: # suburban or light trees
-            if BIM['DesignWindSpeed'] > 130.0:
-                RDA = '8s'  # 8d @ 6"/6" 'D'
+
+    if "RoofDeckAttachmentW" in BIM:
+        RDA = BIM["RoofDeckAttachmentW"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofFrameType"], inferred_feature= "RoofDeckAttachmentW"):
+        if BIM['RoofFrameType'] == 'ows':
+            # RDA
+            RDA = 'null' # Doesn't apply to OWSJ
+
+        elif BIM['RoofFrameType'] == 'trs':
+            is_ready_to_infer(available_features=available_features, needed_features = ["TerrainRoughness","DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentW")
+            # This clause should not be activated for NJ
+            # RDA
+            if BIM['TerrainRoughness'] >= 35: # suburban or light trees
+                if BIM['DesignWindSpeed'] > 130.0:
+                    RDA = '8s'  # 8d @ 6"/6" 'D'
+                else:
+                    RDA = '8d'  # 8d @ 6"/12" 'B'
+            else:  # light suburban or open
+                if BIM['DesignWindSpeed'] > 110.0:
+                    RDA = '8s'  # 8d @ 6"/6" 'D'
+                else:
+                    RDA = '8d'  # 8d @ 6"/12" 'B'
+
+
+    if "RoofDeckAttachmentW" in BIM:
+        RDA = BIM["RoofDeckAttachmentW"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofFrameType"], inferred_feature= "RoofDeckAttachmentW"):
+        if BIM['RoofFrameType'] == 'ows':
+
+            # Roof deck age (DQ)
+            # Average lifespan of a steel joist roof is roughly 50 years according
+            # to the source below. Therefore, if constructed 50 years before the
+            # current year, the roof deck should be considered old.
+            # https://www.metalroofing.systems/metal-roofing-pros-cons/
+            is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofDeckAttachmentW")
+            if BIM['YearBuilt'] >= (datetime.datetime.now().year - 50):
+                DQ = 'god' # new or average
             else:
-                RDA = '8d'  # 8d @ 6"/12" 'B'
-        else:  # light suburban or open
-            if BIM['DesignWindSpeed'] > 110.0:
-                RDA = '8s'  # 8d @ 6"/6" 'D'
+                DQ = 'por' # old
+
+        elif BIM['RoofFrameType'] == 'trs':
+            # Roof deck agea (DQ)
+            DQ = 'null' # Doesn't apply to Wood Truss
+
+
+    if "RoofToWallConnection" in BIM:
+        RDA = BIM["RoofToWallConnection"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofFrameType"], inferred_feature= "RoofToWallConnection"):
+ 
+        if BIM['RoofFrameType'] == 'ows':
+            # RWC
+            RWC = 'null'  # Doesn't apply to OWSJ
+
+        elif BIM['RoofFrameType'] == 'trs':
+            # RWC
+            is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofToWallConnection")
+
+            if BIM['DesignWindSpeed'] > 110:
+                RWC = 'strap'  # Strap
             else:
-                RDA = '8d'  # 8d @ 6"/12" 'B'
+                RWC = 'tnail'  # Toe-nail
 
-        #  Metal RDA
-        MRDA = 'null' # Doesn't apply to Wood Truss
 
-        # Roof deck agea (DQ)
-        DQ = 'null' # Doesn't apply to Wood Truss
+    if "RoofDeckAttachmentM" in BIM:
+        RDA = BIM["RoofDeckAttachmentM"]
 
-        # RWC
-        if BIM['DesignWindSpeed'] > 110:
-            RWC = 'strap'  # Strap
-        else:
-            RWC = 'tnail'  # Toe-nail
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofFrameType"], inferred_feature= "RoofDeckAttachmentM"):
+        if BIM['RoofFrameType'] == 'ows':
+            is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM")
+            # Metal RDA
+            # 1507.2.8.1 High Wind Attachment.
+            # Underlayment applied in areas subject to high winds (Vasd greater
+            # than 110 mph as determined in accordance with Section 1609.3.1) shall
+            #  be applied with corrosion-resistant fasteners in accordance with
+            # the manufacturer’s instructions. Fasteners are to be applied along
+            # the overlap not more than 36 inches on center.
+            if BIM['DesignWindSpeed'] > 142:
+                MRDA = 'std'  # standard
+            else:
+                MRDA = 'sup'  # superior
+
+        elif BIM['RoofFrameType'] == 'trs':
+            #  Metal RDA
+            MRDA = 'null' # Doesn't apply to Wood Truss
 
     # shutters
-    if year >= 2000:
-        shutters = BIM['WindBorneDebris']
-    else:
-        if BIM['WindBorneDebris']:
-            shutters = random.random() < 0.46
+    if "Shutters" in BIM:
+        shutters = BIM["Shutters"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindBorneDebris","YearBuilt"], inferred_feature= "Shutters"):
+        if BIM['YearBuilt'] >= 2000:
+            shutters = BIM['WindBorneDebris']
         else:
-            shutters = False
+            if BIM['WindBorneDebris']:
+                shutters = random.random() < 0.46
+            else:
+                shutters = False
+
+
+    is_ready_to_infer(available_features=available_features, needed_features = ["WindBorneDebris","YearBuilt"], inferred_feature= "MeanRoofHt")
 
     if BIM['MeanRoofHt'] < 15.0:
         # extend the BIM dictionary
-
 
         essential_features = dict(
             BuildingTag = "M.LRM.1.", 
@@ -180,7 +238,7 @@ def MLRM_config(BIM):
             RoofToWallConnection = RWC,
             Shutters = int(shutters),
             MasonryReinforcing = int(BIM['MasonryReinforcing']),
-            WindowAreaRatio = WIDD,
+            WindDebrisClass = WIDD,
             RoofSystem = BIM['RoofFrameType']
             )
 
@@ -217,11 +275,11 @@ def MLRM_config(BIM):
             BuildingTag = "M.LRM.2.", 
             TerrainRoughness=int(BIM['TerrainRoughness']),
             RoofCover = roof_cover,
-            RoofShape = BIM['RoofShape'],
             RoofDeckAttachmentW = RDA,
             RoofToWallConnection = RWC,
             Shutters = int(shutters),
             MasonryReinforcing = int(BIM['MasonryReinforcing']),
+            RoofFrameType = BIM['RoofFrameType'],
             WindDebrisClass = WIDD,
             RoofDeckAttachmentM = MRDA,
             RoofDeckAge = DQ,

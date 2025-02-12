@@ -45,7 +45,7 @@
 
 import random
 import datetime
-
+from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
 
 def HUEFFS_config(BIM):
     """
@@ -62,36 +62,55 @@ def HUEFFS_config(BIM):
         A string that identifies a specific configration within this buidling
         class.
     """
+    available_features = BIM.keys()
 
-    year = BIM['YearBuilt']  # just for the sake of brevity
+    if "RoofCover" in BIM:
+        roof_cover = BIM["RoofCover"]
 
-    # Roof cover
-    if year >= 1975:
-        roof_cover = 'spm'
-    else:
-        # year < 1975
-        roof_cover = 'bur'
-
-    # Wind debris
-    WIDD = 'A'
-
-    # Roof deck age
-    if year >= (datetime.datetime.now().year - 50):
-        DQ = 'god' # new or average
-    else:
-        DQ = 'por' # old
-
-    # Metal-RDA
-    if year > 2000:
-        if BIM['DesignWindSpeed'] <= 142:
-            MRDA = 'std'  # standard
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofCover"):
+        # Roof cover
+        if BIM['YearBuilt'] >= 1975:
+            roof_cover = 'spm'
         else:
-            MRDA = 'sup'  # superior
-    else:
-        MRDA = 'std'  # standard
+            # year < 1975
+            roof_cover = 'bur'
 
-    # Shutters
-    shutters = int(BIM['WBD'])
+    if "WindDebrisClass" in BIM:
+        WIDD = BIM["WindDebrisClass"]
+
+    else:
+        # Wind debris
+        WIDD = 'A'
+
+    if "RoofDeckAge" in BIM:
+        DQ = BIM["RoofDeckAge"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofDeckAge"):
+        # Roof deck age
+        if BIM['YearBuilt'] >= (datetime.datetime.now().year - 50):
+            DQ = 'god' # new or average
+        else:
+            DQ = 'por' # old
+
+    if "RoofDeckAttachmentM" in BIM:
+        MRDA = BIM["RoofDeckAttachmentM"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+        # Metal-RDA
+        if BIM['YearBuilt'] > 2000:
+            if BIM['DesignWindSpeed'] <= 142:
+                MRDA = 'std'  # standard
+            else:
+                MRDA = 'sup'  # superior
+        else:
+            MRDA = 'std'  # standard
+
+    if "Shutters" in BIM:
+        shutters = BIM["Shutters"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["WBD"], inferred_feature= "Shutters"):
+        # Shutters
+        shutters = int(BIM['WBD'])
 
     essential_features = dict(
         BuildingTag = 'HUEF.FS', 
@@ -104,7 +123,6 @@ def HUEFFS_config(BIM):
         )
 
     BIM.update(essential_features)
-
 
     # bldg_tag = 'HUEF.FS'
     # bldg_config = f"{bldg_tag}." \
@@ -133,35 +151,56 @@ def HUEFSS_config(BIM):
         class.
     """
 
-    year = BIM['YearBuilt']  # just for the sake of brevity
+    available_features = BIM.keys()
 
-    # Roof cover
-    if year >= 1975:
-        roof_cover = 'spm'
-    else:
-        # year < 1975
-        roof_cover = 'bur'
+    if "RoofCover" in BIM:
+        roof_cover = BIM["RoofCover"]
 
-    # Wind debris
-    WIDD = 'A'
-
-    # Roof deck age
-    if year >= (datetime.datetime.now().year - 50):
-        DQ = 'god' # new or average
-    else:
-        DQ = 'por' # old
-
-    # Metal-RDA
-    if year > 2000:
-        if BIM['DesignWindSpeed'] <= 142:
-            MRDA = 'std'  # standard
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofCover"):
+        # Roof cover
+        if BIM['YearBuilt'] >= 1975:
+            roof_cover = 'spm'
         else:
-            MRDA = 'sup'  # superior
-    else:
-        MRDA = 'std'  # standard
+            # year < 1975
+            roof_cover = 'bur'
 
-    # Shutters
-    shutters = BIM['WindBorneDebris']
+    if "WindDebrisClass" in BIM:
+        WIDD = BIM["WindDebrisClass"]
+    else:
+        WIDD = 'A'
+
+
+    if "RoofDeckAge" in BIM:
+        DQ = BIM["RoofDeckAge"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofDeckAge"):
+        # Roof deck age
+        if BIM['YearBuilt'] >= (datetime.datetime.now().year - 50):
+            DQ = 'god' # new or average
+        else:
+            DQ = 'por' # old
+
+
+
+    if "RoofDeckAttachmentM" in BIM:
+        MRDA = BIM["RoofDeckAttachmentM"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+        # Metal-RDA
+        if BIM['YearBuilt'] > 2000:
+            if BIM['DesignWindSpeed'] <= 142:
+                MRDA = 'std'  # standard
+            else:
+                MRDA = 'sup'  # superior
+        else:
+            MRDA = 'std'  # standard
+
+    if "Shutters" in BIM:
+        shutters = BIM["Shutters"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindBorneDebris"], inferred_feature= "Shutters"):
+        # Shutters
+        shutters = BIM['WindBorneDebris']
 
 
     essential_features = dict(
@@ -205,38 +244,52 @@ def HUEFH_config(BIM):
         class.
     """
 
-    year = BIM['YearBuilt']  # just for the sake of brevity
+    available_features = BIM.keys()
+    if "RoofCover" in BIM:
+        roof_cover = BIM["RoofCover"]
 
-    # Roof cover
-    if year >= 1975:
-        roof_cover = 'spm'
-    else:
-        # year < 1975
-        roof_cover = 'bur'
-
-    # Wind debris
-    WIDD = 'A'
-
-    # Shutters
-    shutters = BIM['WindBorneDebris']
-
-    # Metal-RDA
-    if year > 2000:
-        if BIM['DesignWindSpeed'] <= 142:
-            MRDA = 'std'  # standard
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofCover"):
+        
+        # Roof cover
+        if BIM['YearBuilt'] >= 1975:
+            roof_cover = 'spm'
         else:
-            MRDA = 'sup'  # superior
-    else:
-        MRDA = 'std'  # standard
+            # year < 1975
+            roof_cover = 'bur'
 
+    if "WindDebrisClass" in BIM:
+        WIDD = BIM["WindDebrisClass"]
+    else:
+        # Wind debris
+        WIDD = 'A'
+
+    if "Shutters" in BIM:
+        shutters = BIM["Shutters"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindBorneDebris"], inferred_feature= "Shutters"):
+        # Shutters
+        shutters = BIM['WindBorneDebris']
+
+    if "RoofDeckAttachmentM" in BIM:
+        MRDA = BIM["RoofDeckAttachmentM"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+        # Metal-RDA
+        if BIM['YearBuilt'] > 2000:
+            if BIM['DesignWindSpeed'] <= 142:
+                MRDA = 'std'  # standard
+            else:
+                MRDA = 'sup'  # superior
+        else:
+            MRDA = 'std'  # standard
+
+    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "Building Tag HUEF.H Class")
     if BIM['NumberOfStories'] <=2:
         bldg_tag = 'HUEF.H.S'
     elif BIM['NumberOfStories'] <= 5:
         bldg_tag = 'HUEF.H.M'
     else:
         bldg_tag = 'HUEF.H.L'
-
-
 
     essential_features = dict(
         BuildingTag = bldg_tag, 
@@ -274,44 +327,65 @@ def HUEFS_config(BIM):
         class.
     """
 
-    year = BIM['YearBuilt']  # just for the sake of brevity
+    available_features = BIM.keys()
+    if "RoofCover" in BIM:
+        roof_cover = BIM["RoofCover"]
 
-    # Roof cover
-    if year >= 1975:
-        roof_cover = 'spm'
-    else:
-        # year < 1975
-        roof_cover = 'bur'
-
-    # Wind debris
-    WIDD = 'C'
-
-    # Shutters
-    if year > 2000:
-        shutters = BIM['WindBorneDebris']
-    else:
-        # year <= 2000
-        if BIM['WindBorneDebris']:
-            shutters = random.random() < 0.46
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofCover"):
+        # Roof cover
+        if BIM['YearBuilt'] >= 1975:
+            roof_cover = 'spm'
         else:
-            shutters = False
+            # year < 1975
+            roof_cover = 'bur'
 
-    # Metal-RDA
-    if year > 2000:
-        if BIM['DesignWindSpeed'] <= 142:
+
+    if "WindDebrisClass" in BIM:
+        WIDD = BIM["WindDebrisClass"]
+
+    else:
+        # Wind debris
+        WIDD = 'C'
+
+
+    if "Shutters" in BIM:
+        shutters = BIM["Shutters"]
+        
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "Shutters"):
+        # Shutters
+        if BIM['YearBuilt'] > 2000:
+            shutters = BIM['WindBorneDebris']
+        else:
+            # year <= 2000
+            if BIM['WindBorneDebris']:
+                shutters = random.random() < 0.46
+            else:
+                shutters = False
+
+
+    if "RoofDeckAttachmentM" in BIM:
+        MRDA = BIM["RoofDeckAttachmentM"]
+        
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+        # Metal-RDA
+        if BIM['YearBuilt'] > 2000:
+            if BIM['DesignWindSpeed'] <= 142:
+                MRDA = 'std'  # standard
+            else:
+                MRDA = 'sup'  # superior
+        else:
             MRDA = 'std'  # standard
-        else:
-            MRDA = 'sup'  # superior
-    else:
-        MRDA = 'std'  # standard
 
+
+    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "Building Tag HUEF.S")
     if BIM['NumberOfStories'] <=2:
         bldg_tag = 'HUEF.S.M'
     else:
         bldg_tag = 'HUEF.S.L'
 
-    # extend the BIM dictionary
 
+    # extend the BIM dictionary
+    
     essential_features = dict(
         BuildingTag = bldg_tag, 
         TerrainRoughness=int(BIM['TerrainRoughness']),
