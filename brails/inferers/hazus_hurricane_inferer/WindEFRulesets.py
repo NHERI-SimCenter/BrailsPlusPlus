@@ -62,6 +62,7 @@ def HUEFFS_config(BIM):
         A string that identifies a specific configration within this buidling
         class.
     """
+    available_features = BIM.keys()
 
     if "RoofCover" in BIM:
         roof_cover = BIM["RoofCover"]
