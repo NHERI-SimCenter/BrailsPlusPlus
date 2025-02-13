@@ -113,7 +113,8 @@ def MLRI_config(BIM):
                 else:
                     roof_quality = 'por'
 
-    
+
+    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness','MasonryReinforcing'], inferred_feature= "M.LRI class")
     essential_features = dict(
         BuildingTag = "M.LRI.", 
         TerrainRoughness=int(BIM['TerrainRoughness']),

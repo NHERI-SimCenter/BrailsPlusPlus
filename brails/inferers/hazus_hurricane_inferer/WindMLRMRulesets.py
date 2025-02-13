@@ -223,11 +223,12 @@ def MLRM_config(BIM):
                 shutters = False
 
 
-    is_ready_to_infer(available_features=available_features, needed_features = ["WindBorneDebris","YearBuilt"], inferred_feature= "MeanRoofHt")
+    is_ready_to_infer(available_features=available_features, needed_features = ["MeanRoofHt"], inferred_feature= "M.LRM class")
 
     if BIM['MeanRoofHt'] < 15.0:
         # extend the BIM dictionary
 
+        is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM")
         essential_features = dict(
             BuildingTag = "M.LRM.1.", 
             TerrainRoughness=int(BIM['TerrainRoughness']),
@@ -258,18 +259,35 @@ def MLRM_config(BIM):
         #               f"{int(BIM['TerrainRoughness'])}"
 
     else:
-        unit_tag = 'null'
-        # MLRM2 needs more rulesets
+        
+        if "UnitType" in BIM:
+            unit_tag = BIM["UnitType"]
 
-        if BIM['RoofFrameType'] == 'trs':
-            joist_spacing = 'null'
-        elif BIM['RoofFrameType'] == 'ows':
-            if BIM['NumberOfUnits'] == 1:
+        elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofFrameType"], inferred_feature= "UnitType"):
+            if BIM['RoofFrameType'] == 'trs':
+                unit_tag = 'null'
+            elif BIM['RoofFrameType'] == 'ows':
+                is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfUnits"], inferred_feature= "UnitType")
+                if BIM['NumberOfUnits'] == 1:
+                    unit_tag = 'sgl'
+                else:
+                    unit_tag = 'mlt'
+
+        if "JoistSpacing" in BIM:
+            joist_spacing = BIM["JoistSpacing"]
+            
+        elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofFrameType"], inferred_feature= "JoistSpacing"):
+            # MLRM2 needs more rulesets
+            if BIM['RoofFrameType'] == 'trs':
                 joist_spacing = 'null'
-                unit_tag = 'sgl'
-            else:
-                joist_spacing = 4
-                unit_tag = 'mlt'
+            elif BIM['RoofFrameType'] == 'ows':
+                is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfUnits"], inferred_feature= "JoistSpacing")
+                if BIM['NumberOfUnits'] == 1:
+                    joist_spacing = 'null'
+                else:
+                    joist_spacing = 4
+
+        is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness','MasonryReinforcing','RoofFrameType'], inferred_feature= "M.LRI class")
 
         essential_features = dict(
             BuildingTag = "M.LRM.2.", 

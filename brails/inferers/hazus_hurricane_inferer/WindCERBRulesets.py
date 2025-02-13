@@ -144,6 +144,8 @@ def CERB_config(BIM):
         bldg_tag = 'C.ERB.H'
 
     # extend the BIM dictionary
+    
+    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "C.ECB class")
 
     essential_features = dict(
         BuildingTag = bldg_tag, 

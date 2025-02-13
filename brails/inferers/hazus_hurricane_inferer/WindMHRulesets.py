@@ -110,7 +110,7 @@ def MH_config(BIM):
                 TD = False
 
 
-    is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "Shutters")
+    is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "bldg_tag")
     year = BIM['YearBuilt'] # just for the sake of brevity
     if year <= 1976:
         bldg_tag = 'MH.PHUD'
@@ -121,6 +121,7 @@ def MH_config(BIM):
         bldg_tag = 'MH.94HUD' + BIM['WindZone']
 
 
+    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness'], inferred_feature= f"{bldg_tag} class")
     essential_features = dict(
         BuildingTag = bldg_tag, 
         TerrainRoughness=int(BIM['TerrainRoughness']),

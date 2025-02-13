@@ -344,13 +344,14 @@ def add_default(BIM_in, hazards):
     # add inferred, generic meta-variables
 
     if 'wind' in hazards:
+        
 
         #
         # First is simple default
         #
 
         BIM_ap = BIM_in.copy()
-
+        available_features = BIM_ap.keys()
         BIM_ap.update(dict(
             RoofSlope=float(BIM_in.get('RoofSlope',0.25)), # default 0.25
             SheathingThickness=float(BIM_in.get('SheathingThick',1.0)), # default 1.0
@@ -378,18 +379,21 @@ def add_default(BIM_in, hazards):
         #
         # Second do basic inference
         #
+        if "HazardProneRegion" in BIM_ap:
+            HPR = BIM_ap["HazardProneRegion"]
 
+        elif is_ready_to_infer(available_features=available_features, needed_features = ['DesignWindSpeed','YearBuilt'], inferred_feature= "HazardProneRegion"):    
+            # Hurricane-Prone Region (HRP)
+            # Areas vulnerable to hurricane, defined as the U.S. Atlantic Ocean and
+            # Gulf of Mexico coasts where the ultimate design wind speed, DesignWindSpeed is
+            # greater than a pre-defined limit.
+            if BIM_ap['YearBuilt'] >= 2016:
+                # The limit is 115 mph in IRC 2015
+                HPR = BIM_ap['DesignWindSpeed'] > 115.0
+            else:
+                # The limit is 90 mph in IRC 2009 and earlier versions
+                HPR = BIM_ap['DesignWindSpeed'] > 90.0
 
-        # Hurricane-Prone Region (HRP)
-        # Areas vulnerable to hurricane, defined as the U.S. Atlantic Ocean and
-        # Gulf of Mexico coasts where the ultimate design wind speed, DesignWindSpeed is
-        # greater than a pre-defined limit.
-        if BIM_ap['YearBuilt'] >= 2016:
-            # The limit is 115 mph in IRC 2015
-            HPR = BIM_ap['DesignWindSpeed'] > 115.0
-        else:
-            # The limit is 90 mph in IRC 2009 and earlier versions
-            HPR = BIM_ap['DesignWindSpeed'] > 90.0
 
         # Wind Borne Debris
         # Areas within hurricane-prone regions are affected by debris if one of
@@ -399,25 +403,35 @@ def add_default(BIM_in, hazards):
         # (2) In areas where the ultimate design wind speed is greater than
         # general_lim
         # The flood_lim and general_lim limits depend on the year of construction
-        if BIM_ap['YearBuilt'] >= 2016:
-            # In IRC 2015:
-            flood_lim = 130.0 # mph
-            general_lim = 140.0 # mph
-        else:
-            # In IRC 2009 and earlier versions
-            flood_lim = 110.0 # mph
-            general_lim = 120.0 # mph
         # Areas within hurricane-prone regions located in accordance with
         # one of the following:
         # (1) Within 1 mile (1.61 km) of the coastal mean high water line
         # where the ultimate design wind speed is 130 mph (58m/s) or greater.
         # (2) In areas where the ultimate design wind speed is 140 mph (63.5m/s)
         # or greater. (Definitions: Chapter 2, 2015 NJ Residential Code)
-        if not HPR:
-            WBD = False
+
+
+        if "WindBorneDebris" in BIM_ap:
+            WBD = BIM_ap["WindBorneDebris"]
+
         else:
-            WBD = (((BIM_ap['FloodZone'].startswith('A') or BIM_ap['FloodZone'].startswith('V')) and
-                    BIM_ap['DesignWindSpeed'] >= flood_lim) or (BIM_ap['DesignWindSpeed'] >= general_lim))
+            if not HPR:
+                WBD = False
+
+            else:
+                is_ready_to_infer(available_features=available_features, needed_features = ['YearBuilt','FloodZone','DesignWindSpeed'], inferred_feature= "HazardProneRegion")            
+                if BIM_ap['YearBuilt'] >= 2016:
+                    # In IRC 2015:
+                    flood_lim = 130.0 # mph
+                    general_lim = 140.0 # mph
+                else:
+                    # In IRC 2009 and earlier versions
+                    flood_lim = 110.0 # mph
+                    general_lim = 120.0 # mph
+
+                WBD = (((BIM_ap['FloodZone'].startswith('A') or BIM_ap['FloodZone'].startswith('V')) and
+                        BIM_ap['DesignWindSpeed'] >= flood_lim) or (BIM_ap['DesignWindSpeed'] >= general_lim))
+
 
         # Terrain
         # open (0.03) = 3
@@ -440,38 +454,43 @@ def add_default(BIM_in, hazards):
         # Woody Wetlands (6250) with zo=0.3 assume suburban
         # Emergent Herbaceous Wetlands (6240) with zo=0.03 assume Open
         # Note: HAZUS category of trees (1.00) does not apply to any LU/LC in NJ
-        terrain = 15 # Default in Reorganized Rulesets - WIND
-        LULC = BIM_ap['LULC']
-        TER = BIM_ap['Terrain']
-        if (BIM_ap['z0'] > 0):
-            terrain = int(100 * BIM_ap['z0'])
-        elif (LULC > 0):
-            if (BIM_ap['FloodZone'].startswith('V') or BIM_ap['FloodZone'] in ['A', 'AE', 'A1-30', 'AR', 'A99']):
-                terrain = 3
-            elif ((LULC >= 5000) and (LULC <= 5999)):
-                terrain = 3 # Open
-            elif ((LULC == 4400) or (LULC == 6240)) or (LULC == 7600):
-                terrain = 3 # Open
-            elif ((LULC >= 2000) and (LULC <= 2999)):
-                terrain = 15 # Light suburban
-            elif ((LULC >= 1110) and (LULC <= 1140)) or ((LULC >= 6250) and (LULC <= 6252)):
-                terrain = 35 # Suburban
-            elif ((LULC >= 4100) and (LULC <= 4300)) or (LULC == 1600):
-                terrain = 70 # light trees
-        elif (TER > 0):
-            if (BIM_ap['FloodZone'].startswith('V') or BIM_ap['FloodZone'] in ['A', 'AE', 'A1-30', 'AR', 'A99']):
-                terrain = 3
-            elif ((TER >= 50) and (TER <= 59)):
-                terrain = 3 # Open
-            elif ((TER == 44) or (TER == 62)) or (TER == 76):
-                terrain = 3 # Open
-            elif ((TER >= 20) and (TER <= 29)):
-                terrain = 15 # Light suburban
-            elif (TER == 11) or (TER == 61):
-                terrain = 35 # Suburban
-            elif ((TER >= 41) and (TER <= 43)) or (TER in [16, 17]):
-                terrain = 70 # light trees
 
+        if "TerrainRoughness" in BIM_ap:
+            terrain = BIM_ap["TerrainRoughness"]
+        else:
+            terrain = 15 # Default in Reorganized Rulesets - WIND        
+            LULC = BIM_ap['LULC']
+            TER = BIM_ap['Terrain']
+            if (BIM_ap['z0'] > 0):
+                terrain = int(100 * BIM_ap['z0'])
+            elif (LULC > 0):
+                if (BIM_ap['FloodZone'].startswith('V') or BIM_ap['FloodZone'] in ['A', 'AE', 'A1-30', 'AR', 'A99']):
+                    terrain = 3
+                elif ((LULC >= 5000) and (LULC <= 5999)):
+                    terrain = 3 # Open
+                elif ((LULC == 4400) or (LULC == 6240)) or (LULC == 7600):
+                    terrain = 3 # Open
+                elif ((LULC >= 2000) and (LULC <= 2999)):
+                    terrain = 15 # Light suburban
+                elif ((LULC >= 1110) and (LULC <= 1140)) or ((LULC >= 6250) and (LULC <= 6252)):
+                    terrain = 35 # Suburban
+                elif ((LULC >= 4100) and (LULC <= 4300)) or (LULC == 1600):
+                    terrain = 70 # light trees
+            elif (TER > 0):
+                if (BIM_ap['FloodZone'].startswith('V') or BIM_ap['FloodZone'] in ['A', 'AE', 'A1-30', 'AR', 'A99']):
+                    terrain = 3
+                elif ((TER >= 50) and (TER <= 59)):
+                    terrain = 3 # Open
+                elif ((TER == 44) or (TER == 62)) or (TER == 76):
+                    terrain = 3 # Open
+                elif ((TER >= 20) and (TER <= 29)):
+                    terrain = 15 # Light suburban
+                elif (TER == 11) or (TER == 61):
+                    terrain = 35 # Suburban
+                elif ((TER >= 41) and (TER <= 43)) or (TER in [16, 17]):
+                    terrain = 70 # light trees
+
+        is_ready_to_infer(available_features=available_features, needed_features = ['DesignWindSpeed'], inferred_feature= "Hurricane properties")            
 
         BIM_ap.update(dict(
             # Nominal Design Wind Speed

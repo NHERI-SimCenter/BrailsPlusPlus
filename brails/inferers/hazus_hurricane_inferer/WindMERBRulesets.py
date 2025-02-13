@@ -115,25 +115,39 @@ def MERB_config(BIM):
     #  be applied with corrosion-resistant fasteners in accordance with
     # the manufacturer’s instructions. Fasteners are to be applied along
     # the overlap not more than 36 inches on center.
-    if BIM['DesignWindSpeed'] > 142:
-        MRDA = 'std'  # standard
-    else:
-        MRDA = 'sup'  # superior
 
-    # Window area ratio
-    if BIM['WindowArea'] < 0.33:
-        WWR = 'low'
-    elif BIM['WindowArea'] < 0.5:
-        WWR = 'med'
-    else:
-        WWR = 'hig'
+    if "RoofDeckAttachmentM" in BIM:
+        MRDA = BIM["RoofDeckAttachmentM"]
 
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+        if BIM['DesignWindSpeed'] > 142:
+            MRDA = 'std'  # standard
+        else:
+            MRDA = 'sup'  # superior
+
+
+
+    if "WindowAreaRatio" in BIM:
+        WWR = BIM["WindowAreaRatio"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
+        
+        # Window area ratio
+        if BIM['WindowArea'] < 0.33:
+            WWR = 'low'
+        elif BIM['WindowArea'] < 0.5:
+            WWR = 'med'
+        else:
+            WWR = 'hig'
+
+    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "M.ERB class")
     if BIM['NumberOfStories'] <= 2:
         bldg_tag = 'M.ERB.L'
     elif BIM['NumberOfStories'] <= 5:
         bldg_tag = 'M.ERB.M'
     else:
         bldg_tag = 'M.ERB.H'
+
 
     essential_features = dict(
         BuildingTag = bldg_tag, 
