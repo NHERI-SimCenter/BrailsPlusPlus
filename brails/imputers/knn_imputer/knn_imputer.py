@@ -432,8 +432,8 @@ class KnnImputer(Imputation):
         self, bldg_properties_encoded, bldg_geometries_df, nbldg_per_cluster=500, seed=0
     ):
         nbldg = bldg_properties_encoded.shape[0]
-        n_cluster = int(nbldg / nbldg_per_cluster)  # 500 bldgs per cluster
-        kmeans = KMeans(n_clusters=n_cluster, random_state=seed, n_init="auto").fit(
+        n_cluster = int(np.ceil(nbldg / nbldg_per_cluster))  # 500 bldgs per cluster
+        kmeans = KMeans(n_clusters=int(n_cluster), random_state=seed, n_init="auto").fit(
             bldg_geometries_df[["Lat", "Lon"]]
         )
         cluster_ids = kmeans.predict(bldg_geometries_df[["Lat", "Lon"]])

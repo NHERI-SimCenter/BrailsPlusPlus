@@ -44,6 +44,7 @@
 # Tracy Kijewski-Correa
 
 import random
+from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
 
 def MERB_config(BIM):
     """
@@ -61,38 +62,51 @@ def MERB_config(BIM):
         class.
     """
 
-    year = BIM['YearBuilt'] # just for the sake of brevity
+    available_features = BIM.keys()
+    
+    if "RoofCover" in BIM:
+        roof_cover = BIM["RoofCover"]
 
-    # Roof cover
-    if BIM['RoofShape'] in ['gab', 'hip']:
-        roof_cover = 'bur'
-        # no info, using the default supoorted by HAZUS
-    else:
-        if year >= 1975:
-            roof_cover = 'spm'
-        else:
-            # year < 1975
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","RoofShape"], inferred_feature= "RoofCover"):
+        # Roof cover
+        if BIM['RoofShape'] in ['gab', 'hip']:
             roof_cover = 'bur'
-
-    # shutters
-    if year >= 2000:
-        shutters = BIM['WindBorneDebris']
-    else:
-        if BIM['WindBorneDebris']:
-            shutters = random.random() < 0.45
+            # no info, using the default supoorted by HAZUS
         else:
-            shutters = False
+            if BIM['YearBuilt'] >= 1975:
+                roof_cover = 'spm'
+            else:
+                # year < 1975
+                roof_cover = 'bur'
 
-    # Wind Debris (widd in HAZSU)
-    # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
-    WIDD = 'C' # residential (default)
-    if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C',
-                                 'RES3D']:
-        WIDD = 'C' # residential
-    elif BIM['OccupancyClass'] == 'AGR1':
-        WIDD = 'D' # None
-    else:
-        WIDD = 'A' # Res/Comm
+
+    if "Shutters" in BIM:
+        shutters = BIM["Shutters"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "shutters"):
+        # shutters
+        if BIM['YearBuilt'] >= 2000:
+            shutters = BIM['WindBorneDebris']
+        else:
+            if BIM['WindBorneDebris']:
+                shutters = random.random() < 0.45
+            else:
+                shutters = False
+
+    if "WindDebrisClass" in BIM:
+        WIDD = BIM["WindDebrisClass"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["OccupancyClass"], inferred_feature= "WindDebrisClass"):
+
+        # Wind Debris (widd in HAZSU)
+        # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
+        WIDD = 'C' # residential (default)
+        if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C', 'RES3D']:
+            WIDD = 'C' # residential
+        elif BIM['OccupancyClass'] == 'AGR1':
+            WIDD = 'D' # None
+        else:
+            WIDD = 'A' # Res/Comm
 
     # Metal RDA
     # 1507.2.8.1 High Wind Attachment.
