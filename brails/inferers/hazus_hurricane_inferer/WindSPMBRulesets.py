@@ -121,7 +121,7 @@ def SPMB_config(BIM):
 
 
     # don't allow predefined its too complicated
-    is_ready_to_infer(available_features=available_features, needed_features = ["PlanArea"], inferred_feature= "BuildingTag (among S, M, and L)")
+    is_ready_to_infer(available_features=available_features, needed_features = ["PlanArea",'TerrainRoughness'], inferred_feature= "BuildingTag (among S, M, and L)")
 
     if BIM['PlanArea'] <= 4000:
         bldg_tag = 'S.PMB.S'

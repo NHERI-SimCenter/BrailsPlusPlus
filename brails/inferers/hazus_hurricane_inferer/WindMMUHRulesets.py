@@ -66,7 +66,7 @@ def MMUH_config(BIM):
     """
     available_features = BIM.keys()
 
-    year = BIM['YearBuilt'] # just for the sake of brevity
+    #year = BIM['YearBuilt'] # just for the sake of brevity
 
     # Secondary Water Resistance (SWR)
     # Minimum drainage recommendations are in place in NJ (See below).
@@ -117,7 +117,7 @@ def MMUH_config(BIM):
         if BIM['RoofShape'] in ['gab', 'hip']:
             roof_cover = 'null'
         else:
-            if year >= 1975:
+            if BIM['YearBuilt'] >= 1975:
                 roof_cover = 'spm'
             else:
                 # year < 1975
@@ -131,7 +131,7 @@ def MMUH_config(BIM):
         if BIM['RoofShape'] in ['gab', 'hip']:
             roof_quality = 'null'
         else:
-            if year >= 1975:
+            if BIM['YearBuilt'] >= 1975:
                 if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
                     roof_quality = 'god'
                 else:
@@ -202,7 +202,7 @@ def MMUH_config(BIM):
         # surrounding the opening, and the attachments are resistant to corrosion
         # and are able to resist component and cladding loads;
         # Earlier IRC editions provide similar rules.
-        if year >= 2000:
+        if BIM['YearBuilt'] >= 2000:
             shutters = BIM['WindBorneDebris']
         # BOCA 1996 and earlier:
         # Shutters were not required by code until the 2000 IBC. Before 2000, the
@@ -219,8 +219,10 @@ def MMUH_config(BIM):
             else:
                 shutters = False
 
-    stories = min(BIM['NumberOfStories'], 3)
 
+    is_ready_to_infer(available_features=available_features, needed_features = ['NumberOfStories', 'TerrainRoughness','MasonryReinforcing','RoofShape'], inferred_feature= "M.MUH class")
+
+    stories = min(BIM['NumberOfStories'], 3)
     essential_features = dict(
         BuildingTag = "M.MUH.", 
         TerrainRoughness=int(BIM['TerrainRoughness']),

@@ -377,12 +377,12 @@ def HUEFS_config(BIM):
             MRDA = 'std'  # standard
 
 
-    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "Building Tag HUEF.S")
+    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "HUEF.S class")
+    
     if BIM['NumberOfStories'] <=2:
         bldg_tag = 'HUEF.S.M'
     else:
         bldg_tag = 'HUEF.S.L'
-
 
     # extend the BIM dictionary
     
