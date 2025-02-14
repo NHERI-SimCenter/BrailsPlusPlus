@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 02-27-2024
+# 02-14-2025
 
 """
 This module defines a class for retrieving data from ArcGIS services APIs.
@@ -79,8 +79,8 @@ class ArcgisAPIServiceHelper:
     functionality for:
     - Retrieving the maximum number of elements that can be returned per query.
     - Categorizing and splitting polygon cells based on the element count.
-    - Dividing polygons into smaller rectangular cells to ensure a balance
-      of elements per cell.
+    - Dividing polygons into smaller rectangular cells to ensure a balance of
+      elements per cell.
 
     The class includes methods for making API requests with retry logic,
     handling transient network errors, and parsing the responses to determine
@@ -88,29 +88,55 @@ class ArcgisAPIServiceHelper:
 
     Attributes:
         api_endpoint_url (str):
-            The base URL of the ArcGIS API endpoint.
+            The base URL of the ArcGIS API endpoint used for requests.
         max_elements_per_cell (int):
-            The maximum number of elements allowed in a single cell, determined
-            by querying the ArcGIS API for its maximum record count.
+            The maximum number of elements the API allows per query, fetched
+            from the ArcGIS service.
 
     Methods:
-        fetch_max_records_per_query(api_endpoint_url: str) -> int:
-            Retrieves the maximum number of records returned by the API per
-            query.
+        fetch_max_records_per_query() -> int:
+            Retrieves the maximum number of records returned by the API in a
+            single query.
         categorize_and_split_cells(preliminary_cells: list[Polygon]
                                    ) -> tuple[list[Polygon], list[Polygon]]:
-            Categorizes a list of polygons into cells that need to be split and
-            those that do not, based on their element count.
+            Categorizes and splits polygons based on their element count.
+            Returns two lists: cells to keep and cells to split.
         split_polygon_into_cells(bpoly: Polygon, element_count: int = -1,
                                  plot_mesh: str = '') -> list[Polygon]:
-            Divides a polygon into smaller rectangular cells based on its
-            element count.
+            Divides a polygon into smaller cells if the element count exceeds
+            the threshold.
+        download_attr_from_api(cell: Polygon,
+                               requested_fields: list[str] | str) -> list:
+            Fetches specific attribute fields from the API for a given polygon.
         get_element_counts(bpoly: Polygon) -> int:
-            Retrieves the number of elements within the bounding box of a
-            given polygon.
-        _make_request_with_retry(url: str, params: dict = None
-                                 ) -> requests.Response:
-            Makes a GET request to the ArcGIS API with retry logic.
+            Retrieves the count of elements within a given polygon's bounding
+            box.
+
+    Example Usage:
+        # Instantiate the helper class with an API endpoint:
+        api_helper = ArcgisAPIServiceHelper("https://api.example.com/query")
+
+        # Fetch the maximum number of records per query:
+        max_records = api_helper.fetch_max_records_per_query()
+
+        # Split polygons into cells based on element count:
+        cells_to_keep, cells_to_split = api_helper.categorize_and_split_cells(
+            preliminary_cells)
+
+    Notes:
+        - The class assumes a uniform distribution of elements across polygons
+          when splitting.
+        - The retry strategy uses exponential backoff to handle transient
+          network issues.
+        - The method `get_element_counts` provides a count of elements within
+          the bounding box of a polygon, which is essential for categorizing
+          and splitting polygons.
+
+    Raises:
+        ValueError: If an invalid Polygon or parameter is passed to a method.
+        NotImplementedError: If the requested functionality is not supported
+        by the API.
+        HTTPError: If the HTTP request fails after retries.
     """
 
     def __init__(self, api_endpoint_url: str):
