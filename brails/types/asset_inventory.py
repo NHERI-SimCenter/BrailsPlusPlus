@@ -58,9 +58,8 @@ import logging
 import numpy as np
 import pandas as pd
 from shapely import box
-from brails.utils import InputValidator
-
 from shapely.geometry import shape
+from brails.utils import InputValidator
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
@@ -101,12 +100,13 @@ class Asset:
             features (dict[str, Any], optional): A dictionary of features.
                 Defaults to an empty dict.
         """
-        coords_check, output_msg = InputValidator.validate_coordinates(coordinates)
+        coords_check, output_msg = InputValidator.validate_coordinates(
+            coordinates)
         if coords_check:
             self.coordinates = coordinates
         else:
             logger.warning(
-                "%s Setting coordinates for asset %s to an empty " "list.",
+                "%s Setting coordinates for asset %s to an empty list",
                 output_msg,
                 asset_id,
             )
@@ -137,9 +137,10 @@ class Asset:
                     if (n_pw == 1) or (n_pw == len(val)):
                         n_pw = len(val)
                     else:
-                        logger.warning(
-                            f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong."
-                        )
+                        logger.warning('WARNING: # possible worlds was %d but '
+                                       'is now %d. Something went wrong.',
+                                       n_pw, len(val)
+                                       )
                         n_pw = len(val)
 
             updated = True
@@ -157,9 +158,10 @@ class Asset:
                         if (n_pw == 1) or (n_pw == len(val)):
                             n_pw = len(val)
                         else:
-                            logger.warning(
-                                f"WARNING: # possible worlds was {n_pw} but is now {len(val)}. Something went wrong."
-                            )
+                            logger.warning('WARNING: # possible worlds was %d '
+                                           'but is now %d. Something went '
+                                           'wrong.', n_pw, len(val)
+                                           )
                             n_pw = len(val)
 
                     updated = True
@@ -248,9 +250,8 @@ class AssetInventory:
         existing_asset = self.inventory.get(asset_id, None)
 
         if existing_asset is not None:
-            logger.warning(
-                "Asset with id %s already exists. Asset was not " "added", asset_id
-            )
+            logger.warning('Asset with id %s already exists. Asset was not '
+                           'added', asset_id)
             return False
 
         self.inventory[asset_id] = asset
@@ -275,10 +276,8 @@ class AssetInventory:
         existing_asset = self.inventory.get(asset_id, None)
 
         if existing_asset is not None:
-            logger.warning(
-                "Asset with id %s already exists. Coordinates were " "not added",
-                asset_id,
-            )
+            logger.warning('Asset with id %s already exists. Coordinates were '
+                           'not added', asset_id,)
             return False
 
         # Create asset and add using id as the key:
@@ -305,10 +304,8 @@ class AssetInventory:
         """
         asset = self.inventory.get(asset_id, None)
         if asset is None:
-            logger.warning(
-                "No existing Asset with id % s found. Asset " "features not added.",
-                asset_id,
-            )
+            logger.warning('No existing Asset with id % s found. Asset '
+                           'features not added.', asset_id)
             return False
 
         status, n_pw = asset.add_features(new_features, overwrite)
@@ -317,11 +314,33 @@ class AssetInventory:
         elif (n_pw == self.n_pw) or (self.n_pw == 1):
             self.n_pw = n_pw
         else:
-            logger.warning(
-                f"# possible worlds was {self.n_pw} but is now {n_pw}. Something went wrong."
-            )
+            logger.warning('WARNING: # possible worlds was %d but is now %d. '
+                           'Something went wrong.', self.n_pw, n_pw)
             self.n_pw = n_pw
         return status
+
+    def add_model_predictions(self, predictions: dict, feature_key: str):
+        """
+        Add model predictions to the inventory.
+
+        This method goes through the inventory and updates each item with the
+        model predictions by adding them as a new feature under the specified
+        key.
+
+        Args:
+            predictions (dict): A dictionary containing the model predictions, where 
+                                 the keys correspond to the inventory items and 
+                                 the values are the predicted features to be added.
+            feature_key (str): The key under which the predictions will be added 
+                                as a new feature to the inventory items.
+
+        Example:
+            # Assuming `self.inventory` has inventory items and `model_predictions` is a dictionary of predictions
+            self.add_model_predictions(predictions=model_predictions, feature_key="prediction_score")
+
+        """
+        for key, val in self.inventory.items():
+            val.add_features({feature_key: predictions[key]})
 
     def change_feature_names(self, feature_name_mapping: dict):
         """
@@ -339,7 +358,8 @@ class AssetInventory:
         """
         # Validate that feature_name_mapping is a dictionary:
         if not isinstance(feature_name_mapping, dict):
-            raise ValueError("The 'feature_name_mapping' must be a dictionary.")
+            raise ValueError(
+                "The 'feature_name_mapping' must be a dictionary.")
 
         # Validate that all keys and values are strings:
         for original_name, new_name in feature_name_mapping.items():
@@ -359,7 +379,8 @@ class AssetInventory:
                 if original_name in asset.features:
                     # Rename the feature by popping the old key and adding it
                     # under the new key:
-                    asset.features[new_name] = asset.features.pop(original_name)
+                    asset.features[new_name] = asset.features.pop(
+                        original_name)
 
     def remove_asset(self, asset_id: str | int) -> bool:
         """
@@ -385,8 +406,7 @@ class AssetInventory:
         Returns:
             bool: True if features were removed, False otherwise.
         """
-
-        for key, asset in self.inventory.items():
+        for _, asset in self.inventory.items():
             asset.remove_features(feature_list)
 
         return True
@@ -586,7 +606,8 @@ class AssetInventory:
 
         for key, asset in self.inventory.items():
             if len(asset.coordinates) == 1:
-                geometry = {"type": "Point", "coordinates": asset.coordinates[0]}
+                geometry = {"type": "Point",
+                            "coordinates": asset.coordinates[0]}
             elif len(asset.coordinates) == 2:
                 geometry = {
                     "type": "LineString",
@@ -594,9 +615,11 @@ class AssetInventory:
                 }  # Line does not exist?
             else:
                 if asset.coordinates[0] == asset.coordinates[-1]:
-                    geometry = {"type": "Polygon", "coordinates": [asset.coordinates]}
+                    geometry = {"type": "Polygon",
+                                "coordinates": [asset.coordinates]}
                 else:
-                    geometry = {"type": "LineString", "coordinates": asset.coordinates}
+                    geometry = {"type": "LineString",
+                                "coordinates": asset.coordinates}
 
             feature = {
                 "type": "Feature",
@@ -730,7 +753,8 @@ class AssetInventory:
             else:
                 if id_column not in bldg_features.keys():
                     raise Exception(
-                        "The key '{}' not found in {}".format(id_column, file_path)
+                        "The key '{}' not found in {}".format(
+                            id_column, file_path)
                     )
                 id = bldg_features[id_column]
 
@@ -922,12 +946,15 @@ class AssetInventory:
                 continue
 
             elif len(asset.coordinates) == 2:
-                geometry = {"type": "LineString", "coordinates": asset.coordinates}
+                geometry = {"type": "LineString",
+                            "coordinates": asset.coordinates}
             else:
                 if asset.coordinates[0] == asset.coordinates[-1]:
-                    geometry = {"type": "Polygon", "coordinates": [asset.coordinates]}
+                    geometry = {"type": "Polygon",
+                                "coordinates": [asset.coordinates]}
                 else:
-                    geometry = {"type": "LineString", "coordinates": asset.coordinates}
+                    geometry = {"type": "LineString",
+                                "coordinates": asset.coordinates}
 
             centroid = shape(geometry).centroid
             asset.coordinates = [[centroid.x, centroid.y]]
