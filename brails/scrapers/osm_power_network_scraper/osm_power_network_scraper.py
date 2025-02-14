@@ -46,10 +46,10 @@ This module defines the class scraping power network data from OSM.
 """
 
 import requests
-from shapely.geometry import Polygon
 
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import Asset, AssetInventory
+from brails.utils import GeoTools
 
 OVERPASS_URL = "http://overpass-api.de/api/interpreter"
 
@@ -113,7 +113,7 @@ class OSM_PowerNetworkScraper:
 
         else:
             # If the bounding polygon is rectangular:
-            if self._is_box(bpoly):
+            if GeoTools.is_box(bpoly):
                 # Convert the bounding polygon coordinates to latitude and
                 # longitude fashion:
                 bbox_coords = bpoly.bounds
@@ -266,32 +266,3 @@ class OSM_PowerNetworkScraper:
                 inventory.add_asset(counter, asset)
                 counter += 1
         return inventory
-
-    def _is_box(self, geom: Polygon) -> bool:
-        """
-        Determine whether a given Shapely geometry is a rectangular box.
-
-        A box is defined as a Polygon with exactly four corners and opposite
-        sides being equal. This function checks if the geometry is a Polygon
-        with 5 coordinates (the 5th being a duplicate of the first to close the
-        polygon), and verifies that opposite sides are equal, ensuring that the
-        polygon is rectangular.
-
-        Args:
-            geom (Polygon):
-                A Shapely Polygon object to be checked.
-
-        Returns:
-            bool:
-                True if the Polygon is a rectangular box, False otherwise.
-        """
-        # Check if the geometry is a Polygon and has exactly 4 corners:
-        if isinstance(geom, Polygon) and len(geom.exterior.coords) == 5:
-            # Check if opposite sides are equal (box property):
-            x1, y1 = geom.exterior.coords[0]
-            x2, y2 = geom.exterior.coords[1]
-            x3, y3 = geom.exterior.coords[2]
-            x4, y4 = geom.exterior.coords[3]
-
-            return (x1 == x2 and y1 == y4 and x3 == x4 and y2 == y3)
-        return False
