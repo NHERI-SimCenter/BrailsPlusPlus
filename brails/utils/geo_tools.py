@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 11-13-2024
+# 02-13-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -328,3 +328,42 @@ class GeoTools:
         ptskeep = [points[ind] for ind in ptkeepind]
 
         return ptskeep, fp2ptmap, ind_fp_matched
+
+    @staticmethod
+    def is_box(self, geometry: Polygon) -> bool:
+        """
+        Determine whether a given Shapely geometry is a rectangular box.
+
+        A box is defined as a Polygon with exactly four corners and opposite
+        sides being equal. This function checks if the geometry is a Polygon
+        with 5 coordinates (the 5th being a duplicate of the first to close the
+        polygon), and verifies that opposite sides are equal, ensuring that the
+        polygon is rectangular.
+
+        Args:
+            geometry (Polygon):
+                A Shapely Polygon object to be checked.
+
+        Returns:
+            bool:
+                True if the Polygon is a rectangular box, False otherwise.
+
+        Raises:
+            TypeError:
+                If the input is not a Shapely Polygon object.
+        """
+        # Check if the input is a polygon:
+        if not isinstance(geometry, Polygon):
+            TypeError('Invalid geometry input. Expected a Shapely Polygon '
+                      'object.')
+
+        # Check if the geometry has exactly 4 corners:
+        if len(geometry.exterior.coords) == 5:
+            # Check if opposite sides are equal (box property):
+            x1, y1 = geometry.exterior.coords[0]
+            x2, y2 = geometry.exterior.coords[1]
+            x3, y3 = geometry.exterior.coords[2]
+            x4, y4 = geometry.exterior.coords[3]
+
+            return (x1 == x2 and y1 == y4 and x3 == x4 and y2 == y3)
+        return False
