@@ -37,7 +37,7 @@
 #
 #
 # Last updated:
-# 11-13-2024
+# 12-20-2025
 
 """
 This module defines a class for scraping data from NSI.
@@ -49,17 +49,63 @@ This module defines a class for scraping data from NSI.
 
 import requests
 from requests.adapters import HTTPAdapter, Retry
-import sys
 import json
 from shapely.geometry import Point
+import logging
+
 from brails.utils import GeoTools
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.types.region_boundary import RegionBoundary
 
+# Configure logging:
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Define global variables:
+API_ENDPOINT = "https://nsi.sec.usace.army.mil/nsiapi/structures?bbox="
+ASSET_TYPE = 'building'
+
 
 class NSI_Parser:
+    """
+    A class for interacting with the National Structural Inventory (NSI) data.
+
+    This class provides methods for fetching and processing NSI data,
+    including mapping the data to building footprints, extracting relevant
+    attributes, and generating inventory outputs in formats compatible with
+    BRAILS and other GIS applications.
+
+    Key responsibilities of this class include:
+    - Fetching NSI data for given bounding box coordinates.
+    - Mapping NSI points to corresponding footprints.
+    - Converting NSI attributes to BRAILS-compatible attributes.
+    - Optionally retrieving extended features (such as split levels and
+                                               basement information).
+    - Generating and formatting the processed data in GeoJSON format for
+      further analysis.
+
+    Attributes:
+        attributes (dict):
+            Stores the processed attributes for each footprint, including
+            location, building characteristics, and extended features.
+        brails2r2dmap (dict):
+            A mapping between NSI attributes and their corresponding BRAILS
+            attributes.
+        footprints (dict):
+            Stores the footprint data.
+        nsi2brailsmap (dict):
+            A mapping between NSI attribute keys and their corresponding BRAILS
+            attributes.
+    """
 
     def __init__(self):
+        """
+        Initialize the NSI_Parser instance.
+
+        This method sets up the internal mappings for NSI attributes to
+        BRAILS-compatible attributes, and initializes dictionaries for storing
+        attributes and footprint data.
+        """
         self.attributes = {}
         self.brails2r2dmap = {'lon': 'Longitude', 'lat': 'Latitude',
                               'fparea': 'PlanArea',
@@ -75,9 +121,10 @@ class NSI_Parser:
                               'val_struct': 'repaircost',
                               'bldgtype': 'constype',
                               'occtype': 'occupancy', 'fd_id': 'fd_id',
-                              'occtype_extended': ['splitlevel','basement']} # extended features will be provided only when get_extended_features option is selected
+                              'occtype_extended': ['splitlevel', 'basement']}
+        # Extended features will be provided only when get_extended_features
+        # option is selected
 
-        
     def __get_bbox(self, footprints: list) -> tuple:
         """
         Get the bounding box for a footprint.
@@ -110,9 +157,9 @@ class NSI_Parser:
                     minlon = vert[0]
         return (minlat, minlon, maxlat, maxlon)
 
-    def __get_nbi_data(self, bbox: tuple) -> dict:
+    def __get_nsi_data(self, bbox: tuple) -> dict:
         """
-        Get the NBI data for a bounding box entry.
+        Get the NSI data for a bounding box entry.
 
         Args:
             bbox (tuple) Tuple containing the minimum and maximum latitude and
@@ -125,124 +172,44 @@ class NSI_Parser:
         (minlat, minlon, maxlat, maxlon) = bbox
 
         # Construct the query URL for the bounding box input
-        baseurl = "https://nsi.sec.usace.army.mil/nsiapi/structures?bbox="
         bboxstr = (f'{minlon:.5f},{minlat:.5f},{minlon:.5f},{maxlat:.5f},'
                    f'{maxlon:.5f},{maxlat:.5f},{maxlon:.5f},{minlat:.5f},'
                    f'{minlon:.5f},{minlat:.5f}')
-        url = baseurl + bboxstr
+        url = API_ENDPOINT + bboxstr
 
         # Define a retry stratey for common error codes to use in downloading
         # NBI data:
-        s = requests.Session()
+        session = requests.Session()
         retries = Retry(total=5,
                         backoff_factor=0.1,
                         status_forcelist=[500, 502, 503, 504])
-        s.mount('https://', HTTPAdapter(max_retries=retries))
+        session.mount('https://', HTTPAdapter(max_retries=retries))
 
         # Download NBI data using the defined retry strategy, read downloaded
         # GeoJSON data into a list:
-        print('\nGetting National Structure Inventory (NSI) building data'
-              ' for the entered location input...')
-        response = s.get(url)
-        datalist = response.json()['features']
+        logging.info('\nGetting National Structure Inventory (NSI) building '
+                     'data for the entered location...')
 
-        # Write the data in datalist into a dictionary for better data access,
-        # and filtering the duplicate entries:
-        datadict = {}
-        for data in datalist:
-            pt = Point(data['geometry']['coordinates'])
-            datadict[pt] = data['properties']
-        return datadict
+        try:
+            response = session.get(url, timeout=10)
+            response.raise_for_status()  # Raise an HTTPError for bad responses
+            data = response.json().get('features', [])
 
-    def GetRawDataROI(self, roi, outfile: str) -> None:
-        """
-        Get NSI data within an ROI/area of footprints and write to GeoJSON.
+            # Convert GeoJSON features to a dictionary with (lon, lat) as keys
+            return {Point(feat['geometry']['coordinates']): feat['properties']
+                    for feat in data}
 
-        Method that reads NSI buildings data finds the points within a
-        bounding polygon or matches a set of footprints, then writes the
-        extracted data into a GeoJSON file.
-
-        Args:
-            roi: Either 1) a list of footprint data defined as a list of
-                lists of coordinates in EPSG 4326, i.e., [[vert1],....
-                [vertlast]]. Vertices are defined in [longitude,latitude]
-                fashion, or 2) a shapely polygon or multipolygon for the
-                boundary polygon of the region of interest.
-
-                outfile: string containing the name of the output file
-                Currently, only GeoJSON format is supported
-        """
-        if type(roi) is list:
-            # Determine the coordinates of the bounding box including the
-            # footprints:
-            bbox = self.__get_bbox(roi)
-            footprints = roi.copy()
-            bpoly = None
-        else:
-            try:
-                roitype = roi.geom_type
-                bpoly = roi
-                # If ROI is defined as a Shapely polygon or multipolygon,
-                # determine the coordinates of the bounding box for the
-                # bounding polygon:
-                if roitype in ['MultiPolygon', 'Polygon', 'POLYGON']:
-                    bbox = bpoly.bounds
-                    bbox = (bbox[1], bbox[0], bbox[3], bbox[2])
-                # Otherwise exit with a system error:
-            except:
-                sys.exit('Unimplemented region of interest data type: ',
-                         roitype)
-
-        # Get NBI data for the computed bounding box:
-        datadict = self.__get_nbi_data(bbox)
-
-        points = list(datadict.keys())
-        if bpoly is None:
-            # Find the NBI points that are enclosed in each footprint:
-            pointsKeep, _, points_keep_footprints_index = \
-                GeoTools.match_points_to_polygons(points, footprints)
-        else:
-            # Find the NBI points contained in bpoly:
-            pointsKeep = set()
-            for pt in points:
-                if bpoly.contains(pt):
-                    pointsKeep.add(pt)
-            pointsKeep = list(pointsKeep)
-            points_keep_footprints_index = []
-
-        # Display the number of NSI points that are within roi:
-        print(f'Found a total of {len(pointsKeep)} building points in'
-              ' NSI that are within the entered region of interest')
-
-        if len(pointsKeep) != 0:
-
-            # Write the extracted NSI data in a GeoJSON file:
-            attrkeys = list(datadict[pointsKeep[0]].keys())
-            geojson = {'type': 'FeatureCollection',
-                       "crs": {"type": "name", "properties":
-                               {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
-                       'features': []}
-            for pt in pointsKeep:
-                feature = {'type': 'Feature',
-                           'properties': {},
-                           'geometry': {'type': 'Point',
-                                        'coordinates': []}}
-                feature['geometry']['coordinates'] = [pt.x, pt.y]
-                attributes = datadict[pt]
-                for key in attrkeys:
-                    attr = attributes[key]
-                    feature['properties'][key] = 'NA' if attr is None else attr
-                geojson['features'].append(feature)
-
-            return geojson, points_keep_footprints_index
-
-        else:
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Request failed: {e}")
+            return {}
+        except (KeyError, ValueError) as e:
+            logging.error(f"Unexpected response structure: {e}")
             return {}
 
     def GetNSIData(self, footprints: list,
                    lengthUnit: str = 'ft',
                    outfile: str = '',
-                   get_extended_features: bool=False,
+                   get_extended_features: bool = False,
                    add_features: list = []):
         """
         Match NSI buildings points to a set of footprints.
@@ -269,11 +236,15 @@ class NSI_Parser:
                 attributes: 1)latitude, 2)longitude, 3)building plan area,
                 4)number of floors, 5)year of construction, 6)replacement cost,
                 7)structure type, 8)occupancy class, 9)footprint polygon
-                If "get_extended_features" option is selected, output additionally includes 
-                10) split level and 11) gararge
+                If "get_extended_features" option is selected, output
+                additionally includes 10) split level and 11) gararge
         """
 
-        def get_attr_from_datadict(datadict, footprints, nsi2brailsmap, get_extended_features=False, add_features=[]):
+        def get_attr_from_datadict(datadict,
+                                   footprints,
+                                   nsi2brailsmap,
+                                   get_extended_features=False,
+                                   add_features=[]):
             # Parsers for building and occupancy types:
             def bldgtype_parser(bldgtype):
                 bldgtype = bldgtype + '1'
@@ -285,7 +256,6 @@ class NSI_Parser:
                 if '-' in occtype:
                     occtype = occtype.split('-')[0]
                 return occtype
-
 
             def split_parser(occtype):
                 # TODO-ADAM: by default no
@@ -320,8 +290,10 @@ class NSI_Parser:
             nsikeys = list(nsi2brailsmap.keys())
             brailskeys = list(nsi2brailsmap.values())
 
-            basic_indices = [i for i, s in enumerate(nsikeys) if '_extended' not in s]
-            extended_indices = [i for i, s in enumerate(nsikeys) if '_extended' in s]
+            basic_indices = [i for i, s in enumerate(
+                nsikeys) if '_extended' not in s]
+            extended_indices = [i for i, s in enumerate(
+                nsikeys) if '_extended' in s]
 
             for key in [brailskeys[i] for i in basic_indices]:
                 attributes[key] = []
@@ -357,10 +329,12 @@ class NSI_Parser:
                         attributes[nsi2brailsmap[key]].append(
                             occ_parser(ptres[key]))
                     elif key == 'occtype_extended':
-                        if get_extended_features: 
+                        if get_extended_features:
                             key_org = key.split('_')[0]
-                            attributes[nsi2brailsmap[key][0]].append(split_parser(ptres[key_org]))
-                            attributes[nsi2brailsmap[key][1]].append(base_parser(ptres[key_org]))
+                            attributes[nsi2brailsmap[key][0]].append(
+                                split_parser(ptres[key_org]))
+                            attributes[nsi2brailsmap[key][1]].append(
+                                base_parser(ptres[key_org]))
                         else:
                             pass
                     else:
@@ -369,8 +343,6 @@ class NSI_Parser:
                     # Sy - User provided features
                     if key in add_features:
                         attributes[key].append(ptres[key])
-
-
 
             # Display the number of footprints that can be matched to NSI
             # points:
@@ -388,7 +360,11 @@ class NSI_Parser:
 
         # Create a footprint-merged building inventory from extracted NBI data:
         attributes, points_keep_footprint_index = get_attr_from_datadict(
-            datadict, footprints, self.nsi2brailsmap, get_extended_features = get_extended_features, add_features=add_features)
+            datadict,
+            footprints,
+            self.nsi2brailsmap,
+            get_extended_features=get_extended_features,
+            add_features=add_features)
 
         # Convert to footprint areas to sqm if needed:
         if lengthUnit == 'm':
@@ -396,35 +372,6 @@ class NSI_Parser:
             attributes.update({'fparea': fparea})
 
         self.attributes = attributes.copy()
-
-        """
-        if outfile:
-            if 'csv' in outfile.lower(): 
-                # Write the extracted features into a Pandas dataframe:
-                brailskeys = list(self.brails2r2dmap.keys())
-                inventory = pd.DataFrame(pd.Series(attributes[brailskeys[0]],
-                                                   name=self.brails2r2dmap[brailskeys[0]]))        
-                for key in brailskeys[1:]:
-                    inventory[self.brails2r2dmap[key]] = attributes[key]
-    
-                # Write the created inventory in R2D-compatible CSV format:
-                n = inventory.columns[-1]
-                inventory.drop(n, axis = 1, inplace = True)
-                inventory[n] = attributes['fp_json']
-                inventory.to_csv(outfile, index=True, index_label='id') 
-            else:
-                # Write the extracted features into a GeoJSON file:
-                footprints = attributes['fp'].copy()
-                del attributes['fp_json']
-                del attributes['fp']
-                fpHandler = FootprintHandler()
-                fpHandler._FootprintHandler__write_fp2geojson(footprints,
-                                                              attributes,
-                                                              outfile,
-                                                              convertKeys=True)
-                outfile = outfile.split('.')[0] + '.geojson'        
-            print(f'\nFinal inventory data available in {os.getcwd()}/{outfile}')
-        """
 
         # Reformat the class variables to make them compatible with the
         # InventoryGenerator:
@@ -459,77 +406,59 @@ class NSI_Parser:
 
         return geojson, points_keep_footprint_index
 
-    def get_raw_data_given_boundary(self,
-                                    region_boundary: RegionBoundary,
-                                    length_unit: str = 'ft',
-                                    outfile: str = '') -> AssetInventory:
+    def get_raw_data(self, region: RegionBoundary) -> AssetInventory:
         """
-        Method that gets nsi data given a region boundary
+        Retrieve raw NSI data for a specified region.
 
-        Input:  RegionBoundary
-                   The region boundary
-                length unit
-                   The units data to be returned in, 'm' or 'ft'
-                outfile
-                   Optional string
+        Args:
+            region (RegionBoundary):
+                The region boundary object defining the area of interest.
 
-        Output: AssetInventory
-                  an AssetInventory
+        Returns:
+            AssetInventory:
+                An `AssetInventory` object containing assets (buildings) within
+                the given region, extracted from the NSI data.
+
+        Notes:
+            The function retrieves NSI data within the bounding box of the
+            provided region boundary, filters out points outside the boundary,
+            and returns the resulting data in an `AssetInventory`.
+
+            The length unit for the data is assumed to be in meters ('m') or
+            feet ('ft') as specified in the class initialization, but the
+            function currently does not modify the length unit in this method.
+
+        Example:
+            region = RegionBoundary(...)
+            inventory = get_raw_data(region)
         """
+        bpoly, _, _ = region.get_boundary()
+        bbox = bpoly.bounds
 
-        geojson, _ = self.GetRawDataROI(
-            region_boundary.get_boundary()[0], outfile)
+        # Get NBI data for the computed bounding box:
+        datadict = self._get_nsi_data(bbox)
+
+        points = list(datadict.keys())
+
+        # Find the NBI points contained in bpoly:
+        points_to_keep = set()
+        for pt in points:
+            if bpoly.contains(pt):
+                points_to_keep.add(pt)
+        datadict = {pt: datadict[pt] for pt in points_to_keep}
+
+        # Display the number of NSI points that are within roi:
+        print(f'\nFound a total of {len(points_to_keep)} building points in'
+              ' NSI that are within the entered region of interest')
+
+        # Save the results in the inventory:
         inventory = AssetInventory()
-
-        for feature in geojson['features']:
-            # Access geometry and properties
-            # make a list with just 1 enntry
-            coordinates = [feature['geometry']['coordinates']]
-            properties = feature['properties']
-            properties['type'] = 'Building'
-            id = properties['fd_id']
-            asset = Asset(id, coordinates, properties)
-            inventory.add_asset(id, asset)
-
-        # return self.GetRawDataROI(region_boundary.get_boundary()[0], outfile)
-        return inventory
-
-    def get_raw_data_given_inventory(self,
-                                     inventory: AssetInventory,
-                                     length_unit: str = 'ft',
-                                     outfile: str = '') -> AssetInventory:
-        """
-        Method that gets nsi data given a region boundary
-
-        Input:  AssetInventory
-                   The Asset inventory whose footprints we use to obtain NSI data
-                length unit
-                   The units data to be returned in, 'm' or 'ft'
-                outfile
-                   Optional string
-
-        Output: AssetInventory
-                   The inputed AssetInventory is updated and returned. returned for clarity of code
-        """
-
-        footprints, asset_keys = inventory.get_coordinates()
-        geojson, footprints_index = self.GetRawDataROI(
-            footprints,  length_unit)
-
-        #print('keys: ', asset_keys, ' index   ', footprints_index)
-
-        features = geojson['features']
-        for index, feature in enumerate(geojson['features']):
-            properties = feature['properties']
-            properties['type'] = 'Building'
-            asset_id = asset_keys[footprints_index[index]]
-            inventory.add_asset_features(asset_id, properties)
-
-        #
-        # now update original inventory
-        #
-
-        # print(geojson)
+        for geometry, features in datadict.items():
+            index = features['fd_id']
+            coordinates = [[geometry.x, geometry.y]]
+            features['type'] = ASSET_TYPE
+            asset = Asset(index, coordinates, features)
+            inventory.add_asset(index, asset)
 
         return inventory
 
@@ -537,7 +466,7 @@ class NSI_Parser:
                                           inventory: AssetInventory,
                                           length_unit: str = 'ft',
                                           outfile: str = '',
-                                          get_extended_features: bool=False,
+                                          get_extended_features: bool = False,
                                           add_features: list = []):
         """
         Get NSI data corresponding to an AssetInventory.
@@ -551,19 +480,23 @@ class NSI_Parser:
                 get_extended_features
                    additionally get split level and gararge
                 add_features
-                   Optional list of strings. Use this if you want to include additional features in the filtered inventory
+                   Optional list of strings. Use this if you want to include
+                   additional features in the filtered inventory
 
         Output: dict
-                Attribute dictionary for the footprints containing the attributes:
-                1)latitude, 2)longitude, 3)building plan area, 4)number of 
-                floors, 5)year of construction, 6)replacement cost, 7)structure
-                type, 8)occupancy class, 9)footprint polygon
-                If "get_extended_features" option is selected, output additionally includes 
-                10) split level and 11) gararge
+                Attribute dictionary for the footprints containing the
+                attributes: 1)latitude, 2)longitude, 3)building plan area,
+                4)number of floors, 5)year of construction, 6)replacement cost,
+                7)structure type, 8)occupancy class, 9)footprint polygon
+                If "get_extended_features" option is selected, output
+                additionally includes 10) split level and 11) gararge
         """
-
         footprints, asset_keys = inventory.get_coordinates()
-        geojson, footprints_index = self.GetNSIData(footprints, length_unit, get_extended_features = get_extended_features, add_features=add_features)
+        geojson, footprints_index = self.GetNSIData(
+            footprints,
+            length_unit,
+            get_extended_features=get_extended_features,
+            add_features=add_features)
 
         # print('keys: ', asset_keys, ' index   ', footprints_index)
         # print(geojson)
@@ -572,7 +505,6 @@ class NSI_Parser:
         # now update original inventory
         #
 
-        features = geojson['features']
         for index, feature in enumerate(geojson['features']):
             # Access geometry and properties
             properties = feature['properties']
@@ -583,3 +515,53 @@ class NSI_Parser:
 
         return inventory
         # return self.GetNSIData(footprints(),  length_unit)
+
+    @staticmethod
+    def _get_nsi_data(bbox: tuple) -> dict:
+        """
+        Get the NSI data for a bounding box entry.
+
+        Args:
+            bbox (tuple) Tuple containing the minimum and maximum latitude and
+                longitude values.
+        Returns:
+            dict: Dictionary containing extracted NBI data keyed using the
+                NBI point coordinates
+        """
+        # Unpack the bounding box coordinates:
+        (minlon, minlat, maxlon, maxlat) = bbox
+
+        # Construct the query URL for the bounding box input
+        bboxstr = (f'{minlon:.5f},{minlat:.5f},{minlon:.5f},{maxlat:.5f},'
+                   f'{maxlon:.5f},{maxlat:.5f},{maxlon:.5f},{minlat:.5f},'
+                   f'{minlon:.5f},{minlat:.5f}')
+        url = API_ENDPOINT + bboxstr
+
+        # Define a retry stratey for common error codes to use in downloading
+        # NBI data:
+        session = requests.Session()
+        retries = Retry(total=5,
+                        backoff_factor=0.1,
+                        status_forcelist=[500, 502, 503, 504])
+        session.mount('https://', HTTPAdapter(max_retries=retries))
+
+        # Download NBI data using the defined retry strategy, read downloaded
+        # GeoJSON data into a list:
+        logging.info('\nGetting National Structure Inventory (NSI) building '
+                     'data for the entered location...')
+
+        try:
+            response = session.get(url, timeout=10)
+            response.raise_for_status()  # Raise an HTTPError for bad responses
+            data = response.json().get('features', [])
+
+            # Convert GeoJSON features to a dictionary with (lon, lat) as keys
+            return {Point(feat['geometry']['coordinates']): feat['properties']
+                    for feat in data}
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Request failed: {e}")
+            return {}
+        except (KeyError, ValueError) as e:
+            logging.error(f"Unexpected response structure: {e}")
+            return {}
