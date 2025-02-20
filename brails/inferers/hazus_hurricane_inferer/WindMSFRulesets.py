@@ -63,7 +63,6 @@ def MSF_config(BIM):
         class.
     """
 
-    year = BIM['YearBuilt'] # just for the sake of brevity
     available_features = BIM.keys()
 
 
@@ -78,9 +77,6 @@ def MSF_config(BIM):
             RWC = 'strap'  # Strap
         else:
             RWC = 'tnail'  # Toe-nail
-
-    # Story Flag
-    stories = min(BIM['NumberOfStories'], 2)
 
 
     if "Shutters" in BIM:
@@ -98,7 +94,7 @@ def MSF_config(BIM):
         # surrounding the opening, and the attachments are resistant to corrosion
         # and are able to resist component and cladding loads;
         # Earlier IRC editions provide similar rules.
-        if year >= 2000:
+        if BIM['YearBuilt'] >= 2000:
             shutters = BIM['WindBorneDebris']
         # BOCA 1996 and earlier:
         # Shutters were not required by code until the 2000 IBC. Before 2000, the
@@ -116,71 +112,84 @@ def MSF_config(BIM):
                 shutters = False
 
 
+    is_ready_to_infer(available_features=available_features, needed_features = ["RoofFrameType"], inferred_feature= "Masonry Single Family class")
+    
     if BIM['RoofFrameType'] == 'trs':
 
-        # Roof Deck Attachment (RDA)
-        # IRC codes:
-        # NJ code requires 8d nails (with spacing 6”/12”) for sheathing thicknesses
-        # between ⅜”-1” -  see Table R602.3(1)
-        # Fastener selection is contingent on thickness of sheathing in building
-        # codes. Commentary for Table R602.3(1) indicates 8d nails with 6”/6”
-        # spacing (enhanced roof spacing) for ultimate wind speeds greater than
-        # a speed_lim. speed_lim depends on the year of construction
-        RDA = '6d' # Default (aka A) in Reorganized Rulesets - WIND
-        if year >= 2016:
-            # IRC 2015
-            speed_lim = 130.0 # mph
-        else:
-            # IRC 2000 - 2009
-            speed_lim = 100.0 # mph
-        if BIM['DesignWindSpeed'] > speed_lim:
-            RDA = '8s'  # 8d @ 6"/6" ('D' in the Reorganized Rulesets - WIND)
-        else:
-            RDA = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
-
-        # Secondary Water Resistance (SWR)
-        # Minimum drainage recommendations are in place in NJ (See below).
-        # However, SWR indicates a code-plus practice.
-        SWR = random.random() < 0.6
-
-        # Garage
-        # As per IRC 2015:
-        # Garage door glazed opening protection for windborne debris shall meet the
-        # requirements of an approved impact-resisting standard or ANSI/DASMA 115.
-        # Exception: Wood structural panels with a thickness of not less than 7/16
-        # inch and a span of not more than 8 feet shall be permitted for opening
-        # protection. Panels shall be predrilled as required for the anchorage
-        # method and shall be secured with the attachment hardware provided.
-        # Permitted for buildings where the ultimate design wind speed is 180 mph
-        # or less.
-        #
-        # Average lifespan of a garage is 30 years, so garages that are not in WBD
-        # (and therefore do not have any strength requirements) that are older than
-        # 30 years are considered to be weak, whereas those from the last 30 years
-        # are considered to be standard.
-        if BIM['Garage'] == -1:
-            # no garage data, using the default "none"
-            garage = 'no'
-        else:
-            if year > (datetime.datetime.now().year - 30):
-                if BIM['Garage'] < 1:
-                    garage = 'no' # None
-                else:
-                    if shutters:
-                        garage = 'sup' # SFBC 1994
-                    else:
-                        garage = 'std' # Standard
+        if "RoofDeckAttachmentW" in BIM:
+            RDA = BIM["RoofDeckAttachmentW"]
+        elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentW"):
+            # Roof Deck Attachment (RDA)
+            # IRC codes:
+            # NJ code requires 8d nails (with spacing 6”/12”) for sheathing thicknesses
+            # between ⅜”-1” -  see Table R602.3(1)
+            # Fastener selection is contingent on thickness of sheathing in building
+            # codes. Commentary for Table R602.3(1) indicates 8d nails with 6”/6”
+            # spacing (enhanced roof spacing) for ultimate wind speeds greater than
+            # a speed_lim. speed_lim depends on the year of construction
+            RDA = '6d' # Default (aka A) in Reorganized Rulesets - WIND
+            if BIM['YearBuilt'] >= 2016:
+                # IRC 2015
+                speed_lim = 130.0 # mph
             else:
-                # year <= current year - 30
-                if BIM['Garage'] < 1:
-                    garage = 'no' # None
-                else:
-                    if shutters:
-                        garage = 'sup'
+                # IRC 2000 - 2009
+                speed_lim = 100.0 # mph
+            if BIM['DesignWindSpeed'] > speed_lim:
+                RDA = '8s'  # 8d @ 6"/6" ('D' in the Reorganized Rulesets - WIND)
+            else:
+                RDA = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
+
+
+        if "SecondaryWaterResistance" in BIM:
+            SWR = BIM["SecondaryWaterResistance"]
+        else:
+            # Secondary Water Resistance (SWR)
+            # Minimum drainage recommendations are in place in NJ (See below).
+            # However, SWR indicates a code-plus practice.
+            SWR = random.random() < 0.6
+
+        if "GarageDoor" in BIM:
+            garage = BIM["GarageDoor"]
+        elif is_ready_to_infer(available_features=available_features, needed_features = ["Garage"], inferred_feature= "GarageDoor"):
+            # Garage
+            # As per IRC 2015:
+            # Garage door glazed opening protection for windborne debris shall meet the
+            # requirements of an approved impact-resisting standard or ANSI/DASMA 115.
+            # Exception: Wood structural panels with a thickness of not less than 7/16
+            # inch and a span of not more than 8 feet shall be permitted for opening
+            # protection. Panels shall be predrilled as required for the anchorage
+            # method and shall be secured with the attachment hardware provided.
+            # Permitted for buildings where the ultimate design wind speed is 180 mph
+            # or less.
+            #
+            # Average lifespan of a garage is 30 years, so garages that are not in WBD
+            # (and therefore do not have any strength requirements) that are older than
+            # 30 years are considered to be weak, whereas those from the last 30 years
+            # are considered to be standard.
+            if BIM['Garage'] == -1:
+                # no garage data, using the default "none"
+                garage = 'no'
+            else:
+                is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "GarageDoor")
+                if BIM['YearBuilt'] > (datetime.datetime.now().year - 30):
+                    if BIM['Garage'] < 1:
+                        garage = 'no' # None
                     else:
-                        garage = 'wkd' # Weak
+                        if shutters:
+                            garage = 'sup' # SFBC 1994
+                        else:
+                            garage = 'std' # Standard
+                else:
+                    # year <= current year - 30
+                    if BIM['Garage'] < 1:
+                        garage = 'no' # None
+                    else:
+                        if shutters:
+                            garage = 'sup'
+                        else:
+                            garage = 'wkd' # Weak
 
-
+        is_ready_to_infer(available_features=available_features, needed_features = ['NumberOfStories', 'TerrainRoughness', 'RoofShape', 'RoofFrameType', 'MasonryReinforcing'], inferred_feature= "M.SF class")
         stories = min(BIM['NumberOfStories'], 2)
 
         essential_features = dict(
@@ -221,31 +230,47 @@ def MSF_config(BIM):
         # relatively stable, that implies that roughtly 15% of roofs are smlt.
         # ref. link: https://www.bdcnetwork.com/blog/metal-roofs-are-soaring-
         # popularity-residential-marmet
-        roof_cover_options = ['smtl', 'cshl']
-        roof_cover = roof_cover_options[int(random.random() < 0.85)]
 
-        # Roof Deck Attachment (RDA)
-        # NJ IBC 1507.2.8.1 (for cshl)
-        # high wind attachments are required for DSWII > 142 mph
-        # NJ IBC 1507.4.5 (for smtl)
-        # high wind attachment are required for DSWII > 142 mph
-        if BIM['DesignWindSpeed'] > 142.0:
-            RDA = 'sup' # superior
+
+        if "RoofCover" in BIM:
+            roof_cover = BIM["RoofCover"]
         else:
-            RDA = 'std' # standard
+            roof_cover_options = ['smtl', 'cshl']
+            roof_cover = roof_cover_options[int(random.random() < 0.85)]
 
-        # Secondary Water Resistance (SWR)
-        # Minimum drainage recommendations are in place in NJ (See below).
-        # However, SWR indicates a code-plus practice.
-        SWR = 'null' # Default
-        if BIM['RoofShape'] == 'flt':
-            SWR = int(True)
-        elif ((BIM['RoofShape'] in ['hip', 'gab']) and 
-              (roof_cover=='cshl') and (RDA=='sup')):
-            SWR = int(random.random() < 0.6)
+
+        if "RoofDeckAttachmentW" in BIM:
+            RDA = BIM["RoofDeckAttachmentW"]
+        elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentW"):
+            # Roof Deck Attachment (RDA)
+            # NJ IBC 1507.2.8.1 (for cshl)
+            # high wind attachments are required for DSWII > 142 mph
+            # NJ IBC 1507.4.5 (for smtl)
+            # high wind attachment are required for DSWII > 142 mph
+            if BIM['DesignWindSpeed'] > 142.0:
+                RDA = 'sup' # superior
+            else:
+                RDA = 'std' # standard
+
+
+        if "SecondaryWaterResistance" in BIM:
+            SWR = BIM["SecondaryWaterResistance"]
+
+        elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofShape"], inferred_feature= "SecondaryWaterResistance"):
+            # Secondary Water Resistance (SWR)
+            # Minimum drainage recommendations are in place in NJ (See below).
+            # However, SWR indicates a code-plus practice.
+            SWR = 'null' # Default
+            if BIM['RoofShape'] == 'flt':
+                SWR = int(True)
+            elif ((BIM['RoofShape'] in ['hip', 'gab']) and 
+                  (roof_cover=='cshl') and (RDA=='sup')):
+                SWR = int(random.random() < 0.6)
+
+
+        is_ready_to_infer(available_features=available_features, needed_features = ['NumberOfStories','RoofFrameType','RoofShape','TerrainRoughness'], inferred_feature= "M.SF class")
 
         stories = min(BIM['NumberOfStories'], 2)
-
 
         essential_features = dict(
             BuildingTag = "M.SF.", 

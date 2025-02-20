@@ -134,7 +134,7 @@ def CECB_config(BIM):
             WWR = 'hig'
 
 
-    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "BuildingTag for C.ECB")
+    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "C.ECB class")
 
     if BIM['NumberOfStories'] <= 2:
         bldg_tag = 'C.ECB.L'

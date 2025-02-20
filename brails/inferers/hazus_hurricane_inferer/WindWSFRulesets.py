@@ -70,8 +70,6 @@ def WSF_config(BIM):
     # Minimum drainage recommendations are in place in NJ (See below).
     # However, SWR indicates a code-plus practice.
 
-
-
     if "SecondaryWaterResistance" in BIM:
         SWR = BIM["SecondaryWaterResistance"]
 
@@ -126,14 +124,10 @@ def WSF_config(BIM):
     # spacing (enhanced roof spacing) for ultimate wind speeds greater than
     # a speed_lim. speed_lim depends on the year of construction
 
-
-
-
     if "RoofDeckAttachmentW" in BIM:
         RDA = BIM["RoofDeckAttachmentW"]
 
     else:
-
         is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofDeckAttachmentW")    
         RDA = '6d' # Default (aka A) in Reorganized Rulesets - WIND
         if year > 2000:
@@ -181,7 +175,6 @@ def WSF_config(BIM):
     # guidance documents, e.g., straps would be required (based on WFCM 2015);
     # will assume that if classified as HazardProneRegion, then enhanced connection would be
     # used.
-
 
     # Roof-Wall Connection (RWC)
     if "RoofToWallConnection" in BIM:
@@ -235,7 +228,6 @@ def WSF_config(BIM):
             # year <= 1992
             RWC = 'tnail' # Toe-nail
 
-
     if "Shutters" in BIM:
         shutters = BIM["Shutters"]
 
@@ -268,7 +260,6 @@ def WSF_config(BIM):
                 shutters = random.random() < 0.45
             else:
                 shutters = False
-
 
     if "GarageDoor" in BIM:
         garage = BIM["GarageDoor"]
@@ -325,6 +316,8 @@ def WSF_config(BIM):
             shutters = True # HAZUS ties SFBC 1994 to with shutters
         elif (garage == 'std') or (garage == 'wkd'):
             shutters = False # HAZUS ties weak/standard garage to w/o shutters
+
+    is_ready_to_infer(available_features=available_features, needed_features = ['NumberOfStories', 'TerrainRoughness', 'RoofShape'], inferred_feature= "M.SF class")
 
     essential_features = dict(
         BuildingTag = "W.SF." , 

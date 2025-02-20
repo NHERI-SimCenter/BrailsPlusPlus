@@ -62,7 +62,6 @@ def SERB_config(BIM):
         class.
     """
 
-    year = BIM['YearBuilt'] # just for the sake of brevity
     available_features = BIM.keys()
 
     if "RoofCover" in BIM:
@@ -75,7 +74,7 @@ def SERB_config(BIM):
             # Warning: HAZUS does not have N/A option for CECB, so here we use bur
         else:
             is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofCover")
-            if year >= 1975:
+            if BIM['YearBuilt'] >= 1975:
                 roof_cover = 'spm'
             else:
                 # year < 1975
@@ -87,7 +86,7 @@ def SERB_config(BIM):
     elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "Shutters"):
 
         # shutters
-        if year >= 2000:
+        if BIM['YearBuilt']  >= 2000:
             shutters = BIM['WindBorneDebris']
         # BOCA 1996 and earlier:
         # Shutters were not required by code until the 2000 IBC. Before 2000, the
@@ -151,7 +150,7 @@ def SERB_config(BIM):
         else:
             MRDA = 'sup'  # superior
 
-    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "BuildingTag (L,M, or H)")
+    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories",'TerrainRoughness'], inferred_feature= "S.ERB Class")
     if BIM['NumberOfStories'] <= 2:
         bldg_tag = 'S.ERB.L'
     elif BIM['NumberOfStories'] <= 5:
