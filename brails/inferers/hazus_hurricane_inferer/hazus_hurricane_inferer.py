@@ -142,8 +142,10 @@ class HazusHurricaneInferer(InferenceEngine):
         n_possible_worlds = self.n_possible_worlds
 
         #
-        # Determine n_pw
+        # Determine existing_worlds and n_pw
         #
+        # existing_worlds : count the number of possible worlds in the current inventory
+        # only if existing_worlds==1, n_pw possible worlds will be generated. otherwise n_pw is not used
 
         elapseStart = time.time()
         existing_worlds = input_inventory.get_n_pw()
@@ -154,6 +156,9 @@ class HazusHurricaneInferer(InferenceEngine):
 
         if existing_worlds == 1:
             n_pw = n_possible_worlds  # if zero, it will give the most likely value
+            logger.warning(
+                    f"The existing inventory does not contain multiple possible worlds. {n_pw} worlds will be generated for new features"
+            )
         else:
             if n_possible_worlds == 0:
                 pass
@@ -171,13 +176,10 @@ class HazusHurricaneInferer(InferenceEngine):
                 raise Exception(msg)
 
         #
-        # TODO Update keynames in inventory
+        # Update keynames in inventory
         #
 
-
-        #
-        # TODO utilize n possible worlds
-        #
+        input_inventory.change_feature_names(self.name_mapping)
 
         #
         # set seed
@@ -280,22 +282,27 @@ class HazusHurricaneInferer(InferenceEngine):
 
     def infer_building_one_by_one(self, inventory_json,n_pw):
 
-        # TODO: utilize n_pw
+        for pw in range(n_pw):
+            new_features_tmp = {}
+            for key, bldg in inventory_json.items():
+                try:
+                    essential_features = auto_populate(bldg)
+                except ValueError as e:
+                    msg = f"Failed in building {key} \n"
+                    msg += str(e)  # Convert exception to string
+                    logger.error(msg)
+                    sys.exit(-1)
 
-        new_features = {}
+                new_features_tmp[key] = essential_features
 
-        for key, bldg in inventory_json.items():
+            if pw==0:
+                # first possible world
+                new_features = new_features_tmp
+            else:
+                new_features = self.merge_two_json(
+                    new_features_tmp, new_features, shrink=(pw == n_pw - 1)
+                )
 
-            # TODO user chooce wheather to use default or not
-            try:
-                essential_features = auto_populate(bldg)
-            except ValueError as e:
-                msg = f"Failed in building {key} \n"
-                msg += str(e)  # Convert exception to string
-                logger.error(msg)
-                sys.exit(-1)
-
-            new_features[key] = essential_features
 
         return new_features
 
