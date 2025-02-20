@@ -59,7 +59,9 @@ import numpy as np
 import pandas as pd
 from shapely import box
 from shapely.geometry import shape
+
 from brails.utils import InputValidator
+from brails.utils import SpatialJoinMethods
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
@@ -124,7 +126,6 @@ class Asset:
             overwrite (bool, optional): Whether to overwrite existing features.
                 Defaults to True.
         """
-
         n_pw = 1
 
         if overwrite:
@@ -323,24 +324,49 @@ class AssetInventory:
         """
         Add model predictions to the inventory.
 
-        This method goes through the inventory and updates each item with the
-        model predictions by adding them as a new feature under the specified
-        key.
+        This method goes through the inventory and updates each item by adding
+        the corresponding model prediction as a new feature under the specified
+        key. Items without a matching prediction are left unchanged.
 
         Args:
-            predictions (dict): A dictionary containing the model predictions, where 
-                                 the keys correspond to the inventory items and 
-                                 the values are the predicted features to be added.
-            feature_key (str): The key under which the predictions will be added 
-                                as a new feature to the inventory items.
+            predictions (dict):
+                A dictionary where keys correspond to inventory items and
+                values represent the predicted features to be added.
+            feature_key (str):
+                The key under which the predictions will be stored as a new
+                feature in each inventory item.
+
+        Raises:
+            TypeError:
+                If `predictions` is not a dictionary or `feature_key` is not a
+                string.
+            ValueError:
+                If none of the keys in `predictions` exist in `self.inventory`.
 
         Example:
-            # Assuming `self.inventory` has inventory items and `model_predictions` is a dictionary of predictions
-            self.add_model_predictions(predictions=model_predictions, feature_key="prediction_score")
-
+            self.add_model_predictions(predictions={1:'gable',
+                                                    3:'flat',
+                                                    12:'hip'},
+                                       feature_key='roof_type')
         """
+        # Validate predictions input:
+        if not isinstance(predictions, dict):
+            raise TypeError("Expected 'predictions' to be a dictionary.")
+
+        # Ensure at least one key in predictions matches inventory:
+        common_keys = set(predictions.keys()) & set(self.inventory.keys())
+        if not common_keys:
+            raise ValueError("None of the keys in 'predictions' exist in "
+                             "'self.inventory'.")
+
+        # Validate feature_key input:
+        if not isinstance(feature_key, str):
+            raise TypeError("Expected 'feature_key' to be a string.")
+
+        # Update inventory items with corresponding predictions:
         for key, val in self.inventory.items():
-            val.add_features({feature_key: predictions[key]})
+            if key in predictions:
+                val.add_features({feature_key: predictions.get(key)})
 
     def change_feature_names(self, feature_name_mapping: dict):
         """
@@ -352,19 +378,20 @@ class AssetInventory:
                 values are the new feature names.
 
         Raises:
-            ValueError:
+            TypeError:
                 If the mapping is not a dictionary or contains invalid
                 key-value pairs.
         """
         # Validate that feature_name_mapping is a dictionary:
         if not isinstance(feature_name_mapping, dict):
-            raise ValueError(
+            raise TypeError(
                 "The 'feature_name_mapping' must be a dictionary.")
 
         # Validate that all keys and values are strings:
         for original_name, new_name in feature_name_mapping.items():
-            if not isinstance(original_name, str) or not isinstance(new_name, str):
-                raise ValueError(
+            if not isinstance(original_name, str) or not isinstance(new_name,
+                                                                    str):
+                raise TypeError(
                     "Both original and feature new names must be "
                     f"strings. Invalid pair: ({original_name}, "
                     f"{new_name})"
@@ -504,7 +531,8 @@ class AssetInventory:
 
         return result
 
-    def get_coordinates(self) -> tuple[list[list[list[float, float]]], list[str | int]]:
+    def get_coordinates(
+            self) -> tuple[list[list[list[float, float]]], list[str | int]]:
         """
         Get geometry (coordinates) and keys of all assets in the inventory.
 
@@ -634,6 +662,43 @@ class AssetInventory:
             geojson["features"].append(feature)
 
         return geojson
+
+    def join(self,
+             inventory_to_join: 'AssetInventory',
+             method: str = 'get_points_in_polygons'):
+        """
+        Merge with another AssetInventory using specified spatial join method.
+
+        Args:
+            inventory_to_join (AssetInventory):
+                The inventory to be joined with the current one.
+            method (str):
+                The spatial join method to use. Defaults to 'get_points_in_
+                polygons'. The method defines how the join operation is
+                executed between inventories.
+
+        Raises:
+            TypeError:
+                - If `inventory_to_join` is not an instance of
+                  `AssetInventory`.
+                - If `method` is not a string.
+
+        Returns:
+            None: This method modifies the `AssetInventory` instance in place.
+        """
+        # Ensure inventory_to_join is of type AssetInventory:
+        if not isinstance(inventory_to_join, AssetInventory):
+            raise TypeError('Inventory input specified for join needs to be an'
+                            'AssetInventory')
+
+        # Ensure method is a valid string:
+        if not isinstance(method, str):
+            raise TypeError('Join method should be a valid string')
+
+        # Perform the spatial join using the specified method:
+        self.inventory = SpatialJoinMethods.execute(method,
+                                                    self.inventory,
+                                                    inventory_to_join)
 
     def write_to_geojson(self, output_file: str = "") -> dict:
         """
