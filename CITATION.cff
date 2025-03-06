@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use BrailsPlusPlus in your research, please cite it using the following metadata."
+title: "BRAILS++"
+version: "4.0.0" 
+repository-code: "https://github.com/NHERI-SimCenter/BrailsPlusPlus"
+url: "https://github.com/NHERI-SimCenter/BrailsPlusPlus"
+license: "BSD 3-Clause" 
+keywords:
+  - information modeling for built environment
+  - machine learning
+  - computer vision
+  - natural hazards engineering
+authors:
+  - family-names: "Cetiner"
+    given-names: "Barbaros"
+    orcid: "https://orcid.org/0000-0002-9726-8120"
+  - family-names: "McKenna"
+    given-names: "Frank"
+contact:
+  family-names: "NHERI SimCenter"
+  email: "nheri-simcenter@berkeley.edu"
+abstract: >
+  BRAILS++ is an object-oriented framework for building applications 
+  that focus on generating asset inventories for large geographic regions.
