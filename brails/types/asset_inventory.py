@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 12-28-2025
+# 02-24-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -242,21 +242,28 @@ class AssetInventory:
         Add an Asset to the inventory.
 
         Args:
-            asset_id (str|int): The unique identifier for the asset.
-            asset (Asset): The asset to be added.
+            asset_id (str | int):
+                The unique identifier for the asset.
+            asset (Asset):
+                The asset to be added.
 
         Returns:
-            bool: True if the asset was added successfully, False otherwise.
-        """
-        existing_asset = self.inventory.get(asset_id, None)
+            bool:
+                True if the asset was added successfully, False otherwise.
 
-        if existing_asset is not None:
+        Raises:
+            TypeError:
+                If `asset` is not an instance of `Asset`.
+        """
+        if not isinstance(asset, Asset):
+            raise TypeError("Expected an instance of Asset.")
+
+        if asset_id in self.inventory:
             logger.warning('Asset with id %s already exists. Asset was not '
                            'added', asset_id)
             return False
 
         self.inventory[asset_id] = asset
-
         return True
 
     def add_asset_coordinates(
@@ -392,9 +399,9 @@ class AssetInventory:
             if not isinstance(original_name, str) or not isinstance(new_name,
                                                                     str):
                 raise TypeError(
-                    "Both original and feature new names must be "
-                    f"strings. Invalid pair: ({original_name}, "
-                    f"{new_name})"
+                    'Both original and new names of features must be '
+                    f'strings. Invalid pair: ({original_name}, '
+                    f'{new_name})'
                 )
 
         # Iterate over each asset in the AssetInventory:
@@ -510,22 +517,44 @@ class AssetInventory:
         """
         Generate a smaller AssetInventory with a random selection of assets.
 
+        This method randomly selects `nsamples` assets from the existing
+        inventory and returns a new AssetInventory instance containing only
+        these sampled assets. The randomness can be controlled using an
+        optional `seed` for reproducibility.
+
         Args:
-            nsamples (int): The number of assets to include in the sampled
-                inventory.
-            seed (int | float | str | bytes | bytearray | None): The seed for
-                the random generator. If None, the seed is set to the sytem
-                default (i.e., the current system time).
+            nsamples (int):
+                The number of assets to randomly sample from the inventory.
+                Must be a positive integer not exceeding the total number of
+                assets.
+            seed (int | float | str | bytes | bytearray | None, optional):
+                A seed value for the random generator to ensure
+                reproducibility. If None, the system default (current system
+                time) is used.
 
         Returns:
-           AssetInventory: A new AssetInventory instance containing a random
-               subset of assets.
+            AssetInventory:
+                A new AssetInventory instance containing the randomly selected
+                subset of assets.
+
+        Raises:
+            ValueError:
+                If `nsamples` is not a positive integer or exceeds the number
+                of assets in the inventory.
         """
-        result = AssetInventory()
+        if not isinstance(nsamples, int) or nsamples <= 0:
+            ValueError('Number of samples must be a positive integer.')
+
+        if nsamples > len(self.inventory):
+            raise ValueError('Number of samples cannot exceed the number of '
+                             'assets in the inventory')
+
         if seed is not None:
             random.seed(seed)
 
         random_keys = random.sample(list(self.inventory.keys()), nsamples)
+
+        result = AssetInventory()
         for key in random_keys:
             result.add_asset(key, self.inventory[key])
 
@@ -575,9 +604,9 @@ class AssetInventory:
         # Check buffer input:
         buffer_levels = buffer.lower()
 
-        if buffer == "default":
+        if buffer == 'default':
             buffer_levels = [0.0002, 0.0001, 0.0002, 0.0001]
-        elif buffer == "none":
+        elif buffer == 'none':
             buffer_levels = [0, 0, 0, 0]
         elif (
             isinstance(buffer, list)
@@ -586,11 +615,9 @@ class AssetInventory:
         ):
             buffer_levels = buffer.copy()
         else:
-            raise ValueError(
-                "Invalid buffer input. Valid options for the "
-                "buffer input are 'default', 'none', or a list of"
-                " 4 integers."
-            )
+            raise ValueError('Invalid buffer input. Valid options for the '
+                             "buffer input are 'default', 'none', or a list of"
+                             ' 4 integers.')
 
         # Determine the geographical extent of the inventory:
         minlon, maxlon, minlat, maxlat = 180, -180, 90, -90
@@ -611,10 +638,24 @@ class AssetInventory:
         """
         Generate a GeoJSON representation of the assets in the inventory.
 
+        The function constructs a valid GeoJSON `FeatureCollection`, where each
+        asset is represented as a `Feature`. Each feature contains:
+        - A `geometry` field (Point, LineString, or Polygon) based on the
+          asset's coordinates.
+        - A `properties` field containing asset-specific metadata.
+
+        Additionally, the GeoJSON output includes:
+        - A timestamp (`generated`) indicating when the data was created.
+        - The `BRAILS` package version (if available).
+        - A Coordinate Reference System (`crs`) definition set to "CRS84".
+
         Returns:
-            dict: A dictionary in GeoJSON format containing all assets, with
-                each asset represented as a feature. Each feature includes the
-                geometry (Point or Polygon) and associated properties.
+            dict:
+                A dictionary formatted as a GeoJSON `FeatureCollection`
+                containing all assets in the inventory.
+        Note:
+            Assets without geometry are excluded from the generated GeoJSON
+            representation.
         """
         try:
             brails_version = version("BRAILS")
@@ -633,33 +674,25 @@ class AssetInventory:
         }
 
         for key, asset in self.inventory.items():
-            if len(asset.coordinates) == 1:
+            geometry = None
+            if InputValidator.is_point(asset.coordinates):
                 geometry = {"type": "Point",
                             "coordinates": asset.coordinates[0]}
-            elif len(asset.coordinates) == 2:
+            elif InputValidator.is_linestring(asset.coordinates):
                 geometry = {
                     "type": "LineString",
-                    "coordinates": asset.coordinates,
-                }  # Line does not exist?
-            else:
-                if asset.coordinates[0] == asset.coordinates[-1]:
-                    geometry = {"type": "Polygon",
-                                "coordinates": [asset.coordinates]}
-                else:
-                    geometry = {"type": "LineString",
-                                "coordinates": asset.coordinates}
+                    "coordinates": asset.coordinates}
+            elif InputValidator.is_polygon(asset.coordinates):
+                geometry = {"type": "Polygon",
+                            "coordinates": [asset.coordinates]}
 
-            feature = {
-                "type": "Feature",
-                "properties": asset.features,
-                "geometry": geometry,
-            }
-
-            # fmk - NOPE - not geojson
-            # if 'type' in asset.features:
-            #    feature['type'] = asset.features['type']
-
-            geojson["features"].append(feature)
+            if geometry:
+                geojson["features"].append(
+                    {"type": "Feature",
+                     "properties": asset.features,
+                     "geometry": geometry
+                     }
+                )
 
         return geojson
 
@@ -731,7 +764,8 @@ class AssetInventory:
             str_type (str):
                   "building" or "bridge"
             id_column (str):
-                  The name of column that contains id values. If None, new indicies will be assigned
+                  The name of column that contains id values. If None, new
+                  indices will be assigned
 
         Returns:
             bool:

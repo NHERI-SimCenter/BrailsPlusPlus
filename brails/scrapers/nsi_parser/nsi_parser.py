@@ -37,7 +37,7 @@
 #
 #
 # Last updated:
-# 12-20-2025
+# 02-28-2025
 
 """
 This module defines a class for scraping data from NSI.
@@ -187,8 +187,8 @@ class NSI_Parser:
 
         # Download NBI data using the defined retry strategy, read downloaded
         # GeoJSON data into a list:
-        logging.info('\nGetting National Structure Inventory (NSI) building '
-                     'data for the entered location...')
+        print('\nGetting National Structure Inventory (NSI) building '
+              'data for the entered location...')
 
         try:
             response = session.get(url, timeout=10)
@@ -356,7 +356,7 @@ class NSI_Parser:
         bbox = self.__get_bbox(footprints)
 
         # Get the NBI data for computed bounding box:
-        datadict = self.__get_nbi_data(bbox)
+        datadict = self.__get_nsi_data(bbox)
 
         # Create a footprint-merged building inventory from extracted NBI data:
         attributes, points_keep_footprint_index = get_attr_from_datadict(
