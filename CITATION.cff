@@ -10,6 +10,9 @@ authors:
     orcid: 'https://orcid.org/0000-0002-9726-8120'
   - given-names: Frank
     family-names: McKenna
+  - given-names: Ioannis Vouvakis 
+    family-names: Manousakis
+    orcid: 'https://orcid.org/0009-0009-6143-6741'
 repository-code: 'https://github.com/NHERI-SimCenter/BrailsPlusPlus'
 url: 'https://nheri-simcenter.github.io/BrailsPlusPlus/'
 abstract: >-
