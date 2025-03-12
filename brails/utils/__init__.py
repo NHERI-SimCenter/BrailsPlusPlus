@@ -37,7 +37,6 @@ utils module of the brails package.
 Available classes:
 - Importer: Class for importing class files.
 - GeoTools: Class containing static methods geospatial analysis & operations.
-- SpatialJoinMethods: Class for spatial join operations for AssetInventories
 - ArcgisAPIServiceHelper: Class for interacting with an ArcGIS API service.
 - PlotTools: Class for creating visually-appealing figures.
 - InputValidator: Class for validating BRAILS input data.
@@ -45,7 +44,6 @@ Available classes:
 """
 from .importer import Importer
 from .geo_tools import GeoTools
-from .spatial_join_methods import SpatialJoinMethods
 from .arcgisapi_service_helper import ArcgisAPIServiceHelper
 from .plot_tools import PlotTools
 from .input_validator import InputValidator

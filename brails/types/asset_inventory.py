@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 02-24-2025
+# 02-25-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -572,13 +572,10 @@ class AssetInventory:
                     is represented as a list of [longitude, latitude] pairs.
                 - A list of asset keys corresponding to each Asset.
         """
-        result_coordinates = []
-        result_keys = []
-        for key, asset in self.inventory.items():
-            result_coordinates.append(asset.coordinates)
-            result_keys.append(key)
+        coordinates = [asset.coordinates for asset in self.inventory.values()]
+        asset_ids = list(self.inventory.keys())
 
-        return result_coordinates, result_keys
+        return coordinates, asset_ids
 
     def get_extent(self, buffer: str | list[int] = "default") -> box:
         """
