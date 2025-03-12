@@ -61,7 +61,6 @@ from shapely import box
 from shapely.geometry import shape
 
 from brails.utils import InputValidator
-from brails.utils import SpatialJoinMethods
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
@@ -726,9 +725,12 @@ class AssetInventory:
             raise TypeError('Join method should be a valid string')
 
         # Perform the spatial join using the specified method:
+        """
         self.inventory = SpatialJoinMethods.execute(method,
                                                     self.inventory,
                                                     inventory_to_join)
+        """
+        print('Method not yet implemented')
 
     def write_to_geojson(self, output_file: str = "") -> dict:
         """
