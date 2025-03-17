@@ -44,11 +44,11 @@
 # Tracy Kijewski-Correa
 
 import random
-from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
+from brails.inferers.hazus_inferer_wind.WindMetaVarRulesets import is_ready_to_infer
 
-def CERB_config(BIM):
+def MECB_config(BIM):
     """
-    Rules to identify a HAZUS CERB configuration based on BIM data
+    Rules to identify a HAZUS MECB configuration based on BIM data
 
     Parameters
     ----------
@@ -64,15 +64,15 @@ def CERB_config(BIM):
 
     available_features = BIM.keys()
 
+
     if "RoofCover" in BIM:
         roof_cover = BIM["RoofCover"]
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","RoofShape"], inferred_feature= "RoofCover"):
-
         # Roof cover
         if BIM['RoofShape'] in ['gab', 'hip']:
             roof_cover = 'bur'
-            # Warning: HAZUS does not have N/A option for CECB, so here we use bur
+            # no info, using the default supoorted by HAZUS
         else:
             if BIM['YearBuilt'] >= 1975:
                 roof_cover = 'spm'
@@ -83,25 +83,16 @@ def CERB_config(BIM):
 
 
     if "Shutters" in BIM:
-        roof_cover = BIM["Shutters"]
+        shutters = BIM["Shutters"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "Shutters"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "RoofCover"):
 
         # shutters
         if BIM['YearBuilt'] >= 2000:
             shutters = BIM['WindBorneDebris']
-        # BOCA 1996 and earlier:
-        # Shutters were not required by code until the 2000 IBC. Before 2000, the
-        # percentage of commercial buildings that have shutters is assumed to be
-        # 46%. This value is based on a study on preparedness of small businesses
-        # for hurricane disasters, which says that in Sarasota County, 46% of
-        # business owners had taken action to wind-proof or flood-proof their
-        # facilities. In addition to that, 46% of business owners reported boarding
-        # up their businesses before Hurricane Katrina. In addition, compliance
-        # rates based on the Homeowners Survey data hover between 43 and 50 percent.
         else:
             if BIM['WindBorneDebris']:
-                shutters = random.random() < 0.45
+                shutters = random.random() < 0.46
             else:
                 shutters = False
 
@@ -109,23 +100,39 @@ def CERB_config(BIM):
     if "WindDebrisClass" in BIM:
         WIDD = BIM["WindDebrisClass"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["OccupancyClass"], inferred_feature= "WindDebrisClass"):       
-        # Wind Debris (widd in HAZUS)
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["OccupancyClass"], inferred_feature= "WindDebrisClass"):
+        # Wind Debris (widd in HAZSU)
         # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
         WIDD = 'C' # residential (default)
-        if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C', 'RES3D']:
+        if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C',
+                                     'RES3D']:
             WIDD = 'C' # residential
         elif BIM['OccupancyClass'] == 'AGR1':
             WIDD = 'D' # None
         else:
             WIDD = 'A' # Res/Comm
 
+    # Metal RDA
+    # 1507.2.8.1 High Wind Attachment.
+    # Underlayment applied in areas subject to high winds (Vasd greater
+    # than 110 mph as determined in accordance with Section 1609.3.1) shall
+    #  be applied with corrosion-resistant fasteners in accordance with
+    # the manufacturer’s instructions. Fasteners are to be applied along
+    # the overlap not more than 36 inches on center.
+
+    if "WindDebrisClass" in BIM:
+        MRDA = BIM["WindDebrisClass"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "WindDebrisClass"):
+        if BIM['DesignWindSpeed'] > 142:
+            MRDA = 'std'  # standard
+        else:
+            MRDA = 'sup'  # superior
 
     if "WindowAreaRatio" in BIM:
         WWR = BIM["WindowAreaRatio"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):       
-
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
         # Window area ratio
         if BIM['WindowArea'] < 0.33:
             WWR = 'low'
@@ -134,34 +141,33 @@ def CERB_config(BIM):
         else:
             WWR = 'hig'
 
-    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "BuildingTag for C.ERB")
+    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "M.ECB class")
 
     if BIM['NumberOfStories'] <= 2:
-        bldg_tag = 'C.ERB.L'
+        bldg_tag = 'M.ECB.L'
     elif BIM['NumberOfStories'] <= 5:
-        bldg_tag = 'C.ERB.M'
+        bldg_tag = 'M.ECB.M'
     else:
-        bldg_tag = 'C.ERB.H'
-
-    # extend the BIM dictionary
-    
-    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "C.ECB class")
+        bldg_tag = 'M.ECB.H'
 
     essential_features = dict(
         BuildingTag = bldg_tag, 
         TerrainRoughness=int(BIM['TerrainRoughness']),
         RoofCover = roof_cover,
         Shutters = int(shutters),
+        WindDebrisClass = WIDD,
         WindowAreaRatio = WWR,
-        WindDebrisClass = WIDD
+        RoofDeckAttachmentM = MRDA,
         )
 
+    # extend the BIM dictionary
     BIM.update(dict(essential_features))
 
     # bldg_config = f"{bldg_tag}." \
     #               f"{roof_cover}." \
     #               f"{int(shutters)}." \
     #               f"{WIDD}." \
+    #               f"{MRDA}." \
     #               f"{WWR}." \
     #               f"{int(BIM['TerrainRoughness'])}"
 

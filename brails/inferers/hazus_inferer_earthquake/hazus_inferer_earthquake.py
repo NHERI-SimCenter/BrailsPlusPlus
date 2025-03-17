@@ -55,7 +55,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class Infer_features_for_HazusDL(InferenceEngine):
+class HazusInfererEarthquake(InferenceEngine):
     """
     To provide variables needed for Hazus damage and loss assessment
 

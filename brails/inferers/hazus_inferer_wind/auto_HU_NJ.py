@@ -44,23 +44,23 @@
 # Meredith Lockhead
 # Tracy Kijewski-Correa
 
-
-from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import add_default
-from brails.inferers.hazus_hurricane_inferer.BuildingClassRulesets import building_class
-from brails.inferers.hazus_hurricane_inferer.WindCECBRulesets import CECB_config
-from brails.inferers.hazus_hurricane_inferer.WindCERBRulesets import CERB_config
-from brails.inferers.hazus_hurricane_inferer.WindMECBRulesets import MECB_config
-from brails.inferers.hazus_hurricane_inferer.WindMERBRulesets import MERB_config
-from brails.inferers.hazus_hurricane_inferer.WindMHRulesets import MH_config
-from brails.inferers.hazus_hurricane_inferer.WindMLRIRulesets import MLRI_config
-from brails.inferers.hazus_hurricane_inferer.WindMLRMRulesets import MLRM_config
-from brails.inferers.hazus_hurricane_inferer.WindMMUHRulesets import MMUH_config
-from brails.inferers.hazus_hurricane_inferer.WindMSFRulesets import MSF_config
-from brails.inferers.hazus_hurricane_inferer.WindSECBRulesets import SECB_config
-from brails.inferers.hazus_hurricane_inferer.WindSERBRulesets import SERB_config
-from brails.inferers.hazus_hurricane_inferer.WindSPMBRulesets import SPMB_config
-from brails.inferers.hazus_hurricane_inferer.WindWMUHRulesets import WMUH_config
-from brails.inferers.hazus_hurricane_inferer.WindWSFRulesets import WSF_config
+print("AAA")
+from brails.inferers.hazus_inferer_wind.WindMetaVarRulesets import add_default
+from brails.inferers.hazus_inferer_wind.BuildingClassRulesets import building_class
+from brails.inferers.hazus_inferer_wind.WindCECBRulesets import CECB_config
+from brails.inferers.hazus_inferer_wind.WindCERBRulesets import CERB_config
+from brails.inferers.hazus_inferer_wind.WindMECBRulesets import MECB_config
+from brails.inferers.hazus_inferer_wind.WindMERBRulesets import MERB_config
+from brails.inferers.hazus_inferer_wind.WindMHRulesets import MH_config
+from brails.inferers.hazus_inferer_wind.WindMLRIRulesets import MLRI_config
+from brails.inferers.hazus_inferer_wind.WindMLRMRulesets import MLRM_config
+from brails.inferers.hazus_inferer_wind.WindMMUHRulesets import MMUH_config
+from brails.inferers.hazus_inferer_wind.WindMSFRulesets import MSF_config
+from brails.inferers.hazus_inferer_wind.WindSECBRulesets import SECB_config
+from brails.inferers.hazus_inferer_wind.WindSERBRulesets import SERB_config
+from brails.inferers.hazus_inferer_wind.WindSPMBRulesets import SPMB_config
+from brails.inferers.hazus_inferer_wind.WindWMUHRulesets import WMUH_config
+from brails.inferers.hazus_inferer_wind.WindWSFRulesets import WSF_config
 
 def auto_populate(inventory):
     """

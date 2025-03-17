@@ -44,11 +44,11 @@
 # Tracy Kijewski-Correa
 
 import random
-from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
+from brails.inferers.hazus_inferer_wind.WindMetaVarRulesets import is_ready_to_infer
 
-def MECB_config(BIM):
+def MERB_config(BIM):
     """
-    Rules to identify a HAZUS MECB configuration based on BIM data
+    Rules to identify a HAZUS MERB configuration based on BIM data
 
     Parameters
     ----------
@@ -63,8 +63,7 @@ def MECB_config(BIM):
     """
 
     available_features = BIM.keys()
-
-
+    
     if "RoofCover" in BIM:
         roof_cover = BIM["RoofCover"]
 
@@ -81,31 +80,28 @@ def MECB_config(BIM):
                 roof_cover = 'bur'
 
 
-
     if "Shutters" in BIM:
         shutters = BIM["Shutters"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "RoofCover"):
-
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "shutters"):
         # shutters
         if BIM['YearBuilt'] >= 2000:
             shutters = BIM['WindBorneDebris']
         else:
             if BIM['WindBorneDebris']:
-                shutters = random.random() < 0.46
+                shutters = random.random() < 0.45
             else:
                 shutters = False
-
 
     if "WindDebrisClass" in BIM:
         WIDD = BIM["WindDebrisClass"]
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["OccupancyClass"], inferred_feature= "WindDebrisClass"):
+
         # Wind Debris (widd in HAZSU)
         # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
         WIDD = 'C' # residential (default)
-        if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C',
-                                     'RES3D']:
+        if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C', 'RES3D']:
             WIDD = 'C' # residential
         elif BIM['OccupancyClass'] == 'AGR1':
             WIDD = 'D' # None
@@ -120,19 +116,22 @@ def MECB_config(BIM):
     # the manufacturer’s instructions. Fasteners are to be applied along
     # the overlap not more than 36 inches on center.
 
-    if "WindDebrisClass" in BIM:
-        MRDA = BIM["WindDebrisClass"]
+    if "RoofDeckAttachmentM" in BIM:
+        MRDA = BIM["RoofDeckAttachmentM"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "WindDebrisClass"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
         if BIM['DesignWindSpeed'] > 142:
             MRDA = 'std'  # standard
         else:
             MRDA = 'sup'  # superior
 
+
+
     if "WindowAreaRatio" in BIM:
         WWR = BIM["WindowAreaRatio"]
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
+        
         # Window area ratio
         if BIM['WindowArea'] < 0.33:
             WWR = 'low'
@@ -141,14 +140,14 @@ def MECB_config(BIM):
         else:
             WWR = 'hig'
 
-    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "M.ECB class")
-
+    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "M.ERB class")
     if BIM['NumberOfStories'] <= 2:
-        bldg_tag = 'M.ECB.L'
+        bldg_tag = 'M.ERB.L'
     elif BIM['NumberOfStories'] <= 5:
-        bldg_tag = 'M.ECB.M'
+        bldg_tag = 'M.ERB.M'
     else:
-        bldg_tag = 'M.ECB.H'
+        bldg_tag = 'M.ERB.H'
+
 
     essential_features = dict(
         BuildingTag = bldg_tag, 

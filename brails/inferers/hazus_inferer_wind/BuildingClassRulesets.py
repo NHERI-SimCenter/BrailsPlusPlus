@@ -43,7 +43,7 @@
 # Meredith Lockhead
 # Tracy Kijewski-Correa
 
-from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
+from brails.inferers.hazus_inferer_wind.WindMetaVarRulesets import is_ready_to_infer
 
 
 def building_class(BIM, hazard):

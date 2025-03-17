@@ -47,7 +47,7 @@ import numpy as np
 
 from brails.types.asset_inventory import AssetInventory
 from brails.inferers.inferenceEngine import InferenceEngine
-from brails.inferers.hazus_hurricane_inferer.auto_HU_NJ import auto_populate
+import reverse_geocode
 
 
 # To be replaced with old brails ++ codes
@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.filterwarnings(action="ignore", category=UserWarning)
 
-class HazusHurricaneInferer(InferenceEngine):
+class HazusInfererFlood(InferenceEngine):
     """
     Make inference based on Hazus 6 rulesets
 
@@ -75,31 +75,23 @@ class HazusHurricaneInferer(InferenceEngine):
         self,
         input_inventory: AssetInventory,
         n_possible_worlds=1,
-        include_features=["ReplacementCost", "StructureType"],
+        include_features=None,
         seed=1,
         overwirte_existing=True,
         clean_features=False,
-        planArea_key = "PlanArea",
-        numberOfStories_key = "NumberOfStories",
-        occupancyClass_key = "OccupancyClass",
-        buildingMaterial_key = "BuildingMaterial",
-        designLevel_H_key = "DesignLevel_H",
+        city_key = "City",
         yearBuilt_key = "YearBuilt",
-        roofSystem_key = "RoofFrameType",
-        roofShape_key = "RoofShape",
-        roofSlope_key = "RoofSlope",
-        avgJanTemp_key = "AvgJanTemp",
-        meanRoofHt_key = "MeanRoofHt",
-        windowArea_key = "WindowArea",
-        numberOfUnits_key = "NumberOfUnits",
-        garage_key = "Garage",
         floodZone_key = "FloodZone",
-        windZone_key = "WindZone",
-        designWindSpeed_key = "DesignWindSpeed",
-        LULC_key = "LULC",
-        z0_key = "Z0",
-        sheathingThickness_key = "SheathingThickness"
-    ):
+        firstFloorElevation_key = "FirstFloorElevation",
+        splitLevel_key = "SplitLevel",
+        basement_key = "Basement",
+        occupancyClass_key = "OccupancyClass",
+        postFIRM_key = "PostFIRM",
+        floodType_key = "FloodType",
+        basementType_key = "BasementType",
+        numberOfStories_key = "NumberOfStories",
+        PostFIRM_year_by_city = None
+        ):
         """
         Make inference based on Auto population script developed for NJ
 
@@ -112,29 +104,52 @@ class HazusHurricaneInferer(InferenceEngine):
         self.overwirte_existing = overwirte_existing
 
         self.name_mapping = {
-            planArea_key: "PlanArea",
-            numberOfStories_key: "NumberOfStories",
-            occupancyClass_key: "OccupancyClass",
-            buildingMaterial_key: "BuildingMaterial",
-            designLevel_H_key: "DesignLevel_H",
+            city_key: "City",
             yearBuilt_key: "YearBuilt",
-            roofSystem_key: "RoofFrameType",
-            roofShape_key: "RoofShape",
-            roofSlope_key: "RoofSlope",
-            avgJanTemp_key: "AvgJanTemp",
-            meanRoofHt_key: "MeanRoofHt",
-            windowArea_key: "WindowArea",
-            numberOfUnits_key: "NumberOfUnits",
-            garage_key: "Garage",
             floodZone_key: "FloodZone",
-            windZone_key: "WindZone",
-            designWindSpeed_key: "DesignWindSpeed",
-            LULC_key: "LULC",
-            z0_key: "Z0",
-            sheathingThickness_key: "SheathingThickness"
+            firstFloorElevation_key: "FirstFloorElevation",
+            splitLevel_key: "SplitLevel",
+            basement_key: "Basement",
+            occupancyClass_key: "OccupancyClass",
+            postFIRM_key: "PostFIRM",
+            floodType_key: "FloodType",
+            basementType_key: "BasementType",
+            numberOfStories_key: "NumberOfStories",
         }
 
         self.clean_features = clean_features
+
+        if PostFIRM_year_by_city == None:
+            # we provide default for NJ
+            self.PostFIRM_year_by_city = {
+                'Absecon': 1976,
+                'Atlantic': 1971,
+                'Brigantine': 1971,
+                'Buena': 1983,
+                'Buena Vista': 1979,
+                'Corbin City': 1981,
+                'Egg Harbor City': 1982,
+                'Egg Harbor': 1983,
+                'Estell Manor': 1978,
+                'Folsom': 1982,
+                'Galloway': 1983,
+                'Hamilton': 1977,
+                'Hammonton': 1982,
+                'Linwood': 1983,
+                'Longport': 1974,
+                'Margate City': 1974,
+                'Mullica': 1982,
+                'Northfield': 1979,
+                'Pleasantville': 1983,
+                'Port Republic': 1983,
+                'Somers Point': 1982,
+                'Ventnor City': 1971,
+                'Weymouth':1979 
+            }
+        else:
+            self.PostFIRM_year_by_city = PostFIRM_year_by_city
+
+
 
     def infer(self) -> AssetInventory:
 
@@ -159,6 +174,7 @@ class HazusHurricaneInferer(InferenceEngine):
             logger.warning(
                     f"The existing inventory does not contain multiple possible worlds. {n_pw} worlds will be generated for new features"
             )
+
         else:
             if n_possible_worlds == 0:
                 pass
@@ -203,6 +219,8 @@ class HazusHurricaneInferer(InferenceEngine):
             # get inventory realization
             inventory_realization = input_inventory.get_world_realization(nw)
             input_inventory_json = self.to_json(inventory_realization)
+
+            ## Infer building one by one
             essential_features_tmp = self.infer_building_one_by_one(input_inventory_json,n_pw)
 
             essential_features = self.merge_two_json(
@@ -286,7 +304,7 @@ class HazusHurricaneInferer(InferenceEngine):
             new_features_tmp = {}
             for key, bldg in inventory_json.items():
                 try:
-                    essential_features = auto_populate(bldg)
+                    essential_features = self.auto_populate(bldg)
                 except ValueError as e:
                     msg = f"Failed in building {key} \n"
                     msg += str(e)  # Convert exception to string
@@ -306,13 +324,148 @@ class HazusHurricaneInferer(InferenceEngine):
 
         return new_features
 
+
+
+    def auto_populate(self,inventory):
+
+        BIM = inventory["properties"]
+
+        available_features = BIM.keys()
+
+        #
+        # Infer city
+        #
+
+
+        if "City" in BIM:
+            city = BIM["City"]
+        else:  
+            geo_coord = inventory["geometry"]["coordinates"][0]
+            geo_locs = reverse_geocode.search([[geo_coord[1], geo_coord[0]]])
+            city = geo_locs[0]["city"]
+
+        # to improve competability between the provided value and dictionary list
+        
+        #
+        # Infer postFIRM
+        #
+        city = city.lower().replace(' ', '').replace('city', '')
+  
+        self.PostFIRM_year_by_city = {key.lower().replace(' ', '').replace('city', ''):value for key, value in self.PostFIRM_year_by_city.items()}
+        if not (city in self.PostFIRM_year_by_city):
+            #logger.warning(
+            #    f"PostFIRM information not provided. Setting conservative condition PostFIRM = False"
+            #    )
+            print("Warining")
+            print(city)
+            sys.exit(1)
+            PostFIRM = False
+        elif self.is_ready_to_infer(available_features,['YearBuilt'],'PostFIRM'):
+            PostFIRM_year = self.PostFIRM_year_by_city[city]
+            PostFIRM = BIM['YearBuilt'] > PostFIRM_year
+
+        # sys.exit(-1)
+        #
+        # Infer postFIRM
+        #
+
+        # TODO: obtain splitlevel
+        # Basement Type 
+
+        # For the foundation type, let's follow the ruleset from NSI (e.g. I) instead of NJDEP (e.g.3501)
+        # C = 3505 = Crawl, B = 3504 = Basement, S = 3507 = Slab, P = 3502 = Pier, I = 3501 = Pile, F = 3506 = Fill, W = 3503 = Solid Wall
+
+
+        if "BasementType" in BIM:
+            basement_type = BIM["BasementType"]
+
+        # elif self.is_ready_to_infer(available_features,['SplitLevel','FoundationType'],'BasementType'):
+        #     if BIM['SplitLevel']=='Yes' and (BIM['FoundationType'] == 'B'):
+        #     #if BIM['SplitLevel'] and (BIM['FoundationType'] == 3504):
+        #         basement_type = 'spt' # Split-Level Basement
+        #     elif BIM['FoundationType'] in ['I', 'P', 'W', 'C', 'F', 'S']:
+        #     #elif BIM['FoundationType'] in [3501, 3502, 3503, 3505, 3506, 3507]:
+        #         basement_type = 'bn' # No Basement
+        #     elif (BIM['SplitLevel']=='No') and (BIM['FoundationType'] == 'B'):
+        #     #elif (not BIM['SplitLevel']) and (BIM['FoundationType'] == 3504):
+        #         basement_type = 'bw' # Basement
+        #     else:
+        #         logger.warning(
+        #             f"FoundationType {BIM['FoundationType']} not recognized. Assuming conservative condition with a basement (bw)"
+        #         )
+        #         basement_type = 'bw' # Default
+
+        elif self.is_ready_to_infer(available_features,['SplitLevel','Basement'],'BasementType'):
+            if BIM['SplitLevel']=='Yes' and (BIM['Basement'] == 'Yes'):
+                basement_type = 'spt' # Split-Level Basement
+            elif BIM['Basement'] == 'No':
+                basement_type = 'bn' # No Basement
+            elif (BIM['SplitLevel']=='No') and (BIM['Basement'] == 'Yes'):
+                basement_type = 'bw' # Basement
+            else:
+                logger.warning(
+                    f"FoundationType {BIM['FoundationType']} not recognized. Assuming conservative condition with a basement (bw)"
+                )
+                basement_type = 'bw' # Default
+
+        #
+        # Flood Type
+        #
+
+        if "FloodType" in BIM:
+                flood_type = BIM["FloodType"]
+  
+        elif self.is_ready_to_infer(available_features,['FloodZone'],'FloodType'):
+            if BIM['FloodZone'] == 'AO':
+                flood_type = 'raz' # Riverine/A-Zone
+            elif BIM['FloodZone'] in ['A', 'AE', 'AH']:
+                flood_type = 'caz' # Costal-Zone A
+            elif BIM['FloodZone'].startswith('V'):
+                flood_type = 'cvz' # Costal-Zone V
+            else:
+                logger.warning(
+                    f"FloodZone {BIM['FloodZone']} not recognized. Setting default FloodType Costal-Zone A (caz)"
+                )
+                flood_type = 'caz' # Default
+
+        #
+        # Infer first floor elevation
+        #
+        if "EffectiveFirstFloorElevation" in BIM:
+                FFE = BIM["EffectiveFirstFloorElevation"]
+
+        elif self.is_ready_to_infer(available_features,['FirstFloorElevation'],'EffectiveFirstFloorElevation'):
+            if flood_type in ['raz', 'caz']:
+                FFE = BIM['FirstFloorElevation']
+            else:
+                FFE = BIM['FirstFloorElevation'] - 1.0
+
+        self.is_ready_to_infer(available_features=available_features, needed_features = ['OccupancyClass','SplitLevel','NumberOfStories'], inferred_feature= "Hazus flood properties")
+
+        essential_features = dict(
+            EffectiveFirstFloorElevation = FFE, 
+            OccupancyClass=BIM['OccupancyClass'],
+            FloodType = flood_type,
+            SplitLevel=BIM['SplitLevel'],
+            NumberOfStories = BIM['NumberOfStories'],
+            BasementType=basement_type,
+            )
+        
+        return essential_features
+
+
     def to_json(self, this_inventory):
+
+        this_inventory.convert_polygons_to_centroids()
+        #inventory_json = this_inventory.get_geojson()
+
         inventory_json = {}
         for key, asset in this_inventory.inventory.items():
-            if len(asset.coordinates) == 1:
-                geometry = {"type": "Point", "coordinates": [asset.coordinates[0][:]]}
-            else:
-                geometry = {"type": "Polygon", "coordinates": asset.coordinates}
+            geometry = {"type": "Point", "coordinates": [asset.coordinates[0][:]]}
+            #if len(asset.coordinates) == 1:
+            #    geometry = {"type": "Point", "coordinates": [asset.coordinates[0][:]]}
+            #else:
+            #    geometry = {"type": "Polygon", "coordinates": asset.coordinates}
 
             feature = {
                 "type": "Feature",
@@ -324,4 +477,15 @@ class HazusHurricaneInferer(InferenceEngine):
 
             inventory_json[key] = feature
 
+
         return inventory_json
+
+    def is_ready_to_infer(self,available_features,needed_features,inferred_feature):
+
+        missing_keys = set(needed_features).difference(set(available_features))
+
+        if missing_keys:
+            msg = f"You need {missing_keys} to infer '{inferred_feature}'."
+            raise ValueError(msg)
+
+        return True

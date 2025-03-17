@@ -44,11 +44,11 @@
 # Tracy Kijewski-Correa
 
 import random
-from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
+from brails.inferers.hazus_inferer_wind.WindMetaVarRulesets import is_ready_to_infer
 
-def SECB_config(BIM):
+def CERB_config(BIM):
     """
-    Rules to identify a HAZUS SECB configuration based on BIM data
+    Rules to identify a HAZUS CERB configuration based on BIM data
 
     Parameters
     ----------
@@ -62,34 +62,33 @@ def SECB_config(BIM):
         class.
     """
 
-    year = BIM['YearBuilt'] # just for the sake of brevity
     available_features = BIM.keys()
 
     if "RoofCover" in BIM:
         roof_cover = BIM["RoofCover"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofShape"], inferred_feature= "RoofCover"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","RoofShape"], inferred_feature= "RoofCover"):
 
         # Roof cover
         if BIM['RoofShape'] in ['gab', 'hip']:
             roof_cover = 'bur'
             # Warning: HAZUS does not have N/A option for CECB, so here we use bur
         else:
-            is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofCover")
-            if year >= 1975:
+            if BIM['YearBuilt'] >= 1975:
                 roof_cover = 'spm'
             else:
                 # year < 1975
                 roof_cover = 'bur'
 
 
+
     if "Shutters" in BIM:
-        shutters = BIM["Shutters"]
-    
+        roof_cover = BIM["Shutters"]
+
     elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "Shutters"):
 
         # shutters
-        if year >= 2000:
+        if BIM['YearBuilt'] >= 2000:
             shutters = BIM['WindBorneDebris']
         # BOCA 1996 and earlier:
         # Shutters were not required by code until the 2000 IBC. Before 2000, the
@@ -102,21 +101,19 @@ def SECB_config(BIM):
         # rates based on the Homeowners Survey data hover between 43 and 50 percent.
         else:
             if BIM['WindBorneDebris']:
-                shutters = random.random() < 0.46
+                shutters = random.random() < 0.45
             else:
                 shutters = False
 
 
     if "WindDebrisClass" in BIM:
         WIDD = BIM["WindDebrisClass"]
-    
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["OccupancyClass"], inferred_feature= "WindDebrisClass"):
-        
-        # Wind Debris (widd in HAZSU)
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["OccupancyClass"], inferred_feature= "WindDebrisClass"):       
+        # Wind Debris (widd in HAZUS)
         # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
         WIDD = 'C' # residential (default)
-        if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C',
-                                      'RES3D']:
+        if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C', 'RES3D']:
             WIDD = 'C' # residential
         elif BIM['OccupancyClass'] == 'AGR1':
             WIDD = 'D' # None
@@ -126,9 +123,9 @@ def SECB_config(BIM):
 
     if "WindowAreaRatio" in BIM:
         WWR = BIM["WindowAreaRatio"]
-    
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
-    
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):       
+
         # Window area ratio
         if BIM['WindowArea'] < 0.33:
             WWR = 'low'
@@ -137,53 +134,35 @@ def SECB_config(BIM):
         else:
             WWR = 'hig'
 
-    if "RoofDeckAttachmentM" in BIM:
-        MRDA = BIM["RoofDeckAttachmentM"]
+    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "BuildingTag for C.ERB")
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
-
-        # Metal RDA
-        # 1507.2.8.1 High Wind Attachment.
-        # Underlayment applied in areas subject to high winds (Vasd greater
-        # than 110 mph as determined in accordance with Section 1609.3.1) shall
-        #  be applied with corrosion-resistant fasteners in accordance with
-        # the manufacturer’s instructions. Fasteners are to be applied along
-        # the overlap not more than 36 inches on center.
-        if BIM['DesignWindSpeed'] > 142:
-            MRDA = 'std'  # standard
-        else:
-            MRDA = 'sup'  # superior
-
-
-    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "BuildingTag (L,M, or H)")
     if BIM['NumberOfStories'] <= 2:
-        bldg_tag = 'S.ECB.L'
+        bldg_tag = 'C.ERB.L'
     elif BIM['NumberOfStories'] <= 5:
-        bldg_tag = 'S.ECB.M'
+        bldg_tag = 'C.ERB.M'
     else:
-        bldg_tag = 'S.ECB.H'
+        bldg_tag = 'C.ERB.H'
 
+    # extend the BIM dictionary
+    
+    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "C.ECB class")
 
     essential_features = dict(
         BuildingTag = bldg_tag, 
         TerrainRoughness=int(BIM['TerrainRoughness']),
         RoofCover = roof_cover,
-        WindowAreaRatio = WWR,
-        RoofDeckAttachmentM = MRDA,
         Shutters = int(shutters),
-        WindDebrisClass=WIDD
+        WindowAreaRatio = WWR,
+        WindDebrisClass = WIDD
         )
 
-    # extend the BIM dictionary
     BIM.update(dict(essential_features))
 
     # bldg_config = f"{bldg_tag}." \
     #               f"{roof_cover}." \
     #               f"{int(shutters)}." \
     #               f"{WIDD}." \
-    #               f"{MRDA}." \
     #               f"{WWR}." \
     #               f"{int(BIM['TerrainRoughness'])}"
-                  
-    return essential_features
 
+    return essential_features

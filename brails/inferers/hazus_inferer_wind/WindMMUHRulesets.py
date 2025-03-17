@@ -46,7 +46,7 @@
 import random
 import datetime
 
-from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
+from brails.inferers.hazus_inferer_wind.WindMetaVarRulesets import is_ready_to_infer
 
 
 def MMUH_config(BIM):

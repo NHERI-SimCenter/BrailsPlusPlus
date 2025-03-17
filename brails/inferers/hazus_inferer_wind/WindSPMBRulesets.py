@@ -44,11 +44,13 @@
 # Tracy Kijewski-Correa
 
 import random
-from brails.inferers.hazus_hurricane_inferer.WindMetaVarRulesets import is_ready_to_infer
+import datetime
+from brails.inferers.hazus_inferer_wind.WindMetaVarRulesets import is_ready_to_infer
 
-def CECB_config(BIM):
+
+def SPMB_config(BIM):
     """
-    Rules to identify a HAZUS CECB configuration based on BIM data
+    Rules to identify a HAZUS SPMB configuration based on BIM data
 
     Parameters
     ----------
@@ -65,26 +67,23 @@ def CECB_config(BIM):
     available_features = BIM.keys()
 
 
-    if "RoofCover" in BIM:
-        roof_cover = BIM["RoofCover"]
+    if "RoofQuality" in BIM:
+        roof_quality = BIM["RoofQuality"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","RoofShape"], inferred_feature= "RoofCover"):
-        # Roof cover
-        if BIM['RoofShape'] in ['gab', 'hip']:
-            roof_cover = 'bur'
-            # Warning: HAZUS does not have N/A option for CECB, so here we use bur
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofQuality"):
+
+        # Roof Deck Age (~ Roof Quality)
+        if BIM['YearBuilt'] >= (datetime.datetime.now().year - 50):
+            roof_quality = 'god'
         else:
-            if BIM['YearBuilt'] >= 1975:
-                roof_cover = 'spm'
-            else:
-                # year < 1975
-                roof_cover = 'bur'
+            roof_quality = 'por'
+
 
     if "Shutters" in BIM:
         shutters = BIM["Shutters"]
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","WindBorneDebris"], inferred_feature= "Shutters"):
-    
+
         # shutters
         if BIM['YearBuilt'] >= 2000:
             shutters = BIM['WindBorneDebris']
@@ -104,64 +103,48 @@ def CECB_config(BIM):
                 shutters = False
 
 
-    if "WindDebrisClass" in BIM:
-        WIDD = BIM["WindDebrisClass"]
+    if "RoofDeckAttachmentM" in BIM:
+        MRDA = BIM["RoofDeckAttachmentM"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["OccupancyClass"], inferred_feature= "WindDebrisClass"):
-     
-        # Wind Debris (widd in HAZSU)
-        # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
-        WIDD = 'C' # residential (default)
-        if BIM['OccupancyClass'] in ['RES1', 'RES2', 'RES3A', 'RES3B', 'RES3C','RES3D']:
-            WIDD = 'C' # residential
-        elif BIM['OccupancyClass'] == 'AGR1':
-            WIDD = 'D' # None
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+        # Metal RDA
+        # 1507.2.8.1 High Wind Attachment.
+        # Underlayment applied in areas subject to high winds (Vasd greater
+        # than 110 mph as determined in accordance with Section 1609.3.1) shall
+        #  be applied with corrosion-resistant fasteners in accordance with
+        # the manufacturer’s instructions. Fasteners are to be applied along
+        # the overlap not more than 36 inches on center.
+        if BIM['DesignWindSpeed'] > 142:
+            MRDA = 'std'  # standard
         else:
-            WIDD = 'A' # Res/Comm
+            MRDA = 'sup'  # superior
 
 
-    if "WindowAreaRatio" in BIM:
-        WWR = BIM["WindowAreaRatio"]
+    # don't allow predefined its too complicated
+    is_ready_to_infer(available_features=available_features, needed_features = ["PlanArea",'TerrainRoughness'], inferred_feature= "BuildingTag (among S, M, and L)")
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
-         
-        # Window area ratio
-        if BIM['WindowArea'] < 0.33:
-            WWR = 'low'
-        elif BIM['WindowArea'] < 0.5:
-            WWR = 'med'
-        else:
-            WWR = 'hig'
-
-
-    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "C.ECB class")
-
-    if BIM['NumberOfStories'] <= 2:
-        bldg_tag = 'C.ECB.L'
-    elif BIM['NumberOfStories'] <= 5:
-        bldg_tag = 'C.ECB.M'
+    if BIM['PlanArea'] <= 4000:
+        bldg_tag = 'S.PMB.S'
+    elif BIM['PlanArea'] <= 50000:
+        bldg_tag = 'S.PMB.M'
     else:
-        bldg_tag = 'C.ECB.H'
-
-    # extend the BIM dictionary
+        bldg_tag = 'S.PMB.L'
 
     essential_features = dict(
         BuildingTag = bldg_tag, 
         TerrainRoughness=int(BIM['TerrainRoughness']),
-        RoofCover = roof_cover,
-        Shutters = int(shutters),
-        WindowAreaRatio = WWR,
-        WindDebrisClass = WIDD
+        RoofQuality = roof_quality,
+        RoofDeckAttachmentM = MRDA,
+        Shutters = int(shutters)
         )
 
-        
+    # extend the BIM dictionary
     BIM.update(dict(essential_features))
 
     # bldg_config = f"{bldg_tag}." \
-    #               f"{roof_cover}." \
     #               f"{int(shutters)}." \
-    #               f"{WIDD}." \
-    #               f"{WWR}." \
+    #               f"{roof_quality}." \
+    #               f"{MRDA}." \
     #               f"{int(BIM['TerrainRoughness'])}"
 
     return essential_features
