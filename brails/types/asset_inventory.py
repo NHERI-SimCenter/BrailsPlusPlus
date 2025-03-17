@@ -221,6 +221,7 @@ class AssetInventory:
             inventory dataset from a csv table
         add_asset_features_from_csv(file_path, id_column): Add asset features
             from a csv file.
+        convert_polygons_to_centroids() : convert geometry to centroid point
     """
 
     def __init__(self):
@@ -1034,9 +1035,6 @@ class AssetInventory:
     def convert_polygons_to_centroids(self):
         """
         Convert polygons in GeoJson to centorid points
-
-        Args:
-            inventory_geo_json (dict): A geojson file
 
         """
         for key, asset in self.inventory.items():
