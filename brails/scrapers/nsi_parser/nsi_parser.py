@@ -121,6 +121,7 @@ class NSI_Parser:
                               'val_struct': 'repaircost',
                               'bldgtype': 'constype',
                               'occtype': 'occupancy', 'fd_id': 'fd_id',
+                              'found_ht': 'found_ht',
                               'occtype_extended': ['splitlevel', 'basement']}
         # Extended features will be provided only when get_extended_features
         # option is selected
