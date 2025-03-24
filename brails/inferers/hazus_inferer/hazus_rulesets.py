@@ -1463,7 +1463,7 @@ def get_hazus_height_classes_RES1():
     res1_height_classes = {
         "One-story": [1],
         "Two-story": [2],
-        "Three-story": list(range(3, 200)),  # TODO-ADAM: double check
+        "Three-story": list(range(3, 1000)),  # TODO-ADAM: double check
     }
 
     return res1_height_classes
