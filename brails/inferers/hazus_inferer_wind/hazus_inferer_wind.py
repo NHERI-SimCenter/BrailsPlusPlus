@@ -141,6 +141,11 @@ class HazusInfererWind(InferenceEngine):
         input_inventory = self.input_inventory
         n_possible_worlds = self.n_possible_worlds
 
+        if n_possible_worlds == 0:
+            msg = f"ERROR: most likely attributes option is not supported for the wind inferer. Please select n_possible_worlds>0"
+            logger.error(msg)
+            sys.exit(-1)
+
         #
         # Determine existing_worlds and n_pw
         #
@@ -159,10 +164,10 @@ class HazusInfererWind(InferenceEngine):
             logger.warning(
                     f"The existing inventory does not contain multiple possible worlds. {n_pw} worlds will be generated for new features"
             )
+
+
         else:
-            if n_possible_worlds == 0:
-                pass
-            elif (
+            if (
                 (n_possible_worlds == 1)
                 or (n_possible_worlds == 1)
                 or (n_possible_worlds == existing_worlds)

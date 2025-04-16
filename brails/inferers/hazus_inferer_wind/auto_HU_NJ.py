@@ -44,7 +44,6 @@
 # Meredith Lockhead
 # Tracy Kijewski-Correa
 
-print("AAA")
 from brails.inferers.hazus_inferer_wind.WindMetaVarRulesets import add_default
 from brails.inferers.hazus_inferer_wind.BuildingClassRulesets import building_class
 from brails.inferers.hazus_inferer_wind.WindCECBRulesets import CECB_config
