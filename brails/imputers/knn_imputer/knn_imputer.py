@@ -257,7 +257,7 @@ class KnnImputer(Imputation):
             bldg_prel_subset = bldg_prel_np[cluster_idx, :]  # Primitive
             bldg_inde_subset = bldg_inde_np[cluster_idx]  # building indices
 
-            for npp in range(self.n_pw):
+            for npp in range(max(1,self.n_pw)):
                 #
                 # Sub dataframes corresponding to the current cluster
                 #
@@ -611,7 +611,7 @@ class KnnImputer(Imputation):
                     bldg_prel_subset[missing_idx[nb], colLoc] = myindex
 
                     # save to store
-                    if self.n_pw == 1:
+                    if self.n_pw == 1 or self.n_pw == 0:
                         sample_dic[column][bldg_idx] = [myindex]
                         mp_dic[column][bldg_idx] = [imputed_index_mp]
 
