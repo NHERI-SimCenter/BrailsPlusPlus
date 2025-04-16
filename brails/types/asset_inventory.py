@@ -742,6 +742,15 @@ class AssetInventory:
                 Path of the GeoJSON output file.
         """
         geojson = self.get_geojson()
+        
+        # Modify the GeoJSON features to include an 'id' field:
+        # This is the variation of GeoJSON that is used in R2D
+        for i, ft in enumerate(geojson["features"]):
+            if "id" in ft['properties']:
+                id = ft['properties'].pop("id")
+            else:
+                id = str(i)
+            ft['id'] = str(id)
 
         # Write the created GeoJSON dictionary into a GeoJSON file:
         if output_file:
