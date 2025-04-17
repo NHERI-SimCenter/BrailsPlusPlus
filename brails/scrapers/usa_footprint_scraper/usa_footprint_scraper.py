@@ -155,7 +155,7 @@ class USA_FootprintScraper(FootprintScraper):
                     api_tools.categorize_and_split_cells(split_cells)
                 final_cells += cells_to_keep
             print(f'\nMeshing complete. Split {queryarea_printname} into '
-                  '{len(final_cells)} cells')
+                  f'{len(final_cells)} cells')
 
         # If only one cell, no splitting is needed:
         else:
