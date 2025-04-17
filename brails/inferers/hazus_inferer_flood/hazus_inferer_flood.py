@@ -177,7 +177,7 @@ class HazusInfererFlood(InferenceEngine):
         if existing_worlds == 1:
             n_pw = n_possible_worlds  # if zero, it will give the most likely value
             logger.warning(
-                    f"The existing inventory does not contain multiple possible worlds. {n_pw} worlds will be generated for new features"
+                    f"The existing inventory does not contain multiple possible worlds. {n_pw} world(s) will be generated for new features"
             )
 
         else:
@@ -356,12 +356,12 @@ class HazusInfererFlood(InferenceEngine):
   
         self.PostFIRM_year_by_city = {key.lower().replace(' ', '').replace('city', ''):value for key, value in self.PostFIRM_year_by_city.items()}
         if not (city in self.PostFIRM_year_by_city):
-            #logger.warning(
-            #    f"PostFIRM information not provided. Setting conservative condition PostFIRM = False"
-            #    )
-            print("Warining")
-            print(city)
-            sys.exit(1)
+            logger.warning(
+                f"PostFIRM information not provided. Setting conservative condition PostFIRM = False"
+                )
+            #print("Warining")
+            #print(city)
+            #sys.exit(1)
             PostFIRM = False
         elif self.is_ready_to_infer(available_features,['YearBuilt'],'PostFIRM'):
             PostFIRM_year = self.PostFIRM_year_by_city[city]
@@ -488,7 +488,7 @@ class HazusInfererFlood(InferenceEngine):
         missing_keys = set(needed_features).difference(set(available_features))
 
         if missing_keys:
-            msg = f"You need {missing_keys} to infer '{inferred_feature}'."
+            msg = f"You need {missing_keys} to infer '{inferred_feature}'. You only have {available_features}."
             raise ValueError(msg)
 
         return True
