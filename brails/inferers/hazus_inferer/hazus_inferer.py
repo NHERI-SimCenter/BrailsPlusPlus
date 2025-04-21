@@ -907,7 +907,7 @@ class HazusInferer(InferenceEngine):
 
                 # garage_df.loc[subset_inventory.index, range(n_pw)] = garage_pick.astype('str')
                 garage_df.loc[subset_inventory.index,
-                              range(n_pw)] = garage_pick
+                              range(max(1,n_pw))] = garage_pick
 
         #
         # From 'Income Group' to 'Construction Class' (random sampling)
@@ -950,18 +950,21 @@ class HazusInferer(InferenceEngine):
                     # most likely struct
                     const_class_pick = [
                         const_class[np.argmax(weights)]] * nbldg_subset
+
+                    const_class_df.loc[subset_inventory.index, 0] = const_class_pick
+
                 else:
                     # sample nbldg x n_pw
                     const_class_pick = np.random.choice(
                         const_class, size=[nbldg_subset, n_pw], replace=True, p=weights
                     ).tolist()
 
-                # const_class_pick = pd.DataFrame(const_class_pick)
+                    # const_class_pick = pd.DataFrame(const_class_pick)
 
-                # const_class_df.loc[subset_inventory.index, range(n_pw)] = const_class_pick.astype('str')
-                const_class_df.loc[subset_inventory.index, range(n_pw)] = (
-                    const_class_pick
-                )
+                    # const_class_df.loc[subset_inventory.index, range(n_pw)] = const_class_pick.astype('str')
+                    const_class_df.loc[subset_inventory.index, range(n_pw)] = (
+                        const_class_pick
+                    )
 
         #
         # From 'occtype' and 'height Class' to 'basecost'
@@ -981,11 +984,11 @@ class HazusInferer(InferenceEngine):
             # occ = row[occupancyClass_key]
             # fparea = row[planArea_key]
             if occ == "RES1":
-                base_cost = np.zeros((n_pw,))
+                base_cost = np.zeros((max(1,n_pw),))
                 garage_cost = np.zeros(
-                    n_pw,
+                    max(1,n_pw),
                 )
-                for npp in range(n_pw):
+                for npp in range(max(1,n_pw)):
                     # const = row['const_class']
                     # garage = row['garage_type']
                     const = const_class_df.loc[i, npp]
