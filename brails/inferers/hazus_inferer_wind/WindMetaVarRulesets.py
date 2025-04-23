@@ -499,7 +499,7 @@ def add_default(BIM_in, hazards):
         # industry based on height (over 3 stories assumed engineered)
 
         if "DesignLevel" in BIM_ap:
-            designLevel = BIM_ap["DesignLevel"]
+            DesignLevel = BIM_ap["DesignLevel"]
 
         elif is_ready_to_infer(available_features=available_features, needed_features = ['OccupancyClass','NumberOfStories'], inferred_feature= "DesignLevel"):    
 
