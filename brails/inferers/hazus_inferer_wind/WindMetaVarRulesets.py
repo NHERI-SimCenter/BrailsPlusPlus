@@ -208,11 +208,11 @@ def add_default(BIM_in, hazards):
     #                 break
 
     #         # if none of the above works, we need to raise an exception
-    #         if oc is None:
+    #         if Oc is None:
     #             raise e from None
 
     #     # if getting RES3 then converting it to default RES3A
-    #     if oc == 'RES3':
+    #     if Oc == 'RES3':
     #         oc = 'RES3A'
 
     #     # maps for flood zone
@@ -396,7 +396,7 @@ def add_default(BIM_in, hazards):
 
 
         # Wind Borne Debris
-        # Areas within hurricane-prone regions are affected by debris if one of
+        # Areas within hurricane-prone regions are affected by debris if One of
         # the following two conditions holds:
         # (1) Within 1 mile (1.61 km) of the coastal mean high water line where
         # the ultimate design wind speed is greater than flood_lim.
@@ -490,6 +490,42 @@ def add_default(BIM_in, hazards):
                 elif ((TER >= 41) and (TER <= 43)) or (TER in [16, 17]):
                     terrain = 70 # light trees
 
+        # DesignLevel
+        # Will adopt the following definition: E=high rises, critical facilities, government buildings, health care, schools; 
+        # ME = hotels, apartments, offices, light industrial (1-3 stories); NE=single and duplex residences, small commercial; 
+        # PE=Metal building systems and other prefab systems like mobile homes (see https://www.nap.edu/read/1993/chapter/15); 
+        # since metal buildings aren't easy to identify in the inventory, only mobile homes will receive PE; 
+        # also note that difference between ME and E will be discerned for many classes of hotels, apartments, office and light 
+        # industry based on height (over 3 stories assumed engineered)
+
+        if "DesignLevel" in BIM_ap:
+            DesignLevel = BIM_ap["DesignLevel"]
+
+        elif is_ready_to_infer(available_features=available_features, needed_features = ['OccupancyClass','NumberOfStories'], inferred_feature= "DesignLevel"):    
+
+            NumberofStories = BIM_ap["NumberOfStories"]
+            OccupancyClass = BIM_ap["OccupancyClass"]
+            if OccupancyClass in ['RES1','RES3A','AGR1']:
+                DesignLevel = 'NE'
+            elif OccupancyClass in ['EDU1', 'EDU2', 'GOV1', 'GOV2', 'COM6', 'IND1', 'IND3', 'IND4', 'IND5', 'IND6', 'COM10']:
+                DesignLevel = 'E'
+            elif OccupancyClass in ['RES2']:
+                DesignLevel = 'PE'
+            elif OccupancyClass in ['IND2']:
+                DesignLevel='ME'
+            elif OccupancyClass in ['RES3B', 'RES3C', 'RES3D', 'RES3E', 'RES3F', 'RES4', 'RES5', 'RES6', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM7', 'COM8', 'COM9', 'REL1']:
+                if NumberofStories>3:
+                    DesignLevel = 'E'
+                else:
+                    DesignLevel = 'ME'
+
+            else:
+                msg = f"OccupancyClass {OccupancyClass} not identified"
+                raise ValueError(msg)
+
+
+
+
         is_ready_to_infer(available_features=available_features, needed_features = ['DesignWindSpeed'], inferred_feature= "Hurricane properties")            
 
         BIM_ap.update(dict(
@@ -500,6 +536,7 @@ def add_default(BIM_in, hazards):
             HazardProneRegion=HPR,
             WindBorneDebris=WBD,
             TerrainRoughness=terrain,
+            DesignLevel=DesignLevel,
         ))
 
 
