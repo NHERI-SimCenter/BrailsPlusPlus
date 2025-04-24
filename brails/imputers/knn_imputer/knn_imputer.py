@@ -53,6 +53,15 @@ from sklearn.preprocessing import Normalizer
 from brails.types.asset_inventory import AssetInventory
 from brails.imputers.imputation import Imputation
 
+# To be replaced with old brails ++ codes
+import warnings
+import logging
+
+# Configure logging:
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+warnings.simplefilter(action="ignore", category=FutureWarning)
+warnings.filterwarnings(action="ignore", category=UserWarning)
 
 class KnnImputer(Imputation):
     """
@@ -85,7 +94,7 @@ class KnnImputer(Imputation):
         nbldg_per_cluster=500,
     ):
         self.input_inventory = input_inventory
-        self.n_pw = n_possible_worlds
+        self.n_possible_worlds = n_possible_worlds
         self.create_correlation = create_correlation
         self.exclude_features = exclude_features
         self.seed = seed
@@ -106,10 +115,17 @@ class KnnImputer(Imputation):
     # ) -> AssetInventory:
 
     def impute(self) -> AssetInventory:
-        # self.n_pw = n_possible_worlds
-        # self.batch_size = batch_size
-        # self.seed = seed
-        # self.k_nn = k_nn  # knn
+
+        #
+        # set seed
+        #
+
+        np.random.seed(self.seed)
+
+
+        #
+        # Enforce Spatial Correlation
+        #
 
         if self.create_correlation:
             self.gen_method = "sequential"
@@ -119,183 +135,267 @@ class KnnImputer(Imputation):
         exclude_features = self.exclude_features
         nbldg_per_cluster = self.nbldg_per_cluster
         input_inventory = self.input_inventory
-        #
-        # set seed
-        #
+        existing_worlds = input_inventory.get_n_pw()
 
-        np.random.seed(self.seed)
+        # n_possible_worlds: requested possible worlds
+        # n_pw: # of to-be-generated possible worlds per existing world. It is either 1 or n_possible_worlds.
 
-        #
-        # convert inventory to df
-        #
+        if existing_worlds is None:
+            msg = "ERROR: All assets should have same number of possible worlds to run the imputation."
+            raise Exception(msg)
 
-        bldg_properties_df, bldg_geometries_df, nbldg = input_inventory.get_dataframe()
-        column_names = bldg_properties_df.columns
+        if existing_worlds == 1:
+            self.n_pw = self.n_possible_worlds  # if zero, it will give the most likely value
+            logger.warning(
+                    f"The existing inventory does not contain multiple possible worlds. {self.n_pw} worlds will be generated for new features"
+            )
 
-        #
-        # drop features to exclude, if specified by the user
-        #
+        else:
+            if (
+                (self.n_possible_worlds == 1)
+                or (self.n_possible_worlds == existing_worlds)
+            ):
+                logger.warning(
+                    f"Existing {existing_worlds} worlds detacted. {existing_worlds} samples will generated per feature"
+                )
+                self.n_pw = 1  # n_pw per exisitng pw
+            else:
+                msg = f"ERROR: the number of possible worlds {self.n_possible_worlds} should be the same as the existing possible worlds. Choose {existing_worlds} or 0 (to get only the most likely value) to run the inference."
+                raise Exception(msg)
 
-        if len(exclude_features) > 0:
-            for feature in exclude_features:
-                if feature not in column_names:
-                    print(
-                        "The feature {} does not exist in inventory. Ignoring it from the exclude list.".format(
-                            feature
-                        )
-                    )
-                    exclude_features.remove(feature)
+        print(f'Existing worlds: {existing_worlds}')
+        print(f'New worlds per existing world: {self.n_pw}')
 
-            bldg_properties_df = bldg_properties_df.drop(columns=exclude_features)
+
+        output_inventory = deepcopy(input_inventory)
+
+        for nw in range(0, existing_worlds):
+
+            print(f'world # {nw}')
+
+            # get inventory realization
+            inventory_realization = input_inventory.get_world_realization(nw)
+
+            #
+            # convert inventory to df
+            #
+
+            bldg_properties_df, bldg_geometries_df, nbldg = inventory_realization.get_dataframe()
             column_names = bldg_properties_df.columns
 
-        #
-        # replace empty or "NA" with nan & drop entirely missing columns
-        #
-
-        # pd.set_option("future.no_silent_downcasting", True)
-        bldg_properties_df = bldg_properties_df.replace("NA", np.nan, inplace=False)
-        bldg_properties_df = bldg_properties_df.replace("", np.nan, inplace=False)
-        mask = bldg_properties_df.isnull()  # for missing
-
-        column_entirely_missing = column_names[mask.all(axis=0)]
-        bldg_properties_df = bldg_properties_df.drop(columns=column_entirely_missing)
-        mask = mask.drop(columns=column_entirely_missing)
-
-        if len(column_entirely_missing) >= 1:
-            print(
-                "Features with no reference data cannot be imputed. Removing them from the imputation target: "
-                + ", ".join(list(column_entirely_missing))
-            )
-
-        if sum(mask.any(axis=0)) == 0:
-            print("No feature to impute")
-            output_inventory = input_inventory
-            return output_inventory
-
-        #
-        # transform category variables into integers
-        #
-
-        bldg_properties_encoded, label_encoders, is_category = (
-            self.category_in_df_to_indices(bldg_properties_df, mask)
-        )
-
-        #
-        # Primitive imputation
-        #
-
-        bldg_properties_preliminary, nbrs_G, trainY_G_list = self.geospatial_knn(
-            bldg_properties_encoded, mask, bldg_geometries_df
-        )
-
-        #
-        # Cluster
-        #
-
-        cluster_ids, n_cluster = self.clustering(
-            bldg_properties_encoded,
-            bldg_geometries_df,
-            nbldg_per_cluster=nbldg_per_cluster,
-            seed=self.seed,
-        )
-
-        #
-        # set up numpy array
-        #
-
-        column_names = bldg_properties_encoded.columns
-
-        bldg_encoded_np = bldg_properties_encoded.values  # table with nan
-        bldg_inde_np = bldg_properties_encoded.index  # table of building indices
-        bldg_prel_np = bldg_properties_preliminary.values  # table of Primitive
-        bldg_geom_np = bldg_geometries_df.values  # table of (lat,lon)
-
-        mask_impu_np = mask.values
-        bldg_impu_np = bldg_encoded_np.copy()
-
-        #
-        # set up placeholders
-        #
-
-        sample_dic = {}  # samples
-        mp_dic = {}  # most probable value
-        for column in column_names[mask.any(axis=0)]:
-            mp_dic[column] = {}
-            sample_dic[column] = {}
-
-        #
-        # Loop over clusters
-        #
-
-        elapseStart = time.time()
-
-        print("Running the main imputation. This may take a while.")
-        for ci in range(n_cluster):
-            if np.mod(ci, 20) == 19:
-                print("Enumerating clusters: {} among {}".format(ci + 1, n_cluster))
-
             #
-            # Compute correlation matrix to select important features
+            # drop features to exclude, if specified by the user
             #
 
-            cluster_idx = np.where(cluster_ids == ci)[0]
+            if len(exclude_features) > 0:
+                for feature in exclude_features:
+                    if feature not in column_names:
+                        print(
+                            "The feature {} does not exist in inventory. Ignoring it from the exclude list.".format(
+                                feature
+                            )
+                        )
+                        exclude_features.remove(feature)
 
-            corrMat = np.array(
-                bldg_properties_encoded.iloc[cluster_idx].corr(numeric_only=False)
-            )
-            const_idx = np.where(bldg_properties_encoded.iloc[cluster_idx].var() == 0)[
-                0
-            ]
-            corrMat[:, const_idx] = 0
-            corrMat[const_idx, :] = 0
+                bldg_properties_df = bldg_properties_df.drop(columns=exclude_features)
+                column_names = bldg_properties_df.columns
 
             #
-            # The Primitive values will be used as train_X
+            # replace empty or "NA" with nan & drop entirely missing columns
             #
 
-            bldg_prel_subset = bldg_prel_np[cluster_idx, :]  # Primitive
-            bldg_inde_subset = bldg_inde_np[cluster_idx]  # building indices
+            # pd.set_option("future.no_silent_downcasting", True)
+            bldg_properties_df = bldg_properties_df.replace("NA", np.nan, inplace=False)
+            bldg_properties_df = bldg_properties_df.replace("", np.nan, inplace=False)
+            mask = bldg_properties_df.isnull()  # for missing
 
-            for npp in range(max(1,self.n_pw)):
-                #
-                # Sub dataframes corresponding to the current cluster
-                #
+            column_entirely_missing = column_names[mask.all(axis=0)]
+            bldg_properties_df = bldg_properties_df.drop(columns=column_entirely_missing)
+            mask = mask.drop(columns=column_entirely_missing)
 
-                bldg_geom_subset = bldg_geom_np[cluster_idx, :]
-
-                bldg_impu_subset = bldg_impu_np[cluster_idx, :]
-                mask_impu_subset = mask_impu_np[cluster_idx, :]
-
-                sample_dic, mp_dic = self.sequential_imputer(
-                    sample_dic,
-                    mp_dic,
-                    bldg_impu_subset,
-                    mask_impu_subset,
-                    bldg_inde_subset,
-                    column_names,
-                    corrMat,
-                    bldg_prel_subset,
-                    bldg_geom_subset,
-                    nbrs_G,
-                    trainY_G_list,
-                    is_category,
-                    npp,
-                    self.gen_method,
+            if len(column_entirely_missing) >= 1:
+                print(
+                    "Features with no reference data cannot be imputed. Removing them from the imputation target: "
+                    + ", ".join(list(column_entirely_missing))
                 )
 
-        elapseEnd = (time.time() - elapseStart) / 60
-        print("Done imputation. It took {:.2f} mins".format(elapseEnd))
+            if sum(mask.any(axis=0)) == 0:
+                print("No feature to impute")
+                continue
 
-        #
-        # update inventory
-        #
+            #
+            # transform category variables into integers
+            #
 
-        output_inventory = self.update_inventory(
-            input_inventory, sample_dic, label_encoders, is_category
-        )
+            bldg_properties_encoded, label_encoders, is_category = (
+                self.category_in_df_to_indices(bldg_properties_df, mask)
+            )
+
+            #
+            # Primitive imputation
+            #
+
+            bldg_properties_preliminary, nbrs_G, trainY_G_list = self.geospatial_knn(
+                bldg_properties_encoded, mask, bldg_geometries_df
+            )
+
+            #
+            # Cluster
+            #
+
+            cluster_ids, n_cluster = self.clustering(
+                bldg_properties_encoded,
+                bldg_geometries_df,
+                nbldg_per_cluster=nbldg_per_cluster,
+                seed=self.seed,
+            )
+
+            #
+            # set up numpy array
+            #
+
+            column_names = bldg_properties_encoded.columns
+
+            bldg_encoded_np = bldg_properties_encoded.values  # table with nan
+            bldg_inde_np = bldg_properties_encoded.index  # table of building indices
+            bldg_prel_np = bldg_properties_preliminary.values  # table of Primitive
+            bldg_geom_np = bldg_geometries_df.values  # table of (lat,lon)
+
+            mask_impu_np = mask.values
+            bldg_impu_np = bldg_encoded_np.copy()
+
+            #
+            # set up placeholders
+            #
+
+            sample_dic = {}  # samples
+            mp_dic = {}  # most probable value
+            for column in column_names[mask.any(axis=0)]:
+                mp_dic[column] = {}
+                sample_dic[column] = {}
+
+            #
+            # Loop over clusters
+            #
+
+            elapseStart = time.time()
+
+            print("Running the main imputation. This may take a while.")
+            for ci in range(n_cluster):
+                if np.mod(ci, 20) == 19:
+                    print("Enumerating clusters: {} among {}".format(ci + 1, n_cluster))
+
+                #
+                # Compute correlation matrix to select important features
+                #
+
+                cluster_idx = np.where(cluster_ids == ci)[0]
+
+                corrMat = np.array(
+                    bldg_properties_encoded.iloc[cluster_idx].corr(numeric_only=False)
+                )
+                const_idx = np.where(bldg_properties_encoded.iloc[cluster_idx].var() == 0)[
+                    0
+                ]
+                corrMat[:, const_idx] = 0
+                corrMat[const_idx, :] = 0
+
+                #
+                # The Primitive values will be used as train_X
+                #
+
+                bldg_prel_subset = bldg_prel_np[cluster_idx, :]  # Primitive
+                bldg_inde_subset = bldg_inde_np[cluster_idx]  # building indices
+
+                for npp in range(max(1,self.n_pw)):
+                    #
+                    # Sub dataframes corresponding to the current cluster
+                    #
+
+                    bldg_geom_subset = bldg_geom_np[cluster_idx, :]
+
+                    bldg_impu_subset = bldg_impu_np[cluster_idx, :]
+                    mask_impu_subset = mask_impu_np[cluster_idx, :]
+
+                    sample_dic, mp_dic = self.sequential_imputer(
+                        sample_dic,
+                        mp_dic,
+                        bldg_impu_subset,
+                        mask_impu_subset,
+                        bldg_inde_subset,
+                        column_names,
+                        corrMat,
+                        bldg_prel_subset,
+                        bldg_geom_subset,
+                        nbrs_G,
+                        trainY_G_list,
+                        is_category,
+                        npp,
+                        self.gen_method,
+                    )
+
+            elapseEnd = (time.time() - elapseStart) / 60
+            print("Done imputation. It took {:.2f} mins".format(elapseEnd))
+
+
+            #
+            # update inventory
+            #
+            inventory_realization_imputed = self.update_inventory(
+                inventory_realization, sample_dic, label_encoders, is_category
+            )
+
+
+            if existing_worlds==1:
+                output_inventory = inventory_realization_imputed
+            else:
+                output_inventory.update_world_realization(nw, inventory_realization_imputed)
 
         return output_inventory
+
+
+    def merge_two_json(self, A, B, shrink=False):
+        if A == {}:
+            return B
+
+        if B == {}:
+            return A
+
+        C = {}
+
+        for key in A:
+            # Initialize the merged values for the current key
+            merged_values = {}
+
+            # Loop through each feature in A and B
+            for feature in A[key]:
+                # Get the value from A, ensure it's a list
+                value_a = A[key][feature]
+                if not isinstance(value_a, list):
+                    value_a = [value_a]
+
+                # Get the value from B, ensure it's a list
+                value_b = B[key].get(feature, [])
+                if not isinstance(value_b, list):
+                    value_b = [value_b]
+
+                # Merge the two lists
+
+                if not shrink:
+                    merged_values[feature] = value_a + value_b
+                else:
+                    val = value_a + value_b
+                    if isinstance(val, list) and (len(set(val)) == 1):
+                        merged_values[feature] = val[0]
+                    else:
+                        merged_values[feature] = val
+
+            # Assign the merged values for the current key to C
+            C[key] = merged_values
+
+        return C
+
+
 
     def update_inventory(self, inventory, sample_dic, label_encoders, is_category):
         output_inventory = deepcopy(inventory)
@@ -303,16 +403,22 @@ class KnnImputer(Imputation):
         for column in sample_dic.keys():
             for bldg_idx in sample_dic[column]:
                 if is_category[column]:
+
+                    pred_val = sample_dic[column][bldg_idx]
+
                     imputed_value_sample = (
                         label_encoders[column]
-                        .inverse_transform(sample_dic[column][bldg_idx])
+                        .inverse_transform(pred_val)
                         .tolist()
                     )
+
                 else:
                     imputed_value_sample = sample_dic[column][bldg_idx]
 
-                if len(imputed_value_sample) == 1:
-                    imputed_value_sample = imputed_value_sample[0]
+                # if it is a list of lengh 1, make it float
+                if isinstance(imputed_value_sample, list):
+                    if len(imputed_value_sample) == 1:
+                        imputed_value_sample = imputed_value_sample[0]
 
                 output_inventory.add_asset_features(
                     bldg_idx, {column: imputed_value_sample}, overwrite=True

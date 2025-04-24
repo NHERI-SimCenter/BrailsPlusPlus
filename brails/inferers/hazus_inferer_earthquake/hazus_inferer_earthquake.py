@@ -302,6 +302,10 @@ class HazusInfererEarthquake(InferenceEngine):
                 output_inventory.add_asset_features(index, feature, overwrite=True)
                 # updated = True
 
+        else:
+            output_inventory = deepcopy(self.input_inventory)
+ 
+
         #
         # Change names
         #
@@ -345,10 +349,11 @@ class HazusInfererEarthquake(InferenceEngine):
             n_pw = n_possible_worlds  # if zero, it will give the most likely value
         else:
             if n_possible_worlds == 0:
+                n_pw = 0
                 pass
+
             elif (
                 (n_possible_worlds == 1)
-                or (n_possible_worlds == 1)
                 or (n_possible_worlds == existing_worlds)
             ):
                 logger.warning(

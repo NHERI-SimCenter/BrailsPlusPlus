@@ -1068,6 +1068,55 @@ class AssetInventory:
 
         return new_inventory
 
+
+    def update_world_realization(self, id, world_realization):
+
+        if self.n_pw == id:
+            errmsg = f"The world index {id} should be smaller than the existing number of worlds {self.n_pw}, and the index starts from zero."
+            raise Exception(errmsg)
+
+        elif self.n_pw <id:
+            errmsg = f"The world index {id} should be smaller than the existing number of worlds {self.n_pw}."
+            raise Exception(errmsg)
+
+        for i in world_realization.get_asset_ids():
+            flag, features = self.get_asset_features(i)
+            flag_new, features_new = world_realization.get_asset_features(i)
+
+            for key, val in features_new.items():
+
+                if isinstance(val, list):
+                    errmsg = f"world_realization should not contain multiple possible worlds."
+                    raise Exception(errmsg)
+                
+                try:
+                    original_value = self.get_asset_features(i)[1][key]
+                except Exception as e:
+                    # create a new key-value pair if it did not exist. 
+                    original_value = val
+
+
+                # initalize
+                if isinstance(original_value, list):
+                    new_value = original_value
+                else:
+                    new_value = [original_value]*self.n_pw    
+
+                # udpate
+                new_value[id] = val
+
+                # if identical, shrink it
+                if (len(set(new_value)) == 1):
+                        new_value = new_value[0]
+
+                # overwrite existing ones.
+                self.add_asset_features(
+                    i, {key: new_value}, overwrite=True
+                )
+
+        return 
+
+
     def convert_polygons_to_centroids(self):
         """
         Convert polygons in GeoJson to centorid points
