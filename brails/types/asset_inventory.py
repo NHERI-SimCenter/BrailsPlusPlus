@@ -67,6 +67,27 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def clean_floats(obj):
+    
+    """
+    Function: A function provided by chatGPT to turn make sure floats that are mathematicallys ints are
+    converted to ints for output purposes for all values in json obj, dict, or list.
+    note: Uses recursion to do this.
+
+    Args:
+      obj: json/dict/list
+    """
+    
+    if isinstance(obj, dict):
+        return {k: clean_floats(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_floats(v) for v in obj]
+    elif isinstance(obj, float) and obj.is_integer():
+        return int(obj)
+    else:
+        return obj
+
+
 class Asset:
     """
     A data structure for an asset that holds it coordinates and features.
@@ -741,10 +762,16 @@ class AssetInventory:
             output_file(str):
                 Path of the GeoJSON output file.
         """
+        
         geojson = self.get_geojson()
+
+        print(f'GEOJSON {geojson}')
         
         # Modify the GeoJSON features to include an 'id' field:
         # This is the variation of GeoJSON that is used in R2D
+
+        print(f'FILE: {output_file}')
+        
         for i, ft in enumerate(geojson["features"]):
             if "id" in ft['properties']:
                 id = ft['properties'].pop("id")
@@ -755,7 +782,7 @@ class AssetInventory:
         # Write the created GeoJSON dictionary into a GeoJSON file:
         if output_file:
             with open(output_file, "w", encoding="utf-8") as file_out:
-                json.dump(geojson, file_out, indent=2)
+                json.dump(clean_floats(geojson), file_out, indent=2)
 
         return geojson
 
