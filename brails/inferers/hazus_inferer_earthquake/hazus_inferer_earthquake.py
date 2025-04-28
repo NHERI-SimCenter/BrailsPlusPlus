@@ -544,17 +544,17 @@ class HazusInfererEarthquake(InferenceEngine):
         # get hazus DL rulesets
         #
 
-        height_classes = {"L": [1, 2, 3], "M": [4, 5, 6], "H": list(range(7, 200))}
+        height_classes = {"Low-Rise": [1, 2, 3], "Mid-Rise": [4, 5, 6], "High-Rise": list(range(7, 200))}
 
         # design_level_W1 = {
-        #         "MC": list(range(1,1975)),
-        #         "HC": list(range(1975,2030))
+        #         "Moderate-Code": list(range(1,1975)),
+        #         "High-Code": list(range(1975,2030))
         # }
 
         design_level = {
-            "LC": list(range(1, 1940)),
-            "MC": list(range(1940, 1975)),
-            "HC": list(range(1975, 2030)),
+            "Low-Code": list(range(1, 1940)),
+            "Moderate-Code": list(range(1940, 1975)),
+            "High-Code": list(range(1975, 2030)),
         }
 
         # height_classes = get_hazus_height_classes()
@@ -596,16 +596,16 @@ class HazusInfererEarthquake(InferenceEngine):
         structural_type = bldg_properties_df[structureType_key]
 
         # Boolean indexing with local variables for faster access
-        mask = (design_level == "LC") & (structural_type == "W1")
+        mask = (design_level == "Low-Code") & (structural_type == "W1")
         # Update in place
-        bldg_properties_df.loc[mask, designLevel_key] = "MC"
+        bldg_properties_df.loc[mask, designLevel_key] = "Moderate-Code"
 
         #
         # Foundation Column
         #
 
         if foundationType_key in keys_to_infer:
-            bldg_properties_df[foundationType_key] = "S"
+            bldg_properties_df[foundationType_key] = "Shallow"
         else:
             bldg_properties_df[foundationType_key] = ""
 
