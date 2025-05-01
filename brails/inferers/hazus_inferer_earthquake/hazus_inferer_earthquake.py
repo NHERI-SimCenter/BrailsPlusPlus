@@ -77,7 +77,7 @@ class HazusInfererEarthquake(InferenceEngine):
         income_key="Income",
         planArea_key="PlanArea",
         splitLevel_key="SplitLevel",
-        buildingRise_key="BuildingRise",
+        heightClass_key="HeightClass",
         garageType_key="GarageType",  # optional
         constructionClass_key="ConstructionClass",  # optional
         foundationType_key="FoundationType",  # optional
@@ -106,7 +106,7 @@ class HazusInfererEarthquake(InferenceEngine):
         self.foundationType_key = foundationType_key
         self.structureType_key = structureType_key
         self.replacementCost_key = replacementCost_key
-        self.buildingRise_key = buildingRise_key
+        self.heightClass_key = heightClass_key
         self.designLevel_key = designLevel_key
         self.clean_features = clean_features
 
@@ -122,7 +122,7 @@ class HazusInfererEarthquake(InferenceEngine):
 
         target_keys_json = {
             self.structureType_key: "StructureType",  # Damage
-            self.buildingRise_key: "BuildingRise",  # Damage
+            self.heightClass_key: "HeightClass",  # Damage
             self.designLevel_key: "DesignLevel",  # Damage
             self.foundationType_key: "FoundationType",  # Damage
             self.replacementCost_key: "ReplacementCost",  # Loss
@@ -201,15 +201,15 @@ class HazusInfererEarthquake(InferenceEngine):
             self.input_inventory = inferer.infer()
 
         #
-        # Step 3. "BuildingRise", "DesignLevel", "FoundationType", Simple deterministic mapping
+        # Step 3. "HeightClass", "DesignLevel", "FoundationType", Simple deterministic mapping
         #
 
         print(
-            f">> Step3-1 : Checking if BuildingRise ({self.buildingRise_key}), DesignLevel ({self.designLevel_key}) and FoundationType ({self.foundationType_key}) exist"
+            f">> Step3-1 : Checking if HeightClass ({self.heightClass_key}), DesignLevel ({self.designLevel_key}) and FoundationType ({self.foundationType_key}) exist"
         )
 
         keys_to_infer_DL = set(
-            [self.buildingRise_key, self.designLevel_key, self.foundationType_key]
+            [self.heightClass_key, self.designLevel_key, self.foundationType_key]
         ).intersection(set(keys_to_infer))
 
         if keys_to_infer_DL:
@@ -234,10 +234,10 @@ class HazusInfererEarthquake(InferenceEngine):
             # check if you have enough
             #
 
-            if self.buildingRise_key in keys_to_infer_DL:
+            if self.heightClass_key in keys_to_infer_DL:
                 heightclass_runable = self.check_keys(
                     needed_keys=[self.numberOfStories_key],
-                    target_key=self.buildingRise_key,
+                    target_key=self.heightClass_key,
                     inventory_df=bldg_properties_df,
                 )
             else:
@@ -255,8 +255,8 @@ class HazusInfererEarthquake(InferenceEngine):
             if (not designlevel_runable) and self.designLevel_key in keys_to_infer_DL:
                 keys_to_infer_DL.remove(self.designLevel_key)
 
-            if (not heightclass_runable) and self.buildingRise_key in keys_to_infer_DL:
-                keys_to_infer_DL.remove(self.buildingRise_key)
+            if (not heightclass_runable) and self.heightClass_key in keys_to_infer_DL:
+                keys_to_infer_DL.remove(self.heightClass_key)
 
             #
             # generation
@@ -268,7 +268,7 @@ class HazusInfererEarthquake(InferenceEngine):
                 self.structureType_key,
                 self.yearBuilt_key,
                 self.numberOfStories_key,
-                self.buildingRise_key,
+                self.heightClass_key,
                 self.designLevel_key,
                 self.foundationType_key,
                 keys_to_infer_DL,
@@ -283,7 +283,7 @@ class HazusInfererEarthquake(InferenceEngine):
                         self.structureType_key,
                         self.yearBuilt_key,
                         self.numberOfStories_key,
-                        self.buildingRise_key,
+                        self.heightClass_key,
                         self.designLevel_key,
                         self.foundationType_key,
                         keys_to_infer_DL,
@@ -529,7 +529,7 @@ class HazusInfererEarthquake(InferenceEngine):
         structureType_key,
         yearBuilt_key,
         numberOfStories_key,
-        buildingRise_key,
+        heightClass_key,
         designLevel_key,
         foundationType_key,
         keys_to_infer,
@@ -544,17 +544,17 @@ class HazusInfererEarthquake(InferenceEngine):
         # get hazus DL rulesets
         #
 
-        height_classes = {"L": [1, 2, 3], "M": [4, 5, 6], "H": list(range(7, 200))}
+        height_classes = {"Low-Rise": [1, 2, 3], "Mid-Rise": [4, 5, 6], "High-Rise": list(range(7, 200))}
 
         # design_level_W1 = {
-        #         "MC": list(range(1,1975)),
-        #         "HC": list(range(1975,2030))
+        #         "Moderate-Code": list(range(1,1975)),
+        #         "High-Code": list(range(1975,2030))
         # }
 
         design_level = {
-            "LC": list(range(1, 1940)),
-            "MC": list(range(1940, 1975)),
-            "HC": list(range(1975, 2030)),
+            "Low-Code": list(range(1, 1940)),
+            "Moderate-Code": list(range(1940, 1975)),
+            "High-Code": list(range(1975, 2030)),
         }
 
         # height_classes = get_hazus_height_classes()
@@ -564,18 +564,18 @@ class HazusInfererEarthquake(InferenceEngine):
         # Add  HeightClass column
         #
 
-        if buildingRise_key in keys_to_infer:
-            bldg_properties_df[buildingRise_key] = ""
+        if heightClass_key in keys_to_infer:
+            bldg_properties_df[heightClass_key] = ""
             for height_class, story_list in height_classes.items():
                 in_class_index = bldg_properties_df[numberOfStories_key].isin(
                     story_list
                 )
                 if sum(in_class_index) > 0:
-                    bldg_properties_df.loc[in_class_index, buildingRise_key] = (
+                    bldg_properties_df.loc[in_class_index, heightClass_key] = (
                         height_class
                     )
         else:
-            bldg_properties_df[buildingRise_key] = ""
+            bldg_properties_df[heightClass_key] = ""
 
         #
         # Add DesignLevel column
@@ -596,16 +596,16 @@ class HazusInfererEarthquake(InferenceEngine):
         structural_type = bldg_properties_df[structureType_key]
 
         # Boolean indexing with local variables for faster access
-        mask = (design_level == "LC") & (structural_type == "W1")
+        mask = (design_level == "Low-Code") & (structural_type == "W1")
         # Update in place
-        bldg_properties_df.loc[mask, designLevel_key] = "MC"
+        bldg_properties_df.loc[mask, designLevel_key] = "Moderate-Code"
 
         #
         # Foundation Column
         #
 
         if foundationType_key in keys_to_infer:
-            bldg_properties_df[foundationType_key] = "S"
+            bldg_properties_df[foundationType_key] = "Shallow"
         else:
             bldg_properties_df[foundationType_key] = ""
 
@@ -613,17 +613,17 @@ class HazusInfererEarthquake(InferenceEngine):
         # This is a bit slow. Hope the below one is faster although it is a lot longer.
         #
 
-        # for i, heightclass, designlevel in zip(bldg_properties_df.index, bldg_properties_df[buildingRise_key], bldg_properties_df[designLevel_key]):
-        #    new_prop[index] = {buildingRise_key: heightclass, designLevel_key: designlevel, foundationType_key: 'S'} # if #elem in list is 1, convert it to integer
+        # for i, heightclass, designlevel in zip(bldg_properties_df.index, bldg_properties_df[heightClass_key], bldg_properties_df[designLevel_key]):
+        #    new_prop[index] = {heightClass_key: heightclass, designLevel_key: designlevel, foundationType_key: 'S'} # if #elem in list is 1, convert it to integer
 
         # Convert keys_to_infer to a set once for comparison
         keys_to_infer_set = set(keys_to_infer)
 
         # Mapping of key combinations to the corresponding DataFrame columns
         key_combinations = {
-            frozenset([buildingRise_key]): pd.DataFrame(
+            frozenset([heightClass_key]): pd.DataFrame(
                 {
-                    buildingRise_key: bldg_properties_df[buildingRise_key],
+                    heightClass_key: bldg_properties_df[heightClass_key],
                 }
             ),
             frozenset([designLevel_key]): pd.DataFrame(
@@ -636,9 +636,9 @@ class HazusInfererEarthquake(InferenceEngine):
                     foundationType_key: bldg_properties_df[foundationType_key],
                 }
             ),
-            frozenset([buildingRise_key, designLevel_key]): pd.DataFrame(
+            frozenset([heightClass_key, designLevel_key]): pd.DataFrame(
                 {
-                    buildingRise_key: bldg_properties_df[buildingRise_key],
+                    heightClass_key: bldg_properties_df[heightClass_key],
                     designLevel_key: bldg_properties_df[designLevel_key],
                 }
             ),
@@ -648,17 +648,17 @@ class HazusInfererEarthquake(InferenceEngine):
                     foundationType_key: bldg_properties_df[foundationType_key],
                 }
             ),
-            frozenset([buildingRise_key, foundationType_key]): pd.DataFrame(
+            frozenset([heightClass_key, foundationType_key]): pd.DataFrame(
                 {
-                    buildingRise_key: bldg_properties_df[buildingRise_key],
+                    heightClass_key: bldg_properties_df[heightClass_key],
                     foundationType_key: bldg_properties_df[foundationType_key],
                 }
             ),
             frozenset(
-                [buildingRise_key, designLevel_key, foundationType_key]
+                [heightClass_key, designLevel_key, foundationType_key]
             ): pd.DataFrame(
                 {
-                    buildingRise_key: bldg_properties_df[buildingRise_key],
+                    heightClass_key: bldg_properties_df[heightClass_key],
                     designLevel_key: bldg_properties_df[designLevel_key],
                     foundationType_key: bldg_properties_df[foundationType_key],
                 }
