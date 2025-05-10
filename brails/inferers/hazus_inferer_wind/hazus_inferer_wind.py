@@ -42,6 +42,12 @@
 import time
 import copy
 import sys
+import os
+import json
+import pandas as pd
+from pathlib import Path
+import jsonschema
+from jsonschema import validate, ValidationError 
 
 import numpy as np
 
@@ -49,6 +55,7 @@ from brails.types.asset_inventory import AssetInventory
 from brails.inferers.inferenceEngine import InferenceEngine
 from brails.inferers.hazus_inferer_wind.auto_HU_NJ import auto_populate
 
+from brails.utils import GeoTools
 
 # To be replaced with old brails ++ codes
 import warnings
@@ -332,3 +339,126 @@ class HazusInfererWind(InferenceEngine):
             inventory_json[key] = feature
 
         return inventory_json
+
+
+    def validate(self, input_inventory, silence = False):
+
+        init = time.time()
+
+        # load the schema assuming it is called "input_schema.json" and it is
+        # stored next to the mapping script
+        current_file_path = os.path.dirname(__file__)
+        schema_path = os.path.join(current_file_path, "input_schema.json")
+        
+        with Path(schema_path).open(encoding="utf-8") as f:
+            input_schema = json.load(f)
+
+
+        def check_building(gi):
+            # gi is a dictionary of {feature:value} pairs
+
+            # make sure missing data is properly represented as null in the JSON
+            for key, item in gi.items():
+                if pd.isna(item):
+                    gi[key] = None
+            
+            # validate the provided features against the required inputs
+            validate(instance=gi, schema=input_schema)
+    
+
+        invalid_id = []
+        error_record = {}
+        bldg_count = 0
+        for id in input_inventory.get_asset_ids():
+            try:
+                check_building(input_inventory.get_asset_features(id)[1])        
+            except ValidationError as e:
+                invalid_id += [id]
+                error_record[id] = e.message
+            bldg_count += 1
+
+        print(f'Done validation. It took {round(time.time() - init, 2)} sec.')
+
+        if not silence: 
+            if len(invalid_id)>0: 
+                logger.warning(
+                        f"The inventory has {len(invalid_id)} assets ({round(len(invalid_id) / bldg_count * 100, 2)}%) that are identified as invalid. This means the information on the specific combinations of input features are not found in the Hazus DL library. You can use <correct> method to quickly project those features to a valid feature combination. See documentation."
+                )
+            else:
+                print("Good to go")
+
+        return invalid_id, error_record
+
+
+    def correct(self, input_inventory, invalid_id=None, weights={}):
+
+        init = time.time()
+
+        # re-running validation, in case the user changed some inputs
+        if invalid_id==None:
+            invalid_id, error_record = self.validate(input_inventory, silence = True)
+
+        n_assets = len(input_inventory.inventory)
+        n_invalid = len(invalid_id)
+
+        output_inventory = copy.deepcopy(input_inventory)
+
+        # record the invalid building properties
+        target_bldg = {}
+        target_loc={}
+        for count_invalid, id in enumerate(invalid_id):
+            target_bldg[count_invalid] = copy.deepcopy(output_inventory.get_asset_features(id)[1])
+            target_loc[count_invalid] = np.mean(output_inventory.get_asset_coordinates(id)[1],axis=0)
+            output_inventory.inventory[id].remove_features(target_bldg[count_invalid].keys()) # clean up the features so that it will not get a highscore
+        
+        # compute the score of each of the valid assets
+        score = np.zeros([n_assets, n_invalid])
+        for count_assets, bldg_id in enumerate(output_inventory.get_asset_ids(), start=0):
+            # for this building,  
+
+            bldg_features = output_inventory.get_asset_features(bldg_id)[1]
+            for count_invalid in range(n_invalid):
+
+                # compute the score
+                for target_feature, target_value in target_bldg[count_invalid].items():
+                    if target_feature in bldg_features:
+                        score[count_assets, count_invalid] += (bldg_features[target_feature] == target_value ) * weights.get(target_feature,1)
+
+
+        # index_of_max_score = np.argmax(score, axis = 0)
+
+        # for count_invalid, id in enumerate(invalid_id):
+        #     output_inventory.add_asset_features(id, output_inventory.get_asset_features(index_of_max_score[count_invalid])[1])
+
+
+        max_score = np.max(score, axis = 0)
+
+        for count_invalid, id in enumerate(invalid_id):
+            
+            tie_indices = np.where(max_score[count_invalid] == score[:,count_invalid])[0]
+
+            if len(tie_indices)==1:
+                # only one candidate
+                selected_neighbor = tie_indices[0]
+            else:
+                # select the closest building
+                target_point = target_loc[count_invalid]
+                my_distance = []
+                for t_idx in tie_indices:
+                    candi_point = np.mean(output_inventory.get_asset_coordinates(t_idx)[1],axis=0)
+                    my_distance += [GeoTools.haversine_dist(target_point.tolist(), candi_point.tolist())]
+                selected_neighbor = tie_indices[np.argmin(my_distance)]
+
+            output_inventory.add_asset_features(id, output_inventory.get_asset_features(selected_neighbor)[1])
+
+        if len(invalid_id)==0:
+            print(
+                    f"Nothing happened. All good to go."
+            )
+        else:
+            print(
+                     f"{n_invalid} Assets ({round(n_invalid / n_assets * 100, 2)}%) are corrected. Now good to go."
+            )
+        print(f'Done correction. It took {round(time.time() - init, 2)} sec.')
+
+        return output_inventory

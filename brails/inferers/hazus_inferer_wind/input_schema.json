@@ -1,0 +1,1194 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"type": "object",
+	"properties": {
+		"BuildingType":{
+			"type": "string",
+			"enum": [
+				"Wood", 
+				"Masonry", 
+				"Concrete", 
+				"Steel",
+				"Manufactured Housing",
+				"Essential Facility"				
+			]
+		},
+		"StructureType":{
+			"type": "string",
+			"enum": [
+				"Single Family Housing",
+				"Multi-Unit Housing",
+				"Low-Rise Strip Mall",
+				"Low-Rise Industrial Building",
+				"Engineered Residential Building",
+				"Engineered Commercial Building",
+				"Pre-Engineered Metal Building",
+				"Pre-HUD",
+				"1976 HUD",
+				"1994 HUD Zone 1",
+				"1994 HUD Zone 2",
+				"1994 HUD Zone 3",
+				"Fire Station",
+				"Police Station",
+				"Emergency Operation Center",
+				"Hospital",
+				"School"
+			]
+		},
+		"LandCover":{
+			"type": "string",
+			"enum": [
+				"Open",
+				"Light Suburban",
+				"Suburban",
+				"Light Trees",
+				"Trees"
+			]
+		}
+	},
+	"required": ["BuildingType","StructureType","LandCover"],
+	"allOf": [
+		{
+			"if": {
+				"properties": {
+					"StructureType": {
+						"enum": [
+							"Single Family Housing",
+							"Multi-Unit Housing",
+							"Engineered Residential Building",
+							"Engineered Commercial Building",
+							"Hospital",
+							"School"
+						]
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"NumberOfStories": {
+						"type": "integer",
+						"minimum": 1
+					}
+				},				
+				"required": ["NumberOfStories"]
+			}	
+		},	
+		{
+			"if": {
+				"properties": {
+					"StructureType": {
+						"const": "Low-Rise Strip Mall"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"Height": {
+						"type": "number",
+						"exclusiveMinimum": 0
+					}
+				},
+				"required": ["Height"]
+			}	
+		},
+		{
+			"if": {
+				"properties": {
+					"StructureType": {
+						"const": "Pre-Engineered Metal Building"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"PlanArea": {
+						"type": "number",
+						"exclusiveMinimum": 0
+					}
+				},
+				"required": ["PlanArea"]
+			}	
+		},		
+		{
+			"if": {
+				"properties": {
+					"BuildingType": {
+						"const": "Wood"						
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"StructureType": {
+						"enum": [
+							"Single Family Housing",
+							"Multi-Unit Housing"
+						]
+					}				
+				},
+				"allOf": [
+					{
+						"if": {
+							"properties": {
+								"StructureType": {
+									"const": "Single Family Housing"
+								}
+							}
+						},
+						"then": {
+							"properties": {
+								"RoofShape": {
+									"enum": [
+										"Hip",
+										"Gable"
+									]
+								},
+								"SecondaryWaterResistance": {
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								},
+								"RoofDeckAttachment":{
+									"enum": [
+										"6d",
+										"6s",
+										"8d",
+										"8s"
+									]
+								},
+								"RoofToWallConnection":{
+									"enum": [
+										"Strap",
+										"Toe-nail"
+									]
+								},								
+								"Shutters":{
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								}
+							},							
+							"if": {
+								"properties": {
+									"Shutters": {
+										"const": 0
+									}
+								}
+							},
+							"then": {
+								"properties": {
+									"Garage": {
+										"enum": [
+											"No",
+											"Standard",
+											"Weak"
+										]
+									}
+								}
+							},
+							"else": {
+								"properties": {
+									"Garage": {
+										"enum": [
+											"No",
+											"Superior"
+										]
+									}
+								}
+							},
+							"required": [
+								"RoofShape",
+								"SecondaryWaterResistance",
+								"RoofDeckAttachment",
+								"RoofToWallConnection",
+								"Garage",
+								"Shutters"
+							]
+						}
+					},
+					{
+						"if": {
+							"properties": {
+								"StructureType": {
+									"const": "Multi-Unit Housing"
+								}
+							}
+						},
+						"then": {
+							"properties": {
+								"RoofShape": {
+									"enum": [
+										"Flat",
+										"Hip",
+										"Gable"
+									]
+								},
+								"RoofDeckAttachment":{
+									"enum": [
+										"6d",
+										"6s",
+										"8d",
+										"8s"
+									]
+								},
+								"RoofToWallConnection":{
+									"enum": [
+										"Strap",
+										"Toe-nail"
+									]
+								},								
+								"Shutters":{
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								}
+							},
+							"required": [
+								"RoofShape",								
+								"RoofDeckAttachment",
+								"RoofToWallConnection",
+								"Shutters"
+							],
+							"if": {
+								"properties": {
+									"RoofShape": {
+										"const": "Flat"
+									}
+								}
+							},
+							"then": {
+								"properties": {									
+									"RoofCover": {
+										"type": "string",
+										"enum": [
+											"Single-Ply Membrane",
+											"Built-Up Roof"
+										]
+									},
+									"RoofQuality": {
+										"type": "string",
+										"enum": [
+											"Good",
+											"Poor"
+										]
+									}
+								},
+								"required": [
+									"RoofCover",
+									"RoofQuality"
+								]
+							},
+							"else": {
+								"properties": {
+									"SecondaryWaterResistance": {
+										"type": "integer",
+										"enum": [
+											0,
+											1
+										]
+									}									
+								},
+								"required": [
+									"SecondaryWaterResistance"	
+								]
+							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"BuildingType": {
+						"const": "Masonry"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"StructureType": {
+						"enum": [
+							"Single Family Housing",
+							"Multi-Unit Housing",
+							"Low-Rise Strip Mall",
+							"Low-Rise Industrial Building",
+							"Engineered Residential Building",
+							"Engineered Commercial Building"
+						]
+					}
+				},
+				"allOf": [
+					{
+						"if": {
+							"properties": {
+								"StructureType": {
+									"const": "Single Family Housing"
+								}
+							}
+						},
+						"then": {
+							"properties": {
+								"RoofShape": {
+									"enum": [
+										"Hip",
+										"Gable"
+									]
+								},
+								"RoofToWallConnection":{
+									"enum": [
+										"Strap",
+										"Toe-nail"
+									]
+								},
+								"RoofSystem": {
+									"enum": [
+										"Truss",
+										"Open-Web Steel Joists"
+									]
+								},							
+								"Shutters":{
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								}							
+							},
+							"required": [
+								"RoofShape",
+								"RoofToWallConnection",
+								"RoofSystem",
+								"Shutters"
+							],					
+							"allOf": [
+								{
+									"if": {
+										"properties": {
+											"RoofSystem": {
+												"const": "Open-Web Steel Joists"
+											}
+
+										}
+									},
+									"then": {
+										"properties": {
+											"RoofDeckAttachment":{
+												"enum": [
+													"Standard",
+													"Superior"
+												]
+											},
+											"RoofCover": {
+												"enum": [
+													"Sheet Metal",
+													"Composite Shingle"
+												]
+											}	
+										},
+										"required": [
+											"RoofDeckAttachment",
+											"RoofCover"
+										],
+										"if": {
+											"properties": {
+												"RoofDeckAttachment": {
+													"const": "Superior"
+												},
+												"RoofCover": {
+													"const": "Composite Shingle"
+												}
+											}
+										},
+										"then": {
+											"properties": {
+												"SecondaryWaterResistance": {
+													"type": "integer",
+													"enum": [
+														0,
+														1
+													]
+												}
+											},
+											"required": [
+												"SecondaryWaterResistance"
+											]
+										}										
+									}
+								},
+								{
+									"if": {
+										"properties": {
+											"RoofSystem": {
+												"const": "Truss"
+											}
+										}
+									},
+									"then": {
+										"properties": {
+											"RoofDeckAttachment":{
+												"enum": [
+													"6d",
+													"6s",
+													"8d",
+													"8s"
+												]
+											},
+											"SecondaryWaterResistance": {
+												"type": "integer",
+												"enum": [
+													0,
+													1
+												]
+											},									
+											"MasonryReinforcing": {
+												"type": "integer",
+												"enum": [
+													0,
+													1
+												]
+											}
+										},
+										"if": {
+											"properties": {
+												"Shutters": {
+													"const": 0
+												}
+											}
+										},
+										"then": {
+											"properties": {
+												"Garage": {
+													"enum": [
+														"No",
+														"Standard",
+														"Weak"
+													]
+												}
+											}
+										},
+										"else": {
+											"properties": {
+												"Garage": {
+													"enum": [
+														"No",
+														"Superior"
+													]
+												}
+											}
+										},
+										"required": [
+											"RoofDeckAttachment",
+											"SecondaryWaterResistance",
+											"Garage",
+											"MasonryReinforcing"
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"if": {
+							"properties": {
+								"StructureType": {
+									"const": "Multi-Unit Housing"
+								}
+							}
+						},
+						"then": {
+							"properties": {
+								"RoofShape": {
+									"enum": [
+										"Flat",
+										"Hip",
+										"Gable"
+									]
+								},							
+								"RoofDeckAttachment":{
+									"enum": [
+										"6d",
+										"6s",
+										"8d",
+										"8s"
+									]
+								},
+								"RoofToWallConnection":{
+									"enum": [
+										"Strap",
+										"Toe-nail"
+									]
+								},								
+								"Shutters":{
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								},
+								"MasonryReinforcing": {
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								}
+							},
+							"required": [
+								"RoofShape",							
+								"RoofDeckAttachment",
+								"RoofToWallConnection",
+								"Shutters",
+								"MasonryReinforcing"
+							],
+							"if": {
+								"properties": {
+									"RoofShape": {
+										"const": "Flat"
+									}
+								}
+							},
+							"then": {
+								"properties": {
+									"RoofCover": {
+										"type": "string",
+										"enum": [
+											"Single-Ply Membrane",
+											"Built-Up Roof"
+										]
+									},
+									"RoofQuality": {
+										"type": "string",
+										"enum": [
+											"Good",
+											"Poor"
+										]
+									}
+								},
+								"required": [
+									"RoofCover",
+									"RoofQuality"
+								]
+							},
+							"else": {
+								"properties": {
+									"SecondaryWaterResistance": {
+										"type": "integer",
+										"enum": [
+											0,
+											1
+										]
+									}
+								},
+								"required": [
+									"SecondaryWaterResistance"	
+								]
+							}
+						}
+					},
+					{
+						"if": {
+							"properties": {
+								"StructureType": {
+									"const": "Low-Rise Strip Mall"
+								}
+							}
+						},
+						"then": {
+							"properties": {
+								"RoofCover":{
+									"type": "string",
+									"enum": [
+										"Built-Up Roof",
+										"Single-Ply Membrane"
+									]
+								},								
+								"Shutters":{
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								},
+								"MasonryReinforcing": {
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								},
+								"WindDebrisClass": {
+									"type": "string",
+									"enum": [
+										"A",
+										"B",
+										"C",
+										"D"	
+									]
+								},
+								"RoofSystem": {
+									"enum": [
+										"Truss",
+										"Open-Web Steel Joists"
+									]
+								}
+							},
+							"required": [
+								"RoofCover",							
+								"Shutters",
+								"MasonryReinforcing",
+								"WindDebrisClass",
+								"RoofSystem"
+							],
+							"allOf": [
+								{
+									"if": {
+										"properties": {
+											"RoofSystem": {
+												"const": "Open-Web Steel Joists"
+											}
+
+										}
+									},
+									"then": {
+										"properties": {
+											"RoofDeckAttachment":{
+												"enum": [
+													"Standard",
+													"Superior"
+												]
+											},
+											"RoofQuality": {
+												"type": "string",
+												"enum": [
+													"Good",
+													"Poor"
+												]
+											}	
+										},
+										"required": [
+											"RoofDeckAttachment",
+											"RoofQuality"
+										],
+										"if": {
+											"properties": {
+												"Height": {
+													"type": "number",
+													"exclusiveMinimum": 15
+												}
+											}
+										},
+										"then": {
+											"properties": {
+												"NumberOfUnits": {
+													"type": "integer",
+													"exclusiveMinimum": 0													
+												}
+											},
+											"required": [
+												"NumberOfUnits"
+											],
+											"if": {
+												"properties": {
+													"NumberOfUnits": {
+														"minimum": 2
+													}
+												}
+											},
+											"then": {
+												"properties": {
+													"JoistSpacing": {
+														"enum": [
+															4,
+															6														
+														]
+													}
+												},
+												"required": ["JoistSpacing"]
+											}											
+										}
+									}									
+								},
+								{
+									"if": {
+										"properties": {
+											"RoofSystem": {
+												"const": "Truss"
+											}
+										}
+									},
+									"then": {
+										"properties": {
+											"RoofDeckAttachment":{
+												"enum": [
+													"6d",
+													"6s",
+													"8d",
+													"8s"
+												]
+											},
+											"RoofToWallConnection": {
+												"type": "string",
+												"enum": [
+													"Strap",
+													"Toe-nail"
+												]
+											}										
+										},
+										"required": [
+											"RoofDeckAttachment",
+											"RoofToWallConnection"										
+										]
+									}									
+								}
+							]
+						}
+					},
+					{
+						"if": {
+							"properties": {
+								"StructureType": {
+									"const": "Low-Rise Industrial Building"
+								}
+							}
+						},
+						"then": {
+							"properties": {
+								"Shutters":{
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								},
+								"MasonryReinforcing": {
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								},
+								"RoofDeckAttachment":{
+									"enum": [
+										"Standard",
+										"Superior"
+									]
+								},
+								"RoofQuality": {
+									"enum": [
+										"Good",
+										"Poor"
+									]
+								}
+							},
+							"required": [							
+								"Shutters",
+								"MasonryReinforcing",
+								"RoofQuality",
+								"RoofDeckAttachment"
+							]
+						}
+					},
+					{
+						"if": {
+							"properties": {
+								"StructureType": {
+									"enum": [
+										"Engineered Residential Building",
+										"Engineered Commercial Building"
+									]
+								}
+							}
+						},
+						"then": {
+							"properties": {
+								"RoofCover":{
+									"type": "string",
+									"enum": [
+										"Single-Ply Membrane",
+										"Built-Up Roof"
+									]
+								},
+								"Shutters":{
+									"type": "integer",
+									"enum": [
+										0,
+										1
+									]
+								},
+								"WindDebrisClass":{
+									"type": "string",
+									"enum": [
+										"A",
+										"B",
+										"C",
+										"D"	
+									]
+								},							
+								"RoofDeckAttachment":{
+									"enum": [
+										"Standard",
+										"Superior"
+									]
+								},
+								"WindowArea": {
+									"type": "number",
+									"minimum": 0,
+									"maximum": 1
+								}								
+							},
+							"required": [							
+								"RoofCover",
+								"Shutters",
+								"WindDebrisClass",							
+								"RoofDeckAttachment",
+								"WindowArea"
+							]
+						}
+					}
+				]
+			}						
+		},
+		{
+			"if": {
+				"properties": {
+					"BuildingType": {
+						"const": "Concrete"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"StructureType": {
+						"enum": [
+							"Engineered Residential Building",
+							"Engineered Commercial Building"
+						]
+					},
+					"RoofCover":{
+						"type": "string",
+						"enum": [
+							"Single-Ply Membrane",
+							"Built-Up Roof"
+						]
+					},
+					"Shutters":{
+						"type": "integer",
+						"enum": [
+							0,
+							1
+						]
+					},
+					"WindDebrisClass":{
+						"type": "string",
+						"enum": [
+							"A",
+							"B",
+							"C",
+							"D"	
+						]
+					},
+					"WindowArea": {
+						"type": "number",
+						"minimum": 0,
+						"maximum": 1
+					}					
+				},
+				"required": [							
+					"RoofCover",
+					"Shutters",
+					"WindDebrisClass",
+					"WindowArea"
+				]
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"BuildingType": {
+						"const": "Steel"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"StructureType": {
+						"enum": [
+							"Pre-Engineered Metal Building",
+							"Engineered Residential Building",
+							"Engineered Commercial Building"
+						]
+					}
+				},
+				"if": {
+					"properties": {
+						"StructureType": {
+							"enum": [
+								"Engineered Residential Building",
+								"Engineered Commercial Building"
+							]
+						}
+					}
+				},
+				"then": {
+					"properties": {						
+						"RoofCover":{
+							"type": "string",
+							"enum": [
+								"Single-Ply Membrane",
+								"Built-Up Roof"
+							]
+						},
+						"Shutters":{
+							"type": "integer",
+							"enum": [
+								0,
+								1
+							]
+						},
+						"WindDebrisClass":{
+							"type": "string",
+							"enum": [
+								"A",
+								"B",
+								"C",
+								"D"	
+							]
+						},
+						"RoofDeckAttachment":{
+							"enum": [
+								"Standard",
+								"Superior"
+							]
+						},					
+						"WindowArea": {
+							"type": "number",
+							"minimum": 0,
+							"maximum": 1
+						}
+					},
+					"required": [							
+						"RoofCover",
+						"Shutters",
+						"WindDebrisClass",
+						"RoofDeckAttachment",
+						"WindowArea"
+					]
+				},
+				"else": {
+					"properties": {						
+						"Shutters":{
+							"type": "integer",
+							"enum": [
+								0,
+								1
+							]
+						},
+						"RoofQuality": {
+							"enum": [
+								"Good",
+								"Poor"
+							]
+						},
+						"RoofDeckAttachment":{
+							"enum": [
+								"Standard",
+								"Superior"
+							]
+						}						
+					},
+					"required": [							
+						"Shutters",
+						"RoofQuality",
+						"RoofDeckAttachment"
+					]
+				}
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"BuildingType": {
+						"const": "Manufactured Housing"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"StructureType": {
+						"enum": [
+							"Pre-HUD",
+							"1976 HUD",
+							"1994 HUD Zone 1",
+							"1994 HUD Zone 2",
+							"1994 HUD Zone 3"
+						]
+					},
+					"Shutters": {
+						"type": "integer",
+						"enum": [
+							0,
+							1
+						]
+					},
+					"TieDowns": {
+						"type": "integer",
+						"enum": [
+							0,
+							1
+						]
+					}
+				},
+				"required": [
+					"StructureType",
+					"Shutters",
+					"TieDowns"
+				]
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"BuildingType": {
+						"const": "Essential Facility"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"StructureType": {
+						"enum": [
+							"Fire Station",
+							"Police Station",
+							"Emergency Operation Center",
+							"Hospital",
+							"School"
+						]
+					},
+					"RoofCover": {
+						"type": "string",
+						"enum": [
+							"Single-Ply Membrane",
+							"Built-Up Roof"
+						]
+					},
+					"Shutters":{
+						"type": "integer",
+						"enum": [
+							0,
+							1
+						]
+					},
+					"WindDebrisClass": {
+						"type": "string",
+						"enum": [
+							"A",
+							"B",
+							"C",
+							"D"	
+						]
+					},
+					"RoofDeckAttachment":{
+						"enum": [
+							"Standard",
+							"Superior"
+						]
+					}
+				},
+				"required": [
+					"RoofCover",
+					"Shutters",
+					"WindDebrisClass",
+					"RoofDeckAttachment"	
+				],
+				"allOf": [
+					{
+						"if": {
+							"properties": {
+								"StructureType": {
+									"const": "Fire Station"										
+								}
+							}
+						},
+						"then": {
+							"properties": {
+								"RoofQuality": {
+									"type": "string",
+									"enum": [
+										"Good",
+										"Poor"
+									]
+								}
+							},
+							"required": [
+								"RoofQuality"
+							]
+						}
+					},
+					{
+						"if": {
+							"properties": {
+								"StructureType": {
+									"const": "School"
+								}
+							}
+						},
+						"then": {
+							"if": {
+								"properties": {
+									"NumberOfStories": {
+										"const": 1
+									}
+								}
+							},
+							"then": {
+								"properties": {
+									"RoofQuality": {
+										"type": "string",
+										"enum": [
+											"Good",
+											"Poor"
+										]
+									}
+								},
+								"required": [
+									"RoofQuality"
+								]
+							}
+						}
+					},
+					{
+						"if": {
+							"properties": {
+								"StructureType": {
+									"enum": [
+										"Police Station",
+										"Emergency Operation Center"
+									]
+								}
+							}
+						},
+						"then": {
+							"properties": {
+								"WindowArea": {
+									"type": "number",
+									"minimum": 0,
+									"maximum": 1
+								}
+							},						
+							"required": [
+								"WindowArea"
+							]
+						}
+					}
+				]				
+			}
+		}
+	]
+}
