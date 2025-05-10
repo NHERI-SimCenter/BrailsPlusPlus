@@ -69,16 +69,16 @@ def SERB_config(BIM):
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofShape"], inferred_feature= "RoofCover"):
         # Roof cover
-        if BIM['RoofShape'] in ['gab', 'hip']:
-            roof_cover = 'bur'
+        if BIM['RoofShape'] in ['Gable', 'Hip']:
+            roof_cover = 'Built-Up Roof'
             # Warning: HAZUS does not have N/A option for CECB, so here we use bur
         else:
             is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofCover")
             if BIM['YearBuilt'] >= 1975:
-                roof_cover = 'spm'
+                roof_cover = 'Single-Ply Membrane'
             else:
                 # year < 1975
-                roof_cover = 'bur'
+                roof_cover = 'Built-Up Roof'
 
     if "Shutters" in BIM:
         shutters = BIM["Shutters"]
@@ -119,18 +119,18 @@ def SERB_config(BIM):
         else:
             WIDD = 'A' # Res/Comm
 
-    if "WindowAreaRatio" in BIM:
-        WWR = BIM["WindowAreaRatio"]
+    # if "WindowAreaRatio" in BIM:
+    #     WWR = BIM["WindowAreaRatio"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
+    # elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
 
-        # Window area ratio
-        if BIM['WindowArea'] < 0.33:
-            WWR = 'low'
-        elif BIM['WindowArea'] < 0.5:
-            WWR = 'med'
-        else:
-            WWR = 'hig'
+    #     # Window area ratio
+    #     if BIM['WindowArea'] < 0.33:
+    #         WWR = 'low'
+    #     elif BIM['WindowArea'] < 0.5:
+    #         WWR = 'med'
+    #     else:
+    #         WWR = 'hig'
 
     # Metal RDA
     # 1507.2.8.1 High Wind Attachment.
@@ -140,32 +140,34 @@ def SERB_config(BIM):
     # the manufacturer’s instructions. Fasteners are to be applied along
     # the overlap not more than 36 inches on center.
 
-    if "RoofDeckAttachmentM" in BIM:
-        MRDA = BIM["RoofDeckAttachmentM"]
+    if "RoofDeckAttachment" in BIM:
+        MRDA = BIM["RoofDeckAttachment"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachment"):
 
         if BIM['DesignWindSpeed'] > 142:
-            MRDA = 'std'  # standard
+            MRDA = 'Standard'  # standard
         else:
-            MRDA = 'sup'  # superior
+            MRDA = 'Superior'  # superior
 
-    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories",'TerrainRoughness'], inferred_feature= "S.ERB Class")
-    if BIM['NumberOfStories'] <= 2:
-        bldg_tag = 'S.ERB.L'
-    elif BIM['NumberOfStories'] <= 5:
-        bldg_tag = 'S.ERB.M'
-    else:
-        bldg_tag = 'S.ERB.H'
+    is_ready_to_infer(available_features=available_features, needed_features = ['BuildingType','StructureType',"NumberOfStories",'LandCover'], inferred_feature= "S.ERB Class")
+    # if BIM['NumberOfStories'] <= 2:
+    #     bldg_tag = 'S.ERB.L'
+    # elif BIM['NumberOfStories'] <= 5:
+    #     bldg_tag = 'S.ERB.M'
+    # else:
+    #     bldg_tag = 'S.ERB.H'
 
     essential_features = dict(
-        BuildingTag = bldg_tag, 
-        TerrainRoughness=int(BIM['TerrainRoughness']),
+        BuildingType=BIM['BuildingType'],
+        StructureType=BIM['StructureType'],
+        LandCover=BIM['LandCover'],
         RoofCover = roof_cover,
-        WindowAreaRatio = WWR,
-        RoofDeckAttachmentM = MRDA,
+        WindowArea = BIM['WindowArea'],
+        RoofDeckAttachment = MRDA,
         Shutters = int(shutters),
-        WindDebrisClass=WIDD
+        WindDebrisClass=WIDD,
+        NumberOfStories = int(BIM['NumberOfStories'])
         )
 
     # extend the BIM dictionary
@@ -177,6 +179,6 @@ def SERB_config(BIM):
     #               f"{WIDD}." \
     #               f"{MRDA}." \
     #               f"{WWR}." \
-    #               f"{int(BIM['TerrainRoughness'])}"
+    #               f"{BIM['LandCover']}"
 
     return essential_features

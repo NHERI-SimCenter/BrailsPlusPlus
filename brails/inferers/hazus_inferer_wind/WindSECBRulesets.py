@@ -71,16 +71,16 @@ def SECB_config(BIM):
     elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofShape"], inferred_feature= "RoofCover"):
 
         # Roof cover
-        if BIM['RoofShape'] in ['gab', 'hip']:
-            roof_cover = 'bur'
+        if BIM['RoofShape'] in ['Gable', 'Hip']:
+            roof_cover = 'Built-Up Roof'
             # Warning: HAZUS does not have N/A option for CECB, so here we use bur
         else:
             is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofCover")
             if year >= 1975:
-                roof_cover = 'spm'
+                roof_cover = 'Single-Ply Membrane'
             else:
                 # year < 1975
-                roof_cover = 'bur'
+                roof_cover = 'Built-Up Roof'
 
 
     if "Shutters" in BIM:
@@ -124,23 +124,23 @@ def SECB_config(BIM):
             WIDD = 'A' # Res/Comm
 
 
-    if "WindowAreaRatio" in BIM:
-        WWR = BIM["WindowAreaRatio"]
+    # if "WindowAreaRatio" in BIM:
+    #     WWR = BIM["WindowAreaRatio"]
     
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
+    # elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
     
-        # Window area ratio
-        if BIM['WindowArea'] < 0.33:
-            WWR = 'low'
-        elif BIM['WindowArea'] < 0.5:
-            WWR = 'med'
-        else:
-            WWR = 'hig'
+    #     # Window area ratio
+    #     if BIM['WindowArea'] < 0.33:
+    #         WWR = 'low'
+    #     elif BIM['WindowArea'] < 0.5:
+    #         WWR = 'med'
+    #     else:
+    #         WWR = 'hig'
 
-    if "RoofDeckAttachmentM" in BIM:
-        MRDA = BIM["RoofDeckAttachmentM"]
+    if "RoofDeckAttachment" in BIM:
+        MRDA = BIM["RoofDeckAttachment"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachment"):
 
         # Metal RDA
         # 1507.2.8.1 High Wind Attachment.
@@ -150,28 +150,30 @@ def SECB_config(BIM):
         # the manufacturer’s instructions. Fasteners are to be applied along
         # the overlap not more than 36 inches on center.
         if BIM['DesignWindSpeed'] > 142:
-            MRDA = 'std'  # standard
+            MRDA = 'Standard'  # standard
         else:
-            MRDA = 'sup'  # superior
+            MRDA = 'Superior'  # superior
 
 
-    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "BuildingTag (L,M, or H)")
-    if BIM['NumberOfStories'] <= 2:
-        bldg_tag = 'S.ECB.L'
-    elif BIM['NumberOfStories'] <= 5:
-        bldg_tag = 'S.ECB.M'
-    else:
-        bldg_tag = 'S.ECB.H'
+    # is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "BuildingTag (L,M, or H)")
+    # if BIM['NumberOfStories'] <= 2:
+    #     bldg_tag = 'S.ECB.L'
+    # elif BIM['NumberOfStories'] <= 5:
+    #     bldg_tag = 'S.ECB.M'
+    # else:
+    #     bldg_tag = 'S.ECB.H'
 
-
+    is_ready_to_infer(available_features=available_features, needed_features = ['NumberOfStories','StructureType','LandCover','WindowArea','NumberOfStories'], inferred_feature= "S.ECB class")
     essential_features = dict(
-        BuildingTag = bldg_tag, 
-        TerrainRoughness=int(BIM['TerrainRoughness']),
+        BuildingType=BIM['BuildingType'],
+        StructureType=BIM['StructureType'],
+        LandCover=BIM['LandCover'],
         RoofCover = roof_cover,
-        WindowAreaRatio = WWR,
-        RoofDeckAttachmentM = MRDA,
+        WindowArea = BIM['WindowArea'],
+        RoofDeckAttachment = MRDA,
         Shutters = int(shutters),
-        WindDebrisClass=WIDD
+        WindDebrisClass=WIDD,
+        NumberOfStories = int(BIM['NumberOfStories'])
         )
 
     # extend the BIM dictionary
@@ -183,7 +185,7 @@ def SECB_config(BIM):
     #               f"{WIDD}." \
     #               f"{MRDA}." \
     #               f"{WWR}." \
-    #               f"{int(BIM['TerrainRoughness'])}"
+    #               f"{BIM['LandCover']}"
                   
     return essential_features
 
