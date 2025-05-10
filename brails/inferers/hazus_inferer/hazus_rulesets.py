@@ -1227,6 +1227,11 @@ def get_hazus_state_region_mapping():
             "CensusDivision": "Pacific",
             "RegionGroup": "West Coast",
         },
+        "Oregon": {
+            "CensusRegion": "West",
+            "CensusDivision": "Pacific",
+            "RegionGroup": "West Coast",
+        },        
         "Guam": {
             "CensusRegion": "West",
             "CensusDivision": "Pacific",
