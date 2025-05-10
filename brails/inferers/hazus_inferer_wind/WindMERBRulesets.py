@@ -69,15 +69,15 @@ def MERB_config(BIM):
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","RoofShape"], inferred_feature= "RoofCover"):
         # Roof cover
-        if BIM['RoofShape'] in ['gab', 'hip']:
-            roof_cover = 'bur'
+        if BIM['RoofShape'] in ['Gable', 'Hip']:
+            roof_cover = 'Built-Up Roof'
             # no info, using the default supoorted by HAZUS
         else:
             if BIM['YearBuilt'] >= 1975:
-                roof_cover = 'spm'
+                roof_cover = 'Single-Ply Membrane'
             else:
                 # year < 1975
-                roof_cover = 'bur'
+                roof_cover = 'Built-Up Roof'
 
 
     if "Shutters" in BIM:
@@ -116,47 +116,49 @@ def MERB_config(BIM):
     # the manufacturer’s instructions. Fasteners are to be applied along
     # the overlap not more than 36 inches on center.
 
-    if "RoofDeckAttachmentM" in BIM:
-        MRDA = BIM["RoofDeckAttachmentM"]
+    if "RoofDeckAttachment" in BIM:
+        MRDA = BIM["RoofDeckAttachment"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachment"):
         if BIM['DesignWindSpeed'] > 142:
-            MRDA = 'std'  # standard
+            MRDA = 'Standard'  # standard
         else:
-            MRDA = 'sup'  # superior
+            MRDA = 'Superior'  # superior
 
 
 
-    if "WindowAreaRatio" in BIM:
-        WWR = BIM["WindowAreaRatio"]
+    # if "WindowAreaRatio" in BIM:
+    #     WWR = BIM["WindowAreaRatio"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
+    # elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):
         
-        # Window area ratio
-        if BIM['WindowArea'] < 0.33:
-            WWR = 'low'
-        elif BIM['WindowArea'] < 0.5:
-            WWR = 'med'
-        else:
-            WWR = 'hig'
+    #     # Window area ratio
+    #     if BIM['WindowArea'] < 0.33:
+    #         WWR = 'low'
+    #     elif BIM['WindowArea'] < 0.5:
+    #         WWR = 'med'
+    #     else:
+    #         WWR = 'hig'
 
-    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "M.ERB class")
-    if BIM['NumberOfStories'] <= 2:
-        bldg_tag = 'M.ERB.L'
-    elif BIM['NumberOfStories'] <= 5:
-        bldg_tag = 'M.ERB.M'
-    else:
-        bldg_tag = 'M.ERB.H'
+    is_ready_to_infer(available_features=available_features, needed_features = ['BuildingType','StructureType','WindowArea','LandCover',"NumberOfStories"], inferred_feature= "M.ERB class")
+    # if BIM['NumberOfStories'] <= 2:
+    #     bldg_tag = 'M.ERB.L'
+    # elif BIM['NumberOfStories'] <= 5:
+    #     bldg_tag = 'M.ERB.M'
+    # else:
+    #     bldg_tag = 'M.ERB.H'
 
 
     essential_features = dict(
-        BuildingTag = bldg_tag, 
-        TerrainRoughness=int(BIM['TerrainRoughness']),
+        BuildingType=BIM['BuildingType'],
+        StructureType=BIM['StructureType'],
+        LandCover=BIM['LandCover'],
         RoofCover = roof_cover,
         Shutters = int(shutters),
         WindDebrisClass = WIDD,
-        WindowAreaRatio = WWR,
-        RoofDeckAttachmentM = MRDA,
+        WindowArea = BIM['WindowArea'],
+        RoofDeckAttachment = MRDA,
+        NumberOfStories = int(BIM['NumberOfStories'])
         )
 
     # extend the BIM dictionary
@@ -168,6 +170,6 @@ def MERB_config(BIM):
     #               f"{WIDD}." \
     #               f"{MRDA}." \
     #               f"{WWR}." \
-    #               f"{int(BIM['TerrainRoughness'])}"
+    #               f"{BIM['LandCover']}"
 
     return essential_features

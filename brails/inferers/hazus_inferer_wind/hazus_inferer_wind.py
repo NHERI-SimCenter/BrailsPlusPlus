@@ -82,23 +82,24 @@ class HazusInfererWind(InferenceEngine):
         planArea_key = "PlanArea",
         numberOfStories_key = "NumberOfStories",
         occupancyClass_key = "OccupancyClass",
-        buildingMaterial_key = "BuildingMaterial",
+        BuildingType_key = "BuildingType",
         designLevel_H_key = "DesignLevel_H",
         yearBuilt_key = "YearBuilt",
-        roofSystem_key = "RoofFrameType",
+        roofSystem_key = "RoofSystem",
         roofShape_key = "RoofShape",
         roofSlope_key = "RoofSlope",
         avgJanTemp_key = "AvgJanTemp",
-        meanRoofHt_key = "MeanRoofHt",
+        Height_key = "Height",
         windowArea_key = "WindowArea",
         numberOfUnits_key = "NumberOfUnits",
-        garage_key = "Garage",
+        hasGarage_key = "HasGarage",
         floodZone_key = "FloodZone",
         windZone_key = "WindZone",
         designWindSpeed_key = "DesignWindSpeed",
         LULC_key = "LULC",
         z0_key = "Z0",
-        sheathingThickness_key = "SheathingThickness"
+        sheathingThickness_key = "SheathingThickness",
+        use_default = True
     ):
         """
         Make inference based on Auto population script developed for NJ
@@ -110,22 +111,23 @@ class HazusInfererWind(InferenceEngine):
         self.include_features = include_features
         self.seed = seed
         self.overwirte_existing = overwirte_existing
+        self.use_default = use_default
 
         self.name_mapping = {
             planArea_key: "PlanArea",
             numberOfStories_key: "NumberOfStories",
             occupancyClass_key: "OccupancyClass",
-            buildingMaterial_key: "BuildingMaterial",
+            BuildingType_key: "BuildingType",
             designLevel_H_key: "DesignLevel_H",
             yearBuilt_key: "YearBuilt",
-            roofSystem_key: "RoofFrameType",
+            roofSystem_key: "RoofSystem",
             roofShape_key: "RoofShape",
             roofSlope_key: "RoofSlope",
             avgJanTemp_key: "AvgJanTemp",
-            meanRoofHt_key: "MeanRoofHt",
+            Height_key: "Height",
             windowArea_key: "WindowArea",
             numberOfUnits_key: "NumberOfUnits",
-            garage_key: "Garage",
+            hasGarage_key: "HasGarage",
             floodZone_key: "FloodZone",
             windZone_key: "WindZone",
             designWindSpeed_key: "DesignWindSpeed",
@@ -291,7 +293,7 @@ class HazusInfererWind(InferenceEngine):
             new_features_tmp = {}
             for key, bldg in inventory_json.items():
                 try:
-                    essential_features = auto_populate(bldg)
+                    essential_features = auto_populate(bldg, self.use_default)
                 except ValueError as e:
                     msg = f"Failed in building {key} \n"
                     msg += str(e)  # Convert exception to string

@@ -70,15 +70,15 @@ def CERB_config(BIM):
     elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt","RoofShape"], inferred_feature= "RoofCover"):
 
         # Roof cover
-        if BIM['RoofShape'] in ['gab', 'hip']:
-            roof_cover = 'bur'
+        if BIM['RoofShape'] in ['Gable', 'Hip']:
+            roof_cover = 'Built-Up Roof'
             # Warning: HAZUS does not have N/A option for CECB, so here we use bur
         else:
             if BIM['YearBuilt'] >= 1975:
-                roof_cover = 'spm'
+                roof_cover = 'Single-Ply Membrane'
             else:
                 # year < 1975
-                roof_cover = 'bur'
+                roof_cover = 'Built-Up Roof'
 
 
 
@@ -121,39 +121,41 @@ def CERB_config(BIM):
             WIDD = 'A' # Res/Comm
 
 
-    if "WindowAreaRatio" in BIM:
-        WWR = BIM["WindowAreaRatio"]
+    # if "WindowAreaRatio" in BIM:
+    #     WWR = BIM["WindowAreaRatio"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):       
+    # elif is_ready_to_infer(available_features=available_features, needed_features = ["WindowArea"], inferred_feature= "WindowAreaRatio"):       
 
-        # Window area ratio
-        if BIM['WindowArea'] < 0.33:
-            WWR = 'low'
-        elif BIM['WindowArea'] < 0.5:
-            WWR = 'med'
-        else:
-            WWR = 'hig'
+    #     # Window area ratio
+    #     if BIM['WindowArea'] < 0.33:
+    #         WWR = 'low'
+    #     elif BIM['WindowArea'] < 0.5:
+    #         WWR = 'med'
+    #     else:
+    #         WWR = 'hig'
 
-    is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "BuildingTag for C.ERB")
+    # is_ready_to_infer(available_features=available_features, needed_features = ["NumberOfStories"], inferred_feature= "BuildingTag for C.ERB")
 
-    if BIM['NumberOfStories'] <= 2:
-        bldg_tag = 'C.ERB.L'
-    elif BIM['NumberOfStories'] <= 5:
-        bldg_tag = 'C.ERB.M'
-    else:
-        bldg_tag = 'C.ERB.H'
+    # if BIM['NumberOfStories'] <= 2:
+    #     bldg_tag = 'C.ERB.L'
+    # elif BIM['NumberOfStories'] <= 5:
+    #     bldg_tag = 'C.ERB.M'
+    # else:
+    #     bldg_tag = 'C.ERB.H'
 
     # extend the BIM dictionary
     
-    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness',"NumberOfStories"], inferred_feature= "C.ECB class")
+    is_ready_to_infer(available_features=available_features, needed_features = ['BuildingType','StructureType','WindowArea','LandCover',"NumberOfStories"], inferred_feature= "C.ECB class")
 
     essential_features = dict(
-        BuildingTag = bldg_tag, 
-        TerrainRoughness=int(BIM['TerrainRoughness']),
+        BuildingType=BIM['BuildingType'],
+        StructureType=BIM['StructureType'],
+        LandCover=BIM['LandCover'],
         RoofCover = roof_cover,
         Shutters = int(shutters),
-        WindowAreaRatio = WWR,
-        WindDebrisClass = WIDD
+        WindowArea = BIM['WindowArea'],
+        WindDebrisClass = WIDD,
+        NumberOfStories = int(BIM['NumberOfStories'])
         )
 
     BIM.update(dict(essential_features))
@@ -163,6 +165,6 @@ def CERB_config(BIM):
     #               f"{int(shutters)}." \
     #               f"{WIDD}." \
     #               f"{WWR}." \
-    #               f"{int(BIM['TerrainRoughness'])}"
+    #               f"{BIM['LandCover']}"
 
     return essential_features

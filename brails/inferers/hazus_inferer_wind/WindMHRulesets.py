@@ -91,10 +91,10 @@ def MH_config(BIM):
             else:
                 shutters = False
 
-    if "WindDebrisClass" in BIM:
-        TD = BIM["WindDebrisClass"]
+    if "TieDowns" in BIM:
+        TD = BIM["TieDowns"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "WindDebrisClass"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "TieDowns"):
         year = BIM['YearBuilt'] # just for the sake of brevity
         if year <= 1976:
             TD = random.random() < 0.45
@@ -103,30 +103,32 @@ def MH_config(BIM):
             TD = random.random() < 0.45
 
         else:
-            is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "WindDebrisClass")
+            is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "TieDowns")
             if BIM['DesignWindSpeed'] >= 70.0:
                 TD = True
             else:
                 TD = False
 
 
-    is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "bldg_tag")
-    year = BIM['YearBuilt'] # just for the sake of brevity
-    if year <= 1976:
-        bldg_tag = 'MH.PHUD'
-    elif year <= 1994:
-        bldg_tag = 'MH.76HUD'
-    else:
-        is_ready_to_infer(available_features=available_features, needed_features = ["WindZone"], inferred_feature= "BuildingTag")
-        bldg_tag = 'MH.94HUD' + BIM['WindZone']
+    # is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "bldg_tag")
+    # year = BIM['YearBuilt'] # just for the sake of brevity
+    # if year <= 1976:
+    #     bldg_tag = 'MH.PHUD'
+    # elif year <= 1994:
+    #     bldg_tag = 'MH.76HUD'
+    # else:
+    #     is_ready_to_infer(available_features=available_features, needed_features = ["WindZone"], inferred_feature= "BuildingTag")
+    #     bldg_tag = 'MH.94HUD' + BIM['WindZone']
 
 
-    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness'], inferred_feature= f"{bldg_tag} class")
+    is_ready_to_infer(available_features=available_features, needed_features = ['BuildingType','StructureType','LandCover','NumberOfStories'], inferred_feature= f"MH.XHUD class")
     essential_features = dict(
-        BuildingTag = bldg_tag, 
-        TerrainRoughness=int(BIM['TerrainRoughness']),
+        BuildingType=BIM['BuildingType'],
+        StructureType=BIM['StructureType'],
+        LandCover=BIM['LandCover'],
         Shutters = int(shutters),
-        WindDebrisClass = int(TD)
+        TieDowns = int(TD),
+        NumberOfStories = int(BIM['NumberOfStories'])
         )
 
     # extend the BIM dictionary
@@ -135,7 +137,7 @@ def MH_config(BIM):
     # bldg_config = f"{bldg_tag}." \
     #               f"{int(shutters)}." \
     #               f"{int(TD)}." \
-    #               f"{int(BIM['TerrainRoughness'])}"
+    #               f"{BIM['LandCover']}"
 
     return essential_features
 

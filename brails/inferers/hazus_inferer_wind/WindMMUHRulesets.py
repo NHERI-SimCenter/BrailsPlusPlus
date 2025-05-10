@@ -72,17 +72,17 @@ def MMUH_config(BIM):
     # Minimum drainage recommendations are in place in NJ (See below).
     # However, SWR indicates a code-plus practice.
 
-    #SWR = "null" # Default
+    #SWR = '' # null # Default
 
     if "SecondaryWaterResistance" in BIM:
         SWR = BIM["SecondaryWaterResistance"]
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofShape"],inferred_feature= "SecondaryWaterResistance"):
-        SWR = "null" # Default
-        if BIM['RoofShape'] == 'flt':
+        SWR = '' # null # Default
+        if BIM['RoofShape'] == 'Flat':
             SWR = int(True) # sy - fixed
 
-        #elif BIM['RoofShape'] in ['hip', 'gab']:
+        #elif BIM['RoofShape'] in ['Hip', 'Gable']:
         else: # sy - fixed
             SWR = int(random.random() < 0.6)
 
@@ -114,34 +114,34 @@ def MMUH_config(BIM):
         roof_cover = BIM["RoofCover"]
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofShape","YearBuilt"], inferred_feature= "RoofCover"):
-        if BIM['RoofShape'] in ['gab', 'hip']:
-            roof_cover = 'null'
+        if BIM['RoofShape'] in ['Gable', 'Hip']:
+            roof_cover = '' # null
         else:
             if BIM['YearBuilt'] >= 1975:
-                roof_cover = 'spm'
+                roof_cover = 'Single-Ply Membrane'
             else:
                 # year < 1975
-                roof_cover = 'bur'      
+                roof_cover = 'Built-Up Roof'      
 
 
     if "RoofQuality" in BIM:
         roof_quality = BIM["RoofQuality"]
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofShape","YearBuilt"], inferred_feature= "RoofQuality"):
-        if BIM['RoofShape'] in ['gab', 'hip']:
-            roof_quality = 'null'
+        if BIM['RoofShape'] in ['Gable', 'Hip']:
+            roof_quality = '' # null
         else:
             if BIM['YearBuilt'] >= 1975:
                 if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
-                    roof_quality = 'god'
+                    roof_quality = 'Good'
                 else:
-                    roof_quality = 'por'
+                    roof_quality = 'Poor'
             else:
                 # year < 1975
                 if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
-                    roof_quality = 'god'
+                    roof_quality = 'Good'
                 else:
-                    roof_quality = 'por'
+                    roof_quality = 'Poor'
 
 
 
@@ -162,11 +162,13 @@ def MMUH_config(BIM):
 
 
 
-    if "RoofDeckAttachmentW" in BIM:
-        RDA = BIM["RoofDeckAttachmentW"]
+    if "RoofDeckAttachment" in BIM:
+        RDA = BIM["RoofDeckAttachment"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["TerrainRoughness","DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentW"):
-        if BIM['TerrainRoughness'] >= 35: # suburban or light trees
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["LandCover","DesignWindSpeed"], inferred_feature= "RoofDeckAttachment"):
+        #if BIM['LandCover'] >= 35: # suburban or light trees
+        
+        if BIM['LandCover'] in ['Suburban','Light Trees','Trees']: # suburban or light trees
             if BIM['DesignWindSpeed'] > 130.0:
                 RDA = '8s'  # 8d @ 6"/6" 'D'
             else:
@@ -183,9 +185,9 @@ def MMUH_config(BIM):
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofToWallConnection"):
         if BIM['DesignWindSpeed'] > 110.0:
-            RWC = 'strap'  # Strap
+            RWC = 'Strap'  # Strap
         else:
-            RWC = 'tnail'  # Toe-nail
+            RWC = 'Toe-nail'  # Toe-nail
 
 
     if "Shutters" in BIM:
@@ -220,18 +222,18 @@ def MMUH_config(BIM):
                 shutters = False
 
 
-    is_ready_to_infer(available_features=available_features, needed_features = ['NumberOfStories', 'TerrainRoughness','MasonryReinforcing','RoofShape'], inferred_feature= "M.MUH class")
+    is_ready_to_infer(available_features=available_features, needed_features = ['BuildingType','StructureType','NumberOfStories', 'LandCover','MasonryReinforcing','RoofShape'], inferred_feature= "M.MUH class")
 
-    stories = min(BIM['NumberOfStories'], 3)
     essential_features = dict(
-        BuildingTag = "M.MUH.", 
-        TerrainRoughness=int(BIM['TerrainRoughness']),
+        BuildingType=BIM['BuildingType'],
+        StructureType=BIM['StructureType'],
+        LandCover=BIM['LandCover'],
         SecondaryWaterResistance = int(SWR),
-        NumberOfStories = int(stories),
+        NumberOfStories = int(BIM['NumberOfStories']),
         RoofCover = roof_cover,
         RoofShape = BIM['RoofShape'],
         RoofQuality = roof_quality,
-        RoofDeckAttachmentW = RDA,
+        RoofDeckAttachment = RDA,
         RoofToWallConnection = RWC,
         Shutters = int(shutters),
         MasonryReinforcing = int(BIM['MasonryReinforcing']),
@@ -250,6 +252,6 @@ def MMUH_config(BIM):
     #               f"{RWC}." \
     #               f"{int(shutters)}." \
     #               f"{int(BIM['MasonryReinforcing'])}." \
-    #               f"{int(BIM['TerrainRoughness'])}"
+    #               f"{BIM['LandCover']}"
 
     return essential_features

@@ -103,9 +103,9 @@ def WSF_config(BIM):
             # the ruleset is based on asphalt shingles because it is most
             # conservative.
             is_ready_to_infer(available_features=available_features, needed_features = ["RoofShape"],inferred_feature= "SecondaryWaterResistance")
-            if BIM['RoofShape'] == 'flt': # note there is actually no 'flt'
+            if BIM['RoofShape'] == 'Flat': # note there is actually no 'Flat'
                 SWR = True
-            elif BIM['RoofShape'] in ['gab','hip']:
+            elif BIM['RoofShape'] in ['Gable','Hip']:
 
                 is_ready_to_infer(available_features=available_features, needed_features = ["RoofSlope"],inferred_feature= "SecondaryWaterResistance")
                 if BIM['RoofSlope'] <= 0.17:
@@ -124,11 +124,11 @@ def WSF_config(BIM):
     # spacing (enhanced roof spacing) for ultimate wind speeds greater than
     # a speed_lim. speed_lim depends on the year of construction
 
-    if "RoofDeckAttachmentW" in BIM:
-        RDA = BIM["RoofDeckAttachmentW"]
+    if "RoofDeckAttachment" in BIM:
+        RDA = BIM["RoofDeckAttachment"]
 
     else:
-        is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofDeckAttachmentW")    
+        is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofDeckAttachment")    
         RDA = '6d' # Default (aka A) in Reorganized Rulesets - WIND
         if year > 2000:
             if year >= 2016:
@@ -138,28 +138,28 @@ def WSF_config(BIM):
                 # IRC 2000 - 2009
                 speed_lim = 100.0 # mph
 
-            is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentW")
+            is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachment")
             if BIM['DesignWindSpeed'] > speed_lim:
                 RDA = '8s'  # 8d @ 6"/6" ('D' in the Reorganized Rulesets - WIND)
             else:
                 RDA = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
         elif year > 1995:
 
-            is_ready_to_infer(available_features=available_features, needed_features = ["SheathingThickness"], inferred_feature= "RoofDeckAttachmentW")
+            is_ready_to_infer(available_features=available_features, needed_features = ["SheathingThickness"], inferred_feature= "RoofDeckAttachment")
             if ((BIM['SheathingThickness'] >= 0.3125) and (BIM['SheathingThickness'] <= 0.5)):
                 RDA = '6d' # 6d @ 6"/12" ('A' in the Reorganized Rulesets - WIND)
             elif ((BIM['SheathingThickness'] >= 0.59375) and (BIM['SheathingThickness'] <= 1.125)):
                 RDA = '8d' # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
         elif year > 1986:
 
-            is_ready_to_infer(available_features=available_features, needed_features = ["SheathingThickness"], inferred_feature= "RoofDeckAttachmentW")
+            is_ready_to_infer(available_features=available_features, needed_features = ["SheathingThickness"], inferred_feature= "RoofDeckAttachment")
             if ((BIM['SheathingThickness'] >= 0.3125) and (BIM['SheathingThickness'] <= 0.5)):
                 RDA = '6d' # 6d @ 6"/12" ('A' in the Reorganized Rulesets - WIND)
             elif ((BIM['SheathingThickness'] >= 0.59375) and (BIM['SheathingThickness'] <= 1.0)):
                 RDA = '8d' # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
         else:
 
-            is_ready_to_infer(available_features=available_features, needed_features = ["SheathingThickness"], inferred_feature= "RoofDeckAttachmentW")
+            is_ready_to_infer(available_features=available_features, needed_features = ["SheathingThickness"], inferred_feature= "RoofDeckAttachment")
             # year <= 1986
             if ((BIM['SheathingThickness'] >= 0.3125) and (BIM['SheathingThickness'] <= 0.5)):
                 RDA = '6d' # 6d @ 6"/12" ('A' in the Reorganized Rulesets - WIND)
@@ -172,7 +172,7 @@ def WSF_config(BIM):
     # (regardless of year)
     # For homes with wind speed consideration, 2015 IRC Section R802.11: no
     # specific connection type, must resist uplift forces using various
-    # guidance documents, e.g., straps would be required (based on WFCM 2015);
+    # guidance documents, e.g., Straps would be required (based on WFCM 2015);
     # will assume that if classified as HazardProneRegion, then enhanced connection would be
     # used.
 
@@ -186,14 +186,14 @@ def WSF_config(BIM):
             is_ready_to_infer(available_features=available_features, needed_features = ["HazardProneRegion"], inferred_feature= "RoofToWallConnection")
 
             if BIM['HazardProneRegion']:
-                RWC = 'strap'  # Strap
+                RWC = 'Strap'  # Strap
             else:
-                RWC = 'tnail'  # Toe-nail
+                RWC = 'Toe-nail'  # Toe-nail
         # IRC 2000-2009
         # In Section R802.11.1 Uplift Resistance of the NJ 2009 IRC, roof
         # assemblies which are subject to wind uplift pressures of 20 pounds per
         # square foot or greater are required to have attachments that are capable
-        # of providing resistance, in this case assumed to be straps.
+        # of providing resistance, in this case assumed to be Straps.
         # Otherwise, the connection is assumed to be toe nail.
         # CABO 1992-1995:
         # 802.11 Roof Tie-Down: Roof assemblies subject to wind uplift pressures of
@@ -210,23 +210,23 @@ def WSF_config(BIM):
             is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofToWallConnection")
 
             if BIM['DesignWindSpeed'] > 110:
-                RWC = 'strap'  # Strap
+                RWC = 'Strap'  # Strap
             else:
-                RWC = 'tnail'  # Toe-nail
+                RWC = 'Toe-nail'  # Toe-nail
 
         # CABO 1989 and earlier
-        # There is no mention of straps or enhanced tie-downs in the CABO codes
+        # There is no mention of Straps or enhanced tie-downs in the CABO codes
         # older than 1992, and there is no description of these adoptions in IBHS
         # reports or the New Jersey Construction Code Communicator .
-        # Although there is no explicit information, it seems that hurricane straps
+        # Although there is no explicit information, it seems that hurricane Straps
         # really only came into effect in Florida after Hurricane Andrew (1992).
         # Because Florida is the leader in adopting hurricane protection measures
-        # into codes and because there is no mention of shutters or straps in the
+        # into codes and because there is no mention of shutters or Straps in the
         # CABO codes, it is assumed that all roof-wall connections for residential
         # buildings are toe nails before 1992.
         else:
             # year <= 1992
-            RWC = 'tnail' # Toe-nail
+            RWC = 'Toe-nail' # Toe-nail
 
     if "Shutters" in BIM:
         shutters = BIM["Shutters"]
@@ -261,14 +261,14 @@ def WSF_config(BIM):
             else:
                 shutters = False
 
-    if "GarageDoor" in BIM:
-        garage = BIM["GarageDoor"]
+    if "Garage" in BIM:
+        garage = BIM["Garage"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["Garage","YearBuilt"], inferred_feature= "GarageDoor"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["HasGarage","YearBuilt"], inferred_feature= "Garage"):
 
-        # Garage
+        # HasGarage
         # As per IRC 2015:
-        # Garage door glazed opening protection for windborne debris shall meet the
+        # HasGarage door glazed opening protection for windborne debris shall meet the
         # requirements of an approved impact-resisting standard or ANSI/DASMA 115.
         # Exception: Wood structural panels with a thickness of not less than 7/16
         # inch and a span of not more than 8 feet shall be permitted for opening
@@ -282,53 +282,54 @@ def WSF_config(BIM):
         # 30 years are considered to be weak, whereas those from the last 30 years
         # are considered to be standard.
 
-        if BIM['Garage'] == -1:
+        if BIM['HasGarage'] == -1:
             # no garage data, using the default "standard"
-            garage = 'std'
+            garage = 'Standard'
             shutters = 0 # HAZUS ties standard garage to w/o shutters
         else:
             if year > 2000:
                 if shutters:
-                    if BIM['Garage'] < 1:
-                        garage = 'no'
+                    if BIM['HasGarage'] < 1:
+                        garage = 'No'
                     else:
-                        garage = 'sup' # SFBC 1994
+                        garage = 'Superior' # SFBC 1994
                 else:
-                    if BIM['Garage'] < 1:
-                        garage = 'no' # None
+                    if BIM['HasGarage'] < 1:
+                        garage = 'No' # None
                     else:
-                        garage = 'std' # Standard
+                        garage = 'Standard' # Standard
             elif year > (datetime.datetime.now().year - 30):
-                if BIM['Garage'] < 1:
-                    garage = 'no' # None
+                if BIM['HasGarage'] < 1:
+                    garage = 'No' # None
                 else:
-                    garage = 'std' # Standard
+                    garage = 'Standard' # Standard
             else:
                 # year <= current year - 30
-                if BIM['Garage'] < 1:
-                    garage = 'no' # None
+                if BIM['HasGarage'] < 1:
+                    garage = 'No' # None
                 else:
-                    garage = 'wkd' # Weak
+                    garage = 'Weak' # Weak
 
     # come back to update shutters
     if "Shutters" not in BIM:
-        if garage == 'sup':
+        if garage == 'Superior':
             shutters = True # HAZUS ties SFBC 1994 to with shutters
-        elif (garage == 'std') or (garage == 'wkd'):
+        elif (garage == 'Standard') or (garage == 'Weak'):
             shutters = False # HAZUS ties weak/standard garage to w/o shutters
 
-    is_ready_to_infer(available_features=available_features, needed_features = ['NumberOfStories', 'TerrainRoughness', 'RoofShape'], inferred_feature= "M.SF class")
+    is_ready_to_infer(available_features=available_features, needed_features = ['BuildingType','StructureType','NumberOfStories', 'LandCover', 'RoofShape'], inferred_feature= "M.SF class")
 
     essential_features = dict(
-        BuildingTag = "W.SF." , 
-        TerrainRoughness=int(BIM['TerrainRoughness']),
-        NumberOfStories = int(min(BIM['NumberOfStories'],2)),
+        BuildingType=BIM['BuildingType'],
+        StructureType=BIM['StructureType'],
+        LandCover=BIM['LandCover'],
+        NumberOfStories = int(BIM['NumberOfStories']),
         RoofShape=BIM['RoofShape'],
         SecondaryWaterResistance = int(SWR),
         Shutters = int(shutters),
-        RoofDeckAttachmentW = RDA,
+        RoofDeckAttachment = RDA,
         RoofToWallConnection = RWC,
-        GarageDoor = garage
+        Garage = garage
         )
 
     # extend the BIM dictionary
@@ -343,7 +344,7 @@ def WSF_config(BIM):
     #               f"{RWC}." \
     #               f"{garage}." \
     #               f"{int(shutters)}." \
-    #               f"{int(BIM['TerrainRoughness'])}"
+    #               f"{BIM['LandCover']}"
 
     return essential_features
 
