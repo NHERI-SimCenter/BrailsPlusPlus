@@ -45,7 +45,7 @@
 
 import numpy as np
 
-def add_default(BIM_in, hazards):
+def add_default(BIM_in):
     # """
     # Parses the information provided in the AIM model.
 
@@ -57,7 +57,7 @@ def add_default(BIM_in, hazards):
     #     Number of stories
     # yearBuilt: str
     #     Year of construction.
-    # roofType: {'hip', 'hipped', 'gabled', 'gable', 'flat'}
+    # roofType: {'Hip', 'hipped', 'gabled', 'gable', 'flat'}
     #     One of the listed roof shapes that best describes the building.
     # occupancy: str
     #     Occupancy type.
@@ -72,7 +72,7 @@ def add_default(BIM_in, hazards):
     #     assumed to be mph.
     # area: float
     #     Plan area in ft2.
-    # z0: string
+    # z0: strings
     #     Roughness length that characterizes the surroundings.
 
     # Returns
@@ -97,20 +97,20 @@ def add_default(BIM_in, hazards):
 
     #     # maps roof type to the internal representation
     #     ap_RoofType = {
-    #         'hip'   : 'hip',
-    #         'hipped': 'hip',
-    #         'Hip'   : 'hip',
-    #         'gabled': 'gab',
-    #         'gable' : 'gab',
-    #         'Gable' : 'gab',
-    #         'flat'  : 'flt',
-    #         'Flat'  : 'flt'
+    #         'Hip'   : 'Hip',
+    #         'hipped': 'Hip',
+    #         'Hip'   : 'Hip',
+    #         'gabled': 'Gable',
+    #         'gable' : 'Gable',
+    #         'Gable' : 'Gable',
+    #         'flat'  : 'Flat',
+    #         'Flat'  : 'Flat'
     #     }
     #     # maps roof system to the internal representation
     #     ap_RoofSyste = {
-    #         'Wood': 'trs',
-    #         'OWSJ': 'ows',
-    #         'N/A': 'trs'
+    #         'Wood': 'Truss',
+    #         'OWSJ': 'Open-Web Steel Joists',
+    #         'N/A': 'Truss'
     #     }
     #     roof_system = BIM_in.get('RoofSystem','Wood')
     #     if pd.isna(roof_system):
@@ -255,10 +255,10 @@ def add_default(BIM_in, hazards):
     #     }
     #     if location == 'NJ':
     #         # NJDEP code for flood zone needs to be converted
-    #         buildingtype = ap_BuildingType_NJ[BIM_in['BuildingMaterial']]
+    #         buildingtype = ap_BuildingType_NJ[BIM_in['BuildingType']]
     #     elif location == 'LA':
     #         # standard input should provide the building type as a string
-    #         buildingtype = BIM_in['BuildingMaterial']
+    #         buildingtype = BIM_in['BuildingType']
 
     #     # first, pull in the provided data
     #     BIM_ap.update(dict(
@@ -276,11 +276,11 @@ def add_default(BIM_in, hazards):
     #         RoofSlope=float(BIM_in.get('RoofSlope',0.25)), # default 0.25
     #         SheathingThickness=float(BIM_in.get('SheathingThick',1.0)), # default 1.0
     #         RoofSystem=str(ap_RoofSyste[roof_system]), # only valid for masonry structures
-    #         Garage=float(BIM_in.get('Garage',-1.0)),
+    #         HasGarage=float(BIM_in.get('HasGarage',-1.0)),
     #         LULC=BIM_in.get('LULC',-1),
     #         z0 = float(BIM_in.get('z0',-1)), # if the z0 is already in the input file
     #         Terrain = BIM_in.get('Terrain',-1),
-    #         MeanRoofHt=float(BIM_in.get('MeanRoofHt',15.0)), # default 15
+    #         Height=float(BIM_in.get('Height',15.0)), # default 15
     #         DesignLevel=str(ap_DesignLevel[design_level]), # default engineered
     #         WindowArea=float(BIM_in.get('WindowArea',0.20)),
     #         WindZone=str(BIM_in.get('WindZone', 'I'))
@@ -343,201 +343,205 @@ def add_default(BIM_in, hazards):
 
     # add inferred, generic meta-variables
 
-    if 'wind' in hazards:
         
 
         #
         # First is simple default
         #
 
-        BIM_ap = BIM_in.copy()
-        available_features = BIM_ap.keys()
-        BIM_ap.update(dict(
-            RoofSlope=float(BIM_in.get('RoofSlope',0.25)), # default 0.25
-            SheathingThickness=float(BIM_in.get('SheathingThick',1.0)), # default 1.0
-            Garage=float(BIM_in.get('Garage',-1.0)),
-            LULC=BIM_in.get('LULC',-1),
-            z0 = float(BIM_in.get('z0',-1)), # if the z0 is already in the input file
-            Terrain = BIM_in.get('Terrain',-1),
-            MeanRoofHt=float(BIM_in.get('MeanRoofHt',15.0)), # default 15
-            WindowArea=float(BIM_in.get('WindowArea',0.20)),
-            WindZone=str(BIM_in.get('WindZone', 'I')),
-            MasonryReinforcing=int(BIM_in.get('MasonryReinforcing',True)) # used for MLRI MLRM MMUH MSF
-        ))
+    BIM_ap = BIM_in.copy()
+    available_features = BIM_ap.keys()
+    BIM_ap.update(dict(
+        RoofSlope=float(BIM_in.get('RoofSlope',0.25)), # default 0.25
+        SheathingThickness=float(BIM_in.get('SheathingThick',1.0)), # default 1.0
+        HasGarage=float(BIM_in.get('HasGarage',-1.0)),
+        #LULC=BIM_in.get('LULC',-1),
+        #z0 = float(BIM_in.get('z0',-1)), # if the z0 is already in the input file
+        # Terrain = BIM_in.get('Terrain',-1),
+        Height=float(BIM_in.get('Height',15.0)), # default 15
+        WindowArea=float(BIM_in.get('WindowArea',0.20)),
+        WindZone=str(BIM_in.get('WindZone', 'I')),
+        MasonryReinforcing=int(BIM_in.get('MasonryReinforcing',True)), # used for MLRI MLRM MMUH MSF
+        RoofSystem=BIM_in.get('RoofSystem','Truss')
+    ))
+
+    return BIM_ap
+
+def global_rulesets(BIM_ap):
+    available_features = BIM_ap.keys()
+    # Masonry Reinforcing (MR)
+    # R606.6.4.1.2 Metal Reinforcement states that walls other than interior
+    # non-load-bearing walls shall be anchored at vertical intervals of not
+    # more than 8 inches with joint reinforcement of not less than 9 gage.
+    # Therefore this ruleset assumes that all exterior or load-bearing masonry
+    # walls will have reinforcement. Since our considerations deal with wind
+    # speed, I made the assumption that only exterior walls are being taken
+    # into consideration.
 
 
-        # Masonry Reinforcing (MR)
-        # R606.6.4.1.2 Metal Reinforcement states that walls other than interior
-        # non-load-bearing walls shall be anchored at vertical intervals of not
-        # more than 8 inches with joint reinforcement of not less than 9 gage.
-        # Therefore this ruleset assumes that all exterior or load-bearing masonry
-        # walls will have reinforcement. Since our considerations deal with wind
-        # speed, I made the assumption that only exterior walls are being taken
-        # into consideration.
+    #
+    # Second do basic inference
+    #
+    if "HazardProneRegion" in BIM_ap:
+        HPR = BIM_ap["HazardProneRegion"]
+
+    elif is_ready_to_infer(available_features=available_features, needed_features = ['DesignWindSpeed','YearBuilt'], inferred_feature= "HazardProneRegion"):    
+        # Hurricane-Prone Region (HRP)
+        # Areas vulnerable to hurricane, defined as the U.S. Atlantic Ocean and
+        # Gulf of Mexico coasts where the ultimate design wind speed, DesignWindSpeed is
+        # greater than a pre-defined limit.
+        if BIM_ap['YearBuilt'] >= 2016:
+            # The limit is 115 mph in IRC 2015
+            HPR = BIM_ap['DesignWindSpeed'] > 115.0
+        else:
+            # The limit is 90 mph in IRC 2009 and earlier versions
+            HPR = BIM_ap['DesignWindSpeed'] > 90.0
 
 
-        #
-        # Second do basic inference
-        #
-        if "HazardProneRegion" in BIM_ap:
-            HPR = BIM_ap["HazardProneRegion"]
+    # Wind Borne Debris
+    # Areas within hurricane-prone regions are affected by debris if One of
+    # the following two conditions holds:
+    # (1) Within 1 mile (1.61 km) of the coastal mean high water line where
+    # the ultimate design wind speed is greater than flood_lim.
+    # (2) In areas where the ultimate design wind speed is greater than
+    # general_lim
+    # The flood_lim and general_lim limits depend on the year of construction
+    # Areas within hurricane-prone regions located in accordance with
+    # one of the following:
+    # (1) Within 1 mile (1.61 km) of the coastal mean high water line
+    # where the ultimate design wind speed is 130 mph (58m/s) or greater.
+    # (2) In areas where the ultimate design wind speed is 140 mph (63.5m/s)
+    # or greater. (Definitions: Chapter 2, 2015 NJ Residential Code)
 
-        elif is_ready_to_infer(available_features=available_features, needed_features = ['DesignWindSpeed','YearBuilt'], inferred_feature= "HazardProneRegion"):    
-            # Hurricane-Prone Region (HRP)
-            # Areas vulnerable to hurricane, defined as the U.S. Atlantic Ocean and
-            # Gulf of Mexico coasts where the ultimate design wind speed, DesignWindSpeed is
-            # greater than a pre-defined limit.
+
+    if "WindBorneDebris" in BIM_ap:
+        WBD = BIM_ap["WindBorneDebris"]
+
+    else:
+        if not HPR:
+            WBD = False
+
+        else:
+            is_ready_to_infer(available_features=available_features, needed_features = ['YearBuilt','FloodZone','DesignWindSpeed'], inferred_feature= "HazardProneRegion")            
             if BIM_ap['YearBuilt'] >= 2016:
-                # The limit is 115 mph in IRC 2015
-                HPR = BIM_ap['DesignWindSpeed'] > 115.0
+                # In IRC 2015:
+                flood_lim = 130.0 # mph
+                general_lim = 140.0 # mph
             else:
-                # The limit is 90 mph in IRC 2009 and earlier versions
-                HPR = BIM_ap['DesignWindSpeed'] > 90.0
+                # In IRC 2009 and earlier versions
+                flood_lim = 110.0 # mph
+                general_lim = 120.0 # mph
+
+            WBD = (((BIM_ap['FloodZone'].startswith('A') or BIM_ap['FloodZone'].startswith('V')) and
+                    BIM_ap['DesignWindSpeed'] >= flood_lim) or (BIM_ap['DesignWindSpeed'] >= general_lim))
 
 
-        # Wind Borne Debris
-        # Areas within hurricane-prone regions are affected by debris if One of
-        # the following two conditions holds:
-        # (1) Within 1 mile (1.61 km) of the coastal mean high water line where
-        # the ultimate design wind speed is greater than flood_lim.
-        # (2) In areas where the ultimate design wind speed is greater than
-        # general_lim
-        # The flood_lim and general_lim limits depend on the year of construction
-        # Areas within hurricane-prone regions located in accordance with
-        # one of the following:
-        # (1) Within 1 mile (1.61 km) of the coastal mean high water line
-        # where the ultimate design wind speed is 130 mph (58m/s) or greater.
-        # (2) In areas where the ultimate design wind speed is 140 mph (63.5m/s)
-        # or greater. (Definitions: Chapter 2, 2015 NJ Residential Code)
+    # Terrain
+    # open (0.03) = 3
+    # light suburban (0.15) = 15
+    # suburban (0.35) = 35
+    # light trees (0.70) = 70
+    # trees (1.00) = 100
+    # Mapped to Land Use Categories in NJ (see https://www.state.nj.us/dep/gis/
+    # digidownload/metadata/lulc02/anderson2002.html) by T. Wu group
+    # (see internal report on roughness calculations, Table 4).
+    # These are mapped to Hazus defintions as follows:
+    # Open Water (5400s) with zo=0.01 and barren land (7600) with zo=0.04 assume Open
+    # Open Space Developed, Low Intensity Developed, Medium Intensity Developed
+    # (1110-1140) assumed zo=0.35-0.4 assume Suburban
+    # High Intensity Developed (1600) with zo=0.6 assume Lt. Tree
+    # Forests of all classes (4100-4300) assumed zo=0.6 assume Lt. Tree
+    # Shrub (4400) with zo=0.06 assume Open
+    # Grasslands, pastures and agricultural areas (2000 series) with
+    # zo=0.1-0.15 assume Lt. Suburban
+    # Woody Wetlands (6250) with zo=0.3 assume suburban
+    # Emergent Herbaceous Wetlands (6240) with zo=0.03 assume Open
+    # Note: HAZUS category of trees (1.00) does not apply to any LU/LC in NJ
 
+    # TODO we need a ruleset that maps LULC scraper -> ['Open','Light Suburban', 'Suburban', 'Light Trees','Trees']
+    # if "LandCover" in BIM_ap:
+    #     terrain = BIM_ap["LandCover"]
+    # else:
+    #     terrain = 15 # Default in Reorganized Rulesets - WIND        
+    #     LULC = BIM_ap['LULC']
+    #     TER = BIM_ap['Terrain']
+    #     if (BIM_ap['z0'] > 0):
+    #         terrain = int(100 * BIM_ap['z0'])
+    #     elif (LULC > 0):
+    #         if (BIM_ap['FloodZone'].startswith('V') or BIM_ap['FloodZone'] in ['A', 'AE', 'A1-30', 'AR', 'A99']):
+    #             terrain = 3
+    #         elif ((LULC >= 5000) and (LULC <= 5999)):
+    #             terrain = 3 # Open
+    #         elif ((LULC == 4400) or (LULC == 6240)) or (LULC == 7600):
+    #             terrain = 3 # Open
+    #         elif ((LULC >= 2000) and (LULC <= 2999)):
+    #             terrain = 15 # Light suburban
+    #         elif ((LULC >= 1110) and (LULC <= 1140)) or ((LULC >= 6250) and (LULC <= 6252)):
+    #             terrain = 35 # Suburban
+    #         elif ((LULC >= 4100) and (LULC <= 4300)) or (LULC == 1600):
+    #             terrain = 70 # light trees
+    #     elif (TER > 0):
+    #         if (BIM_ap['FloodZone'].startswith('V') or BIM_ap['FloodZone'] in ['A', 'AE', 'A1-30', 'AR', 'A99']):
+    #             terrain = 3
+    #         elif ((TER >= 50) and (TER <= 59)):
+    #             terrain = 3 # Open
+    #         elif ((TER == 44) or (TER == 62)) or (TER == 76):
+    #             terrain = 3 # Open
+    #         elif ((TER >= 20) and (TER <= 29)):
+    #             terrain = 15 # Light suburban
+    #         elif (TER == 11) or (TER == 61):
+    #             terrain = 35 # Suburban
+    #         elif ((TER >= 41) and (TER <= 43)) or (TER in [16, 17]):
+    #             terrain = 70 # light trees
 
-        if "WindBorneDebris" in BIM_ap:
-            WBD = BIM_ap["WindBorneDebris"]
+    # DesignLevel
+    # Will adopt the following definition: E=high rises, critical facilities, government buildings, health care, schools; 
+    # ME = hotels, apartments, offices, light industrial (1-3 stories); NE=single and duplex residences, small commercial; 
+    # PE=Metal building systems and other prefab systems like mobile homes (see https://www.nap.edu/read/1993/chapter/15); 
+    # since metal buildings aren't easy to identify in the inventory, only mobile homes will receive PE; 
+    # also note that difference between ME and E will be discerned for many classes of hotels, apartments, office and light 
+    # industry based on height (over 3 stories assumed engineered)
 
-        else:
-            if not HPR:
-                WBD = False
+    if "DesignLevel" in BIM_ap:
+        DesignLevel = BIM_ap["DesignLevel"]
 
-            else:
-                is_ready_to_infer(available_features=available_features, needed_features = ['YearBuilt','FloodZone','DesignWindSpeed'], inferred_feature= "HazardProneRegion")            
-                if BIM_ap['YearBuilt'] >= 2016:
-                    # In IRC 2015:
-                    flood_lim = 130.0 # mph
-                    general_lim = 140.0 # mph
-                else:
-                    # In IRC 2009 and earlier versions
-                    flood_lim = 110.0 # mph
-                    general_lim = 120.0 # mph
+    elif is_ready_to_infer(available_features=available_features, needed_features = ['OccupancyClass','NumberOfStories'], inferred_feature= "DesignLevel"):    
 
-                WBD = (((BIM_ap['FloodZone'].startswith('A') or BIM_ap['FloodZone'].startswith('V')) and
-                        BIM_ap['DesignWindSpeed'] >= flood_lim) or (BIM_ap['DesignWindSpeed'] >= general_lim))
-
-
-        # Terrain
-        # open (0.03) = 3
-        # light suburban (0.15) = 15
-        # suburban (0.35) = 35
-        # light trees (0.70) = 70
-        # trees (1.00) = 100
-        # Mapped to Land Use Categories in NJ (see https://www.state.nj.us/dep/gis/
-        # digidownload/metadata/lulc02/anderson2002.html) by T. Wu group
-        # (see internal report on roughness calculations, Table 4).
-        # These are mapped to Hazus defintions as follows:
-        # Open Water (5400s) with zo=0.01 and barren land (7600) with zo=0.04 assume Open
-        # Open Space Developed, Low Intensity Developed, Medium Intensity Developed
-        # (1110-1140) assumed zo=0.35-0.4 assume Suburban
-        # High Intensity Developed (1600) with zo=0.6 assume Lt. Tree
-        # Forests of all classes (4100-4300) assumed zo=0.6 assume Lt. Tree
-        # Shrub (4400) with zo=0.06 assume Open
-        # Grasslands, pastures and agricultural areas (2000 series) with
-        # zo=0.1-0.15 assume Lt. Suburban
-        # Woody Wetlands (6250) with zo=0.3 assume suburban
-        # Emergent Herbaceous Wetlands (6240) with zo=0.03 assume Open
-        # Note: HAZUS category of trees (1.00) does not apply to any LU/LC in NJ
-
-        if "TerrainRoughness" in BIM_ap:
-            terrain = BIM_ap["TerrainRoughness"]
-        else:
-            terrain = 15 # Default in Reorganized Rulesets - WIND        
-            LULC = BIM_ap['LULC']
-            TER = BIM_ap['Terrain']
-            if (BIM_ap['z0'] > 0):
-                terrain = int(100 * BIM_ap['z0'])
-            elif (LULC > 0):
-                if (BIM_ap['FloodZone'].startswith('V') or BIM_ap['FloodZone'] in ['A', 'AE', 'A1-30', 'AR', 'A99']):
-                    terrain = 3
-                elif ((LULC >= 5000) and (LULC <= 5999)):
-                    terrain = 3 # Open
-                elif ((LULC == 4400) or (LULC == 6240)) or (LULC == 7600):
-                    terrain = 3 # Open
-                elif ((LULC >= 2000) and (LULC <= 2999)):
-                    terrain = 15 # Light suburban
-                elif ((LULC >= 1110) and (LULC <= 1140)) or ((LULC >= 6250) and (LULC <= 6252)):
-                    terrain = 35 # Suburban
-                elif ((LULC >= 4100) and (LULC <= 4300)) or (LULC == 1600):
-                    terrain = 70 # light trees
-            elif (TER > 0):
-                if (BIM_ap['FloodZone'].startswith('V') or BIM_ap['FloodZone'] in ['A', 'AE', 'A1-30', 'AR', 'A99']):
-                    terrain = 3
-                elif ((TER >= 50) and (TER <= 59)):
-                    terrain = 3 # Open
-                elif ((TER == 44) or (TER == 62)) or (TER == 76):
-                    terrain = 3 # Open
-                elif ((TER >= 20) and (TER <= 29)):
-                    terrain = 15 # Light suburban
-                elif (TER == 11) or (TER == 61):
-                    terrain = 35 # Suburban
-                elif ((TER >= 41) and (TER <= 43)) or (TER in [16, 17]):
-                    terrain = 70 # light trees
-
-        # DesignLevel
-        # Will adopt the following definition: E=high rises, critical facilities, government buildings, health care, schools; 
-        # ME = hotels, apartments, offices, light industrial (1-3 stories); NE=single and duplex residences, small commercial; 
-        # PE=Metal building systems and other prefab systems like mobile homes (see https://www.nap.edu/read/1993/chapter/15); 
-        # since metal buildings aren't easy to identify in the inventory, only mobile homes will receive PE; 
-        # also note that difference between ME and E will be discerned for many classes of hotels, apartments, office and light 
-        # industry based on height (over 3 stories assumed engineered)
-
-        if "DesignLevel" in BIM_ap:
-            DesignLevel = BIM_ap["DesignLevel"]
-
-        elif is_ready_to_infer(available_features=available_features, needed_features = ['OccupancyClass','NumberOfStories'], inferred_feature= "DesignLevel"):    
-
-            NumberofStories = BIM_ap["NumberOfStories"]
-            OccupancyClass = BIM_ap["OccupancyClass"]
-            if OccupancyClass in ['RES1','RES3A','AGR1']:
-                DesignLevel = 'NE'
-            elif OccupancyClass in ['EDU1', 'EDU2', 'GOV1', 'GOV2', 'COM6', 'IND1', 'IND3', 'IND4', 'IND5', 'IND6', 'COM10']:
+        NumberofStories = BIM_ap["NumberOfStories"]
+        OccupancyClass = BIM_ap["OccupancyClass"]
+        if OccupancyClass in ['RES1','RES3A','AGR1']:
+            DesignLevel = 'NE'
+        elif OccupancyClass in ['EDU1', 'EDU2', 'GOV1', 'GOV2', 'COM6', 'IND1', 'IND3', 'IND4', 'IND5', 'IND6', 'COM10']:
+            DesignLevel = 'E'
+        elif OccupancyClass in ['RES2']:
+            DesignLevel = 'PE'
+        elif OccupancyClass in ['IND2']:
+            DesignLevel='ME'
+        elif OccupancyClass in ['RES3B', 'RES3C', 'RES3D', 'RES3E', 'RES3F', 'RES4', 'RES5', 'RES6', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM7', 'COM8', 'COM9', 'REL1']:
+            if NumberofStories>3:
                 DesignLevel = 'E'
-            elif OccupancyClass in ['RES2']:
-                DesignLevel = 'PE'
-            elif OccupancyClass in ['IND2']:
-                DesignLevel='ME'
-            elif OccupancyClass in ['RES3B', 'RES3C', 'RES3D', 'RES3E', 'RES3F', 'RES4', 'RES5', 'RES6', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM7', 'COM8', 'COM9', 'REL1']:
-                if NumberofStories>3:
-                    DesignLevel = 'E'
-                else:
-                    DesignLevel = 'ME'
-
             else:
-                msg = f"OccupancyClass {OccupancyClass} not identified"
-                raise ValueError(msg)
+                DesignLevel = 'ME'
+
+        else:
+            msg = f"OccupancyClass {OccupancyClass} not identified"
+            raise ValueError(msg)
 
 
 
 
-        is_ready_to_infer(available_features=available_features, needed_features = ['DesignWindSpeed'], inferred_feature= "Hurricane properties")            
+    is_ready_to_infer(available_features=available_features, needed_features = ['DesignWindSpeed'], inferred_feature= "Hurricane properties")            
 
-        BIM_ap.update(dict(
-            # Nominal Design Wind Speed
-            # Former term was “Basic Wind Speed”; it is now the “Nominal Design
-            # Wind Speed (V_asd). Unit: mph."
-            V_asd = np.sqrt(0.6 * BIM_ap['DesignWindSpeed']), # sy- not being used
-            HazardProneRegion=HPR,
-            WindBorneDebris=WBD,
-            TerrainRoughness=terrain,
-            DesignLevel=DesignLevel,
-        ))
+    BIM_ap.update(dict(
+        # Nominal Design Wind Speed
+        # Former term was “Basic Wind Speed”; it is now the “Nominal Design
+        # Wind Speed (V_asd). Unit: mph."
+        V_asd = np.sqrt(0.6 * BIM_ap['DesignWindSpeed']), # sy- note this is not being used
+        HazardProneRegion=HPR,
+        WindBorneDebris=WBD,
+        #LandCover=terrain,
+        DesignLevel=DesignLevel,
+    ))
 
 
     return BIM_ap
@@ -546,7 +550,7 @@ def add_default(BIM_in, hazards):
     
 def is_ready_to_infer(available_features,needed_features,inferred_feature):
 
-    features_with_default = ["DesignLevel_H","WindZone","AvgJanTemp","SheathingThickness","TerrainRoughness","MeanRoofHt",'MasonryReinforcing']
+    features_with_default = ["DesignLevel_H","WindZone","AvgJanTemp","SheathingThickness","LandCover","Height",'MasonryReinforcing']
 
     missing_keys = set(needed_features).difference(set(available_features))
 

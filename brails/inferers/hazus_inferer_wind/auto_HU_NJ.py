@@ -44,7 +44,7 @@
 # Meredith Lockhead
 # Tracy Kijewski-Correa
 
-from brails.inferers.hazus_inferer_wind.WindMetaVarRulesets import add_default
+from brails.inferers.hazus_inferer_wind.WindMetaVarRulesets import add_default, global_rulesets
 from brails.inferers.hazus_inferer_wind.BuildingClassRulesets import building_class
 from brails.inferers.hazus_inferer_wind.WindCECBRulesets import CECB_config
 from brails.inferers.hazus_inferer_wind.WindCERBRulesets import CERB_config
@@ -61,7 +61,7 @@ from brails.inferers.hazus_inferer_wind.WindSPMBRulesets import SPMB_config
 from brails.inferers.hazus_inferer_wind.WindWMUHRulesets import WMUH_config
 from brails.inferers.hazus_inferer_wind.WindWSFRulesets import WSF_config
 
-def auto_populate(inventory):
+def auto_populate(inventory, use_default):
     """
     Populates the DL model for hurricane assessments in Atlantic County, NJ
 
@@ -86,12 +86,18 @@ def auto_populate(inventory):
     """
 
     # parse the GI data
-    GI_ap = add_default(inventory["properties"], hazards='wind')
+    GI = add_default(inventory["properties"])
+
+    if use_default:
+        GI = add_default(GI)
+
+    GI_ap = global_rulesets(GI)
+
 
     #print(GI_ap[0])
     # identify the building class
 
-    bldg_class = building_class(GI_ap, hazard='wind')
+    bldg_class, GI_ap = building_class(GI_ap, hazard='wind')
 
     # prepare the building configuration string
     if bldg_class == 'WSF':

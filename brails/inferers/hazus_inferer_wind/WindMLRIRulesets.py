@@ -78,14 +78,14 @@ def MLRI_config(BIM):
     # the manufacturer’s instructions. Fasteners are to be applied along
     # the overlap not more than 36 inches on center.
 
-    if "RoofDeckAttachmentM" in BIM:
-        MRDA = BIM["RoofDeckAttachmentM"]
+    if "RoofDeckAttachment" in BIM:
+        MRDA = BIM["RoofDeckAttachment"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachment"):
         if BIM['DesignWindSpeed'] > 142:
-            MRDA = 'std'  # standard
+            MRDA = 'Standard'  # standard
         else:
-            MRDA = 'sup'  # superior
+            MRDA = 'Superior'  # superior
 
 
 
@@ -93,35 +93,37 @@ def MLRI_config(BIM):
         roof_quality = BIM["RoofQuality"]
 
     elif is_ready_to_infer(available_features=available_features, needed_features = ["RoofShape"], inferred_feature= "RoofQuality"):
-        if BIM['RoofShape'] in ['gab', 'hip']:
-            #roof_cover = 'null'
-            roof_quality = 'god' # default supported by HAZUS
+        if BIM['RoofShape'] in ['Gable', 'Hip']:
+            #roof_cover = '' # null
+            roof_quality = 'Good' # default supported by HAZUS
         else:
 
             is_ready_to_infer(available_features=available_features, needed_features = ["YearBuilt"], inferred_feature= "RoofQuality")
             if BIM['YearBuilt'] >= 1975:
-                #roof_cover = 'spm'
+                #roof_cover = 'Single-Ply Membrane'
                 if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
-                    roof_quality = 'god'
+                    roof_quality = 'Good'
                 else:
-                    roof_quality = 'por'
+                    roof_quality = 'Poor'
             else:
                 # year < 1975
-                #roof_cover = 'bur'
+                #roof_cover = 'Built-Up Roof'
                 if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
-                    roof_quality = 'god'
+                    roof_quality = 'Good'
                 else:
-                    roof_quality = 'por'
+                    roof_quality = 'Poor'
 
 
-    is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness','MasonryReinforcing'], inferred_feature= "M.LRI class")
+    is_ready_to_infer(available_features=available_features, needed_features = ['BuildingType','StructureType','LandCover','MasonryReinforcing'], inferred_feature= "M.LRI class")
     essential_features = dict(
-        BuildingTag = "M.LRI.", 
-        TerrainRoughness=int(BIM['TerrainRoughness']),
+        BuildingType=BIM['BuildingType'],
+        StructureType=BIM['StructureType'],
+        LandCover=BIM['LandCover'],
         RoofQuality = roof_quality,
-        RoofDeckAttachmentM = MRDA,
+        RoofDeckAttachment = MRDA,
         Shutters = int(shutters),
         MasonryReinforcing = int(BIM['MasonryReinforcing']),
+        NumberOfStories = int(BIM['NumberOfStories'])
         )
 
     # extend the BIM dictionary
@@ -132,7 +134,7 @@ def MLRI_config(BIM):
     #               f"{int(BIM['MasonryReinforcing'])}." \
     #               f"{roof_quality}." \
     #               f"{MRDA}." \
-    #               f"{int(BIM['TerrainRoughness'])}"
+    #               f"{BIM['LandCover']}"
 
     return essential_features
 
