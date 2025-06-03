@@ -74,9 +74,9 @@ def SPMB_config(BIM):
 
         # Roof Deck Age (~ Roof Quality)
         if BIM['YearBuilt'] >= (datetime.datetime.now().year - 50):
-            roof_quality = 'god'
+            roof_quality = 'Good'
         else:
-            roof_quality = 'por'
+            roof_quality = 'Poor'
 
 
     if "Shutters" in BIM:
@@ -103,10 +103,10 @@ def SPMB_config(BIM):
                 shutters = False
 
 
-    if "RoofDeckAttachmentM" in BIM:
-        MRDA = BIM["RoofDeckAttachmentM"]
+    if "RoofDeckAttachment" in BIM:
+        MRDA = BIM["RoofDeckAttachment"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachmentM"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ["DesignWindSpeed"], inferred_feature= "RoofDeckAttachment"):
         # Metal RDA
         # 1507.2.8.1 High Wind Attachment.
         # Underlayment applied in areas subject to high winds (Vasd greater
@@ -115,13 +115,13 @@ def SPMB_config(BIM):
         # the manufacturer’s instructions. Fasteners are to be applied along
         # the overlap not more than 36 inches on center.
         if BIM['DesignWindSpeed'] > 142:
-            MRDA = 'std'  # standard
+            MRDA = 'Standard'  # standard
         else:
-            MRDA = 'sup'  # superior
+            MRDA = 'Superior'  # superior
 
 
     # don't allow predefined its too complicated
-    is_ready_to_infer(available_features=available_features, needed_features = ["PlanArea",'TerrainRoughness'], inferred_feature= "BuildingTag (among S, M, and L)")
+    is_ready_to_infer(available_features=available_features, needed_features = ["PlanArea",'LandCover','StructureType','BuildingType'], inferred_feature= "S.PMB class")
 
     if BIM['PlanArea'] <= 4000:
         bldg_tag = 'S.PMB.S'
@@ -131,11 +131,13 @@ def SPMB_config(BIM):
         bldg_tag = 'S.PMB.L'
 
     essential_features = dict(
-        BuildingTag = bldg_tag, 
-        TerrainRoughness=int(BIM['TerrainRoughness']),
+        BuildingType=BIM['BuildingType'],
+        StructureType=BIM['StructureType'],
+        LandCover=BIM['LandCover'],
         RoofQuality = roof_quality,
-        RoofDeckAttachmentM = MRDA,
-        Shutters = int(shutters)
+        RoofDeckAttachment = MRDA,
+        Shutters = int(shutters),
+        PlanArea = float(BIM['PlanArea'])
         )
 
     # extend the BIM dictionary
@@ -145,7 +147,7 @@ def SPMB_config(BIM):
     #               f"{int(shutters)}." \
     #               f"{roof_quality}." \
     #               f"{MRDA}." \
-    #               f"{int(BIM['TerrainRoughness'])}"
+    #               f"{BIM['LandCover']}"
 
     return essential_features
 

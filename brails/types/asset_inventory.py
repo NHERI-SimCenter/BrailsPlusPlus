@@ -199,7 +199,7 @@ class Asset:
         Return:
             bool: True if features are removed
         """
-        for key in feature_list:
+        for key in list(feature_list):
             self.features.pop(key, None)
 
         return True

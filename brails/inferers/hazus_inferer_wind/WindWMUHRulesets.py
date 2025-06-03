@@ -73,15 +73,15 @@ def WMUH_config(BIM):
         # Secondary Water Resistance (SWR)
         SWR = 0 # Default
         if BIM['YearBuilt'] > 2000:
-            if BIM['RoofShape'] == 'flt':
-                SWR = 'null' # because SWR is not a question for flat roofs
-            elif BIM['RoofShape'] in ['gab','hip']:
+            if BIM['RoofShape'] == 'Flat':
+                SWR = '' # null # because SWR is not a question for flat roofs
+            elif BIM['RoofShape'] in ['Gable','Hip']:
                 SWR = int(random.random() < 0.6)
 
         elif BIM['YearBuilt'] > 1987:
-            if BIM['RoofShape'] == 'flt':
-                SWR = 'null' # because SWR is not a question for flat roofs
-            elif (BIM['RoofShape'] == 'gab') or (BIM['RoofShape'] == 'hip'):
+            if BIM['RoofShape'] == 'Flat':
+                SWR = '' # null # because SWR is not a question for flat roofs
+            elif (BIM['RoofShape'] == 'Gable') or (BIM['RoofShape'] == 'Hip'):
                 is_ready_to_infer(available_features=available_features, needed_features = ['RoofSlope'], inferred_feature= "SecondaryWaterResistance")
                 if BIM['RoofSlope'] < 0.33:
                     SWR = int(True)
@@ -89,8 +89,8 @@ def WMUH_config(BIM):
                     SWR = int(BIM['AvgJanTemp'] == 'below')
         else:
             # year <= 1987
-            if BIM['RoofShape'] == 'flt':
-                SWR = 'null' # because SWR is not a question for flat roofs
+            if BIM['RoofShape'] == 'Flat':
+                SWR = '' # null # because SWR is not a question for flat roofs
             else:
                 SWR = int(random.random() < 0.3)
 
@@ -103,8 +103,8 @@ def WMUH_config(BIM):
     elif is_ready_to_infer(available_features=available_features, needed_features = ['RoofShape'], inferred_feature= "RoofCover"):
         # Roof cover
         # Roof cover do not apply to gable and hip roofs
-        if BIM['RoofShape'] in ['gab', 'hip']:
-            roof_cover = 'null'
+        if BIM['RoofShape'] in ['Gable', 'Hip']:
+            roof_cover = '' # null
         # NJ Building Code Section 1507 (in particular 1507.10 and 1507.12) address
         # Built Up Roofs and Single Ply Membranes. However, the NJ Building Code
         # only addresses installation and material standards of different roof
@@ -120,10 +120,10 @@ def WMUH_config(BIM):
         else:
             is_ready_to_infer(available_features=available_features, needed_features = ['YearBuilt'], inferred_feature= "RoofCover")
             if BIM['YearBuilt'] >= 1975:
-                roof_cover = 'spm'
+                roof_cover = 'Single-Ply Membrane'
             else:
                 # year < 1975
-                roof_cover = 'bur'
+                roof_cover = 'Built-Up Roof'
 
 
     if "RoofQuality" in BIM:
@@ -133,8 +133,8 @@ def WMUH_config(BIM):
         # Roof quality
         # Roof quality do not apply to gable and hip roofs
     
-        if BIM['RoofShape'] in ['gab', 'hip']:
-            roof_quality = 'null'    
+        if BIM['RoofShape'] in ['Gable', 'Hip']:
+            roof_quality = '' # null    
         # Nothing in NJ Building Code or in the Hazus manual specifies what
         # constitutes “good” and “poor” roof conditions, so ruleset is dependant
         # on the age of the roof and average lifespan of BUR and SPM roofs.
@@ -146,21 +146,21 @@ def WMUH_config(BIM):
             is_ready_to_infer(available_features=available_features, needed_features = ['YearBuilt'], inferred_feature= "RoofQuality")
             if BIM['YearBuilt'] >= 1975:
                 if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
-                    roof_quality = 'god'
+                    roof_quality = 'Good'
                 else:
-                    roof_quality = 'por'
+                    roof_quality = 'Poor'
             else:
                 # year < 1975
                 if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
-                    roof_quality = 'god'
+                    roof_quality = 'Good'
                 else:
-                    roof_quality = 'por'
+                    roof_quality = 'Poor'
 
 
-    if "RoofDeckAttachmentW" in BIM:
-        RDA = BIM["RoofDeckAttachmentW"]
+    if "RoofDeckAttachment" in BIM:
+        RDA = BIM["RoofDeckAttachment"]
 
-    elif is_ready_to_infer(available_features=available_features, needed_features = ['YearBuilt'], inferred_feature= "RoofDeckAttachmentW"):
+    elif is_ready_to_infer(available_features=available_features, needed_features = ['YearBuilt'], inferred_feature= "RoofDeckAttachment"):
         
         # Roof Deck Attachment (RDA)
         # IRC 2009-2015:
@@ -176,8 +176,10 @@ def WMUH_config(BIM):
         # The base rule was then extended to the exposures closest to suburban and
         # light suburban, even though these are not considered by the code.
         if BIM['YearBuilt'] > 2009:
-            is_ready_to_infer(available_features=available_features, needed_features = ['TerrainRoughness','DesignWindSpeed'], inferred_feature= "RoofDeckAttachmentW")
-            if BIM['TerrainRoughness'] >= 35: # suburban or light trees
+            is_ready_to_infer(available_features=available_features, needed_features = ['LandCover','DesignWindSpeed'], inferred_feature= "RoofDeckAttachment")
+            #if BIM['LandCover'] >= 35: # suburban or light trees
+            
+            if BIM['LandCover'] in ['Suburban','Light Trees','Trees']: # suburban or light trees
                 if BIM['DesignWindSpeed'] > 168.0:
                     RDA = '8s'  # 8d @ 6"/6" 'D'
                 else:
@@ -203,8 +205,8 @@ def WMUH_config(BIM):
         # Attachment requirements are given based on sheathing thickness, basic
         # wind speed, and the mean roof height of the building.
         elif BIM['YearBuilt'] > 1996:
-            is_ready_to_infer(available_features=available_features, needed_features = ['DesignWindSpeed','MeanRoofHt'], inferred_feature= "RoofDeckAttachmentW")
-            if (BIM['DesignWindSpeed'] >= 103 ) and (BIM['MeanRoofHt'] >= 25.0):
+            is_ready_to_infer(available_features=available_features, needed_features = ['DesignWindSpeed','Height'], inferred_feature= "RoofDeckAttachment")
+            if (BIM['DesignWindSpeed'] >= 103 ) and (BIM['Height'] >= 25.0):
                 RDA = '8s'  # 8d @ 6"/6" 'D'
             else:
                 RDA = '8d'  # 8d @ 6"/12" 'B'
@@ -214,13 +216,13 @@ def WMUH_config(BIM):
         # spacing 6”/12”) for sheathing thicknesses of ½ inches or less.
         # See Table 2305.2, Section 4.
         elif BIM['YearBuilt'] > 1993:
-            is_ready_to_infer(available_features=available_features, needed_features = ['SheathingThickness'], inferred_feature= "RoofDeckAttachmentW")
+            is_ready_to_infer(available_features=available_features, needed_features = ['SheathingThickness'], inferred_feature= "RoofDeckAttachment")
             if BIM['SheathingThickness'] <= 0.5:
                 RDA = '6d'  # 6d @ 6"/12" 'A'
             else:
                 RDA = '8d'  # 8d @ 6"/12" 'B'
         else:
-            is_ready_to_infer(available_features=available_features, needed_features = ['SheathingThickness'], inferred_feature= "RoofDeckAttachmentW")
+            is_ready_to_infer(available_features=available_features, needed_features = ['SheathingThickness'], inferred_feature= "RoofDeckAttachment")
             # year <= 1993
             if BIM['SheathingThickness'] <= 0.5:
                 RDA = '6d' # 6d @ 6"/12" 'A'
@@ -246,22 +248,22 @@ def WMUH_config(BIM):
         if BIM['YearBuilt'] > 2000:
             is_ready_to_infer(available_features=available_features, needed_features = ['DesignWindSpeed'], inferred_feature= "RoofToWallConnection")
             if BIM['DesignWindSpeed'] > 142.0:
-                RWC = 'strap'  # Strap
+                RWC = 'Strap'  # Strap
             else:
-                RWC = 'tnail'  # Toe-nail
+                RWC = 'Toe-nail'  # Toe-nail
         # BOCA 1996 and earlier:
-        # There is no mention of straps or enhanced tie-downs of any kind in the
+        # There is no mention of Straps or enhanced tie-downs of any kind in the
         # BOCA codes, and there is no description of these adoptions in IBHS
         # reports or the New Jersey Construction Code Communicator .
-        # Although there is no explicit information, it seems that hurricane straps
+        # Although there is no explicit information, it seems that hurricane Straps
         # really only came into effect in Florida after Hurricane Andrew (1992),
         # and likely it took several years for these changes to happen. Because
         # Florida is the leader in adopting hurricane protection measures into
-        # codes and because there is no mention of shutters or straps in the BOCA
+        # codes and because there is no mention of shutters or Straps in the BOCA
         # codes, it is assumed that New Jersey did not adopt these standards until
         # the 2000 IBC.
         else:
-            RWC = 'tnail'  # Toe-nail
+            RWC = 'Toe-nail'  # Toe-nail
 
 
 
@@ -302,18 +304,19 @@ def WMUH_config(BIM):
     # Stories
     # Buildings with more than 3 stories are mapped to the 3-story configuration
 
-    is_ready_to_infer(available_features=available_features, needed_features = ['NumberOfStories','TerrainRoughness','RoofShape'], inferred_feature= "WMUH class")
-    stories = min(BIM['NumberOfStories'], 3)
+    is_ready_to_infer(available_features=available_features, needed_features = ['BuildingType','StructureType','NumberOfStories','LandCover','RoofShape'], inferred_feature= "WMUH class")
+    #stories = min(BIM['NumberOfStories'], 3)
     
     essential_features = dict(
-        BuildingTag = "W.MUH." , 
-        TerrainRoughness=int(BIM['TerrainRoughness']),
+        BuildingType=BIM['BuildingType'],
+        StructureType=BIM['StructureType'],
+        LandCover=BIM['LandCover'],
         RoofShape=BIM['RoofShape'],
-        NumberOfStories = int(stories),
+        NumberOfStories =  int(BIM['NumberOfStories']),
         RoofQuality = roof_quality,
         Shutters = int(shutters),
         RoofToWallConnection = RWC,
-        RoofDeckAttachmentW = RDA,
+        RoofDeckAttachment = RDA,
         RoofCover = roof_cover,
         SecondaryWaterResistance = SWR,
         )
@@ -331,7 +334,7 @@ def WMUH_config(BIM):
     #               f"{RDA}." \
     #               f"{RWC}." \
     #               f"{int(shutters)}." \
-    #               f"{int(BIM['TerrainRoughness'])}"
+    #               f"{BIM['LandCover']}"
 
     return essential_features
 
