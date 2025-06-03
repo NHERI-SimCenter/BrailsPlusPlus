@@ -44,11 +44,14 @@ This module defines abstract SpatialJoinMethods class.
 
     SpatialJoinMethods
 """
-
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from brails.types.asset_inventory import AssetInventory
 from brails.utils.input_validator import InputValidator
 from brails.utils.inventory_validator import InventoryValidator
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from brails.types.asset_inventory import AssetInventory
 
 
 class SpatialJoinMethods(ABC):
@@ -62,9 +65,9 @@ class SpatialJoinMethods(ABC):
         SpatialJoinMethods._registry[cls.__name__] = cls
 
     @classmethod
-    def join(cls,
-             inventory1: AssetInventory,
-             inventory2: AssetInventory) -> AssetInventory:
+    def join_inventories(cls,
+                         inventory1: AssetInventory,
+                         inventory2: AssetInventory) -> AssetInventory:
         """
         Perform a spatial join between two AssetInventory instances.
 
@@ -126,7 +129,7 @@ class SpatialJoinMethods(ABC):
         if method_class is None:
             raise ValueError(f"Join method '{method_name}' not found.")
 
-        return method_class.join(inventory1, inventory2)
+        return method_class.join_inventories(inventory1, inventory2)
 
     def _get_point_indices(self, inventory: AssetInventory) -> list[str | int]:
         """

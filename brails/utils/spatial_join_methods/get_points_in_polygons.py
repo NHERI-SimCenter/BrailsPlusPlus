@@ -44,11 +44,14 @@ This module defines the concrete class GetPointsInPolygons.
 
     GetPointsInPolygons
 """
-
+from __future__ import annotations
 from shapely.strtree import STRtree
 from shapely.geometry import Point, Polygon
-from brails.types.asset_inventory import AssetInventory
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from brails.types.asset_inventory import AssetInventory
 
 
 class GetPointsInPolygons(SpatialJoinMethods):
@@ -87,16 +90,20 @@ class GetPointsInPolygons(SpatialJoinMethods):
             AssetInventory:
                 Updated polygon inventory with merged point features.
         """
+        print('\nJoining inventories...')
         matched_polygon_ids, matched_point_ids = \
             self._find_points_in_polygons(polygon_inventory,
                                           point_inventory)
 
+        print(f'Identified a total of {len(matched_polygon_ids)} matched '
+              'points.')
         for polygon_id, point_id in zip(
                 matched_polygon_ids, matched_point_ids):
             point_features = point_inventory.inventory[point_id].features
             polygon_inventory.add_asset_features(
                 polygon_id, point_features
             )
+        print('Inventories successfully joined.')
 
         return polygon_inventory
 
@@ -155,7 +162,7 @@ class GetPointsInPolygons(SpatialJoinMethods):
         pttree = STRtree(points)
 
         # Initialize the dictionary mapping point keys to polygons keys:
-        points_matched = {}
+        fps_matched = {}
 
         for ind, poly in enumerate(polygons):
             polygon = Polygon(poly)
@@ -176,8 +183,5 @@ class GetPointsInPolygons(SpatialJoinMethods):
                                           point.equals(nearest_point)), None)
                     res = [nearest_index]
 
-                points_matched[point_asset_ids[res[0]]
-                               ] = polygon_asset_ids[ind]
-
-        print(f'Found a total of {len(points_matched)} matched points')
-        return list(points_matched.values()), list(points_matched.keys())
+                fps_matched[polygon_asset_ids[ind]] = point_asset_ids[res[0]]
+        return list(fps_matched.keys()), list(fps_matched.values())
