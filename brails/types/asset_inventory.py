@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 02-25-2025
+# 06-03-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -60,7 +60,8 @@ import pandas as pd
 from shapely import box
 from shapely.geometry import shape
 
-from brails.utils import InputValidator
+from brails.utils.input_validator import InputValidator
+from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
@@ -68,7 +69,6 @@ logger = logging.getLogger(__name__)
 
 
 def clean_floats(obj):
-    
     """
     Function: A function provided by chatGPT to turn make sure floats that are mathematicallys ints are
     converted to ints for output purposes for all values in json obj, dict, or list.
@@ -77,7 +77,7 @@ def clean_floats(obj):
     Args:
       obj: json/dict/list
     """
-    
+
     if isinstance(obj, dict):
         return {k: clean_floats(v) for k, v in obj.items()}
     elif isinstance(obj, list):
@@ -747,12 +747,9 @@ class AssetInventory:
             raise TypeError('Join method should be a valid string')
 
         # Perform the spatial join using the specified method:
-        """
-        self.inventory = SpatialJoinMethods.execute(method,
-                                                    self.inventory,
-                                                    inventory_to_join)
-        """
-        print('Method not yet implemented')
+        self = SpatialJoinMethods.execute(method,
+                                          self,
+                                          inventory_to_join)
 
     def write_to_geojson(self, output_file: str = "") -> dict:
         """
@@ -762,16 +759,16 @@ class AssetInventory:
             output_file(str):
                 Path of the GeoJSON output file.
         """
-        
+
         geojson = self.get_geojson()
 
         print(f'GEOJSON {geojson}')
-        
+
         # Modify the GeoJSON features to include an 'id' field:
         # This is the variation of GeoJSON that is used in R2D
 
         print(f'FILE: {output_file}')
-        
+
         for i, ft in enumerate(geojson["features"]):
             if "id" in ft['properties']:
                 id = ft['properties'].pop("id")
@@ -1068,14 +1065,13 @@ class AssetInventory:
 
         return new_inventory
 
-
     def update_world_realization(self, id, world_realization):
 
         if self.n_pw == id:
             errmsg = f"The world index {id} should be smaller than the existing number of worlds {self.n_pw}, and the index starts from zero."
             raise Exception(errmsg)
 
-        elif self.n_pw <id:
+        elif self.n_pw < id:
             errmsg = f"The world index {id} should be smaller than the existing number of worlds {self.n_pw}."
             raise Exception(errmsg)
 
@@ -1088,34 +1084,32 @@ class AssetInventory:
                 if isinstance(val, list):
                     errmsg = f"world_realization should not contain multiple possible worlds."
                     raise Exception(errmsg)
-                
+
                 try:
                     original_value = self.get_asset_features(i)[1][key]
                 except Exception as e:
-                    # create a new key-value pair if it did not exist. 
+                    # create a new key-value pair if it did not exist.
                     original_value = val
-
 
                 # initalize
                 if isinstance(original_value, list):
                     new_value = original_value
                 else:
-                    new_value = [original_value]*self.n_pw    
+                    new_value = [original_value]*self.n_pw
 
                 # udpate
                 new_value[id] = val
 
                 # if identical, shrink it
                 if (len(set(new_value)) == 1):
-                        new_value = new_value[0]
+                    new_value = new_value[0]
 
                 # overwrite existing ones.
                 self.add_asset_features(
                     i, {key: new_value}, overwrite=True
                 )
 
-        return 
-
+        return
 
     def convert_polygons_to_centroids(self):
         """
