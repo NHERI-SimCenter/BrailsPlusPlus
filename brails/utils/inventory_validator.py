@@ -44,7 +44,11 @@ This module provides a utility class for validating AssetInventory objects.
 
       InventoryValidator
 """
-from brails.types.asset_inventory import AssetInventory
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from brails.types.asset_inventory import AssetInventory
 
 
 class InventoryValidator:
@@ -91,6 +95,8 @@ class InventoryValidator:
                 True if the object is an instance of AssetInventory, False
                 otherwise.
         """
+        # Lazy import to avoid circular importing of AssetInventory
+        from brails.types.asset_inventory import AssetInventory
         return isinstance(inventory, AssetInventory)
 
     @staticmethod
