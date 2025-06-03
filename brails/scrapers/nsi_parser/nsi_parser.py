@@ -37,7 +37,7 @@
 #
 #
 # Last updated:
-# 02-28-2025
+# 05-01-2025
 
 """
 This module defines a class for scraping data from NSI.
@@ -122,6 +122,8 @@ class NSI_Parser:
                               'bldgtype': 'constype',
                               'occtype': 'occupancy', 'fd_id': 'fd_id',
                               'found_ht': 'found_ht',
+                              'ground_elv': 'ground_elv',
+                              'firmzone': 'FloodZone',
                               'occtype_extended': ['splitlevel', 'basement']}
         # Extended features will be provided only when get_extended_features
         # option is selected

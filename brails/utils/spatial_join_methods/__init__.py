@@ -32,22 +32,13 @@
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 
 """
-utils module of the brails package.
+Spatial join methods of the brails package.
 
 Available classes:
-- Importer: Class for importing class files
-- GeoTools: Class containing static methods geospatial analysis & operations
-- ArcgisAPIServiceHelper: Class for interacting with an ArcGIS API service
-- PlotTools: Class for creating visually-appealing figures
-- InputValidator: Class for validating BRAILS input data
-- InputValidator: Class for validating BRAILS AssetInventory objects
-- SpatialJoinMethods: Methods to spatially merge AssetInventory objects
+- GetPointsInPolygons: A spatial join method for finding points in polygons
+- GetPointsNearPolygons: A spatial join method for finding points in or near 
+                       polygons
 
 """
-from .importer import Importer
-from .geo_tools import GeoTools
-from .arcgisapi_service_helper import ArcgisAPIServiceHelper
-from .plot_tools import PlotTools
-from .input_validator import InputValidator
-from .inventory_validator import InventoryValidator
-from .spatial_join_methods.base import SpatialJoinMethods
+from .get_points_in_polygons import GetPointsInPolygons
+from .get_points_near_polygons import GetPointsNearPolygons
