@@ -87,27 +87,30 @@ class DistanceBasedPointMatcher(SpatialJoinMethods):
             AssetInventory:
                 Updated point inventory with merged attributes.
         """
-        receiving_pt_ids = self._get_polygon_indices(receiving_point_inventory)
+        # TODO: Get this done more elegantly. Wrap them in a method that
+        # automatically identifies the data type maybe?
+        receiving_pt_ids = self._get_point_indices(receiving_point_inventory)
         merging_pt_ids = self._get_point_indices(merging_point_inventory)
 
         print(f'\nJoining inventories using {self.__class__.__name__} '
               'method...')
 
-        receiving_pt_coords, polygon_ids = \
+        # TODO: Can we refactor this segment?
+        receiving_pt_coords, rpoint_ids = \
             receiving_point_inventory.get_coordinates()
-        receiving_pt_lookup = dict(zip(polygon_ids, receiving_pt_coords))
-        polygons = {asset_id: Polygon(receiving_pt_lookup[asset_id])
-                    for asset_id in receiving_pt_ids}
+        receiving_pt_lookup = dict(zip(rpoint_ids, receiving_pt_coords))
+        receiving_points = {asset_id: Point(receiving_pt_lookup[asset_id][0])
+                            for asset_id in receiving_pt_ids}
 
-        marging_point_coords, point_ids = \
+        marging_point_coords, mpoint_ids = \
             merging_point_inventory.get_coordinates()
-        merging_point_lookup = dict(zip(point_ids, marging_point_coords))
-        points = {asset_id: Point(merging_point_lookup[asset_id][0])
-                  for asset_id in merging_pt_ids}
+        merging_point_lookup = dict(zip(mpoint_ids, marging_point_coords))
+        merging_points = {asset_id: Point(merging_point_lookup[asset_id][0])
+                          for asset_id in merging_pt_ids}
 
-        matched_points = self._find_closest_points_to_polygons(
-            polygons,
-            points)
+        matched_points = self._find_closest_point_to_point(
+            receiving_points,
+            merging_points)
 
         print(f'Identified a total of {len(matched_points)} matched '
               'points.')
@@ -145,7 +148,7 @@ class DistanceBasedPointMatcher(SpatialJoinMethods):
         point_to_closest_point = {}
 
         for pt_id, pt_geometry in points.items():
-            closest_point_id = min(points.items(),
+            closest_point_id = min(matching_points.items(),
                                    key=lambda item: pt_geometry.distance(
                                        item[1]))[0]
             point_to_closest_point[pt_id] = closest_point_id
