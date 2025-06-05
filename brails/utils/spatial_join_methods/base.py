@@ -131,7 +131,40 @@ class SpatialJoinMethods(ABC):
 
         return method_class.join_inventories(inventory1, inventory2)
 
-    def _get_point_indices(self, inventory: AssetInventory) -> list[str | int]:
+    def _merge_inventory_features(self,
+                                  receiving_inventory: AssetInventory,
+                                  merging_inventory: AssetInventory,
+                                  matched_items: dict[int | str, int | str]
+                                  ) -> AssetInventory:
+        """
+        Merge features from merging_inventory into receiving_inventory.
+
+        Args:
+            receiving_inventory (AssetInventory):
+                Target inventory to receive features.
+            merging_inventory (AssetInventory):
+                Source inventory to extract features from.
+            matched_items (dict[int | str, int | str]):
+                Mapping from receiving ID to merging ID.
+
+        Returns:
+            AssetInventory:
+                Updated receiving_inventory with merged features.
+        """
+        inventory_data = merging_inventory.inventory
+
+        for receiving_id, merging_id in matched_items.items():
+
+            # Extract the features from the merging item:
+            features = inventory_data[merging_id].features
+
+            # Write the extracted features to the receiving inventory:
+            receiving_inventory.add_asset_features(receiving_id, features)
+
+        return receiving_inventory
+
+    def _get_point_indices(self,
+                           inventory: AssetInventory) -> list[str | int]:
         """
         Retrieve the list of keys for assets with point geometry.
 

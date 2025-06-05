@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 02-25-2025
+# 06-04-2025
 
 """
 This module defines the concrete class GetPointsInPolygons.
@@ -57,19 +57,25 @@ if TYPE_CHECKING:
 
 class GetPointsNearPolygons(SpatialJoinMethods):
     """
-    Class that implements a spatial join method for finding points in polygons.
+    A spatial join strategy that associates point features with polygons.
 
-    A class that implements a spatial join method for finding correspondence
-    between points and polygons. Specifically, this class identifies points
-    that fall within polygons.
+    This class performs a two-stage spatial join:
 
-    Inherits from the SpatialJoinMethods class, which likely contains
-    common functionality for spatial joins.
+    1. **Containment-Based Join:** Points that lie inside a polygon are matched
+       directly.
+    2. **Proximity-Based Join:** For polygons without any internal points, the
+       closest point to the polygon's centroid is selected.
+
+    The result is a polygon inventory enriched with features from matched point
+    geometries.
+
+    Inherits:
+        SpatialJoinMethods:
+            Base class providing shared spatial join functionality.
 
     Methods:
-        join_implementation(polygon_inventory, point_inventory):
-            Joins points and polygons based on spatial relationships.
-
+        _join_implementation(polygon_inventory, point_inventory):
+            Executes the spatial join and feature merge logic.
     """
 
     def _join_implementation(self,
@@ -96,72 +102,68 @@ class GetPointsNearPolygons(SpatialJoinMethods):
 
         print('\nJoining inventories...')
         join_instance = GetPointsInPolygons()
-        matched_polygon_ids, matched_point_ids = \
-            join_instance._find_points_in_polygons(polygon_inventory,
-                                                   point_inventory)
+        matched_polygons1 = join_instance._find_points_in_polygons(
+            polygon_inventory,
+            point_inventory
+        )
 
-        for polygon_id, point_id in zip(
-                matched_polygon_ids, matched_point_ids):
-            point_features = point_inventory.inventory[point_id].features
-            polygon_inventory.add_asset_features(
-                polygon_id, point_features
-            )
+        # Merge attributes from points into polygons:
+        polygon_inventory = self._merge_inventory_features(polygon_inventory,
+                                                           point_inventory,
+                                                           matched_polygons1)
 
         unmatched_polygon_ids = list(set(polygon_asset_ids) -
-                                     set(matched_polygon_ids))
+                                     set(matched_polygons1.keys()))
 
-        coordinates, asset_ids = polygon_inventory.get_coordinates()
-        polygons = [Polygon(coordinates[asset_ids.index(
-            asset_id)]) for asset_id in unmatched_polygon_ids]
+        polygon_coords, polygon_ids = polygon_inventory.get_coordinates()
+        polygon_lookup = dict(zip(polygon_ids, polygon_coords))
+        polygons = {asset_id: Polygon(polygon_lookup[asset_id])
+                    for asset_id in unmatched_polygon_ids}
 
-        coordinates, asset_ids = point_inventory.get_coordinates()
-        points = [Point(coordinates[asset_ids.index(
-            asset_id)][0]) for asset_id in point_asset_ids]
+        point_coords, point_ids = point_inventory.get_coordinates()
+        point_lookup = dict(zip(point_ids, point_coords))
+        points = {asset_id: Point(point_lookup[asset_id][0])
+                  for asset_id in point_asset_ids}
 
-        matched_polygons = self._find_closest_points_to_polygons(
+        matched_polygons2 = self._find_closest_points_to_polygons(
             polygons,
-            unmatched_polygon_ids,
-            points,
-            point_asset_ids)
+            points)
 
-        n_matched_points = len(matched_polygon_ids) + len(matched_polygons)
+        n_matched_points = len(matched_polygons1) + len(matched_polygons2)
         print(f'Identified a total of {n_matched_points} matched '
               'points.')
 
-        for polygon_id, point_id in matched_polygons.items():
-            point_features = point_inventory.inventory[point_id].features
-            polygon_inventory.add_asset_features(
-                polygon_id, point_features
-            )
+        # Merge attributes from points into polygons:
+        polygon_inventory = self._merge_inventory_features(polygon_inventory,
+                                                           point_inventory,
+                                                           matched_polygons2)
         print('Inventories successfully joined.')
         return polygon_inventory
 
-    def _find_closest_points_to_polygons(self,
-                                         polygons: list[Polygon],
-                                         polygon_ids: list[int | str],
-                                         points: list[Point],
-                                         point_ids: list[int | str]):
-        """
-        Find the closest point (from a list) to the centroid of each polygon.
+        def _find_closest_points_to_polygons(
+                self,
+                polygons: dict[int | str, Polygon],
+                points: dict[int | str, Point]) -> dict[int | str, int | str]:
+            """
+            Find the closest point to the centroid of each polygon.
 
-        Args:
-            polygons (list[Polygon]):
-                List of Shapely Polygon objects.
-            points (list[Point]):
-                List of Shapely Point objects.
+            Args:
+                polygons (dict[int | str, Polygon]):
+                    Dictionary mapping polygon IDs to Shapely Polygon objects.
+                points (dict[int | str, Point]):
+                    Dictionary mapping point IDs to Shapely Point objects.
 
-        Returns:
-            dict:
-                A dictionary mapping each polygon index to the closest Point
-                object.
-        """
+            Returns:
+                dict[int | str, int | str]:
+                    A dictionary mapping each polygon ID to closest point ID.
+            """
         polygon_to_closest_point = {}
 
-        for i, polygon in enumerate(polygons):
-            centroid = polygon.centroid
-            closest_point = min(points, key=lambda pt: centroid.distance(pt))
-            closest_point_index = points.index(closest_point)
-            closest_point_id = point_ids[closest_point_index]
-            polygon_to_closest_point[polygon_ids[i]] = closest_point_id
+        for poly_id, poly in polygons.items():
+            centroid = poly.centroid
+            closest_point_id = min(points.items(),
+                                   key=lambda item: centroid.distance(
+                                       item[1]))[0]
+            polygon_to_closest_point[poly_id] = closest_point_id
 
         return polygon_to_closest_point
