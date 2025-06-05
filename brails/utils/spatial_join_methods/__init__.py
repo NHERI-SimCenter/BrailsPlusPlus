@@ -36,9 +36,11 @@ Spatial join methods of the brails package.
 
 Available classes:
 - GetPointsInPolygons: A spatial join method for finding points in polygons
-- GetPointsNearPolygons: A spatial join method for finding points in or near 
-                       polygons
-
+- GetPointsNearPolygons: A spatial join method for finding points in or near
+                         polygons
+- DistanceBasedPointMatcher: A spatial join strategy that matches points based
+                             on Euclidean distance.
 """
 from .get_points_in_polygons import GetPointsInPolygons
 from .get_points_near_polygons import GetPointsNearPolygons
+from .distance_based_point_matcher import DistanceBasedPointMatcher

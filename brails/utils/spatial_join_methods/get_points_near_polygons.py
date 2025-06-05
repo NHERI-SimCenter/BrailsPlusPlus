@@ -80,7 +80,8 @@ class GetPointsNearPolygons(SpatialJoinMethods):
 
     def _join_implementation(self,
                              polygon_inventory: AssetInventory,
-                             point_inventory: AssetInventory):
+                             point_inventory: AssetInventory
+                             ) -> AssetInventory:
         """
         Join associating point features with polygons they fall within.
 
