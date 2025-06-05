@@ -127,7 +127,10 @@ class SpatialJoinMethods(ABC):
         """
         method_class = SpatialJoinMethods._registry.get(method_name)
         if method_class is None:
-            raise ValueError(f"Join method '{method_name}' not found.")
+            available_methods = ', '.join(SpatialJoinMethods._registry.keys())
+            raise ValueError(f"Join method '{method_name}' not found. "
+                             'Here is a list of the available methods: '
+                             f"{available_methods}")
 
         return method_class.join_inventories(inventory1, inventory2)
 

@@ -90,7 +90,8 @@ class GetPointsInPolygons(SpatialJoinMethods):
             AssetInventory:
                 Updated polygon inventory with merged point features.
         """
-        print('\nJoining inventories...')
+        print(f'\nJoining inventories using {self.__class__.__name__} '
+              'method...')
 
         # Match points to their corresponding polygons:
         matched_polygons = self._find_points_in_polygons(polygon_inventory,

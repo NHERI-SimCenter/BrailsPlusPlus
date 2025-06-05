@@ -100,7 +100,8 @@ class GetPointsNearPolygons(SpatialJoinMethods):
         polygon_asset_ids = self._get_polygon_indices(polygon_inventory)
         point_asset_ids = self._get_point_indices(point_inventory)
 
-        print('\nJoining inventories...')
+        print(f'\nJoining inventories using {self.__class__.__name__} '
+              'method...')
         join_instance = GetPointsInPolygons()
         matched_polygons1 = join_instance._find_points_in_polygons(
             polygon_inventory,
@@ -140,23 +141,23 @@ class GetPointsNearPolygons(SpatialJoinMethods):
         print('Inventories successfully joined.')
         return polygon_inventory
 
-        def _find_closest_points_to_polygons(
-                self,
-                polygons: dict[int | str, Polygon],
-                points: dict[int | str, Point]) -> dict[int | str, int | str]:
-            """
-            Find the closest point to the centroid of each polygon.
+    def _find_closest_points_to_polygons(
+            self,
+            polygons: dict[int | str, Polygon],
+            points: dict[int | str, Point]) -> dict[int | str, int | str]:
+        """
+        Find the closest point to the centroid of each polygon.
 
-            Args:
-                polygons (dict[int | str, Polygon]):
-                    Dictionary mapping polygon IDs to Shapely Polygon objects.
-                points (dict[int | str, Point]):
-                    Dictionary mapping point IDs to Shapely Point objects.
+        Args:
+            polygons (dict[int | str, Polygon]):
+                Dictionary mapping polygon IDs to Shapely Polygon objects.
+            points (dict[int | str, Point]):
+                Dictionary mapping point IDs to Shapely Point objects.
 
-            Returns:
-                dict[int | str, int | str]:
-                    A dictionary mapping each polygon ID to closest point ID.
-            """
+        Returns:
+            dict[int | str, int | str]:
+                A dictionary mapping each polygon ID to closest point ID.
+        """
         polygon_to_closest_point = {}
 
         for poly_id, poly in polygons.items():
