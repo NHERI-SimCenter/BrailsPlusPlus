@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 06-03-2025
+# 06-05-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -218,45 +218,45 @@ class AssetInventory:
         inventory (dict): The inventory stored in a dict accessed by asset_id
 
      Methods:
-        print_info(): Print the asset inventory.
         add_asset(asset_id, Asset): Add an asset to the inventory.
         add_asset_coordinates(asset_id, coordinates): Add an asset to the
             inventory with just a list of coordinates.
         add_asset_features(asset_id, features, overwrite): Append new features
             to the asset.
+        add_model_predictions(predictions, feature_key): Add model predictions
+            to assets under a specified feature key.
         change_feature_names(feature_name_mapping): Rename feature names in an
             AssetInventory using user-specified mapping.
-        remove_asset(asset_id): Remove an asset to the inventory.
-        remove_feature(feature_list): Remove features from the inventory.
-        get_asset_features(asset_id): Get features of a particular assset.
+        convert_polygons_to_centroids(): Convert polygon geometries in the
+            inventory to their centroid points.
         get_asset_coordinates(asset_id): Get coordinates of a particular
             assset.
+        get_asset_features(asset_id): Get features of a particular assset.
         get_asset_ids(): Return the asset ids as a list.
-        get_random_sample(size, seed): Get subset of the inventory.
         get_coordinates(): Return a list of footprints.
         get_extent(buffer): Calculate the geographical extent of the inventory.
         get_geojson(): Return inventory as a geojson dict.
+
+        get_random_sample(size, seed): Get subset of the inventory.
         write_to_geojson(): Write inventory to file in GeoJSON format. Also
                             return inventory as a geojson dict.
+        join(inventory_to_join, method="get_points_in_polygons"): Perform a
+            spatial join with another AssetInventory using the specified
+            method.
+        print_info(): Print the asset inventory.
+        remove_asset(asset_id): Remove an asset to the inventory.
+        remove_features(feature_list): Remove features from the inventory.
         read_from_csv(file_path, keep_existing, str_type, id_column): Read
             inventory dataset from a csv table
         add_asset_features_from_csv(file_path, id_column): Add asset features
             from a csv file.
-        convert_polygons_to_centroids() : convert geometry to centroid point
+
     """
 
     def __init__(self):
         """Initialize AssetInventory with an empty inventory dictionary."""
         self.inventory = {}
         self.n_pw = 1
-
-    def print_info(self):
-        """Print the asset inventory."""
-        print(self.__class__.__name__)
-        print("Inventory stored in: ", self.inventory.__class__.__name__)
-        for key, asset in self.inventory.items():
-            print("Key: ", key, "Asset:")
-            asset.print_info()
 
     def add_asset(self, asset_id: str | int, asset: Asset) -> bool:
         """
@@ -437,34 +437,46 @@ class AssetInventory:
                     asset.features[new_name] = asset.features.pop(
                         original_name)
 
-    def remove_asset(self, asset_id: str | int) -> bool:
+    def convert_polygons_to_centroids(self):
         """
-        Remove an Asset from the inventory.
+        Convert polygon geometries in the inventory to their centroid points.
 
-        Args:
-            asset_id (str|int): The unique identifier for the asset.
+        Iterates through the asset inventory and replaces the coordinates of
+        each polygon or linestring geometry with the coordinates of its
+        centroid. Point geometries are left unchanged.
 
-        Returns:
-            bool: True if asset was removed, False otherwise.
+        This function is useful for spatial operations that require point
+        representations of larger geometries (e.g., matching, distance
+                                              calculations).
+
+        Notes:
+            - Polygon coordinates are wrapped in a list to ensure proper
+              GeoJSON structure.
+            - Linestrings are treated as such unless the geometry is invalid or
+              ambiguous.
+
+        Modifies:
+            self.inventory (dict):
+                Updates the `coordinates` field of each asset in-place by
+                replacing polygons and linestrings with their centroid.
         """
-        del self.inventory[asset_id]
+        for key, asset in self.inventory.items():
+            if InputValidator.is_point(asset.coordinates):
+                continue
 
-        return True
+            elif InputValidator.is_linestring(asset.coordinates):
+                geometry = {"type": "LineString",
+                            "coordinates": asset.coordinates}
+            else:
+                if InputValidator.is_polygon(asset.coordinates):
+                    geometry = {"type": "Polygon",
+                                "coordinates": [asset.coordinates]}
+                else:
+                    geometry = {"type": "LineString",
+                                "coordinates": asset.coordinates}
 
-    def remove_features(self, feature_list: list[str]) -> bool:
-        """
-        Remove feaures from the inventory.
-
-        Args:
-            feature_list: The unique identifier for the asset.
-
-        Returns:
-            bool: True if features were removed, False otherwise.
-        """
-        for _, asset in self.inventory.items():
-            asset.remove_features(feature_list)
-
-        return True
+            centroid = shape(geometry).centroid
+            asset.coordinates = [[centroid.x, centroid.y]]
 
     # def remove_asset_features(self, asset_id: str | int, feature_list: list) -> tuple[bool, dict]:
     #     """
@@ -481,26 +493,6 @@ class AssetInventory:
     #     asset.remove_features(feature_list)
 
     #    return True
-
-    def get_asset_features(self, asset_id: str | int) -> tuple[bool, dict]:
-        """
-        Get features of a particular asset.
-
-        Args:
-            asset_id (str|int): The unique identifier for the asset.
-
-        Returns:
-            tuple[bool, Dict]: A tuple where the first element is a boolean
-                indicating whether the asset was found, and the second element
-                is a dictionary containing the asset's features if the asset
-                is present. Returns an empty dictionary if the asset is not
-                found.
-        """
-        asset = self.inventory.get(asset_id, None)
-        if asset is None:
-            return False, {}
-
-        return True, asset.features
 
     def get_asset_coordinates(self, asset_id: str | int) -> tuple[bool, list]:
         """
@@ -522,6 +514,26 @@ class AssetInventory:
 
         return True, asset.coordinates
 
+    def get_asset_features(self, asset_id: str | int) -> tuple[bool, dict]:
+        """
+        Get features of a particular asset.
+
+        Args:
+            asset_id (str|int): The unique identifier for the asset.
+
+        Returns:
+            tuple[bool, Dict]: A tuple where the first element is a boolean
+                indicating whether the asset was found, and the second element
+                is a dictionary containing the asset's features if the asset
+                is present. Returns an empty dictionary if the asset is not
+                found.
+        """
+        asset = self.inventory.get(asset_id, None)
+        if asset is None:
+            return False, {}
+
+        return True, asset.features
+
     def get_asset_ids(self) -> list[str | int]:
         """
         Retrieve the IDs of all assets in the inventory.
@@ -531,6 +543,23 @@ class AssetInventory:
                 integers.
         """
         return list(self.inventory.keys())
+
+    def get_coordinates(
+            self) -> tuple[list[list[list[float, float]]], list[str | int]]:
+        """
+        Get geometry (coordinates) and keys of all assets in the inventory.
+
+        Returns:
+            tuple[list[list[list[float, float]]], list[str | int]]: A tuple
+                containing:
+                - A list of coordinates for each asset, where each coordinate
+                    is represented as a list of [longitude, latitude] pairs.
+                - A list of asset keys corresponding to each Asset.
+        """
+        coordinates = [asset.coordinates for asset in self.inventory.values()]
+        asset_ids = list(self.inventory.keys())
+
+        return coordinates, asset_ids
 
     def get_random_sample(
         self, nsamples: int, seed: int | float | str | bytes | bytearray = None
@@ -580,23 +609,6 @@ class AssetInventory:
             result.add_asset(key, self.inventory[key])
 
         return result
-
-    def get_coordinates(
-            self) -> tuple[list[list[list[float, float]]], list[str | int]]:
-        """
-        Get geometry (coordinates) and keys of all assets in the inventory.
-
-        Returns:
-            tuple[list[list[list[float, float]]], list[str | int]]: A tuple
-                containing:
-                - A list of coordinates for each asset, where each coordinate
-                    is represented as a list of [longitude, latitude] pairs.
-                - A list of asset keys corresponding to each Asset.
-        """
-        coordinates = [asset.coordinates for asset in self.inventory.values()]
-        asset_ids = list(self.inventory.keys())
-
-        return coordinates, asset_ids
 
     def get_extent(self, buffer: str | list[int] = "default") -> box:
         """
@@ -751,6 +763,43 @@ class AssetInventory:
                                           self,
                                           inventory_to_join)
 
+    def print_info(self):
+        """Print the asset inventory."""
+        print(self.__class__.__name__)
+        print("Inventory stored in: ", self.inventory.__class__.__name__)
+        for key, asset in self.inventory.items():
+            print("Key: ", key, "Asset:")
+            asset.print_info()
+
+    def remove_asset(self, asset_id: str | int) -> bool:
+        """
+        Remove an Asset from the inventory.
+
+        Args:
+            asset_id (str|int): The unique identifier for the asset.
+
+        Returns:
+            bool: True if asset was removed, False otherwise.
+        """
+        del self.inventory[asset_id]
+
+        return True
+
+    def remove_features(self, feature_list: list[str]) -> bool:
+        """
+        Remove feaures from the inventory.
+
+        Args:
+            feature_list: The unique identifier for the asset.
+
+        Returns:
+            bool: True if features were removed, False otherwise.
+        """
+        for _, asset in self.inventory.items():
+            asset.remove_features(feature_list)
+
+        return True
+
     def write_to_geojson(self, output_file: str = "") -> dict:
         """
         Write an inventory to a GeoJSON file.
@@ -759,7 +808,6 @@ class AssetInventory:
             output_file(str):
                 Path of the GeoJSON output file.
         """
-
         geojson = self.get_geojson()
 
         print(f'GEOJSON {geojson}')
@@ -1110,29 +1158,6 @@ class AssetInventory:
                 )
 
         return
-
-    def convert_polygons_to_centroids(self):
-        """
-        Convert polygons in GeoJson to centorid points
-
-        """
-        for key, asset in self.inventory.items():
-            if len(asset.coordinates) == 1:
-                continue
-
-            elif len(asset.coordinates) == 2:
-                geometry = {"type": "LineString",
-                            "coordinates": asset.coordinates}
-            else:
-                if asset.coordinates[0] == asset.coordinates[-1]:
-                    geometry = {"type": "Polygon",
-                                "coordinates": [asset.coordinates]}
-                else:
-                    geometry = {"type": "LineString",
-                                "coordinates": asset.coordinates}
-
-            centroid = shape(geometry).centroid
-            asset.coordinates = [[centroid.x, centroid.y]]
 
     def get_n_pw(self):  # move to asset
         return self.n_pw
