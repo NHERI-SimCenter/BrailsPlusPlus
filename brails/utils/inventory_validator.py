@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-03-2025
+# 06-06-2025
 
 """
 This module provides a utility class for validating AssetInventory objects.
@@ -44,11 +44,7 @@ This module provides a utility class for validating AssetInventory objects.
 
       InventoryValidator
 """
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from brails.types.asset_inventory import AssetInventory
+from typing import Any
 
 
 class InventoryValidator:
@@ -60,11 +56,10 @@ class InventoryValidator:
     clear error reporting.
 
     Methods:
-    is_inventory(inventory: AssetInventory) -> bool
+    is_inventory(inventory: AssetInventory) -> bool:
         Returns True if the input is an instance of AssetInventory, otherwise
         False.
-
-    validate_inventory(inventory: AssetInventory) -> None
+    validate_inventory(inventory: AssetInventory) -> None:
         Raises a TypeError if the input is not an instance of AssetInventory.
 
     Examples:
@@ -82,12 +77,12 @@ class InventoryValidator:
     """
 
     @staticmethod
-    def is_inventory(inventory: AssetInventory) -> bool:
+    def is_inventory(inventory: Any) -> bool:
         """
         Check if the given object is an instance of AssetInventory.
 
         Args:
-            inventory (AssetInventory):
+            inventory (Any):
                 The object to check.
 
         Returns:
@@ -95,17 +90,17 @@ class InventoryValidator:
                 True if the object is an instance of AssetInventory, False
                 otherwise.
         """
-        # Lazy import to avoid circular importing of AssetInventory
+        # Lazy import to avoid circular importing of AssetInventory:
         from brails.types.asset_inventory import AssetInventory
         return isinstance(inventory, AssetInventory)
 
     @staticmethod
-    def validate_inventory(inventory: AssetInventory) -> None:
+    def validate_inventory(inventory: Any) -> None:
         """
         Validate that the input is an instance of AssetInventory.
 
         Args:
-            inventory (AssetInventory):
+            inventory (Any):
                 The object to validate.
 
         Raises:

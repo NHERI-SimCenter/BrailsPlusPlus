@@ -36,7 +36,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 11-03-2024
+# 06-06-2025
 
 """
 Utility classes and methods for the brails module.
@@ -47,7 +47,7 @@ Utility classes and methods for the brails module.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 import importlib.util
 import ast
 import os
@@ -66,15 +66,40 @@ class Importer:
     instantiated by their name using the get_class method.
 
     Attributes:
-        package_path (Path): The file system path to the root of the package.
-        max_parse_levels (int): Limits parsing of class files to the first
-            `max_parse_levels` subdirectories.
-        classes (dict): A dictionary mapping class names to their module paths.
+        package_path (Path):
+            The file system path to the root of the package.
+        max_parse_levels (int):
+            Limits parsing of class files to the first `max_parse_levels`
+            subdirectories.
+        classes (dict):
+            A dictionary mapping class names to their module paths.
+
+    Methods:
+        get_object(json_object: Dict[str, Any]) -> Any:
+            Creates an object instance from a dictionary containing class type
+            and data.
+
+        get_class(class_name: str) -> Any:
+            Retrieves a class by name from the package and returns the class
+            object.
+
+        __repr__() -> str:
+            Returns a human-readable summary of available classes and their
+            modules.
 
     Raises:
-        NotFoundError: If the specified package or class cannot be found.
-        BrailsError: If duplicate class names are found in the code base.
+        NotFoundError:
+            Raised when a package or class is not found, or required keys are
+            missing.
+        BrailsError:
+            Raised when duplicate class names exist across different modules.
 
+    Example:
+        >>> importer = Importer("brails")
+        >>> obj = importer.get_object({
+        ...     "classType": "MyModel",
+        ...     "objData": {...}
+        ... })
     """
 
     def __init__(self, package_name="brails"):
@@ -82,29 +107,30 @@ class Importer:
         Initialize Importer to find & parse all classes in specified package.
 
         Args:
-            package_name (str) The name of the package to be parsed, by default
-                "brails".
+            package_name (str):
+                The name of the package to be parsed, by default "brails".
         """
         self.package_path = self._find_package_path(package_name)
         self.classes = {}
         self.max_parse_levels = 2
         self._parse_package()
 
-    def get_object(self, json_object: dict[str, Any]) -> Any:
+    def get_object(self, json_object: Dict[str, Any]) -> Any:
         """
         Create an instance of a class from JSON object data.
 
         Args:
-            json_object (dict[str, Any]): A dictionary containing "classType"
-                and "objData" keys.
+            json_object (dict[str, Any]):
+                A dictionary containing "classType" and "objData" keys.
 
         Returns:
-            Any: An instance of the specified class, initialized with
-                `objData`.
+            Any:
+                An instance of the specified class, initialized with `objData`.
 
         Raises:
-            NotFoundError: If "classType" or "objData" is missing, or if the
-                class is not found.
+            NotFoundError:
+                If "classType" or "objData" is missing, or if the class is not
+                found.
         """
         class_type = json_object.get("classType")
         if class_type is None:
@@ -139,13 +165,16 @@ class Importer:
         Retrieve and import a class by its name.
 
         Args:
-            class_name (str): The name of the class to retrieve.
+            class_name (str):
+                The name of the class to retrieve.
 
         Returns:
-            Any: The class object if found, otherwise raises BrailsError.
+            Any:
+                The class object if found, otherwise raises BrailsError.
 
         Raises:
-            NotFoundError: If the class cannot be found.
+            NotFoundError:
+                If the class cannot be found.
 
         """
         module_path = self.classes.get(class_name)
@@ -159,18 +188,21 @@ class Importer:
             append=f"These are the available classes: {self.classes}",
         )
 
-    def _find_package_path(self, package_name: str):
+    def _find_package_path(self, package_name: str) -> Path:
         """
         Determine the file system path to the specified package.
 
         Args:
-            package_name (str): The name of the package to locate.
+            package_name (str):
+                The name of the package to locate.
 
         Returns:
-            Path: The path to the package.
+            Path:
+                The path to the package.
 
         Raises:
-            NotFoundError: If the package cannot be found.
+            NotFoundError:
+                If the package cannot be found.
 
         """
         spec = importlib.util.find_spec(package_name)
@@ -178,8 +210,14 @@ class Importer:
             return Path(spec.origin).parent
         raise NotFoundError(type_of_thing="package", name=package_name)
 
-    def _parse_package(self):
-        """Walk package directory & parse each Python file to find classes."""
+    def _parse_package(self) -> None:
+        """
+        Walk the package directory and parse each Python file to find classes.
+
+        Traverses the directory tree starting from the package path, limited to
+        `max_parse_levels` subdirectory depth, and identifies all `.py` files.
+        Each file is then passed to `_parse_file` for class extraction.
+        """
         # root_directory = Path(self.package_path)
         for dirpath, _, files in os.walk(self.package_path):
             depth = dirpath.count(os.path.sep) \
@@ -190,12 +228,14 @@ class Importer:
                         file_path = os.path.join(dirpath, file)
                         self._parse_file(file_path)
 
-    def _parse_file(self, file_path: str):
+    def _parse_file(self, file_path: str) -> None:
         """
-        Parse a single Python file to find class definitions.
+        Parse a single Python file to find non-abstract class definitions.
 
         Args:
-            file_path (str): The path to the file to parse.
+            file_path (str):
+                The absolute or relative path to the Python (.py) file to
+                parse.
         """
         relative_path = Path("brails") / \
             os.path.relpath(file_path, self.package_path)
@@ -217,10 +257,12 @@ class Importer:
         methods decorated with `@abstractmethod`.
 
         Args:
-            node (ast.ClassDef): The AST node representing a class definition.
+            node (ast.ClassDef):
+                The AST node representing a class definition.
 
         Returns:
-            bool: True if the class is abstract, False otherwise.
+            bool:
+                True if the class is abstract, False otherwise.
 
         """
         if isinstance(node, ast.ClassDef):
@@ -244,17 +286,20 @@ class Importer:
                             return True
         return False
 
-    def _add_class(self, class_name: str, module_path: str):
+    def _add_class(self, class_name: str, module_path: str) -> None:
         """
-        Add a class to internal dictionary, ensuring unique module class names.
+        Add a class to internal dictionary, ensuring unique class names.
 
-        Parameters:
-            class_name (str): The name of the class to add.
-            module_path (str): The module path where the class is defined.
+        Args:
+            class_name (str):
+                The name of the class to register.
+            module_path (str):
+                The fully qualified module path where the class is defined.
 
         Raises:
-            BrailsError: If the class name already exists in the dictionary.
-
+            BrailsError:
+                If the class name already exists in a different module,
+                indicating a conflict.
         """
         # Check that the class name does not already exist in some
         # other sub module:
@@ -274,7 +319,11 @@ class Importer:
         self.classes[class_name] = module_path
 
     def __repr__(self) -> str:
-        """List available classes and their modules."""
+        """
+        Return a human-readable string representation of the Importer instance.
+
+        Lists the available classes and their associated module paths.
+        """
         class_list = "\n".join(
             f"  {cls}: {mod}" for cls, mod in self.classes.items())
         return (

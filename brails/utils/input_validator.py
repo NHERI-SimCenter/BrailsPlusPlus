@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-02-2025
+# 06-06-2025
 
 """
 This module provides a utility class for validating input data in BRAILS.
@@ -45,24 +45,45 @@ This module provides a utility class for validating input data in BRAILS.
       InputValidator
 """
 
-from typing import Any
+from typing import Any, List, Tuple
 
 
 class InputValidator:
     """
-    A utility class for validating BRAILS input data.
+    A utility class for validating BRAILS geospatial input data.
 
-    The InputValidator class provides static methods to ensure that the inputs
-    provided to brails are of the correct type and format. It includes methods
-    to validate coordinate lists, polygons, and other relevant data structures.
+    This class provides static methods to validate various geospatial data
+    structures such as points, linestrings, polygons, and their
+    multi-geometries, ensuring conformance with geographic coordinate standards
+    (longitude/latitude).
+
+    All methods are designed to validate nested lists of floats representing
+    coordinates, with specific rules for each geometry type.
 
     Methods:
-        - is_float(element: Any) -> bool: Checks if the given input_value can
-            be converted to a float.
-        - validate_coordinates(coordinates: list[list[float]]
-            ) -> tuple[bool, str]: Validates a two-dimensional list of
-            coordinates ensuring that each coordinate pair consists of two
-            floats within the valid range for longitude and latitude.
+        is_float(input_value: Any) -> bool:
+            Checks whether a given value can be safely converted to a float.
+        validate_coordinates(coordinates: List[List[float]])->Tuple[bool, str]:
+            Validates a nested list of coordinates, ensuring correct structure
+            and ranges for longitude (-180 to 180) and latitude (-90 to 90).
+        is_valid_geometry(coordinates: List[List[float]]) -> bool:
+            Returns whether the input coordinates pass the base validation
+            check.
+        is_point(coordinates: List[List[float]]) -> bool:
+            Returns True if the coordinates represent a valid single-point
+            geometry.
+        is_linestring(coordinates: List[List[float]]) -> bool:
+            Returns True if the coordinates represent a valid LineString (at
+            least two distinct points and not closed).
+        is_multilinestring(coordinates: List[List[List[float]]]) -> bool:
+            Returns True if the coordinates represent a MultiLineString
+            composed of valid LineStrings.
+        is_polygon(coordinates: List[List[float]]) -> bool:
+            Returns True if the coordinates form a valid Polygon (closed loop
+            with at least 3 points).
+        is_multipolygon(coordinates: List[List[List[float]]]) -> bool:
+            Returns True if the coordinates form a valid MultiPolygon (a list
+            of valid Polygons).
     """
 
     @staticmethod
@@ -71,10 +92,12 @@ class InputValidator:
         Check if the given input_value can be converted to a float.
 
         Args:
-            input_value (Any): The input_value to check.
+            input_value (Any):
+                The input_value to check.
 
         Returns:
-            bool: True if the input_value can be converted to a float, False
+            bool:
+                True if the input_value can be converted to a float, False
                 otherwise.
         """
         if input_value is None:
@@ -86,17 +109,20 @@ class InputValidator:
             return False
 
     @staticmethod
-    def validate_coordinates(coordinates: list[list[float]]
-                             ) -> tuple[bool, str]:
+    def validate_coordinates(
+            coordinates: List[List[float]]
+    ) -> Tuple[bool, str]:
         """
         Validate input for coordinates.
 
         Args:
-            coordinates (list[list[float]]): A two-dimensional list
+            coordinates (list[list[float]]):
+                A two-dimensional list
                 representing the geometry in [[lon1, lat1], [lon2, lat2], ...,
                 [lonN, latN]] format.
         Returns:
-            tuple[bool, str]: A tuple containing:
+            tuple[bool, str]:
+                A tuple containing:
                 - A boolean indicating if all coordinates are valid.
                 - A message string describing any issues found, or confirming
                     validation success.
@@ -130,7 +156,7 @@ class InputValidator:
         return True, "Coordinates input is valid"
 
     @staticmethod
-    def is_valid_geometry(coordinates: list[list[float]]) -> bool:
+    def is_valid_geometry(coordinates: List[List[float]]) -> bool:
         """
         Validate whether the given coordinates represent a valid geometry.
 
@@ -145,7 +171,7 @@ class InputValidator:
         return InputValidator.validate_coordinates(coordinates)[0]
 
     @staticmethod
-    def is_point(coordinates: list[list[float]]) -> bool:
+    def is_point(coordinates: List[List[float]]) -> bool:
         """
         Determine whether the given coordinates represent a point.
 
@@ -165,7 +191,7 @@ class InputValidator:
         return len(coordinates) == 1
 
     @staticmethod
-    def is_linestring(coordinates: list[list[float]]) -> bool:
+    def is_linestring(coordinates: List[List[float]]) -> bool:
         """
         Determine whether the given coordinates represent a linestring.
 
@@ -190,7 +216,7 @@ class InputValidator:
                                          and coordinates[0] != coordinates[-1])
 
     @staticmethod
-    def is_multilinestring(coordinates: list[list[list[float]]]) -> bool:
+    def is_multilinestring(coordinates: List[List[List[float]]]) -> bool:
         """
         Determine whether the given coordinates represent a MultiLineString.
 
@@ -217,7 +243,7 @@ class InputValidator:
         return True
 
     @staticmethod
-    def is_polygon(coordinates: list[list[float]]) -> bool:
+    def is_polygon(coordinates: List[List[float]]) -> bool:
         """
         Determine whether the given coordinates represent a polygon.
 
@@ -239,7 +265,7 @@ class InputValidator:
         return len(coordinates) > 2 and coordinates[0] == coordinates[-1]
 
     @staticmethod
-    def is_multipolygon(coordinates: list[list[list[float]]]) -> bool:
+    def is_multipolygon(coordinates: List[List[List[float]]]) -> bool:
         """
         Determine whether the given coordinates represent a MultiPolygon.
 

@@ -44,10 +44,11 @@ This module defines the concrete class GetPointsInPolygons.
 
     DistanceBasedPointMatcher
 """
-from __future__ import annotations
-from shapely.geometry import Point, Polygon
+
+from typing import Dict, Union, TYPE_CHECKING
+from shapely.geometry import Point
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
-from typing import TYPE_CHECKING
+
 
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
@@ -70,10 +71,11 @@ class DistanceBasedPointMatcher(SpatialJoinMethods):
             Performs the proximity-based join and merges attributes.
     """
 
-    def _join_implementation(self,
-                             receiving_point_inventory: AssetInventory,
-                             merging_point_inventory: AssetInventory
-                             ) -> AssetInventory:
+    def _join_implementation(
+        self,
+        receiving_point_inventory: "AssetInventory",
+        merging_point_inventory: "AssetInventory"
+    ) -> "AssetInventory":
         """
         Match each point with the closest point and merge their attributes.
 
@@ -125,10 +127,10 @@ class DistanceBasedPointMatcher(SpatialJoinMethods):
         return receiving_point_inventory
 
     def _find_closest_point_to_point(
-            self,
-            points: dict[int | str, Point],
-            matching_points: dict[int | str, Point]
-    ) -> dict[int | str, int | str]:
+        self,
+        points: Dict[Union[int, str], Point],
+        matching_points: Dict[Union[int, str], Point]
+    ) -> Dict[Union[int, str], Union[int, str]]:
         """
         Find the closest matching point to each input point.
 

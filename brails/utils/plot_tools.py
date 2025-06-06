@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 12-20-2024
+# 06-06-2025
 
 """
 This module defines utilities for creating visually-appealing figures.
@@ -47,6 +47,7 @@ This module defines utilities for creating visually-appealing figures.
 
 import random
 import math
+from typing import Union, Dict
 import matplotlib.pyplot as plt
 from PIL import Image
 from brails.types.image_set import ImageSet
@@ -54,22 +55,34 @@ from brails.types.image_set import ImageSet
 
 class PlotTools:
     """
-    Class that provides static methods for creating visually-appealing figures.
+    A utility class for generating visually-appealing image grids.
+
+    The `PlotTools` class provides static methods to visualize model
+    predictions alongside images, enabling intuitive and structured displays
+    for both qualitative evaluation and presentation purposes. It is designed
+    to support image sets managed through the `ImageSet` class and prediction
+    outputs from classification models.
 
     Methods:
-    --------
-    show_predictions(images: ImageSet, predictions: dict, attribute_name: str,
-                     num_samples: int | str = 'all') -> None
-        Display a set of images with their corresponding predictions in a
-        grid layout.
+        show_predictions(
+            images: ImageSet,
+            predictions: Dict[str, Union[int, str]],
+            attribute_name: str,
+            num_samples: Union[int, str] = 'all',
+            crop_image: bool = True
+        ) -> None:
+            Display a grid of images annotated with model predictions. Images
+            are optionally cropped and resized for consistent presentation.
     """
 
     @staticmethod
-    def show_predictions(images: ImageSet,
-                         predictions: dict,
-                         attribute_name: str,
-                         num_samples: int | str = 'all',
-                         crop_image: bool = True):
+    def show_predictions(
+        images: ImageSet,
+        predictions: Dict[str, Union[int, float, str]],
+        attribute_name: str,
+        num_samples: Union[int, str] = 'all',
+        crop_image: bool = True
+    ) -> None:
         """
         Display a set of images along with their corresponding predictions.
 
@@ -83,20 +96,16 @@ class PlotTools:
                 have an attribute 'images' (a list of image objects) and
                 'dir_path' (a string representing the directory path where
                 images are located).
-
             predictions (dict):
                 A dictionary where the keys are image identifiers (e.g., file
                 names or unique keys) and the values are the predicted labels
                 (e.g., binary or categorical values).
-
             attribute_name (str):
                 The name of the attribute being predicted, which is displayed
                 in the title for each image.
-
             num_samples (int or str, optional)
                 The number of images to display. If set to 'all', all images in
                 the set will be displayed. Defaults to 'all'.
-
             crop_image (bool, optional):
                 If set to `True`, the images will be cropped (top 1/6 and
                 bottom 1/4 removed). If set to `False`, the images will be
@@ -108,7 +117,6 @@ class PlotTools:
                 predictions, and does not return any value.
 
         Notes:
-        ------
         - The images are resized to fit the grid, adjusting for the maximum
           image height.
         - Axes are hidden for a cleaner presentation, and the prediction value
@@ -117,7 +125,6 @@ class PlotTools:
           image aspect ratio.
 
         Example:
-        --------
         show_predictions(images=my_image_set, predictions=my_predictions,
                          attribute_name='Class', num_samples=5,
                          crop_image=True)
@@ -151,10 +158,10 @@ class PlotTools:
             all(isinstance(value, str) for value in predictions.values())
 
         for key in sampled_keys:
-            # Get the image path dynamically
+            # Get the image path dynamically:
             image_path = images_files[key]
 
-            # Get the dimensions of the image
+            # Get the dimensions of the image:
             with Image.open(image_path) as img:
                 width, height = img.size
                 image_dimensions[key] = (width, height)
@@ -162,7 +169,7 @@ class PlotTools:
             # Update the max height in one line
             max_height = max(max_height, height)
 
-        # Plot each image with a caption
+        # Plot each image with a caption:
         for i, key in enumerate(sampled_keys):
             img = Image.open(images_files[key])  # Open the image
 
@@ -190,7 +197,7 @@ class PlotTools:
                               fontsize=10)  # Set the caption
             axes[i].axis('off')  # Hide axes for cleaner presentation
 
-        # Hide unused subplots
+        # Hide unused subplots:
         for j in range(len(sampled_keys), len(axes)):
             axes[j].axis('off')
 
