@@ -10,6 +10,11 @@ authors:
     orcid: 'https://orcid.org/0000-0002-9726-8120'
   - given-names: Frank
     family-names: McKenna
+  - given-names: Sang-ri 
+    family-names: Yi
+    orcid: 'https://orcid.org/0000-0001-7196-127X'
+  - given-names: Brian 
+    family-names: Wang
   - given-names: Ioannis Vouvakis 
     family-names: Manousakis
     orcid: 'https://orcid.org/0009-0009-6143-6741'
@@ -25,5 +30,5 @@ keywords:
   - computer vision
   - natural hazards engineering
 license: BSD-3-Clause
-version: 4.0.0
-date-released: '2024-09-30'
+version: 4.1.0
+date-released: '2025-06-06'
