@@ -44,3 +44,10 @@ merged_inventory1.join(inventory_to_join=nsi_inventory,
 merged_inventory2 = deepcopy(fp_inventory)
 merged_inventory2.join(inventory_to_join=nsi_inventory,
                        method='GetPointsNearPolygons')
+
+# Merge NSI data with FEMA USA Structures point data using a spatial join
+# that pulls in attributes from nearest point:
+merged_inventory3 = deepcopy(fp_inventory)
+merged_inventory3.convert_polygons_to_centroids()
+merged_inventory3.join(inventory_to_join=nsi_inventory,
+                       method='DistanceBasedPointMatcher')

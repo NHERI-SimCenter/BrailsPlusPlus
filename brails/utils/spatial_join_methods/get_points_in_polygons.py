@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 02-25-2025
+# 06-04-2025
 
 """
 This module defines the concrete class GetPointsInPolygons.
@@ -66,14 +66,15 @@ class GetPointsInPolygons(SpatialJoinMethods):
     common functionality for spatial joins.
 
     Methods:
-        join_implementation(polygon_inventory, point_inventory):
+        _join_implementation(polygon_inventory, point_inventory):
             Joins points and polygons based on spatial relationships.
 
     """
 
     def _join_implementation(self,
                              polygon_inventory: AssetInventory,
-                             point_inventory: AssetInventory):
+                             point_inventory: AssetInventory
+                             ) -> AssetInventory:
         """
         Join associating point features with polygons they fall within.
 
@@ -90,62 +91,65 @@ class GetPointsInPolygons(SpatialJoinMethods):
             AssetInventory:
                 Updated polygon inventory with merged point features.
         """
-        print('\nJoining inventories...')
-        matched_polygon_ids, matched_point_ids = \
-            self._find_points_in_polygons(polygon_inventory,
-                                          point_inventory)
+        print(f'\nJoining inventories using {self.__class__.__name__} '
+              'method...')
 
-        print(f'Identified a total of {len(matched_polygon_ids)} matched '
+        # Match points to their corresponding polygons:
+        matched_polygons = self._find_points_in_polygons(polygon_inventory,
+                                                         point_inventory)
+        print(f'Identified a total of {len(matched_polygons)} matched '
               'points.')
-        for polygon_id, point_id in zip(
-                matched_polygon_ids, matched_point_ids):
-            point_features = point_inventory.inventory[point_id].features
-            polygon_inventory.add_asset_features(
-                polygon_id, point_features
-            )
+
+        # Merge attributes from points into polygons:
+        polygon_inventory = self._merge_inventory_features(polygon_inventory,
+                                                           point_inventory,
+                                                           matched_polygons)
         print('Inventories successfully joined.')
 
         return polygon_inventory
 
     def _find_points_in_polygons(self,
                                  polygon_inventory: AssetInventory,
-                                 point_inventory: AssetInventory):
+                                 point_inventory: AssetInventory
+                                 ) -> dict[int | str, int | str]:
         """
         Perform a spatial join to find which points lie within which polygons.
 
         For each polygon in the polygon inventory, this method identifies the
-        point(s) from the point inventory that fall within it. If multiple
-        points are found within a polygon, only the point closest to the
-        polygon's centroid is selected. The result is a mapping of matched
-        point IDs to polygon IDs.
+        point (from the point inventory) that lies within it. If multiple
+        points fall inside a polygon, the point closest to the polygon's
+        centroid is selected. The function returns a mapping of polygon asset
+        IDs to their matched point asset IDs.
 
         Args:
             polygon_inventory (AssetInventory):
-                Inventory with polygon geometric data
-                asset IDs.
+                Inventory containing polygonal geometries and associated asset
+                IDs.
+
             point_inventory (AssetInventory):
-                Inventory with point geometric data
+                Inventory containing point geometries and associated asset IDs.
 
         Returns:
-            tuple:
-                A tuple containing:
-                - matched_polygon_ids (list[str | int]):
-                    Asset IDs of polygons that have at least one matched point.
-                - matched_point_ids (list[str | int]):
-                    Asset IDs of points that matched with a polygon.
+            dict[int | str, int | str]:
+                A dictionary where keys are polygon asset IDs and values are
+                the IDs of the closest point found within each respective
+                polygon.
 
         Process:
-            1. Extract asset IDs and coordinates from both inventories.
-            2. Construct shapely Polygon objects from the polygon coordinates.
-            3. Construct shapely Point objects from the point coordinates.
-            4. Build an STRtree spatial index on the points for efficient
-               lookup.
-            5. For each polygon:
-                a. Query the STRtree for points inside the polygon.
-                b. If multiple points match, select the one closest to the
+            1. Retrieve and map coordinates to asset IDs for polygons and
+               points.
+            2. Construct Shapely `Polygon` and `Point` objects from the
+               coordinates.
+            3. Build an STRtree (spatial index) from the list of points for
+               efficient spatial querying.
+            4. For each polygon:
+                a. Query the STRtree to find points contained within the
+                   polygon.
+                b. If multiple points are found, select the one nearest to the
                    polygon's centroid.
-                c. Map the matched point ID to the polygon ID.
-            6. Return the matched polygon and point IDs.
+                c. Record the matched point ID for that polygon.
+            5. Return a dictionary mapping each matched polygon ID to a point
+               ID.
         """
         polygon_asset_ids = self._get_polygon_indices(polygon_inventory)
         point_asset_ids = self._get_point_indices(point_inventory)
@@ -161,8 +165,8 @@ class GetPointsInPolygons(SpatialJoinMethods):
         # Create an STR tree for the input points:
         pttree = STRtree(points)
 
-        # Initialize the dictionary mapping point keys to polygons keys:
-        fps_matched = {}
+        # Initialize the dictionary mapping polygon keys to point keys:
+        matched_polygons = {}
 
         for ind, poly in enumerate(polygons):
             polygon = Polygon(poly)
@@ -183,5 +187,6 @@ class GetPointsInPolygons(SpatialJoinMethods):
                                           point.equals(nearest_point)), None)
                     res = [nearest_index]
 
-                fps_matched[polygon_asset_ids[ind]] = point_asset_ids[res[0]]
-        return list(fps_matched.keys()), list(fps_matched.values())
+                matched_polygons[polygon_asset_ids[ind]
+                                 ] = point_asset_ids[res[0]]
+        return matched_polygons
