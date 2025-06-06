@@ -1,4 +1,4 @@
-<h1 style="text-align: center;">BRAILS++: Building Regional Asset Inventories at Large Scale</h1>
+<h1 style="text-align: center;">BRAILS++: Building Regional Asset Inventories for Large Scale Simulation</h1>
 
 [![Tests](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/tests.yml/badge.svg)](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/tests.yml/badge.svg)
 [![DOI](https://zenodo.org/badge/184673734.svg)](https://zenodo.org/badge/latestdoi/184673734)
@@ -38,6 +38,9 @@ pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
 
 This work is based on material supported by the National Science Foundation under grants CMMI 1612843 and CMMI 2131111.
 
+## Contributors
+
+See [CONTRIBUTORS.md](./contributors.md) for a full list of contributors.
 
 ## Contact
 
