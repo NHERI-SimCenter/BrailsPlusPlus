@@ -15,5 +15,5 @@
 
 ## BRAILS
 
-- BRAILS++ is a modular redesign of the original BRAILS software (Barbaros Cetiner, Charles Wang, Frank McKenna, SaschaHornauer, Jinyan Zhao, Claudio Perez, & yunhuiguo. (2024). NHERI-SimCenter/BRAILS: Version 3.1.1 (v3.1.1). Zenodo. https://doi.org/10.5281/zenodo.10606032).
-- From the original software certain portions of the code were utilized. The authors of those portions are included in the lists above.
+- BRAILS++ is a newly designed modular framework that builds upon selected components of the original BRAILS software (Barbaros Cetiner, Charles Wang, Frank McKenna, SaschaHornauer, Jinyan Zhao, Claudio Perez, & yunhuiguo. (2024). NHERI-SimCenter/BRAILS: Version 3.1.1 (v3.1.1). Zenodo. https://doi.org/10.5281/zenodo.10606032).
+- From the original software certain portions of the code were incorporated into the new class hierarchy. The authors of those portions are included in the lists above.

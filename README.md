@@ -38,8 +38,9 @@ pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
 
 This work is based on material supported by the National Science Foundation under grants CMMI 1612843 and CMMI 2131111.
 
-See [CONTRIBUTORS.md](./contributors.md) for a full list of contributors.
+## Contributors
 
+See [CONTRIBUTORS.md](./contributors.md) for a full list of contributors.
 
 ## Contact
 
