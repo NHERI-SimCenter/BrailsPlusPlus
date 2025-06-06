@@ -44,12 +44,12 @@ This module defines the concrete class GetPointsInPolygons.
 
     GetPointsNearPolygons
 """
-from __future__ import annotations
+
+from typing import Dict, Union, TYPE_CHECKING
 from shapely.geometry import Point, Polygon
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 from brails.utils.spatial_join_methods.get_points_in_polygons import \
     GetPointsInPolygons
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
@@ -78,10 +78,11 @@ class GetPointsNearPolygons(SpatialJoinMethods):
             Executes the spatial join and feature merge logic.
     """
 
-    def _join_implementation(self,
-                             polygon_inventory: AssetInventory,
-                             point_inventory: AssetInventory
-                             ) -> AssetInventory:
+    def _join_implementation(
+        self,
+        polygon_inventory: "AssetInventory",
+        point_inventory: "AssetInventory"
+    ) -> "AssetInventory":
         """
         Join associating point features with polygons they fall within.
 
@@ -143,9 +144,10 @@ class GetPointsNearPolygons(SpatialJoinMethods):
         return polygon_inventory
 
     def _find_closest_points_to_polygons(
-            self,
-            polygons: dict[int | str, Polygon],
-            points: dict[int | str, Point]) -> dict[int | str, int | str]:
+        self,
+        polygons: Dict[Union[int, str], Polygon],
+        points: Dict[Union[int, str], Point]
+    ) -> Dict[Union[int, str], Union[int, str]]:
         """
         Find the closest point to the centroid of each polygon.
 

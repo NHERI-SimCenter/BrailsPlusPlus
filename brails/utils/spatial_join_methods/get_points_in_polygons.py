@@ -44,11 +44,11 @@ This module defines the concrete class GetPointsInPolygons.
 
     GetPointsInPolygons
 """
-from __future__ import annotations
+
+from typing import Dict, Union, TYPE_CHECKING
 from shapely.strtree import STRtree
 from shapely.geometry import Point, Polygon
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
@@ -71,10 +71,11 @@ class GetPointsInPolygons(SpatialJoinMethods):
 
     """
 
-    def _join_implementation(self,
-                             polygon_inventory: AssetInventory,
-                             point_inventory: AssetInventory
-                             ) -> AssetInventory:
+    def _join_implementation(
+            self,
+            polygon_inventory: "AssetInventory",
+            point_inventory: "AssetInventory"
+    ) -> "AssetInventory":
         """
         Join associating point features with polygons they fall within.
 
@@ -108,10 +109,11 @@ class GetPointsInPolygons(SpatialJoinMethods):
 
         return polygon_inventory
 
-    def _find_points_in_polygons(self,
-                                 polygon_inventory: AssetInventory,
-                                 point_inventory: AssetInventory
-                                 ) -> dict[int | str, int | str]:
+    def _find_points_in_polygons(
+        self,
+        polygon_inventory: "AssetInventory",
+        point_inventory: "AssetInventory"
+    ) -> Dict[Union[int, str], Union[int, str]]:
         """
         Perform a spatial join to find which points lie within which polygons.
 

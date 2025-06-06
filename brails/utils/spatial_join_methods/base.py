@@ -44,11 +44,11 @@ This module defines abstract SpatialJoinMethods class.
 
     SpatialJoinMethods
 """
-from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from typing import Union, List, Dict, TYPE_CHECKING
 from brails.utils.input_validator import InputValidator
 from brails.utils.inventory_validator import InventoryValidator
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
@@ -65,9 +65,11 @@ class SpatialJoinMethods(ABC):
         SpatialJoinMethods._registry[cls.__name__] = cls
 
     @classmethod
-    def join_inventories(cls,
-                         inventory1: AssetInventory,
-                         inventory2: AssetInventory) -> AssetInventory:
+    def join_inventories(
+        cls,
+        inventory1: "AssetInventory",
+        inventory2: "AssetInventory"
+    ) -> "AssetInventory":
         """
         Perform a spatial join between two AssetInventory instances.
 
@@ -97,15 +99,19 @@ class SpatialJoinMethods(ABC):
         return instance._join_implementation(inventory1, inventory2)
 
     @abstractmethod
-    def _join_implementation(self,
-                             inventory1,
-                             inventory2):
+    def _join_implementation(
+        self,
+        inventory1: "AssetInventory",
+        inventory2: "AssetInventory"
+    ) -> "AssetInventory":
         """Concrete classes must implement this join logic."""
 
     @staticmethod
-    def execute(method_name: str,
-                inventory1: AssetInventory,
-                inventory2: AssetInventory) -> AssetInventory:
+    def execute(
+        method_name: str,
+        inventory1: "AssetInventory",
+        inventory2: "AssetInventory"
+    ) -> "AssetInventory":
         """
         Run a spatial join using the given method name.
 
@@ -134,11 +140,12 @@ class SpatialJoinMethods(ABC):
 
         return method_class.join_inventories(inventory1, inventory2)
 
-    def _merge_inventory_features(self,
-                                  receiving_inventory: AssetInventory,
-                                  merging_inventory: AssetInventory,
-                                  matched_items: dict[int | str, int | str]
-                                  ) -> AssetInventory:
+    def _merge_inventory_features(
+        self,
+        receiving_inventory: "AssetInventory",
+        merging_inventory: "AssetInventory",
+        matched_items: Dict[Union[int, str], Union[int, str]]
+    ) -> "AssetInventory":
         """
         Merge features from merging_inventory into receiving_inventory.
 
@@ -166,8 +173,10 @@ class SpatialJoinMethods(ABC):
 
         return receiving_inventory
 
-    def _get_point_indices(self,
-                           inventory: AssetInventory) -> list[str | int]:
+    def _get_point_indices(
+        self,
+        inventory: "AssetInventory"
+    ) -> List[Union[str, int]]:
         """
         Retrieve the list of keys for assets with point geometry.
 
@@ -188,8 +197,10 @@ class SpatialJoinMethods(ABC):
         return [key for key, asset in inventory.inventory.items()
                 if InputValidator.is_point(asset.coordinates)]
 
-    def _get_linestring_indices(self,
-                                inventory: AssetInventory) -> list[str | int]:
+    def _get_linestring_indices(
+        self,
+        inventory: "AssetInventory"
+    ) -> List[Union[str, int]]:
         """
         Retrieve the list of keys for assets with linestring geometry.
 
@@ -210,8 +221,10 @@ class SpatialJoinMethods(ABC):
         return [key for key, asset in inventory.inventory.items()
                 if InputValidator.is_linestring(asset.coordinates)]
 
-    def _get_polygon_indices(self,
-                             inventory: AssetInventory) -> list[str | int]:
+    def _get_polygon_indices(
+        self,
+        inventory: "AssetInventory"
+    ) -> List[Union[str, int]]:
         """
         Retrieve the list of keys for assets with polygon geometry.
 

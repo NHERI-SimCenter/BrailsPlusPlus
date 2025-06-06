@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 02-14-2025
+# 06-05-2025
 
 """
 This module defines a class for retrieving data from ArcGIS services APIs.
@@ -47,17 +47,13 @@ This module defines a class for retrieving data from ArcGIS services APIs.
 
 import math
 import concurrent.futures
-import logging
 import requests
 from requests.adapters import HTTPAdapter, Retry
 from tqdm import tqdm
 from shapely.geometry import Polygon
+from typing import Dict, List, Optional, Tuple, Union
 from brails.utils import GeoTools
 
-
-# Configure logging:
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 REQUESTS_RETRY_STRATEGY = Retry(
     total=5,
@@ -139,7 +135,7 @@ class ArcgisAPIServiceHelper:
         HTTPError: If the HTTP request fails after retries.
     """
 
-    def __init__(self, api_endpoint_url: str):
+    def __init__(self, api_endpoint_url: str) -> None:
         """
         Initialize the ArcgisAPIServiceHelper class object.
 
@@ -206,8 +202,11 @@ class ArcgisAPIServiceHelper:
               transient network issues.
         """
         # Get the number of elements allowed per cell by the API:
-        api_reference_url = self.api_endpoint_url.removesuffix(
-            '/query') + '?f=pjson'
+        api_reference_url = (
+            self.api_endpoint_url[:-6] if self.api_endpoint_url.endswith(
+                '/query')
+            else self.api_endpoint_url
+        ) + '?f=pjson'
 
         # Set up a session with retry logic:
         response = self._make_request_with_retry(api_reference_url)
@@ -224,9 +223,11 @@ class ArcgisAPIServiceHelper:
 
         return max_record_count
 
-    def download_attr_from_api(self,
-                               cell: Polygon,
-                               requested_fields: list[str] | str) -> list:
+    def download_attr_from_api(
+        self,
+        cell: Polygon,
+        requested_fields: Union[List[str], str]
+    ) -> List:
         """
         Download specified fields from the API for a given cell.
 
@@ -303,9 +304,10 @@ class ArcgisAPIServiceHelper:
 
         return datalist
 
-    def categorize_and_split_cells(self,
-                                   preliminary_cells: list[Polygon]
-                                   ) -> tuple[list[Polygon], list[Polygon]]:
+    def categorize_and_split_cells(
+        self,
+        preliminary_cells: List[Polygon]
+    ) -> Tuple[List[Polygon], List[Polygon]]:
         """
         Categorize/split a list of polygon cells based on their element count.
 
@@ -346,7 +348,7 @@ class ArcgisAPIServiceHelper:
                     results[cell] = future.result()
                 except Exception as exc:
                     results[cell] = None
-                    logger.warning("%r generated an exception: %s", cell, exc)
+                    print(f"{cell} generated an exception: {exc}")
 
         # Iterate through each cell in the preliminary cells list:
         cells_to_split = []
@@ -382,10 +384,12 @@ class ArcgisAPIServiceHelper:
 
         return cells_to_keep, split_cells
 
-    def split_polygon_into_cells(self,
-                                 bpoly: Polygon,
-                                 element_count: int = -1,
-                                 plot_mesh: str = '') -> list[Polygon]:
+    def split_polygon_into_cells(
+        self,
+        bpoly: Polygon,
+        element_count: int = -1,
+        plot_mesh: str = ''
+    ) -> List[Polygon]:
         """
         Divide a polygon into smaller cells based on its element count.
 
@@ -513,8 +517,10 @@ class ArcgisAPIServiceHelper:
         return response.json().get('count', 0)
 
     @staticmethod
-    def _make_request_with_retry(url: str,
-                                 params: dict = None) -> requests.Response:
+    def _make_request_with_retry(
+        url: str,
+        params: Optional[Dict] = None
+    ) -> requests.Response:
         """
         Make a GET request to the ArcGIS API with retry logic.
 

@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 02-27-2025
+# 06-06-2025
 
 """
 This module defines the class object for downloading ASCE Hazard data.
@@ -45,96 +45,78 @@ This module defines the class object for downloading ASCE Hazard data.
     ASCE_HAZARD_DATA_SCRAPER
 """
 
-import concurrent.futures
-import logging
-from tqdm import tqdm
+from typing import Dict, Any, TYPE_CHECKING
 from shapely.geometry import box
+from brails.utils.api import ArcgisAPIServiceHelper
+from brails.utils.inventory_validator import InventoryValidator
 
-from brails.types.asset_inventory import AssetInventory
-from brails.utils import GeoTools
-from brails.utils import ArcgisAPIServiceHelper
+if TYPE_CHECKING:
+    from brails.types.asset_inventory import AssetInventory
 
-# Configure logging:
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 API_ENDPOINT = ('https://gis.asce.org/arcgis/rest/services/ASCE722/'
                 'w2022_Tile_RC_I/MapServer/2/query')
 
 
-class ASCE_HAZARD_DATA_SCRAPER():
+class ASCE_HAZARD_DATA_SCRAPER:
     """
-    A class to generate footprint data using FEMA USA Structures building data.
-
-    This class interacts with the FEMA USA Structures API to download
-    building footprints, attributes (such as height), and additional metadata
-    for a given geographic region. The class is built on top of the
-    `FootprintScraper` class.
+    A class to retrieve wind speed hazard data.
 
     Attributes:
         length_unit (str):
-            Unit of length for building heights (default is 'ft').
+            Unit of length for building attributes (default is 'ft').
 
     Methods:
-        get_footprints(region: RegionBoundary):
-            Obtains building footprints and creates an inventory for the
-            specified region.
+        get_windspeeds(inventory):
+            Retrieves wind speed data and attaches it to the asset inventory.
     """
 
-    def __init__(self, input_dict: dict):
+    def __init__(self, input_dict: Dict[str, Any]):
         """
-        Initialize the class object.
+        Initialize the ASCE_HAZARD_DATA_SCRAPER instance.
 
-        Args
-            input_dict:
-                A dictionary specifying length units; if "length" is not
-                provided, "ft" is used as the default.
+        Args:
+            input_dict (dict):
+                A dictionary specifying configuration parameters. If the key
+                'length' is present, it defines the unit of length (e.g., 'ft',
+                'm'). Defaults to 'ft'.
         """
         self.length_unit = input_dict.get('length', 'ft')
 
-    def get_windspeeds(self, inventory: AssetInventory()) -> AssetInventory:
+    def get_windspeeds(self, inventory: "AssetInventory") -> "AssetInventory":
         """
-        Retrieve building footprints and attributes for a specified region.
+        Retrieve wind speed data for each asset in the inventory and attach it.
 
-        This method divides the provided region into smaller cells, if
-        necessary,  and then downloads building footprint data for each cell
-        using the FEMA USA Structures API. The footprints and attributes are
-        returned as an AssetInventory for buildings within the region.
+        This method downloads wind speed data using the ArcGIS API for a
+        bounding polygon (currently hardcoded) and is intended to associate
+        hazard attributes with assets.
 
         Args:
-            region (RegionBoundary):
-                The geographic region for which building footprints and
-                attributes are to be obtained.
+            inventory (AssetInventory):
+                The asset inventory containing building locations.
 
         Returns:
             AssetInventory:
-                An inventory of buildings in the region, including their
-                footprints and associated attributes (e.g., height).
+                Updated inventory with appended wind speed attributes.
 
         Raises:
             TypeError:
-                If the 'region' argument is not an instance of the BRAILS++
-                'RegionBoundary' class.
-
-        Notes:
-            - The region is split into smaller cells if the bounding area
-              contains more than the maximum allowed number of elements per
-              cell.
-            - If the `plot_cells` flag is set to `True`, the cell boundaries
-              are plotted and saved as an image.
-            - The method creates a polygon mesh for the region, splits it if
-              needed, and downloads building data for each cell in the region.
+                If the 'inventory' argument is not an instance of
+                AssetInventory.
         """
-        if not isinstance(inventory, AssetInventory()):
-            raise TypeError("The 'inventory' argument must be an "
-                            "'AssetInventory'")
+        if not InventoryValidator.is_inventory(inventory):
+            raise TypeError(
+                "The 'inventory' argument must be an instance of "
+                "'AssetInventory'.")
 
-        # Define a random bounding polygon. This specific API returns the same
-        # output irrespective of the input geometry, yet does not allow
-        # omitting the geometry argument:
+        # Define a hardcoded bounding polygon
         bpoly = box(-118.5534678, 33.9666583, 34.0505825, -118.4435336)
 
-        # Get the number of elements allowed per cell by the API:
+        # Get the number of elements allowed per cell by the API
         api_tools = ArcgisAPIServiceHelper(API_ENDPOINT)
 
         datalist = api_tools.download_attr_from_api(bpoly, 'all')
+
+        # TO-DO: Implement data post-processing to match to inventory
+
+        return datalist

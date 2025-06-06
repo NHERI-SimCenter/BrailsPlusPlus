@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 02-13-2025
+# 06-06-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -47,10 +47,10 @@ This module defines a class for geospatial analysis and operations.
 
 import json
 from math import radians, sin, cos, atan2, sqrt
+from typing import Dict, List, Tuple, Union
 import matplotlib.pyplot as plt
-
 from shapely import to_geojson
-from shapely.geometry import Polygon, MultiPolygon
+from shapely.geometry import Point, Polygon, MultiPolygon
 from shapely.strtree import STRtree
 
 # Constants:
@@ -69,28 +69,27 @@ class GeoTools:
     geographical data manipulation and visualization.
 
     Methods:
-        - haversine_dist(p1: list, p2: list) -> float:
+        haversine_dist(p1: tuple, p2: tuple) -> float:
           Calculate the Haversine distance between two geographical points.
-
-        - mesh_polygon(polygon: Polygon, rows: int, cols: int) ->
-            list[Polygon]: Split a polygon into a grid of individual
-            rectangular polygons.
-
-        - plot_polygon_cells(bpoly: Polygon | MultiPolygon,
-            rectangles: list[Polygon], output_file: str = ''): Plot a polygon
-            and its rectangular mesh, optionally saving the plot.
-
-        - write_polygon_to_geojson(poly: Polygon | MultiPolygon,
-            output_file: str): Write a Shapely Polygon or MultiPolygon to a
-            GeoJSON file.
-
-        - match_points_to_polygons(points: list, polygons: list) ->
-            tuple[list, dict]: Match points to polygons and return the
-            correspondence data.
+        mesh_polygon(polygon: Polygon, rows: int, cols: int) ->
+            list[Polygon]:
+            Split a polygon into a grid of individual rectangular polygons.
+        plot_polygon_cells(bpoly: Polygon | MultiPolygon,
+            rectangles: list[Polygon], output_file: str = ''):
+            Plot a polygon/its rectangular mesh, optionally saving the plot.
+        write_polygon_to_geojson(poly: Polygon | MultiPolygon,
+            output_file: str):
+            Write a Shapely Polygon or MultiPolygon to a GeoJSON file.
+        match_points_to_polygons(points: list, polygons: list) ->
+            tuple[list, dict]:
+            Match points to polygons and return the correspondence data.
     """
 
     @staticmethod
-    def haversine_dist(p1: list, p2: list) -> float:
+    def haversine_dist(
+        p1: Tuple[float, float],
+        p2: Tuple[float, float]
+    ) -> float:
         """
         Calculate the Haversine distance between two points.
 
@@ -98,15 +97,18 @@ class GeoTools:
         between two points specified by their latitude and longitude.
 
         Args:
-            p1 (list): The first point as a list containing two floating-point
+            p1 (tuple):
+                The first point as a list containing two floating-point
                 values, where the first element is the latitude and the second
                 is the longitude of the point in degrees.
-            p2 (list): The second point as a list containing two floating-point
+            p2 (tuple):
+                The second point as a list containing two floating-point
                 values, where the first element is the latitude and the second
                 is the longitude of the point in degrees.
 
         Returns:
-            float: The Haversine distance between the two points in feet.
+            float:
+                The Haversine distance between the two points in feet.
         """
         # Convert coordinate values from degrees to radians:
         lat1, lon1 = radians(p1[0]), radians(p1[1])
@@ -125,7 +127,7 @@ class GeoTools:
         return R_EARTH_KM * c * KM2_FEET
 
     @staticmethod
-    def mesh_polygon(polygon: Polygon, rows: int, cols: int) -> list[Polygon]:
+    def mesh_polygon(polygon: Polygon, rows: int, cols: int) -> List[Polygon]:
         """
         Split a Spolygon into a grid of individual rectangular polygons.
 
@@ -135,13 +137,17 @@ class GeoTools:
         only the intersecting parts are returned.
 
         Args:
-            polygon (Polygon): A Shapely polygon to be meshed.
-            rows (int): The number of rows to divide the polygon into.
-            cols (int): The number of columns to divide the polygon into.
+            polygon (Polygon):
+                A Shapely polygon to be meshed.
+            rows (int):
+                The number of rows to divide the polygon into.
+            cols (int):
+                The number of columns to divide the polygon into.
 
         Returns:
-            list[Polygon]: A list of Shapely polygons representing the
-                individual rectangular cells that mesh the input polygon.
+            list[Polygon]:
+                A list of Shapely polygons representing the individual
+                rectangular cells that mesh the input polygon.
         """
         # Get bounds of the polygon:
         min_x, min_y, max_x, max_y = polygon.bounds
@@ -176,22 +182,25 @@ class GeoTools:
         return rectangles
 
     @staticmethod
-    def plot_polygon_cells(bpoly: Polygon | MultiPolygon,
-                           rectangles: list[Polygon],
+    def plot_polygon_cells(bpoly: Union[Polygon, MultiPolygon],
+                           rectangles: List[Polygon],
                            output_file: str = ''):
         """
         Plot a polygon and its rectangular mesh, optionally saving the plot.
 
         Args:
-            bpoly (Polygon | MultiPolygon): A Shapely polygon or MultiPolygon
-                to plot.
-            rectangles (list[Polygon]): A list of Shapely polygons representing
-                the rectangular cells that mesh input polygon.
-            output_file (str, optional): Filename to save the plot as a PNG
-                image. If empty string, the plot is not saved.
+            bpoly (Polygon | MultiPolygon):
+                A Shapely polygon or MultiPolygon to plot.
+            rectangles (list[Polygon]):
+                A list of Shapely polygons representing the rectangular cells
+                that mesh input polygon.
+            output_file (str, optional):
+                Filename to save the plot as a PNG image. If empty string, the
+                plot is not saved.
 
         Raises:
-            ValueError: If `fout` is provided and an invalid filename is given.
+            ValueError:
+                If `output_file` is provided and an invalid filename is given.
         """
         # Plot the base polygon:
         if bpoly.geom_type == "MultiPolygon":
@@ -222,9 +231,10 @@ class GeoTools:
         Write a Shapely Polygon or MultiPolygon to a GeoJSON file.
 
         Args:
-            poly (Polygon | MultiPolygon): A Shapely polygon or MultiPolygon to
-                be written.
-            output_file (str): The output filename for the GeoJSON file.
+            poly (Polygon | MultiPolygon):
+                A Shapely polygon or MultiPolygon to be written.
+            output_file (str):
+                The output filename for the GeoJSON file.
 
         """
         if 'geojson' not in output_file.lower():
@@ -260,8 +270,10 @@ class GeoTools:
             json.dump(geojson, outfile, indent=2)
 
     @staticmethod
-    def match_points_to_polygons(points: list,
-                                 polygons: list) -> tuple[list, dict, list]:
+    def match_points_to_polygons(
+        points: List[Point],
+        polygons: List[Polygon]
+    ) -> Tuple[List[Point], Dict[str, Point], List[int]]:
         """
         Match points to polygons and return the correspondence data.
 
@@ -270,9 +282,11 @@ class GeoTools:
         to the polygon's centroid.
 
         Args:
-            points (list): A list of Shapely points.
-            polygons (list): A list of polygon coordinates defined in
-                             EPSG 4326 (longitude, latitude).
+            points (list):
+                A list of Shapely points.
+            polygons (list):
+                A list of polygon coordinates defined in EPSG 4326
+                (longitude, latitude).
 
         Returns:
             tuple[list, dict, list]:
@@ -330,7 +344,7 @@ class GeoTools:
         return ptskeep, fp2ptmap, ind_fp_matched
 
     @staticmethod
-    def is_box(self, geometry: Polygon) -> bool:
+    def is_box(geometry: Polygon) -> bool:
         """
         Determine whether a given Shapely geometry is a rectangular box.
 

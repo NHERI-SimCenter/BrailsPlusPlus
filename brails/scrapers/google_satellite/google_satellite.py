@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 11-04-2024
+# 06-06-2025
 
 """
 This module defines GoogleSatellite class downloading Google satellite imagery.
@@ -49,7 +49,7 @@ import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 from pathlib import Path
-import logging
+from typing import List, Tuple
 
 import requests
 from PIL import Image
@@ -61,10 +61,6 @@ from brails.types.asset_inventory import AssetInventory
 from brails.types.image_set import ImageSet
 from brails.scrapers.image_scraper import ImageScraper
 
-
-# Configure logging:
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Constants:
 GOOGLE_TILE_URL = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
@@ -96,24 +92,27 @@ class GoogleSatellite(ImageScraper):
             and saves them to the specified save_directory.
     """
 
-    def get_images(self,
-                   inventory: AssetInventory,
-                   save_directory: str) -> ImageSet:
+    def get_images(
+        self,
+        inventory: AssetInventory,
+        save_directory: str
+    ) -> ImageSet:
         """
         Get satellite images of buildings given footprints in AssetInventory.
 
         Args:
-              inventory (AssetInventory): AssetInventory for which the images
-                  will be retrieved.
-            save_directory (str): Path to the folder where the retrieved images
-                will be saved
+              inventory (AssetInventory):
+                  AssetInventory for which the images will be retrieved
+            save_directory (str):
+                Path to the folder where the retrieved images will be saved
 
         Returns:
-              ImageSet: An ImageSet for the assets in the inventory.
+              ImageSet:
+                  An ImageSet for the assets in the inventory
 
         Raises:
-            ValueError: If the provided inventory is not an instance of
-                AssetInventory.
+            ValueError:
+                If the provided inventory is not an instance of AssetInventory
         """
         # Validate inputs:
         if not isinstance(inventory, AssetInventory):
@@ -122,7 +121,7 @@ class GoogleSatellite(ImageScraper):
         # Ensure consistency in dir_path, i.e remove ending / if given:
         dir_path = Path(save_directory)
         dir_path.mkdir(parents=True, exist_ok=True)
-        logger.info('Images will be saved to: %s', dir_path.resolve())
+        print(f'Images will be saved to: {dir_path.resolve()}')
 
         # Create the footprints from the items in AssetInventory
         # Keep the asset keys in a list for later use:
@@ -143,24 +142,28 @@ class GoogleSatellite(ImageScraper):
             if image_path.exists():
                 image_set.add_image(asset_keys[index], image_path.name)
             else:
-                logger.warning('Image for asset %s was not successfully '
-                               'downloaded.', asset_keys[index])
+                print(f'Image for asset {asset_keys[index]} could not be'
+                      'downloaded.')
 
         return image_set
 
-    def _download_images(self,
-                         footprints: list[list[tuple[float, float]]],
-                         save_dir: Path) -> list[Path]:
+    def _download_images(
+        self,
+        footprints: List[List[Tuple[float, float]]],
+        save_dir: Path
+    ) -> List[Path]:
         """
         Download satellite images for a list of footprints.
 
         Args:
-            footprints (List[List[Tuple[float, float]]]): List of asset
-                footprints.
-            save_dir (Path): Directory to save images.
+            footprints (List[List[Tuple[float, float]]]):
+                List of asset footprints.
+            save_dir (Path):
+                Directory to save images.
 
         Returns:
-            List[Path]: List of paths to the downloaded images.
+            List[Path]:
+                List of paths to the downloaded images.
         """
         # Compute building footprints, parse satellite image names, and
         # save them in the class object. Also, create the list of inputs
@@ -193,20 +196,24 @@ class GoogleSatellite(ImageScraper):
                 try:
                     future.result()
                 except Exception as exc:
-                    logger.error('Error downloading image for footprint %s: '
-                                 '%s', footprint, exc)
+                    print(f'Error downloading image for footprint {footprint}:'
+                          f' {exc}')
 
         return satellite_image_paths
 
-    def _download_satellite_image(self,
-                                  footprint: list[tuple[float, float]],
-                                  impath: Path):
+    def _download_satellite_image(
+        self,
+        footprint: List[Tuple[float, float]],
+        impath: Path
+    ):
         """
         Download and process the satellite image for a single footprint.
 
         Args:
-            footprint (List[Tuple[float, float]]): Asset footprint coordinates.
-            impath (Path): Path to save the processed image.
+            footprint (List[Tuple[float, float]]):
+                Asset footprint coordinates.
+            impath (Path):
+                Path to save the processed image.
         """
         bbox_buffered = self._buffer_footprint(footprint)
         x_list, y_list = self._determine_tile_coords(bbox_buffered)
@@ -229,19 +236,22 @@ class GoogleSatellite(ImageScraper):
 
         resized_image = cropped_padded_image.resize(RESIZED_IMAGE_SIZE)
         resized_image.save(impath)
-        logger.debug('Saved image to %s', impath)
+        print(f'Saved image to {impath}')
 
-    def _buffer_footprint(self,
-                          footprint: list[tuple[float, float]]
-                          ) -> tuple[list[float], list[float]]:
+    def _buffer_footprint(
+        self,
+        footprint: List[Tuple[float, float]]
+    ) -> Tuple[List[float], List[float]]:
         """
         Buffer the footprint to account for inaccuracies.
 
         Args:
-            footprint (List[Tuple[float, float]]): Original footprint.
+            footprint (List[Tuple[float, float]]):
+                Original footprint
 
         Returns:
-            Tuple[List[float], List[float]]: Buffered bounding box coordinates.
+            Tuple[List[float], List[float]]:
+                Buffered bounding box coordinates
         """
         lon, lat = zip(*footprint)
         minlon, maxlon = min(lon), max(lon)
@@ -258,19 +268,20 @@ class GoogleSatellite(ImageScraper):
         return ([minlon_buff, minlon_buff, maxlon_buff, maxlon_buff],
                 [minlat_buff, maxlat_buff, maxlat_buff, minlat_buff])
 
-    def _determine_tile_coords(self,
-                               bbox_buffered: tuple[list[float],
-                                                    list[float]]
-                               ) -> tuple[list[int], list[int]]:
+    def _determine_tile_coords(
+        self,
+        bbox_buffered: Tuple[List[float], List[float]]
+    ) -> Tuple[List[int], List[int]]:
         """
         Determine tile x,y coordinates containing the buffered bounding box.
 
         Args:
-            bbox_buffered (Tuple[List[float], List[float]]): Buffered bounding
-                box.
+            bbox_buffered (Tuple[List[float], List[float]]):
+                Buffered bounding box.
 
         Returns:
-            Tuple[List[int], List[int]]: Lists of x and y tile coordinates.
+            Tuple[List[int], List[int]]:
+                Lists of x and y tile coordinates
         """
         x_coords, y_coords = [], []
         for lon, lat in zip(bbox_buffered[0], bbox_buffered[1]):
@@ -283,17 +294,21 @@ class GoogleSatellite(ImageScraper):
         return x_list, y_list
 
     @staticmethod
-    def _deg2num(lat: float, lon: float, zoom: int) -> tuple[int, int]:
+    def _deg2num(lat: float, lon: float, zoom: int) -> Tuple[int, int]:
         """
         Convert latitude and longitude to tile numbers.
 
         Args:
-            lat (float): Latitude in degrees.
-            lon (float): Longitude in degrees.
-            zoom (int): Zoom level.
+            lat (float):
+                Latitude in degrees.
+            lon (float):
+                Longitude in degrees.
+            zoom (int):
+                Zoom level.
 
         Returns:
-            Tuple[int, int]: Tile x and y numbers.
+            Tuple[int, int]:
+                Tile x and y numbers.
         """
         lat_rad = math.radians(lat)
         n = 2 ** zoom
@@ -301,16 +316,18 @@ class GoogleSatellite(ImageScraper):
         ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
         return xtile, ytile
 
-    def _fetch_tiles(self, x_list: list[int], y_list: list[int]
-                     ) -> tuple[list[Image.Image],
-                                list[tuple[int, int]],
-                                list[float]]:
+    def _fetch_tiles(
+        self,
+        x_list: List[int], y_list: List[int]
+    ) -> Tuple[List[Image.Image], List[Tuple[int, int]], List[float]]:
         """
         Fetch all tiles for the given x and y coordinates.
 
         Args:
-            x_list (List[int]): List of x tile coordinates.
-            y_list (List[int]): List of y tile coordinates.
+            x_list (List[int]):
+                List of x tile coordinates.
+            y_list (List[int]):
+                List of y tile coordinates.
 
         Returns:
             Tuple[List[Image.Image], List[Tuple[int, int]], List[float]]:
@@ -346,17 +363,22 @@ class GoogleSatellite(ImageScraper):
         return tiles, offsets, imbnds
 
     @staticmethod
-    def _tile_bbox(zoom: int, x_coord: int, y_coord: int) -> list[float]:
+    def _tile_bbox(zoom: int, x_coord: int, y_coord: int) -> List[float]:
         """
         Get the bounding box of a tile.
 
         Args:
-            zoom (int): Zoom level.
-            x_coord (int): Tile x number.
-            y_coord (int): Tile y number.
+            zoom (int):
+                Zoom level
+            x_coord (int):
+                Tile x number
+            y_coord (int):
+                Tile y number
 
         Returns:
-            List[float]: [south, north, west, east]
+            List[float]:
+                Bounding box coordinates stored in [south, north, west, east]
+                order
         """
         return [
             GoogleSatellite._tile_lat(y_coord, zoom),
@@ -371,11 +393,14 @@ class GoogleSatellite(ImageScraper):
         Calculate latitude from tile y number.
 
         Args:
-            y_coord (int): Tile y number.
-            z_coord (int): Zoom level.
+            y_coord (int):
+                Tile y number
+            z_coord (int):
+                Zoom level
 
         Returns:
-            float: Latitude in degrees.
+            float:
+                Latitude in degrees
         """
         n = math.pi - (2.0 * math.pi * y_coord) / (2 ** z_coord)
         return math.degrees(math.atan(math.sinh(n)))
@@ -386,32 +411,41 @@ class GoogleSatellite(ImageScraper):
         Calculate longitude from tile x number.
 
         Args:
-            xcoord (int): Tile x number.
-            zcoord (int): Zoom level.
+            xcoord (int):
+                Tile x number
+            zcoord (int):
+                Zoom level
 
         Returns:
-            float: Longitude in degrees.
+            float:
+                Longitude in degrees
         """
         return xcoord / (2 ** zcoord) * 360.0 - 180.0
 
     @staticmethod
-    def _update_image_bounds(imbnds: list[float],
-                             tilebnds: list[float],
-                             ntiles: tuple[int, int],
+    def _update_image_bounds(imbnds: List[float],
+                             tilebnds: List[float],
+                             ntiles: Tuple[int, int],
                              xind: int,
-                             yind: int) -> list[float]:
+                             yind: int) -> List[float]:
         """
         Update image bounds based on tile bounds.
 
         Args:
-            imbnds (List[float]): Current image bounds.
-            tilebnds (List[float]): Bounds of the current tile.
-            ntiles (Tuple[int, int]): Number of tiles in x and y directions.
-            xind(int): Current tile x index.
-            yind (int): Current tile y index.
+            imbnds (List[float]):
+                Current image bounds
+            tilebnds (List[float]):
+                Bounds of the current tile
+            ntiles (Tuple[int, int]):
+                Number of tiles in x and y directions
+            xind(int):
+                Current tile x index
+            yind (int):
+                Current tile y index
 
         Returns:
-            List[float]: Updated image bounds.
+            List[float]:
+                Updated image bounds
         """
         # If the number of tiles both in x and y directions are
         # greater than 1:
@@ -449,20 +483,24 @@ class GoogleSatellite(ImageScraper):
 
     @staticmethod
     def _combine_tiles(
-        tiles: list[Image.Image],
-        ntiles: tuple[int, int],
-        offsets: list[tuple[int, int]],
+        tiles: List[Image.Image],
+        ntiles: Tuple[int, int],
+        offsets: List[Tuple[int, int]],
     ) -> Image.Image:
         """
         Combine individual tiles into a single image.
 
         Args:
-            tiles (List[Image.Image]): List of tile images.
-            ntiles (Tuple[int, int]): Number of tiles in x and y directions.
-            offsets (List[Tuple[int, int]]): Offsets for pasting tiles.
+            tiles (List[Image.Image]):
+                List of tile images
+            ntiles (Tuple[int, int]):
+                Number of tiles in x and y directions
+            offsets (List[Tuple[int, int]]):
+                Offsets for pasting tiles
 
         Returns:
-            Image.Image: Combined image.
+            Image.Image:
+                Combined image
         """
         combined_image = Image.new('RGB',
                                    (TILE_SIZE * ntiles[0],
@@ -471,21 +509,26 @@ class GoogleSatellite(ImageScraper):
             combined_image.paste(image, offsets[ind])
         return combined_image
 
-    def _crop_and_pad_image(self,
-                            combined_im: Image.Image,
-                            bbox_buffered: tuple[list[float], list[float]],
-                            imbnds: list[float]) -> Image.Image:
+    def _crop_and_pad_image(
+        self,
+        combined_im: Image.Image,
+        bbox_buffered: Tuple[List[float], List[float]],
+        imbnds: List[float]
+    ) -> Image.Image:
         """
         Crop and pad the combined image around the footprint.
 
         Args:
-            combined_im (Image.Image): The combined satellite image.
-            bbox_buffered (Tuple[List[float], List[float]]): Buffered bounding
-                box.
-            imbnds (List[float]): Image bounds.
+            combined_im (Image.Image):
+                The combined satellite image
+            bbox_buffered (Tuple[List[float], List[float]]):
+                Buffered bounding box
+            imbnds (List[float]):
+                Image bounds
 
         Returns:
-            Image.Image: Cropped and padded image.
+            Image.Image:
+                Cropped and padded image
         """
         # Crop combined image around the footprint of the building:
         im_width, im_height = combined_im.size
@@ -522,16 +565,17 @@ class GoogleSatellite(ImageScraper):
         return padded_im
 
     @staticmethod
-    def _maxmin_and_ind(size: tuple[int, int]) -> tuple[int, int, int, int]:
+    def _maxmin_and_ind(size: Tuple[int, int]) -> Tuple[int, int, int, int]:
         """
         Determine the maximum and minimum dimensions and their indices.
 
         Args:
-            size (Tuple[int, int]): Width and height of the image.
+            size (Tuple[int, int]):
+                Width and height of the image
 
         Returns:
-            Tuple[int, int, int, int]: (max_dim, index_of_max,
-                                        min_dim, index_of_min)
+            Tuple[int, int, int, int]:
+                (max_dim, index_of_max, min_dim, index_of_min)
         """
         max_dim = max(size)
         min_dim = min(size)

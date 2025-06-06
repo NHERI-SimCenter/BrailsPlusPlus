@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright (c) 2024 The Regents of the University of California
 #
 # This file is part of BRAILS.
@@ -37,35 +35,43 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-22-2024
+# 06-06-2025
 
+"""
+This module provides utilities for visualizing segmentation results.
+
+.. autosummary::
+
+    plot_tools
+"""
 
 import os
-from PIL import Image
 from pathlib import Path
+from typing import Union
+
 import numpy as np
+from PIL import Image
 
 
-def create_overlaid_image(base_image, mask_image, output_dir):
+def create_overlaid_image(
+    base_image: Union[str, Path],
+    mask_image: np.ndarray,
+    output_dir: Union[str, Path]
+) -> None:
+    """
+    Overlay a segmentation mask on a base image and save the result.
 
-    def decode_segmap(image, nc=5):
-        label_colors = np.array([(0, 0, 0), (255, 0, 0), (255, 165, 0),
-                                 (0, 0, 255), (175, 238, 238)])
-        # 0=background # 1=roof, 2=facade, 3=window, 4=door
+    Args:
+        base_image (str or Path):
+            Path to the original image.
+        mask_image (np.ndarray):
+            A 2D array of class labels representing the segmentation mask.
+        output_dir (str or Path):
+            Directory where the overlaid image will be saved.
 
-        r = np.zeros_like(image).astype(np.uint8)
-        g = np.zeros_like(image).astype(np.uint8)
-        b = np.zeros_like(image).astype(np.uint8)
-
-        for l in range(0, nc):
-            idx = image == l
-            r[idx] = label_colors[l, 0]
-            g[idx] = label_colors[l, 1]
-            b[idx] = label_colors[l, 2]
-
-        rgb = np.stack([r, g, b], axis=2)
-        return rgb
-
+    Returns:
+        None
+    """
     mask_rgb = decode_segmap(mask_image, nc=4)
 
     image = Image.open(base_image)  # Replace with your image file
@@ -97,3 +103,38 @@ def create_overlaid_image(base_image, mask_image, output_dir):
 
     combined_image_pil = Image.fromarray(combined_image_np)
     combined_image_pil.save(path / imout_name)
+
+
+def decode_segmap(image: np.ndarray, nc: int = 5) -> np.ndarray:
+    """
+    Convert a class-labeled mask image to an RGB image using a color map.
+
+    Args:
+        image (np.ndarray):
+            2D array of class indices.
+        nc (int):
+            Number of classes. Default is 5.
+
+    Returns:
+        np.ndarray:
+            RGB image (H, W, 3) representation of the mask.
+    """
+    label_colors = np.array([
+        (0, 0, 0),        # background
+        (255, 0, 0),      # roof
+        (255, 165, 0),    # facade
+        (0, 0, 255),      # window
+        (175, 238, 238)   # door
+    ])
+
+    r = np.zeros_like(image).astype(np.uint8)
+    g = np.zeros_like(image).astype(np.uint8)
+    b = np.zeros_like(image).astype(np.uint8)
+
+    for label in range(nc):
+        idx = image == label
+        r[idx] = label_colors[label, 0]
+        g[idx] = label_colors[label, 1]
+        b[idx] = label_colors[label, 2]
+
+    return np.stack([r, g, b], axis=2)

@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 06-03-2025
+# 06-05-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -47,14 +47,21 @@ This module defines classes associated with asset inventories.
     Asset
 """
 
-import random
+import csv
 import json
+import logging
+import random
 from copy import deepcopy
 from datetime import datetime
-from importlib.metadata import version
-from typing import Any
-import csv
-import logging
+from typing import Union, List, Tuple, Dict, Any, Optional
+
+try:
+    # Python 3.8+
+    from importlib.metadata import version
+except ImportError:
+    # For Python <3.8, use the backport
+    from importlib_metadata import version
+
 import numpy as np
 import pandas as pd
 from shapely import box
@@ -63,21 +70,24 @@ from shapely.geometry import shape
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 
-# Configure logging:
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-
-def clean_floats(obj):
+def clean_floats(obj: Any) -> Any:  # TODO: Check if this is needed
     """
-    Function: A function provided by chatGPT to turn make sure floats that are mathematicallys ints are
-    converted to ints for output purposes for all values in json obj, dict, or list.
-    note: Uses recursion to do this.
+    Recursively convert float values that are mathematically integers to int.
+
+    This function traverses a nested structure (e.g., dict, list, JSON-like
+    object) and converts any float that is numerically equivalent to an integer
+    into an int, improving the readability and cleanliness of the output,
+    especially for serialization.
 
     Args:
-      obj: json/dict/list
-    """
+        obj (Any):
+            A JSON-like object (dict, list, or primitive value) to process.
 
+    Returns:
+        Any:
+            The input object with eligible floats converted to integers.
+    """
     if isinstance(obj, dict):
         return {k: clean_floats(v) for k, v in obj.items()}
     elif isinstance(obj, list):
@@ -107,10 +117,10 @@ class Asset:
 
     def __init__(
         self,
-        asset_id: str | int,
-        coordinates: list[list[float]],
-        features: dict[str, Any] = None,
-    ):
+        asset_id: Union[str, int],
+        coordinates: List[List[float]],
+        features: Dict[str, Any] = None,
+    ) -> None:
         """
         Initialize an Asset with an asset ID, coordinates, and features.
 
@@ -127,16 +137,19 @@ class Asset:
         if coords_check:
             self.coordinates = coordinates
         else:
-            logger.warning(
-                "%s Setting coordinates for asset %s to an empty list",
-                output_msg,
-                asset_id,
+            print(
+                f'{output_msg} Setting coordinates for asset '
+                f'{asset_id} to an empty list'
             )
             self.coordinates = []
 
         self.features = features if features is not None else {}
 
-    def add_features(self, additional_features: dict, overwrite: bool = True):
+    def add_features(
+            self,
+            additional_features: Dict[str, Any],
+            overwrite: bool = True
+    ) -> Tuple[bool, int]:
         """
         Update the existing features in the asset.
 
@@ -158,10 +171,10 @@ class Asset:
                     if (n_pw == 1) or (n_pw == len(val)):
                         n_pw = len(val)
                     else:
-                        logger.warning('WARNING: # possible worlds was %d but '
-                                       'is now %d. Something went wrong.',
-                                       n_pw, len(val)
-                                       )
+                        print(
+                            f'WARNING: # possible worlds was {n_pw} but now '
+                            f'is {len(val)}. Something went wrong.'
+                        )
                         n_pw = len(val)
 
             updated = True
@@ -179,17 +192,17 @@ class Asset:
                         if (n_pw == 1) or (n_pw == len(val)):
                             n_pw = len(val)
                         else:
-                            logger.warning('WARNING: # possible worlds was %d '
-                                           'but is now %d. Something went '
-                                           'wrong.', n_pw, len(val)
-                                           )
+                            print(
+                                f'WARNING: # possible worlds was {n_pw} but '
+                                f'now is {len(val)}. Something went wrong.'
+                            )
                             n_pw = len(val)
 
                     updated = True
 
         return updated, n_pw
 
-    def remove_features(self, feature_list: list[str]):
+    def remove_features(self, feature_list: List[str]) -> bool:
         """
         Update the existing features in the asset.
 
@@ -204,7 +217,7 @@ class Asset:
 
         return True
 
-    def print_info(self):
+    def print_info(self) -> None:
         """Print the coordinates and features of the asset."""
         print("\t Coordinates: ", self.coordinates)
         print("\t Features: ", self.features)
@@ -218,47 +231,47 @@ class AssetInventory:
         inventory (dict): The inventory stored in a dict accessed by asset_id
 
      Methods:
-        print_info(): Print the asset inventory.
         add_asset(asset_id, Asset): Add an asset to the inventory.
         add_asset_coordinates(asset_id, coordinates): Add an asset to the
             inventory with just a list of coordinates.
         add_asset_features(asset_id, features, overwrite): Append new features
             to the asset.
+        add_model_predictions(predictions, feature_key): Add model predictions
+            to assets under a specified feature key.
         change_feature_names(feature_name_mapping): Rename feature names in an
             AssetInventory using user-specified mapping.
-        remove_asset(asset_id): Remove an asset to the inventory.
-        remove_feature(feature_list): Remove features from the inventory.
-        get_asset_features(asset_id): Get features of a particular assset.
+        convert_polygons_to_centroids(): Convert polygon geometries in the
+            inventory to their centroid points.
         get_asset_coordinates(asset_id): Get coordinates of a particular
             assset.
+        get_asset_features(asset_id): Get features of a particular assset.
         get_asset_ids(): Return the asset ids as a list.
-        get_random_sample(size, seed): Get subset of the inventory.
         get_coordinates(): Return a list of footprints.
         get_extent(buffer): Calculate the geographical extent of the inventory.
         get_geojson(): Return inventory as a geojson dict.
+
+        get_random_sample(size, seed): Get subset of the inventory.
         write_to_geojson(): Write inventory to file in GeoJSON format. Also
                             return inventory as a geojson dict.
+        join(inventory_to_join, method="get_points_in_polygons"): Perform a
+            spatial join with another AssetInventory using the specified
+            method.
+        print_info(): Print the asset inventory.
+        remove_asset(asset_id): Remove an asset to the inventory.
+        remove_features(feature_list): Remove features from the inventory.
         read_from_csv(file_path, keep_existing, str_type, id_column): Read
             inventory dataset from a csv table
         add_asset_features_from_csv(file_path, id_column): Add asset features
             from a csv file.
-        convert_polygons_to_centroids() : convert geometry to centroid point
+
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize AssetInventory with an empty inventory dictionary."""
         self.inventory = {}
         self.n_pw = 1
 
-    def print_info(self):
-        """Print the asset inventory."""
-        print(self.__class__.__name__)
-        print("Inventory stored in: ", self.inventory.__class__.__name__)
-        for key, asset in self.inventory.items():
-            print("Key: ", key, "Asset:")
-            asset.print_info()
-
-    def add_asset(self, asset_id: str | int, asset: Asset) -> bool:
+    def add_asset(self, asset_id: Union[str, int], asset: Asset) -> bool:
         """
         Add an Asset to the inventory.
 
@@ -280,22 +293,26 @@ class AssetInventory:
             raise TypeError("Expected an instance of Asset.")
 
         if asset_id in self.inventory:
-            logger.warning('Asset with id %s already exists. Asset was not '
-                           'added', asset_id)
+            print(f'Asset with id {asset_id} already exists. Asset was not '
+                  'added')
             return False
 
         self.inventory[asset_id] = asset
         return True
 
     def add_asset_coordinates(
-        self, asset_id: str | int, coordinates: list[list[float]]
+        self,
+        asset_id: Union[str, int],
+        coordinates: List[List[float]]
     ) -> bool:
         """
         Add an Asset to the inventory by adding its coordinate information.
 
         Args:
-            asset_id (str|int): The unique identifier for the asset.
-            coordinates (list[list[float]]): A two-dimensional list
+            asset_id (str|int):
+                The unique identifier for the asset.
+            coordinates (list[list[float]]):
+                A two-dimensional list
                 representing the geometry in [[lon1, lat1], [lon2, lat2], ...,
                 [lonN, latN]] format.
 
@@ -305,8 +322,8 @@ class AssetInventory:
         existing_asset = self.inventory.get(asset_id, None)
 
         if existing_asset is not None:
-            logger.warning('Asset with id %s already exists. Coordinates were '
-                           'not added', asset_id,)
+            print(f'Asset with id {asset_id} already exists. Coordinates were '
+                  'not added')
             return False
 
         # Create asset and add using id as the key:
@@ -316,15 +333,21 @@ class AssetInventory:
         return True
 
     def add_asset_features(
-        self, asset_id: str | int, new_features: dict, overwrite=True
+        self,
+        asset_id: Union[str, int],
+        new_features: Dict[str, Any],
+        overwrite: bool = True
     ) -> bool:
         """
         Add new asset features to the Asset with the specified ID.
 
         Args:
-            asset_id (str|int): The unique identifier for the asset.
-            new_features (dict): A dictionary of features to add to the asset.
-            overwrite (bool): Whether to overwrite existing features with the
+            asset_id (str|int):
+                The unique identifier for the asset.
+            new_features (dict):
+                A dictionary of features to add to the asset.
+            overwrite (bool):
+                Whether to overwrite existing features with the
                 same keys. Defaults to True.
 
         Returns:
@@ -333,8 +356,8 @@ class AssetInventory:
         """
         asset = self.inventory.get(asset_id, None)
         if asset is None:
-            logger.warning('No existing Asset with id % s found. Asset '
-                           'features not added.', asset_id)
+            print(f'No existing Asset with id {asset_id} found. Asset '
+                  'features not added.')
             return False
 
         status, n_pw = asset.add_features(new_features, overwrite)
@@ -343,12 +366,16 @@ class AssetInventory:
         elif (n_pw == self.n_pw) or (self.n_pw == 1):
             self.n_pw = n_pw
         else:
-            logger.warning('WARNING: # possible worlds was %d but is now %d. '
-                           'Something went wrong.', self.n_pw, n_pw)
+            print(f'WARNING: # possible worlds was {self.n_pw} but is now '
+                  f'{n_pw}. Something went wrong.')
             self.n_pw = n_pw
         return status
 
-    def add_model_predictions(self, predictions: dict, feature_key: str):
+    def add_model_predictions(
+        self,
+        predictions: Dict[Any, Any],
+        feature_key: str
+    ) -> None:
         """
         Add model predictions to the inventory.
 
@@ -396,7 +423,10 @@ class AssetInventory:
             if key in predictions:
                 val.add_features({feature_key: predictions.get(key)})
 
-    def change_feature_names(self, feature_name_mapping: dict):
+    def change_feature_names(
+            self,
+            feature_name_mapping: Dict[str, str]
+    ) -> None:
         """
         Rename feature names in an AssetInventory using user-specified mapping.
 
@@ -437,34 +467,46 @@ class AssetInventory:
                     asset.features[new_name] = asset.features.pop(
                         original_name)
 
-    def remove_asset(self, asset_id: str | int) -> bool:
+    def convert_polygons_to_centroids(self) -> None:
         """
-        Remove an Asset from the inventory.
+        Convert polygon geometries in the inventory to their centroid points.
 
-        Args:
-            asset_id (str|int): The unique identifier for the asset.
+        Iterates through the asset inventory and replaces the coordinates of
+        each polygon or linestring geometry with the coordinates of its
+        centroid. Point geometries are left unchanged.
 
-        Returns:
-            bool: True if asset was removed, False otherwise.
+        This function is useful for spatial operations that require point
+        representations of larger geometries (e.g., matching, distance
+                                              calculations).
+
+        Notes:
+            - Polygon coordinates are wrapped in a list to ensure proper
+              GeoJSON structure.
+            - Linestrings are treated as such unless the geometry is invalid or
+              ambiguous.
+
+        Modifies:
+            self.inventory (dict):
+                Updates the `coordinates` field of each asset in-place by
+                replacing polygons and linestrings with their centroid.
         """
-        del self.inventory[asset_id]
+        for key, asset in self.inventory.items():
+            if InputValidator.is_point(asset.coordinates):
+                continue
 
-        return True
+            elif InputValidator.is_linestring(asset.coordinates):
+                geometry = {"type": "LineString",
+                            "coordinates": asset.coordinates}
+            else:
+                if InputValidator.is_polygon(asset.coordinates):
+                    geometry = {"type": "Polygon",
+                                "coordinates": [asset.coordinates]}
+                else:
+                    geometry = {"type": "LineString",
+                                "coordinates": asset.coordinates}
 
-    def remove_features(self, feature_list: list[str]) -> bool:
-        """
-        Remove feaures from the inventory.
-
-        Args:
-            feature_list: The unique identifier for the asset.
-
-        Returns:
-            bool: True if features were removed, False otherwise.
-        """
-        for _, asset in self.inventory.items():
-            asset.remove_features(feature_list)
-
-        return True
+            centroid = shape(geometry).centroid
+            asset.coordinates = [[centroid.x, centroid.y]]
 
     # def remove_asset_features(self, asset_id: str | int, feature_list: list) -> tuple[bool, dict]:
     #     """
@@ -482,35 +524,20 @@ class AssetInventory:
 
     #    return True
 
-    def get_asset_features(self, asset_id: str | int) -> tuple[bool, dict]:
-        """
-        Get features of a particular asset.
-
-        Args:
-            asset_id (str|int): The unique identifier for the asset.
-
-        Returns:
-            tuple[bool, Dict]: A tuple where the first element is a boolean
-                indicating whether the asset was found, and the second element
-                is a dictionary containing the asset's features if the asset
-                is present. Returns an empty dictionary if the asset is not
-                found.
-        """
-        asset = self.inventory.get(asset_id, None)
-        if asset is None:
-            return False, {}
-
-        return True, asset.features
-
-    def get_asset_coordinates(self, asset_id: str | int) -> tuple[bool, list]:
+    def get_asset_coordinates(
+            self,
+            asset_id: Union[str, int]
+    ) -> Tuple[bool, List]:
         """
         Get the coordinates of a particular asset.
 
         Args:
-            asset_id (str | int): The unique identifier for the asset.
+            asset_id (str | int):
+                The unique identifier for the asset.
 
         Returns:
-            tuple[bool, list]]: A tuple where the first element is a boolean
+            tuple[bool, list]]:
+                A tuple where the first element is a boolean
                 indicating whether the asset was found, and the second element
                 is a list of coordinate pairs in the format [[lon1, lat1],
                 [lon2, lat2], ..., [lonN, latN]] if the asset is present.
@@ -522,19 +549,65 @@ class AssetInventory:
 
         return True, asset.coordinates
 
-    def get_asset_ids(self) -> list[str | int]:
+    def get_asset_features(
+            self,
+            asset_id: Union[str, int]
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Get features of a particular asset.
+
+        Args:
+            asset_id (str|int):
+                The unique identifier for the asset.
+
+        Returns:
+            tuple[bool, Dict]:
+                A tuple where the first element is a boolean
+                indicating whether the asset was found, and the second element
+                is a dictionary containing the asset's features if the asset
+                is present. Returns an empty dictionary if the asset is not
+                found.
+        """
+        asset = self.inventory.get(asset_id, None)
+        if asset is None:
+            return False, {}
+
+        return True, asset.features
+
+    def get_asset_ids(self) -> List[Union[str, int]]:
         """
         Retrieve the IDs of all assets in the inventory.
 
         Returns:
-            list[str | int]: A list of asset IDs, which may be strings or
+            list[str | int]:
+                A list of asset IDs, which may be strings or
                 integers.
         """
         return list(self.inventory.keys())
 
+    def get_coordinates(
+            self
+    ) -> Tuple[List[List[List[float]]], List[Union[str, int]]]:
+        """
+        Get geometry (coordinates) and keys of all assets in the inventory.
+
+        Returns:
+            tuple[list[list[list[float, float]]], list[str | int]]: A tuple
+                containing:
+                - A list of coordinates for each asset, where each coordinate
+                    is represented as a list of [longitude, latitude] pairs.
+                - A list of asset keys corresponding to each Asset.
+        """
+        coordinates = [asset.coordinates for asset in self.inventory.values()]
+        asset_ids = list(self.inventory.keys())
+
+        return coordinates, asset_ids
+
     def get_random_sample(
-        self, nsamples: int, seed: int | float | str | bytes | bytearray = None
-    ):
+        self,
+        nsamples: int,
+        seed: Optional[Union[int, float, str, bytes, bytearray]] = None
+    ) -> 'AssetInventory':
         """
         Generate a smaller AssetInventory with a random selection of assets.
 
@@ -581,24 +654,7 @@ class AssetInventory:
 
         return result
 
-    def get_coordinates(
-            self) -> tuple[list[list[list[float, float]]], list[str | int]]:
-        """
-        Get geometry (coordinates) and keys of all assets in the inventory.
-
-        Returns:
-            tuple[list[list[list[float, float]]], list[str | int]]: A tuple
-                containing:
-                - A list of coordinates for each asset, where each coordinate
-                    is represented as a list of [longitude, latitude] pairs.
-                - A list of asset keys corresponding to each Asset.
-        """
-        coordinates = [asset.coordinates for asset in self.inventory.values()]
-        asset_ids = list(self.inventory.keys())
-
-        return coordinates, asset_ids
-
-    def get_extent(self, buffer: str | list[int] = "default") -> box:
+    def get_extent(self, buffer: Union[str, List[int]] = 'default') -> box:
         """
         Calculate the geographical extent of the inventory.
 
@@ -652,7 +708,7 @@ class AssetInventory:
             maxlat + buffer_levels[3],
         )
 
-    def get_geojson(self) -> dict:
+    def get_geojson(self) -> Dict[str, Any]:
         """
         Generate a GeoJSON representation of the assets in the inventory.
 
@@ -714,9 +770,11 @@ class AssetInventory:
 
         return geojson
 
-    def join(self,
-             inventory_to_join: 'AssetInventory',
-             method: str = 'get_points_in_polygons'):
+    def join(
+        self,
+        inventory_to_join: 'AssetInventory',
+        method: str = 'get_points_in_polygons'
+    ) -> None:
         """
         Merge with another AssetInventory using specified spatial join method.
 
@@ -751,15 +809,72 @@ class AssetInventory:
                                           self,
                                           inventory_to_join)
 
-    def write_to_geojson(self, output_file: str = "") -> dict:
+    def print_info(self) -> None:
         """
-        Write an inventory to a GeoJSON file.
+        Print summary information about the AssetInventory.
+
+        This method outputs the name of the class, the type of data structure
+        used to store the inventory, and basic information about each asset
+        in the inventory, including its key and features.
+
+        Returns:
+            None
+        """
+        print(self.__class__.__name__)
+        print("Inventory stored in: ", self.inventory.__class__.__name__)
+        for key, asset in self.inventory.items():
+            print("Key: ", key, "Asset:")
+            asset.print_info()
+
+    def remove_asset(self, asset_id: Union[str, int]) -> bool:
+        """
+        Remove an Asset from the inventory.
 
         Args:
-            output_file(str):
-                Path of the GeoJSON output file.
-        """
+            asset_id (str|int):
+                The unique identifier for the asset.
 
+        Returns:
+            bool:
+                True if asset was removed, False otherwise.
+        """
+        del self.inventory[asset_id]
+
+        return True
+
+    def remove_features(self, feature_list: List[str]) -> bool:
+        """
+        Remove specified features from all assets in the inventory.
+
+        Args:
+            feature_list (list[str]):
+                The unique identifier for the asset.
+
+        Returns:
+            bool:
+                True if features were removed, False otherwise.
+        """
+        for _, asset in self.inventory.items():
+            asset.remove_features(feature_list)
+
+        return True
+
+    def write_to_geojson(self, output_file: str = "") -> Dict:
+        """
+        Write inventory to a GeoJSON file and return the GeoJSON dictionary.
+
+        This method generates a GeoJSON representation of the asset inventory,
+        writes it to the specified file path (if provided), and returns the
+        GeoJSON object.
+
+        Args:
+            output_file (str, optional):
+                Path to the output GeoJSON file. If empty, no file is written.
+
+        Returns:
+            Dict:
+                A dictionary containing the GeoJSON FeatureCollection.
+        """
         geojson = self.get_geojson()
 
         print(f'GEOJSON {geojson}')
@@ -784,7 +899,11 @@ class AssetInventory:
         return geojson
 
     def read_from_csv(
-        self, file_path, keep_existing, str_type="building", id_column=None
+        self,
+        file_path: str,
+        keep_existing: bool,
+        str_type: str = "building",
+        id_column: Optional[str] = None
     ) -> bool:
         """
         Read inventory data from a CSV file and add it to the inventory.
@@ -805,7 +924,7 @@ class AssetInventory:
                   True if assets were addded, False otherwise.
         """
 
-        def is_float(element: any) -> bool:
+        def is_float(element: Any) -> bool:
             # If you expect None to be passed:
             if element is None:
                 return False
@@ -818,9 +937,8 @@ class AssetInventory:
 
         if keep_existing:
             if len(self.inventory) == 0:
-                print(
-                    "No existing inventory found. Reading in the new inventory from the file."
-                )
+                print('No existing inventory found. Reading in the new '
+                      'inventory from the file.')
                 id_counter = 1
             else:
                 # we don't want a duplicate the id
@@ -845,11 +963,13 @@ class AssetInventory:
         lon_id = np.where([x.lower() in lon for x in key_names])[0]
         if len(lat_id) == 0:
             raise Exception(
-                "The key 'Latitude' or 'Lat' (case insensitive) not found. Please specify the building coordinate."
+                "The key 'Latitude' or 'Lat' (case insensitive) not found. "
+                'Please specify the building coordinate.'
             )
         if len(lon_id) == 0:
             raise Exception(
-                "The key 'Longitude' or 'Lon' (case insensitive) not found. Please specify the building coordinate."
+                "The key 'Longitude' or 'Lon' (case insensitive) not found. "
+                'Please specify the building coordinate.'
             )
         lat_key = key_names[lat_id[0]]
         lon_key = key_names[lon_id[0]]
@@ -872,9 +992,8 @@ class AssetInventory:
             # TODO: what should the types be?
             if "type" in bldg_features.keys():
                 if bldg_features["type"] not in ["building", "bridge"]:
-                    raise Exception(
-                        "The csv file {file_path} cannot have a column named 'type'"
-                    )
+                    raise Exception(f"The csv file {file_path} cannot have a "
+                                    "column named 'type'")
             else:
                 bldg_features["type"] = str_type
 
@@ -896,7 +1015,11 @@ class AssetInventory:
 
         return True
 
-    def add_asset_features_from_csv(self, file_path, id_column) -> bool:
+    def add_asset_features_from_csv(
+        self,
+        file_path: str,
+        id_column: Union[str, None]
+    ) -> bool:
         """
         Read inventory data from a CSV file and add it to the inventory.
 
@@ -904,13 +1027,13 @@ class AssetInventory:
             file_path (str):
                   The path to the CSV file
             id_column (str):
-                  The name of column that contains id values. If None, new indicies will be assigned
+                  The name of column that contains id values. If None, new
+                  indicies will be assigned
 
         Returns:
             bool:
                   True if assets were addded, False otherwise.
         """
-
         try:  # Attempt to open the file
             with open(file_path, mode="r") as csvfile:
                 csv_reader = csv.DictReader(csvfile)
@@ -937,17 +1060,32 @@ class AssetInventory:
 
         return True
 
-    def get_dataframe(self) -> bool:
+    def get_dataframe(self) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
         """
-        Create dataframe from inventory objective
+        Convert the asset inventory into two structured DataFrames and count.
 
-        Args:
+        This method processes the internal asset inventory and returns:
+        - A DataFrame containing the features of each asset, with support for
+          multiple possible worlds (realizations).
+        - A DataFrame containing centroid coordinates (latitude and longitude)
+          for spatial operations.
+        - The total number of assets in the inventory.
+
+        The method flattens feature lists into separate columns if multiple
+        possible worlds exist. It also derives centroid coordinates from the
+        GeoJSON geometry for each asset.
 
         Returns:
-            bool:
-                  True if assets were addded, False otherwise.
-        """
+            Tuple[pd.DataFrame, pd.DataFrame, int]:
+                - Asset feature DataFrame (indexed by asset ID).
+                - Asset geometry DataFrame with 'Lat' and 'Lon' columns.
+                - Total number of assets (int).
 
+        Raises:
+            ValueError:
+                If a feature list's length does not match the expected number
+                of possible worlds.
+        """
         n_possible_worlds = self.get_n_pw()
 
         asset_json = self.get_geojson()
@@ -970,7 +1108,8 @@ class AssetInventory:
             vector_columns = set()
             for entry in bldg_properties:
                 vector_columns.update(
-                    [key for key, value in entry.items() if isinstance(value, list)]
+                    [key for key, value in entry.items() if isinstance(
+                        value, list)]
                 )
 
             flat_data = []
@@ -985,9 +1124,9 @@ class AssetInventory:
                     if isinstance(value, list):
                         if not len(value) == n_possible_worlds:
                             raise ValueError(
-                                "The specified # of possible worlds are {} but {} constains {} realizations in {}".format(
-                                    n_possible_worlds, key, len(value), entry
-                                )
+                                'The specified # of possible worlds are '
+                                f'{n_possible_worlds} but {key} contains '
+                                f'{len(value)} realizations in {entry}'
                             )
 
                         for i in range(n_possible_worlds):
@@ -1039,12 +1178,37 @@ class AssetInventory:
 
         return bldg_properties_df, bldg_geometries_df, nbldg
 
-    def get_world_realization(self, id=0):
+    def get_world_realization(self, id: int = 0) -> 'AssetInventory':
+        """
+        Extract a single realization (possible world) from an inventory.
+
+        This method generates a new `AssetInventory` instance where all
+        features containing multiple possible worlds are reduced to a single
+        realization specified by `id`. Features that are not lists are copied
+        as-is.
+
+        Args:
+            id (int, default=0):
+                The index of the realization to extract. Must be within the
+                range of available possible worlds (0-based indexing).
+
+        Returns:
+            AssetInventory:
+                A new inventory object representing the selected realization.
+
+        Raises:
+            Exception:
+                - If `id > 0` but the inventory only contains a single
+                  realization.
+                - If any feature has fewer realizations than the specified
+                  `id`.
+        """
         new_inventory = deepcopy(self)
 
         if self.n_pw == 1 and id > 0:
             raise Exception(
-                "Cannot retrive different realizations as the inventory contains only a single realization. Consider setting id=0"
+                'Cannot retrive different realizations as the inventory '
+                'contains only a single realization. Consider setting id=0'
             )
 
         for i in self.get_asset_ids():
@@ -1056,23 +1220,65 @@ class AssetInventory:
                             i, {key: val[id]}, overwrite=True
                         )
                     elif len(val) == id:
-                        errmsg = f"The world index {id} should be smaller than the existing number of worlds {len(val)}, as the index starts from zero."
+                        errmsg = (
+                            f'The world index {id} should be smaller than the '
+                            f'existing number of worlds {len(val)}, as the '
+                            'index starts from zero.'
+                        )
                         raise Exception(errmsg)
 
                     else:
-                        errmsg = f"The world index {id} should be smaller than the existing number of worlds, e.g. asset id {i}, feature {key} contains only {len(val)} realizations."
+                        errmsg = (
+                            f'The world index {id} should be smaller than the '
+                            f'existing number of worlds, e.g. asset id {i}, '
+                            f'feature {key} contains only {len(val)} '
+                            'realizations.'
+                        )
                         raise Exception(errmsg)
 
         return new_inventory
 
-    def update_world_realization(self, id, world_realization):
+    def update_world_realization(
+        self,
+        id: int,
+        world_realization: 'AssetInventory'
+    ) -> None:
+        """
+        Update the current AssetInventory with a specific world realization.
 
+        This method integrates feature values from a single-world
+        `world_realization` inventory into the current multi-world inventory
+        by updating the realization at the specified index `id`.
+
+        Args:
+            id (int):
+                The index of the world (realization) to update. Must be less
+                than `self.n_pw`.
+            world_realization (AssetInventory):
+                An AssetInventory instance representing a single realization
+                of the world. All features in this inventory must be scalar
+                (i.e., not lists).
+
+        Raises:
+            Exception:
+                - If the specified `id` is not within the valid range of
+                  realizations.
+                - If `world_realization` contains features with multiple
+                  realizations.
+        """
         if self.n_pw == id:
-            errmsg = f"The world index {id} should be smaller than the existing number of worlds {self.n_pw}, and the index starts from zero."
+            errmsg = (
+                f'The world index {id} should be smaller than the existing '
+                f'number of worlds {self.n_pw}, and the index starts from '
+                'zero.'
+            )
             raise Exception(errmsg)
 
         elif self.n_pw < id:
-            errmsg = f"The world index {id} should be smaller than the existing number of worlds {self.n_pw}."
+            errmsg = (
+                f'The world index {id} should be smaller than the existing '
+                f'number of worlds {self.n_pw}.'
+            )
             raise Exception(errmsg)
 
         for i in world_realization.get_asset_ids():
@@ -1082,12 +1288,15 @@ class AssetInventory:
             for key, val in features_new.items():
 
                 if isinstance(val, list):
-                    errmsg = f"world_realization should not contain multiple possible worlds."
+                    errmsg = (
+                        'world_realization should not contain multiple '
+                        'possible worlds.'
+                    )
                     raise Exception(errmsg)
 
                 try:
                     original_value = self.get_asset_features(i)[1][key]
-                except Exception as e:
+                except KeyError:
                     # create a new key-value pair if it did not exist.
                     original_value = val
 
@@ -1108,50 +1317,41 @@ class AssetInventory:
                 self.add_asset_features(
                     i, {key: new_value}, overwrite=True
                 )
-
         return
 
-    def convert_polygons_to_centroids(self):
+    def get_n_pw(self) -> int:  # move to Asset
         """
-        Convert polygons in GeoJson to centorid points
+        Get the number of possible worlds (realizations) in the inventory.
 
+        Returns:
+            int:
+                The number of possible worlds stored in the inventory.
         """
-        for key, asset in self.inventory.items():
-            if len(asset.coordinates) == 1:
-                continue
-
-            elif len(asset.coordinates) == 2:
-                geometry = {"type": "LineString",
-                            "coordinates": asset.coordinates}
-            else:
-                if asset.coordinates[0] == asset.coordinates[-1]:
-                    geometry = {"type": "Polygon",
-                                "coordinates": [asset.coordinates]}
-                else:
-                    geometry = {"type": "LineString",
-                                "coordinates": asset.coordinates}
-
-            centroid = shape(geometry).centroid
-            asset.coordinates = [[centroid.x, centroid.y]]
-
-    def get_n_pw(self):  # move to asset
         return self.n_pw
 
-    def get_multi_keys(self):  # move to asset
-        #
-        #  Gives the features with multiple realizations
-        #
+    def get_multi_keys(self) -> Tuple[List[str], List[str]]:  # move to Asset
+        """
+        Identify features that contain multiple realizations across assets.
+
+        Iterates through all assets and returns two lists:
+        - Keys associated with multi-valued features (i.e., lists).
+        - All unique feature keys present in the inventory.
+
+        Returns:
+            Tuple[List[str], List[str]]:
+                - A list of keys corresponding to multi-realization features.
+                - A complete list of all unique feature keys in the inventory.
+        """
         multi_keys = []
         all_keys = []
+
         for i in self.get_asset_ids():
             flag, features = self.get_asset_features(i)
 
             for key, val in features.items():
-                if isinstance(val, list):
-                    if key not in multi_keys:
-                        multi_keys += [key]
-
+                if isinstance(val, list) and key not in multi_keys:
+                    multi_keys.append(key)
                 if key not in all_keys:
-                    all_keys += [key]
+                    all_keys.append(key)
 
         return multi_keys, all_keys

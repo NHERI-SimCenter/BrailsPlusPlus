@@ -45,7 +45,7 @@ from .utils.importer import Importer
 
 # Package metadata:
 name = 'brails'
-__version__ = '4.0'
+__version__ = '4.1.0'
 __copyright__ = 'Copyright (c) 2024' \
     'The Regents of the University of California'
 __license__ = 'BSD 3-Clause License'
