@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 12-03-2024
+# 06-06-2025
 
 """
 This module defines GoogleStreetview class downloading Google street imagery.
@@ -53,8 +53,7 @@ import json
 from io import BytesIO
 from pathlib import Path
 import re
-import logging
-from typing import Any, Union, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
@@ -68,10 +67,6 @@ from PIL import Image
 from brails.types.image_set import ImageSet
 from brails.types.asset_inventory import AssetInventory
 from brails.scrapers.image_scraper import ImageScraper
-
-# Configure logging:
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Constants:
 BASE_API_URL = 'https://maps.googleapis.com/maps/api/streetview/metadata'
@@ -104,8 +99,8 @@ class GoogleStreetview(ImageScraper):
     collecting various camera metadata.
 
     Attributes:
-        api_key (str): API key for authenticating requests to the Google
-            Street View API.
+        api_key (str):
+            API key for authenticating requests to the Google Street View API.
 
     Methods:
         get_images(inventory: AssetInventory, save_directory: str) -> ImageSet:
@@ -114,7 +109,7 @@ class GoogleStreetview(ImageScraper):
             them to the specified save_directory.
     """
 
-    def __init__(self, input_data: dict):
+    def __init__(self, input_data: Dict[str, Any]):
         """
         Initialize the GoogleStreetview object.
 
@@ -122,14 +117,17 @@ class GoogleStreetview(ImageScraper):
         by validating the provided Google API key.
 
         Args:
-            input_data (dict): A dictionary containing the following key:
+            input_data (dict):
+                A dictionary containing the following key:
                 - 'apiKey' (str): A valid Google API key with Street View
-                    Static API enabled.
+                    Static API enabled
 
         Raises:
-            ValueError: If the 'apiKey' is missing or empty.
-            ConnectionError: If the API key validation fails when checking
-                against the Google Street View Static API.
+            ValueError:
+                If the 'apiKey' is missing or empty.
+            ConnectionError:
+                If the API key validation fails when checking against the
+                Google Street View Static API.
         """
         try:
             api_key = input_data['apiKey']
@@ -155,13 +153,16 @@ class GoogleStreetview(ImageScraper):
         ConnectionError is raised.
 
         Args:
-            api_key (str): The Google API Key to validate.
+            api_key (str):
+                The Google API Key to validate
 
         Raises:
-            ValueError: If the API key is valid but does not have the
-                        Street View Static API enabled.
-            ConnectionError: If there is a failure in making the request
-                             to validate the API key.
+            ValueError:
+                If the API key is valid but does not have the Street View
+                Static API enabled.
+            ConnectionError:
+                If there is a failure in making the request to validate the
+                API key.
 
         Example:
             >>> _validate_api_key('YOUR_API_KEY')
@@ -198,17 +199,18 @@ class GoogleStreetview(ImageScraper):
         Get street-level images of buildings from footprints in AssetInventory.
 
         Args:
-              inventory (AssetInventory): AssetInventory for which the images
-                  will be retrieved.
-            save_directory (str): Path to the folder where the retrieved images
-                will be saved
+              inventory (AssetInventory):
+                  AssetInventory for which the images will be retrieved
+            save_directory (str):
+                Path to the folder where the retrieved images will be saved
 
         Returns:
-              ImageSet: An ImageSet for the assets in the inventory.
+              ImageSet:
+                  An ImageSet for the assets in the inventory
 
         Raises:
-            ValueError: If the provided inventory is not an instance of
-                AssetInventory.
+            ValueError:
+                If the provided inventory is not an instance of AssetInventory
         """
         # Validate inputs:
         if not isinstance(inventory, AssetInventory):
@@ -217,7 +219,7 @@ class GoogleStreetview(ImageScraper):
         # Ensure consistency in dir_path, i.e remove ending / if given:
         base_dir_path = Path(save_directory)
         base_dir_path.mkdir(parents=True, exist_ok=True)
-        logger.info('\nImages will be saved to: %s\n', base_dir_path.resolve())
+        print(f'\nImages will be saved to: {base_dir_path.resolve()}\n', )
 
         # Create the footprints from the items in AssetInventory
         # Keep the asset keys in a list for later use:
@@ -250,24 +252,29 @@ class GoogleStreetview(ImageScraper):
 
         return image_set
 
-    def _download_images(self,
-                         footprints: list[list[tuple[float, float]]],
-                         save_dir: Path,
-                         save_interim_images: bool,
-                         save_all_cam_metadata: bool
-                         ) -> tuple[list[Path], dict[str, list[Any]]]:
+    def _download_images(
+        self,
+        footprints: List[List[Tuple[float, float]]],
+        save_dir: Path,
+        save_interim_images: bool,
+        save_all_cam_metadata: bool
+    ) -> Tuple[List[Path], Dict[str, List[Any]]]:
         """
         Download street-level imagery and depthmap for building footprints.
 
         Parameters:
-            footprints (list[list[tuple[float, float]]]): List of building
-                footprints.
-            save_dir (Path): Directory to save the images and depthmaps.
-            save_interim_images (bool): Whether to save interim images.
-            save_all_cam_metadata (bool): Whether to save all camera metadata.
+            footprints (list[list[tuple[float, float]]]):
+                List of building footprints
+            save_dir (Path):
+                Directory to save the images and depthmaps
+            save_interim_images (bool):
+                Whether to save interim images
+            save_all_cam_metadata (bool):
+                Whether to save all camera metadata
 
         Returns:
-            tuple[list[Path], dict[str, list[Any]]]: A tuple containing:
+            tuple[list[Path], dict[str, list[Any]]]:
+                A tuple containing:
                 - A list of paths to the saved street images.
                 - A dictionary with processed metadata, where keys are
                     different metadata fields (e.g., 'camElev', 'depthMap',
@@ -290,7 +297,7 @@ class GoogleStreetview(ImageScraper):
             footprint_cent = Polygon(footprint_raw).centroid
             image_name = f'{footprint_cent.y:.8f}_' + \
                 f'{footprint_cent.x:.8f}'
-            image_name.replace('.', '')
+            image_name = image_name.replace('.', '')
             image_path = image_dir / f'gstrt_{image_name}.jpg'
             depthmap_path = depthmap_dir / f'gdmap_{image_name}.txt'
             street_image_paths.append(image_path)
@@ -327,8 +334,8 @@ class GoogleStreetview(ImageScraper):
                 except KeyError:
                     results[image_path] = None
                     cent = re.search(r'_(.*?)\.jpg', str(image_path))
-                    logger.warning('Error downloading image for building '
-                                   'located at %s', cent)
+                    print('Error downloading image for building located at '
+                          f'{cent}')
 
         # Get the depthmap and all other required camera metadata:
         metadata = self._process_meta_for_images(street_image_paths,
@@ -357,18 +364,19 @@ class GoogleStreetview(ImageScraper):
         Download a street-level panoramic image and process it.
 
         Parameters:
-            footprint (list[list[float, float]]): Coordinates of the building
-                footprint to crop the image.
-            fpcent (tuple[float, float]): Latitude and longitude of the query
-                point.
-            im_path (Path): Path object for the output image file.
-            depthmap_path (Path): Path object for the depthmap file.
-            save_intermediate_imagery (bool, optional): Whether to save
-                intermediate
-                images such as the panorama and composite image. Defaults to
-                    False.
-            save_all_cam_meta (bool, optional): Whether to return all camera
-                metadata. Defaults to False.
+            footprint (list[list[float, float]]):
+                Coordinates of the building footprint to crop the image
+            fpcent (tuple[float, float]):
+                Latitude and longitude of the query point
+            im_path (Path):
+                Path object for the output image file
+            depthmap_path (Path):
+                Path object for the depthmap file
+            save_intermediate_imagery (bool, optional):
+                Whether to save intermediate images such as the panorama and
+                composite image. Defaults to False
+            save_all_cam_meta (bool, optional):
+                Whether to return all camera metadata. Defaults to False
 
         Returns:
             tuple[float, str, tuple[float, float], tuple[float, float]] or
@@ -410,8 +418,10 @@ class GoogleStreetview(ImageScraper):
         try:
             pano['id'] = self._get_pano_id(fpcent, self.api_key)
         except KeyError:
-            logger.info('No street-level imagery found for the building '
-                        'located at %.4f, %.4f', fpcent[0], fpcent[1])
+            print(
+                'No street-level imagery found for the building located at'
+                f' {fpcent[0]:.4f}, {fpcent[1]:.4f}'
+            )
             return None
 
         # Get the metdata for the pano:
@@ -440,32 +450,30 @@ class GoogleStreetview(ImageScraper):
                 pano['panoBndAngles'])
 
     @staticmethod
-    def _process_meta_for_images(street_image_paths: list[Path],
-                                 bldg_centroids: list[tuple[float, float]],
-                                 results: dict[Path,
-                                               dict[str,
-                                                    Union[float, str, None]]],
-                                 save_all_cam_metadata: bool
-                                 ) -> dict[Path,
-                                           dict[str, Union[tuple[float, float],
-                                                           float,
-                                                           str]]]:
+    def _process_meta_for_images(
+        street_image_paths: List[Path],
+        bldg_centroids: List[Tuple[float, float]],
+        results: Dict[Path, Dict[str, Union[float, str, None]]],
+        save_all_cam_metadata: bool
+    ) -> Dict[Path, Dict[str, Union[Tuple[float, float], float, str]]]:
         """
         Process the downloaded street image data and extract relevant metadata.
 
         Parameters:
-            street_image_paths(List[Path]): List of file paths for the
-                downloaded street-level imagery.
-            bldg_centroids: list[tuple[float, float]]: List of centroids of
-                buildings for which street-level imagery was downloaded.
+            street_image_paths(List[Path]):
+                List of file paths for the downloaded street-level imagery
+            bldg_centroids: list[tuple[float, float]]:
+                List of centroids of buildings for which street-level imagery
+                was downloaded
             results(Dict[Path, Dict[str, Any[float, str, None]]]):
                 A dictionary where the keys are image file paths, and the
                 values are dictionaries containing metadata about each image,
                 such as camera elevation, depth maps locations, and other
                 optional camera metadata.
-            save_all_cam_metadata(bool): A flag indicating whether to save all
-            available camera metadata(e.g., camera latitude/longitude, field
-                                       of view, heading, pitch, zoom level).
+            save_all_cam_metadata(bool):
+                A flag indicating whether to save all available camera metadata
+                (e.g., camera latitude/longitude, field of view, heading,
+                 pitch, zoom level).
 
         Returns:
             dict[Path, dict[str, Union[tuple[float, float], float, str]]]: A
@@ -514,15 +522,17 @@ class GoogleStreetview(ImageScraper):
         return metadata
 
     @staticmethod
-    def _get_pano_id(latlon: tuple[float, float], api_key: str) -> str:
+    def _get_pano_id(latlon: Tuple[float, float], api_key: str) -> str:
         """
         Obtain the pano ID for the given latitude and longitude.
 
         Args:
-            latlon(tuple[float, float]): Latitude and longitude.
+            latlon(tuple[float, float]):
+                Latitude and longitude
 
         Returns:
-            str: Pano ID.
+            str:
+                Pano ID
         """
         params = {
             'location': f'{latlon[0]}, {latlon[1]}',
@@ -535,17 +545,22 @@ class GoogleStreetview(ImageScraper):
         return response.json()['pano_id']
 
     @staticmethod
-    def _get_pano_meta(pano: dict[str, Any],
-                       dmap_outname: str = '') -> dict[str, Any]:
+    def _get_pano_meta(
+        pano: Dict[str, Any],
+        dmap_outname: str = ''
+    ) -> Dict[str, Any]:
         """
         Retrieve metadata for the pano.
 
         Args:
-            pano(dict[str, any]): Pano dictionary.
-            dmap_outname(str): Filename to save the depth map string.
+            pano(dict[str, any]):
+                Pano dictionary
+            dmap_outname(str):
+                Filename to save the depth map string
 
         Returns:
-            Dict[str, Any]: Updated pano dictionary.
+            Dict[str, Any]:
+                Updated pano dictionary
         """
         # Get the metadata for a pano image:
         params = {
@@ -589,18 +604,23 @@ class GoogleStreetview(ImageScraper):
 
         return pano
 
-    def _download_pano_image(self,
-                             pano: dict[str, Any],
-                             im_name: str) -> dict[str, Any]:
+    def _download_pano_image(
+        self,
+        pano: Dict[str, Any],
+        im_name: str
+    ) -> Dict[str, Any]:
         """
         Download the pano image composed of tiles.
 
         Args:
-            pano(Dict[str, Any]): Pano dictionary.
-            im_name(str): Filename to save the pano image.
+            pano(Dict[str, Any]):
+                Pano dictionary
+            im_name(str):
+                Filename to save the pano image
 
         Returns:
-            Dict[str, Any]: Updated pano dictionary.
+            Dict[str, Any]:
+                Updated pano dictionary
         """
         pano_id = pano['id']
         image_size = pano['panoSize']
@@ -635,36 +655,37 @@ class GoogleStreetview(ImageScraper):
         pano['panoImFile'] = im_name
         return pano
 
-    def _get_bldg_image(self,
-                        pano: dict[str, Any],
-                        footprint: list[tuple[float, float]],
-                        im_name: str = 'imstreet.jpg',
-                        save_depthmap: bool = False
-                        ) -> dict[str, Union[np.ndarray,
-                                             list[float],
-                                             Image.Image,
-                                             np.ndarray]]:
+    def _get_bldg_image(
+        self,
+        pano: Dict[str, Any],
+        footprint: List[Tuple[float, float]],
+        im_name: str = 'imstreet.jpg',
+        save_depthmap: bool = False
+    ) -> Dict[str, Union[np.ndarray, List[float], Image.Image, np.ndarray]]:
         """
         Generate an image and depthmap cropped around a building from a pano.
 
         Args:
             pano(dict[str, Any]):
                 A dictionary containing panorama information, including:
-                    - camLatLon: The latitude and longitude of the camera
-                        location.
-                    - camHeading: The camera heading angle in degrees.
-                    - panoSize: The size of the panorama image as
-                        [width, height].
-                    - panoImage: The panorama image as a PIL Image.
-                    - depthMap: (Optional) The depth map associated with the
-                        panorama.
-            footprint(list[tuple[float, float]]): A list of tuples
-                representing the latitude and longitude of the building
-                footprint vertices.
-            im_name(str, optional): The name of the output image file.
-                Defaults to 'imstreet.jpg'.
-            save_depthmap(bool, optional): Whether to save the depth map of
-                the building. Defaults to False.
+                    - camLatLon:
+                        The latitude and longitude of the camera location
+                    - camHeading:
+                        The camera heading angle in degrees
+                    - panoSize:
+                        The size of the panorama image as [width, height]
+                    - panoImage:
+                        The panorama image as a PIL Image
+                    - depthMap: (Optional)
+                    The depth map associated with the panorama
+            footprint(list[tuple[float, float]]):
+                A list of tuples representing the latitude and longitude of the
+                building footprint vertices.
+            im_name(str, optional):
+                The name of the output image file. Defaults to 'imstreet.jpg'
+            save_depthmap(bool, optional):
+                Whether to save the depth map of the building. Defaults to
+                False.
 
         Returns:
             pano(dict[str, Any]):
@@ -704,15 +725,19 @@ class GoogleStreetview(ImageScraper):
         return pano
 
     @staticmethod
-    def _get_composite_pano(pano: dict[str, Any],
-                            compim_name: str = 'panoOverlaid.jpg') -> None:
+    def _get_composite_pano(
+        pano: Dict[str, Any],
+        compim_name: str = 'panoOverlaid.jpg'
+    ) -> None:
         """
         Create a composite pano image by overlaying a heat map of depth map.
 
         Args:
-            pano(dict[str, Any]): A dictionary containing the depth map
+            pano(dict[str, Any]):
+                A dictionary containing the depth map
                 (as a PIL image) and the panoramic image(as a PIL image).
-            compim_name(str): The filename for saving the overlaid image.
+            compim_name(str):
+                The filename for saving the overlaid image.
                 Default is 'panoOverlaid.jpg'.
         """
         # Convert the depth map to grayscale and apply a heat map (jet
@@ -738,9 +763,11 @@ class GoogleStreetview(ImageScraper):
         # Save the composite image:
         im_overlaid.save(compim_name)
 
-    def _get_view_angles(self,
-                         pano: dict[str, Any],
-                         footprint: list[tuple[float, float]]) -> list[float]:
+    def _get_view_angles(
+        self,
+        pano: Dict[str, Any],
+        footprint: List[Tuple[float, float]]
+    ) -> List[float]:
         """
         Calculate viewing angles of each footprint vertex from camera location.
 
@@ -750,26 +777,29 @@ class GoogleStreetview(ImageScraper):
         building's vertices based on the camera's heading.
 
         Args:
-            pano(dict[str, any]): A dictionary containing information about
-                the panorama, including:
+            pano(dict[str, any]):
+                A dictionary containing information about the panorama,
+                including:
                 - camLatLon(tuple[float, float]): Latitude and longitude of
                     the camera location.
-                - camHeading(float): The camera's heading angle in degrees.
-            footprint(list[tuple[float, float]]): A list of tuples
-                representing the latitude and longitude coordinates of the
-                building footprint.
+                - camHeading(float):
+                    The camera's heading angle in degrees.
+            footprint(list[tuple[float, float]]):
+                A list of tuples representing the latitude and longitude
+                coordinates of the building footprint
 
         Returns:
-            list[float]: A list of viewing angles for each vertex of the
-                footprint relative to the camera's heading.
+            list[float]:
+                A list of viewing angles for each vertex of the footprint
+                relative to the camera's heading
         """
         # Project the coordinates of the footprint to Cartesian with the
         # approximate camera location set as the origin:
         (lat0, lon0) = pano['camLatLon']
         xy_footprint = []
         for lat1, lon1 in footprint:
-            xcoord = (lon1 - lon0) * CIRCUM_EARTH_FT * \
-                math.cos((lat0 + lat1)*math.pi/360)/360
+            xcoord = (lon1 - lon0) * (CIRCUM_EARTH_FT *
+                                      math.cos((lat0 + lat1)*math.pi/360)/360)
             ycoord = (lat1 - lat0) * CIRCUM_EARTH_FT/360
             xy_footprint.append((xcoord, ycoord))
 
@@ -779,15 +809,17 @@ class GoogleStreetview(ImageScraper):
                 for coord in xy_footprint]
 
     @staticmethod
-    def _download_tiles(urls: list[str]) -> list[PIL.Image.Image]:
+    def _download_tiles(urls: List[str]) -> List[Image.Image]:
         """
         Download image tiles from the provided URLs with retry strategy.
 
         Args:
-            urls(List[str]): List of tile URLs.
+            urls(List[str]):
+                List of tile URLs
 
         Returns:
-            List[PIL.Image.Image]: List of downloaded tile images.
+            List[PIL.Image.Image]:
+                List of downloaded tile images
         """
         session = requests.Session()
         session.mount("https://",
@@ -799,21 +831,26 @@ class GoogleStreetview(ImageScraper):
 
         return tiles
 
-    def _get_depth_map(self,
-                       pano: dict[str, Any],
-                       dmap_imname: str = '') -> dict[str, Any]:
+    def _get_depth_map(
+        self,
+        pano: Dict[str, Any],
+        dmap_imname: str = ''
+    ) -> Dict[str, Any]:
         """
         Compute and process the depth map for a panoramic image.
 
         Args:
-            pano(dict[str, Any]): A dictionary containing panoramic image
-                data, including the depth map string and image size.
-            dmap_imname(str): The file name to use if saving the depth map
-                image. Default is '', i.e., depth map image is not saved.
+            pano(dict[str, Any]):
+                A dictionary containing panoramic image data, including the
+                depth map string and image size.
+            dmap_imname(str):
+                The file name to use if saving the depth map image. Default is
+                '', i.e., depth map image is not saved.
 
         Returns:
-            dict[str, Any]: The input pano dictionary with the processed
-                depth map and file information.
+            dict[str, Any]:
+                The input pano dictionary with the processed depth map and
+                file information.
         """
         # Decode the depth map string
         depth_map_data = self._parse_dmap_str(pano['depthMapString'])
@@ -856,18 +893,23 @@ class GoogleStreetview(ImageScraper):
 
         return pano
 
-    def _get_angle_from_heading(self,
-                                coord: tuple[float, float],
-                                heading: float) -> float:
+    def _get_angle_from_heading(
+        self,
+        coord: Tuple[float, float],
+        heading: float
+    ) -> float:
         """
         Calculate the viewing angle of a coordinate relative to camera heading.
 
         Args:
-            coord(Tuple[float, float]): Cartesian coordinates.
-            heading(float): Camera heading angle in degrees.
+            coord(Tuple[float, float]):
+                Cartesian coordinates
+            heading(float):
+                Camera heading angle in degrees
 
         Returns:
-            float: Calculated viewing angle.
+            float:
+                Calculated viewing angle
         """
         # Determine the cartesian coordinates of a point along the heading that
         # is 100 ft away from the origin:
@@ -904,15 +946,20 @@ class GoogleStreetview(ImageScraper):
 
         return np.array(data)
 
-    def _parse_dmap_header(self, depth_map: np.ndarray) -> dict[str, int]:
+    def _parse_dmap_header(
+        self,
+        depth_map: np.ndarray
+    ) -> Dict[str, int]:
         """
         Parse the header information from the depth map.
 
         Args:
-            depth_map(np.ndarray): Numpy array containing the depth map data.
+            depth_map(np.ndarray):
+                Numpy array containing the depth map data
 
         Returns:
-            dict[str, int]: Dictionary containing parsed header information:
+            dict[str, int]:
+                Dictionary containing parsed header information:
                 - 'headerSize': The size of the header.
                 - 'numberOfPlanes': The number of planes in the depth map.
                 - 'width': The width of the depth map in pixels.
@@ -926,16 +973,20 @@ class GoogleStreetview(ImageScraper):
                 'offset': self._get_uint16(depth_map, 7),
                 }
 
-    def _parse_dmap_planes(self,
-                           header: dict[str, int],
-                           depth_map: np.ndarray) -> dict[str, list]:
+    def _parse_dmap_planes(
+        self,
+        header: Dict[str, int],
+        depth_map: np.ndarray
+    ) -> Dict[str, List]:
         """
         Parse the plane information and indices from the depth map.
 
         Args:
-            header(dict[str, int]): Parsed header information containing
-                width, height, number of planes, and offset.
-            depth_map(np.ndarray): Numpy array containing the depth map data.
+            header(dict[str, int]):
+                Parsed header information containing width, height, number of
+                planes, and offset.
+            depth_map(np.ndarray):
+                Numpy array containing the depth map data.
 
         Returns:
             dict[str, List]: A dictionary containing:
@@ -955,8 +1006,8 @@ class GoogleStreetview(ImageScraper):
         planes = []
         normal = [0.0, 0.0, 0.0]
         for i in range(header['numberOfPlanes']):
-            byte_offset = header['offset'] + \
-                header['width'] * header['height'] + i * 4 * 4
+            byte_offset = (header['offset'] +
+                           header['width'] * header['height'] + i * 4 * 4)
             normal[0] = self._get_float32(depth_map, byte_offset)
             normal[1] = self._get_float32(depth_map, byte_offset + 4)
             normal[2] = self._get_float32(depth_map, byte_offset + 8)
@@ -966,9 +1017,11 @@ class GoogleStreetview(ImageScraper):
         return {'planes': planes, 'indices': indices}
 
     @staticmethod
-    def _compute_dmap(header: dict[str, int],
-                      indices: list[int],
-                      planes: list[dict[str, Any]]) -> dict[str, Any]:
+    def _compute_dmap(
+        header: Dict[str, int],
+        indices: List[int],
+        planes: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """
         Compute depth map using provided planes and indices in the image.
 
@@ -979,22 +1032,24 @@ class GoogleStreetview(ImageScraper):
         vector.
 
         Args:
-            header(Dict[str, int]): Parsed header containing image dimensions,
-                including:
+            header(Dict[str, int]):
+                Parsed header containing image dimensions, including:
                 - "width" (int): Width of the image in pixels.
                 - "height" (int): Height of the image in pixels.
-            indices(List[int]): A flat list of plane indices for each pixel
-                in the image. Each index corresponds to a detected plane in the
-                `planes` list.
-            planes(List[Dict[str, Any]]): A list of plane information. Each
-                plane is represented by a dictionary that contains:
+            indices(List[int]):
+                A flat list of plane indices for each pixel in the image. Each
+                index corresponds to a detected plane in the `planes` list.
+            planes(List[Dict[str, Any]]):
+                A list of plane information. Each plane is represented by a
+                dictionary that contains:
                 - "n" (List[float]): Normal vector of the plane(3D direction).
                 - "d" (Callable[[float], float]): A function that computes the
                     plane's distance based on the dot product with the
                     ray direction vector.
 
         Returns:
-            Dict[str, Any]: A dictionary containing:
+            Dict[str, Any]:
+                A dictionary containing:
                 - "width" (int): The width of the image in pixels.
                 - "height" (int): The height of the image in pixels.
                 - "depthMap" (np.ndarray): A flattened array representing the
@@ -1030,34 +1085,43 @@ class GoogleStreetview(ImageScraper):
         return {"width": width, "height": height, "depthMap": depth_map}
 
     @staticmethod
-    def _get_3pt_angle(pt1: tuple[float, float],
-                       pt2: tuple[float, float],
-                       pt3: tuple[float, float]) -> float:
+    def _get_3pt_angle(
+        pt1: Tuple[float, float],
+        pt2: Tuple[float, float],
+        pt3: Tuple[float, float]
+    ) -> float:
         """
         Calculate the angle formed by three points.
 
         Args:
-            pt1(Tuple[float, float]): First point.
-            pt2(Tuple[float, float]): Vertex point.
-            pt3(Tuple[float, float]): Third point.
+            pt1(Tuple[float, float]):
+                First point
+            pt2(Tuple[float, float]):
+                Vertex point
+            pt3(Tuple[float, float]):
+                Third point
 
         Returns:
-            float: Angle in degrees.
+            float:
+                Angle in degrees
         """
         ang = math.degrees(math.atan2(pt3[1] - pt2[1], pt3[0] - pt2[0]) -
                            math.atan2(pt1[1] - pt2[1], pt1[0] - pt2[0]))
         return ang + 360 if ang < 0 else ang
 
-    def _get_uint16(self, arr: list[int], ind: int) -> int:
+    def _get_uint16(self, arr: List[int], ind: int) -> int:
         """
         Combine two bytes from the array into a 16-bit unsigned integer.
 
         Args:
-            arr(list[int]): Array of byte values.
-            ind(int): Starting index of the two bytes to combine.
+            arr(list[int]):
+                Array of byte values
+            ind(int):
+                Starting index of the two bytes to combine
 
         Returns:
-            int: 16-bit unsigned integer formed from the two bytes.
+            int:
+                16-bit unsigned integer formed from the two bytes
         """
         int_inp1 = arr[ind]
         int_inp2 = arr[ind + 1]
@@ -1069,24 +1133,29 @@ class GoogleStreetview(ImageScraper):
         Convert an integer to an 8-bit binary string.
 
         Args:
-            int_inp(int): The integer to be converted.
+            int_inp(int):
+                The integer to be converted
 
         Returns:
-            str: The 8-bit binary string representation of the integer.
+            str:
+                The 8-bit binary string representation of the integer
         """
         binary_str_int = bin(int_inp)[2:]
         return '0' * (8 - len(binary_str_int)) + binary_str_int
 
-    def _get_float32(self, arr: list[int], ind: int) -> float:
+    def _get_float32(self, arr: List[int], ind: int) -> float:
         """
         Convert 4 bytes from input array at given index into a 32-bit float.
 
         Args:
-            arr(list[int]): Array of byte values.
-            ind(int): Starting index of the 4 bytes to convert.
+            arr(list[int]):
+                Array of byte values
+            ind(int):
+                Starting index of the 4 bytes to convert
 
         Returns:
-            float: The 32-bit floating-point number.
+            float:
+                The 32-bit floating-point number
         """
         return self._bin_to_float(''.join(
             self._get_bin(i) for i in arr[ind: ind + 4][::-1]))
@@ -1097,10 +1166,12 @@ class GoogleStreetview(ImageScraper):
         Convert a binary string to a 32-bit float.
 
         Args:
-            binary(str): A 32-bit binary string.
+            binary(str):
+                A 32-bit binary string
 
         Returns:
-            float: The 32-bit floating-point number corresponding to the
-                binary string.
+            float:
+                The 32-bit floating-point number corresponding to the binary
+                string.
         """
         return struct.unpack('!f', struct.pack('!I', int(binary, 2)))[0]
