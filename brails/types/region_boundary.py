@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 12-05-2024
+# 06-05-2025
 
 """
 This module defines RegionBoundary class to store region boundary polygons.
@@ -46,13 +46,16 @@ This module defines RegionBoundary class to store region boundary polygons.
     RegionBoundary
 """
 
-import sys
-from dataclasses import dataclass
 import unicodedata
+from dataclasses import dataclass
 from itertools import groupby
+
 import requests
-from shapely.geometry import Polygon, LineString, MultiPolygon, box
-from shapely.ops import linemerge, unary_union, polygonize
+from shapely.geometry import box, LineString, MultiPolygon, Polygon
+from shapely.geometry.base import BaseGeometry
+from shapely.ops import linemerge, polygonize, unary_union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
+
 from brails.utils import GeoTools
 
 
@@ -80,13 +83,13 @@ class RegionInput:
         )
     """
 
-    dataType: type               # Expected data type for the input
-    validationConditions: any    # Validation function that checks the data
-    errorMessage: str            # Error message when validation fails
+    dataType: type                  # Expected data type for the input
+    validationConditions: Callable  # Validation function that checks the data
+    errorMessage: str               # Error message when validation fails
 
 
 # Define the supported input types with validation logic
-SUPPORTED_INPUTS = {
+SUPPORTED_INPUTS: Dict[str, RegionInput] = {
     'locationName': RegionInput(
         dataType=str,
         validationConditions=lambda data, dataType: isinstance(data, dataType),
@@ -124,13 +127,23 @@ class RegionBoundary:
             Returns the boundary polygon of the specified region.
     """
 
-    def __init__(self, input_dict: dict = None):
+    def __init__(self, input_dict: Optional[Dict[str, Any]] = None) -> None:
         """
-        Check inputs.
+        Initialize and validate a RegionBoundary instance from input data.
 
         Args:
-          data (dict):
-              The data to be checked
+            input_dict (Optional[Dict[str, Any]]):
+                Dictionary containing:
+                - 'type': the region input type (must match a key in
+                   SUPPORTED_INPUTS)
+                - 'data': the actual input data (validated using the
+                   corresponding rule)
+
+        Raises:
+            TypeError:
+                If input_dict is not a dictionary.
+            ValueError:
+                If required keys are missing or if validation fails.
         """
         if not isinstance(input_dict, dict):
             raise TypeError('Input must be a dictionary that includes '
@@ -167,21 +180,24 @@ class RegionBoundary:
                 f"Invalid 'data' specified for {input_dict['type']}: "
                 f"{SUPPORTED_INPUTS[input_type].errorMessage}")
 
-    def get_boundary(self):
+    def get_boundary(
+        self
+    ) -> Tuple[BaseGeometry, str, Optional[Union[int, str]]]:
         """
         Return the boundary of the region based on the provided input type.
 
         This method processes the region's data based on its type and returns
         the corresponding boundary. If the type is 'locationName', it fetches
-        the region boundary based on the name. If the type is 'locationPolygon'
-        , it converts the provided coordinates (bounding box) into a polygon.
+        the region boundary from an external data source. If the type is
+        'locationPolygon', it converts the provided coordinates (bounding box)
+        into a Shapely polygon.
 
         Returns:
-            tuple:
-                A tuple consisting of:
-                    - bounding polygon (shapely geometry),
-                    - human-readable query area (string),
-                    - OSM ID of the boundary polygon (if available).
+            Tuple[BaseGeometry, str, Optional[Union[int, str]]]:
+                - A Shapely geometry object representing the region boundary.
+                - A human-readable description of the query area.
+                - An optional OSM ID (or similar identifier) for the boundary,
+                  if available.
 
         Raises:
             ValueError: If the input data type is not 'locationName' or
@@ -199,7 +215,11 @@ class RegionBoundary:
 
         return result
 
-    def _fetch_roi(self, queryarea: str, outfile: bool | str = False):
+    def _fetch_roi(
+        self,
+        queryarea: str,
+        outfile: Union[bool, str] = False
+    ) -> Tuple[BaseGeometry, str, str]:
         """
         Get the boundary polygon for a region based on its specified name.
 
@@ -227,7 +247,7 @@ class RegionBoundary:
                 - queryarea_osmid: The OpenStreetMap ID of the found area.
 
         Raises:
-            SystemExit:
+            ValueError:
                 If the query area cannot be found or the boundary cannot be
                 retrieved.
 
@@ -282,7 +302,7 @@ class RegionBoundary:
                 queryareaNameUTF = queryareaNameUTF.decode("utf-8")
                 print(f"Found {queryareaNameUTF}")
         else:
-            sys.exit(
+            raise ValueError(
                 f"Could not locate an area named {queryarea}. "
                 + "Please check your location query to make sure "
                 + "it was entered correctly."
@@ -321,7 +341,7 @@ class RegionBoundary:
                 bpoly = MultiPolygon(polygons)
 
         else:
-            sys.exit(
+            raise ValueError(
                 f"Could not retrieve the boundary for {queryarea}. "
                 + "Please check your location query to make sure "
                 + "it was entered correctly."
@@ -331,7 +351,11 @@ class RegionBoundary:
 
         return bpoly, queryarea_printname, queryarea_osmid
 
-    def _bbox2poly(self, queryarea: tuple, outfile: bool | str = False):
+    def _bbox2poly(
+        self,
+        queryarea: Tuple[float, ...],
+        outfile: Union[bool, str] = False
+    ) -> Tuple[Polygon, str, Optional[None]]:
         """
         Get the boundary polygon for a region based on its coordinates.
 
@@ -353,11 +377,12 @@ class RegionBoundary:
                 False.
 
         Raises:
-            ValueError: If the `queryarea` contains an odd number of elements
-            or fewer than two pairs of coordinates.
+            ValueError:
+                If the `queryarea` contains an odd number of elements or fewer
+                than two pairs of coordinates.
 
         Returns:
-            tuple: A tuple containing:
+            Tuple[Polygon, str, Optional[None]]:
                 - The bounding polygon (`bpoly`).
                 - A human-readable string representation of the bounding box
                   (`queryarea_printname`).
