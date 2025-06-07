@@ -40,7 +40,7 @@ This work is based on material supported by the National Science Foundation unde
 
 ## Contributors
 
-See [CONTRIBUTORS.md](./contributors.md) for a full list of contributors.
+Want to see who made this possible? Check out the full list of contributors [here](./contributors.md).
 
 ## Contact
 
