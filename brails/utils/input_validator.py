@@ -46,6 +46,7 @@ This module provides a utility class for validating input data in BRAILS.
 """
 
 from typing import Any, List, Tuple
+from brails.utils.unit_converter import UNIT_TO_METER
 
 
 class InputValidator:
@@ -289,4 +290,22 @@ class InputValidator:
             if not InputValidator.is_polygon(polygon):
                 return False
 
+        return True
+
+    @staticmethod
+    def is_valid_unit(unit: str) -> str:
+        """
+        Validate length unit.
+
+        Args:
+            unit (str):
+                The unit to validate.
+
+        Returns:
+            bool:
+                True if the unit is defined in UnitConveter, False otherwise.
+        """
+        unit = unit.lower()
+        if unit not in UNIT_TO_METER:
+            return False
         return True
