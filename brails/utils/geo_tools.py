@@ -225,7 +225,7 @@ class GeoTools:
         plt.show()
 
     @staticmethod
-    def write_polygon_to_geojson(poly: Polygon | MultiPolygon,
+    def write_polygon_to_geojson(poly: Union[Polygon, MultiPolygon],
                                  output_file: str):
         """
         Write a Shapely Polygon or MultiPolygon to a GeoJSON file.
