@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 11-14-2024
+# 06-06-2025
 
 """
 This module defines MS_FootprintScraper class downloading Microsoft footprints.
@@ -45,17 +45,26 @@ This module defines MS_FootprintScraper class downloading Microsoft footprints.
 
     MS_FootprintScraper
 """
-import math
-import pandas as pd
-from tqdm import tqdm
-from shapely.geometry import Polygon
 
+import gzip
+import json
+import math
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
+from io import BytesIO
+from typing import Any, Dict, List, Tuple
+import pandas as pd
+import requests
+from shapely.geometry import Polygon
+from tqdm import tqdm
 from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import AssetInventory
 
 # Constants:
 ZOOM_LEVEL = 9
+DATASET_URL = ('https://minedbuildings.z5.web.core.windows.net/'
+               'global-buildings/dataset-links.csv.')
 
 
 class MS_FootprintScraper(FootprintScraper):
@@ -69,23 +78,24 @@ class MS_FootprintScraper(FootprintScraper):
     or meters).
 
     Attributes:
-        length_unit (str): The unit of measurement for building height, either
-            'ft' (feet) or 'm' (meters). The default is 'ft' (feet) if not
-            specified.
+        length_unit (str):
+            The unit of measurement for building height, either 'ft' (feet) or
+            'm' (meters). The default is 'ft' (feet) if not specified.
 
     Methods:
-        get_footprints(region: RegionBoundary) -> AssetInventory: Retrieves
-            building footprints and their attributes for the specified region.
+        get_footprints(region: RegionBoundary) -> AssetInventory:
+            Retrieves building footprints and their attributes for the
+            specified region.
     """
 
-    def __init__(self, input_data: dict):
+    def __init__(self, input_data: Dict[str, Any]):
         """
         Initialize the scraper object with a length unit.
 
         Args:
-            input (dict): A dictionary that may contain the 'length' unit.
-                          If 'length' unit is not provided, feet ('ft') is
-                          used by default.
+            input (dict):
+                A dictionary that may contain the 'length' unit. If 'length'
+                unit is not provided, feet ('ft') is used by default.
         """
         self.length_unit = input_data.get('length', 'ft')
 
@@ -100,13 +110,14 @@ class MS_FootprintScraper(FootprintScraper):
         building height).
 
         Args:
-            region (RegionBoundary): The region of interest containing the
-                geographical boundary.
+            region (RegionBoundary):
+                The region of interest containing the geographical boundary.
 
         Returns:
-            AssetInventory: An inventory of buildings within the specified
-                region, including their footprints and attributes (such as
-                building height).
+            AssetInventory:
+                An inventory of buildings within the specified region,
+                including their footprints and attributes (such as building
+                height).
         """
         # Get the boundary polygon and related info from the region:
         bpoly, queryarea_printname, _ = region.get_boundary()
@@ -132,10 +143,11 @@ class MS_FootprintScraper(FootprintScraper):
                                             attributes,
                                             self.length_unit)
 
-    def _download_ms_tiles(self,
-                           quadkeys: list[int],
-                           bpoly: Polygon
-                           ) -> tuple[list[list[float]], list[float]]:
+    def _download_ms_tiles(
+        self,
+        quadkeys: List[int],
+        bpoly: Polygon
+    ) -> Tuple[List[List[float]], List[float]]:
         """
         Download building footprint data for given quadkeys and polygon.
 
@@ -146,14 +158,16 @@ class MS_FootprintScraper(FootprintScraper):
         unit (feet or meters).
 
         Args:
-            quadkeys (list[int]): A list of quadkeys representing the tiles
-                for which to download building data.
-            bpoly (Polygon): A Shapely Polygon object representing the bounding
-                polygon to filter the building footprints.
+            quadkeys (list[int]):
+                A list of quadkeys representing the tiles for which to download
+                building data.
+            bpoly (Polygon):
+                A Shapely Polygon object representing the bounding polygon to
+                filter the building footprints.
 
         Returns:
-            tuple[list[list[float]], list[float]]: A tuple containing two
-                lists:
+            tuple[list[list[float]], list[float]]:
+                A tuple containing two lists:
                 - The first list contains building footprint coordinates
                     (list of [x, y] coordinates).
                 - The second list contains building heights (in feet or meters,
@@ -161,55 +175,134 @@ class MS_FootprintScraper(FootprintScraper):
                     unavailable.
         """
         # Load the tile data:
-        dftiles = pd.read_csv(
-            'https://minedbuildings.z5.web.core.windows.net/global-buildings/'
-            'dataset-links.csv.'
-        )
+        dftiles = pd.read_csv(DATASET_URL)
 
         # Define the conversion factor based on the length unit:
         conv_factor = 3.28084 if self.length_unit == "ft" else 1
 
+        # Build a map of quadkeys:
+        url_map = {}
+        for quadkey in quadkeys:
+            rows = dftiles[dftiles["QuadKey"] == quadkey]
+            if rows.empty:
+                continue
+            if len(rows) > 1:
+                rows.loc[:, "Size"] = rows["Size"].apply(self._parse_file_size)
+                url = rows.loc[rows["Size"].idxmax()]["Url"]
+            else:
+                url = rows.iloc[0]["Url"]
+            url_map[quadkey] = url
+
+        # Pre-bind the bpoly and conv_factor arguments
+        fetch_fn = partial(self._fetch_and_filter, bpoly=bpoly,
+                           conv_factor=conv_factor)
+
+        # Run downloads in parallel:
         footprints = []
         bldg_heights = []
 
-        # Iterate through each quadkey:
-        for quadkey in tqdm(quadkeys, desc='Processing quadkeys'):
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            # Map over URLs
+            results = executor.map(fetch_fn, url_map.values())
 
-            # Filter rows for the current quadkey:
-            rows = dftiles[dftiles["QuadKey"] == quadkey]
-
-            # Select the URL. Select the one with the largest file size if
-            # multiple entries exist. If no URL skip the quadkey:
-            if rows.shape[0] == 1:
-                url = rows.iloc[0]["Url"]
-            elif rows.shape[0] > 1:
-                rows["Size"] = rows["Size"].apply(self._parse_file_size)
-                url = rows.loc[rows["Size"].idxmax()]["Url"]
-            else:
-                continue
-
-            # Read the footprint data from the URL:
-            df_fp = pd.read_json(url, lines=True)
-
-            # Process each footprint and the corresponding building height:
-            for _, row in tqdm(df_fp.iterrows(),
-                               total=df_fp.shape[0],
-                               desc="Processing footprints"):
-                fp_poly = Polygon(row["geometry"]["coordinates"][0])
-
-                # Check if the footprint intersects with the bounding polygon:
-                if fp_poly.intersects(bpoly):
-                    footprints.append(row["geometry"]["coordinates"][0])
-
-                    height = row["properties"]["height"]
-                    if height != -1:
-                        bldg_heights.append(round(height * conv_factor, 1))
-                    else:
-                        bldg_heights.append(None)
+            for fp_chunk, ht_chunk in tqdm(results,
+                                           total=len(url_map),
+                                           desc="Downloading tiles"):
+                footprints.extend(fp_chunk)
+                bldg_heights.extend(ht_chunk)
 
         return footprints, bldg_heights
 
-    def _bbox2quadkeys(self, bpoly: Polygon) -> list[int]:
+    def _fetch_and_filter(
+            self,
+            url: str,
+            bpoly: Polygon,
+            conv_factor: float
+    ) -> Tuple[List[List[float]], List[float]]:
+        """
+        Download and filter building footprint data from an Microsoft tile URL.
+
+        This method performs an HTTP GET request to download a GeoJSON file
+        containing building footprints. It parses each feature, checks whether
+        it intersects with the specified bounding polygon, and extracts the
+        footprint geometry and height if applicable. Heights are converted to
+        the desired unit using the provided conversion factor.
+
+        Args:
+        url (str):
+            URL to the Microsoft building footprint tile (in GeoJSON format)
+        bpoly (shapely.geometry.Polygon):
+            Bounding polygon used to spatially filter downloaded footprints
+        conv_factor (float)
+            Conversion factor for building height (e.g., convert from m to ft)
+
+        Returns:
+        Tuple[List[List[float]], List[float]]:
+            A tuple containing:
+            - A list of building footprint coordinates (each as a list of
+              [lon, lat] pairs).
+            - A list of corresponding building heights (converted, or `None`
+              if unavailable).
+
+        Notes:
+        - Footprints with height = -1 are treated as missing and returned with
+          `None`.
+        - If an error occurs during the request or parsing, the function logs
+          the error and returns empty lists.
+        """
+        bpoly_bounds = bpoly.bounds
+
+        try:
+            resp = requests.get(url, timeout=30)
+
+            # Check if content is gzip-encoded
+            if resp.headers.get(
+                    'Content-Encoding') == 'gzip' or url.endswith('.gz'):
+                with gzip.GzipFile(fileobj=BytesIO(resp.content)) as gz:
+                    lines = gz.read().decode('utf-8').splitlines()
+            else:
+                lines = resp.text.splitlines()
+
+            data = [json.loads(line) for line in lines]
+            fp, ht = [], []
+            for row in data:
+                coords = row["geometry"]["coordinates"][0]
+                fp_poly = Polygon(coords)
+                if not self._bbox_overlap(fp_poly.bounds, bpoly_bounds):
+                    continue
+                if fp_poly.intersects(bpoly):
+                    fp.append(coords)
+                    h = row["properties"]["height"]
+                    ht.append(round(h * conv_factor, 1) if h != -1 else None)
+            return fp, ht
+
+        except Exception as e:
+            print(f"Error fetching {url}: {e}")
+            return [], []
+
+# TODO: Refactor this method. Maybe in GeoTools?
+    def _bbox_overlap(self, bounds1, bounds2) -> bool:
+        """
+        Check if two bounding boxes overlap.
+
+        Args:
+        bounds1 (Tuple[float, float, float, float]):
+            Bounds of the first geometry (minx, miny, maxx, maxy)
+        bounds2 (Tuple[float, float, float, float]):
+            Bounds of the second geometry (minx, miny, maxx, maxy)
+
+        Returns:
+        bool:
+            True if bounding boxes overlap, False otherwise
+        """
+        return not (
+            bounds1[2] < bounds2[0] or  # maxx1 < minx2
+            bounds1[0] > bounds2[2] or  # minx1 > maxx2
+            bounds1[3] < bounds2[1] or  # maxy1 < miny2
+            bounds1[1] > bounds2[3]     # miny1 > maxy2
+        )
+
+    def _bbox2quadkeys(self, bpoly: Polygon) -> List[int]:
         """
         Convert the bounding box of a polygon to a list of unique quadkeys.
 
@@ -219,12 +312,13 @@ class MS_FootprintScraper(FootprintScraper):
         quadkeys represent the tiles that cover the area of the bounding box.
 
         Args:
-            bpoly (Polygon): A Shapely polygon representing the bounding
-                polygon for an area
+            bpoly (Polygon):
+                A Shapely polygon representing the bounding polygon for an area
 
         Returns:
-            List[int]: A list of unique quadkeys representing the tiles that
-                cover the bounding box.
+            List[int]:
+                A list of unique quadkeys representing the tiles that cover
+                the bounding box.
         """
         # Get the bounds of the bounding box (min_lon, min_lat, max_lon,
         # max_lat):
@@ -254,9 +348,10 @@ class MS_FootprintScraper(FootprintScraper):
 
         return quadkeys
 
-    def _determine_tile_coords(self,
-                               bbox: list[tuple[float, float]]
-                               ) -> tuple[list[int], list[int]]:
+    def _determine_tile_coords(
+            self,
+            bbox: List[Tuple[float, float]]
+    ) -> Tuple[List[int], List[int]]:
         """
         Determine the tile coordinates for a bounding box.
 
@@ -265,12 +360,14 @@ class MS_FootprintScraper(FootprintScraper):
         and returns the x and y tile coordinate ranges for the bounding box.
 
         Args:
-            bbox (list[tuple[float, float]]): A list of tuples, where each
-                tuple contains a pair of coordinates (longitude, latitude)
-                representing the corners of the bounding box.
+            bbox (list[tuple[float, float]]):
+                A list of tuples, where each tuple contains a pair of
+                coordinates (longitude, latitude) representing the corners of
+                the bounding box.
 
         Returns:
-            tuple[List[int], List[int]]: A tuple containing two lists:
+            tuple[List[int], List[int]]:
+                A tuple containing two lists:
                 - The first list contains the x tile coordinates.
                 - The second list contains the y tile coordinates.
         """
@@ -293,18 +390,22 @@ class MS_FootprintScraper(FootprintScraper):
         return xlist, ylist
 
     @staticmethod
-    def _deg2num(lat: float, lon: float, zoom: int) -> tuple[int, int]:
+    def _deg2num(lat: float, lon: float, zoom: int) -> Tuple[int, int]:
         """
         Convert geographic coordinates to tile coordinates at a zoom level.
 
         Args:
-            lat (float): Latitude in decimal degrees.
-            lon (float): Longitude in decimal degrees.
-            zoom (int): Zoom level, which determines the tile grid resolution.
+            lat (float):
+                Latitude in decimal degrees.
+            lon (float):
+                Longitude in decimal degrees.
+            zoom (int):
+                Zoom level, which determines the tile grid resolution.
 
         Returns:
-            tuple[int, int]: A tuple containing the x and y tile coordinates
-                at the given zoom level.
+            tuple[int, int]:
+                A tuple containing the x and y tile coordinates at the given
+                zoom level.
         """
         lat_rad = math.radians(lat)
         n = 2**zoom
@@ -322,11 +423,14 @@ class MS_FootprintScraper(FootprintScraper):
         the x and y tile coordinates.
 
         Args:
-            x_tile (int): The x tile coordinate.
-            y_tile (int): The y tile coordinate.
+            x_tile (int):
+                The x tile coordinate.
+            y_tile (int):
+                The y tile coordinate.
 
         Returns:
-            int: The quadkey as an integer.
+            int:
+                The quadkey as an integer.
         """
         # Convert x and y tiles to binary, remove '0b' prefix:
         x_tile_binary = str(bin(x_tile))[2:]
@@ -350,6 +454,7 @@ class MS_FootprintScraper(FootprintScraper):
 
         return int(quadkey)  # Return the quadkey as an integer
 
+# TODO: Refactor this method. Maybe in a new class called FileHandling?
     @staticmethod
     def _parse_file_size(size_string: str) -> float:
         """
@@ -360,12 +465,13 @@ class MS_FootprintScraper(FootprintScraper):
         equivalent size in bytes.
 
         Args:
-            size_string (str): A string representing the file size, which may
-                include a unit such as 'GB', 'MB', 'KB', or 'B' (e.g., '10GB',
-                '500MB').
+            size_string (str):
+                A string representing the file size, which may include a unit
+                such as 'GB', 'MB', 'KB', or 'B' (e.g., '10GB', '500MB').
 
         Returns:
-            float: The size in bytes as a float. The returned value represents
+            float:
+                The size in bytes as a float. The returned value represents
                 the file size converted to bytes, where 1 GB = 1e9 bytes,
                 1 MB = 1e6 bytes, 1 KB = 1e3 bytes, and 1 B = 1 byte.
         """

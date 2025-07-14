@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-05-2025
+# 06-11-2025
 
 """
 This module defines a class for retrieving data from ArcGIS services APIs.
@@ -51,7 +51,7 @@ import requests
 from requests.adapters import HTTPAdapter, Retry
 from tqdm import tqdm
 from shapely.geometry import Polygon
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from brails.utils import GeoTools
 
 
@@ -77,6 +77,7 @@ class ArcgisAPIServiceHelper:
     - Categorizing and splitting polygon cells based on the element count.
     - Dividing polygons into smaller rectangular cells to ensure a balance of
       elements per cell.
+    - Fetching specified attribute data for given cells in parallel.
 
     The class includes methods for making API requests with retry logic,
     handling transient network errors, and parsing the responses to determine
@@ -107,6 +108,10 @@ class ArcgisAPIServiceHelper:
         get_element_counts(bpoly: Polygon) -> int:
             Retrieves the count of elements within a given polygon's bounding
             box.
+        fetch_data_for_cells(final_cells: list, download_func: Callable,
+                             desc: str) -> dict:
+            Concurrently applies a download function to a list of cells with
+            progress tracking.
 
     Example Usage:
         # Instantiate the helper class with an API endpoint:
@@ -224,9 +229,9 @@ class ArcgisAPIServiceHelper:
         return max_record_count
 
     def download_attr_from_api(
-        self,
-        cell: Polygon,
-        requested_fields: Union[List[str], str]
+            self,
+            cell: Polygon,
+            requested_fields: Union[List[str], str]
     ) -> List:
         """
         Download specified fields from the API for a given cell.
@@ -304,9 +309,30 @@ class ArcgisAPIServiceHelper:
 
         return datalist
 
+    def download_all_attr_from_api(self, cell: Polygon
+                                   ) -> List[Dict[str, Any]]:
+        """
+        Download attribute data for a given cell using the ArcGIS API.
+
+        This method queries the ArcGIS API for all available attributes within
+        the specified polygon cell.
+
+        Args:
+            cell (Polygon):
+                A Shapely Polygon object representing the geographic cell for
+                which to retrieve bridge data.
+
+        Returns:
+            List[Dict[str, Any]]:
+                A list of dictionaries, each representing the attribute data
+                for a bridge within the cell. Each dictionary includes
+                'geometry' and 'attributes' keys as returned by the ArcGIS API.
+        """
+        return self.download_attr_from_api(cell, 'all')
+
     def categorize_and_split_cells(
-        self,
-        preliminary_cells: List[Polygon]
+            self,
+            preliminary_cells: List[Polygon]
     ) -> Tuple[List[Polygon], List[Polygon]]:
         """
         Categorize/split a list of polygon cells based on their element count.
@@ -333,22 +359,11 @@ class ArcgisAPIServiceHelper:
                   elements > max_elements_per_cell).
         """
         # Download the element count for each cell:
-        pbar = tqdm(total=len(preliminary_cells),
-                    desc="Obtaining the number of elements in each cell")
-        results = {}
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_url = {
-                executor.submit(self.get_element_counts, cell): cell
-                for cell in preliminary_cells
-            }
-            for future in concurrent.futures.as_completed(future_to_url):
-                cell = future_to_url[future]
-                pbar.update(1)
-                try:
-                    results[cell] = future.result()
-                except Exception as exc:
-                    results[cell] = None
-                    print(f"{cell} generated an exception: {exc}")
+        results = self.fetch_data_for_cells(
+            preliminary_cells,
+            self.get_element_counts,
+            desc="Obtaining the number of elements in each cell"
+        )
 
         # Iterate through each cell in the preliminary cells list:
         cells_to_split = []
@@ -384,11 +399,53 @@ class ArcgisAPIServiceHelper:
 
         return cells_to_keep, split_cells
 
+    def fetch_data_for_cells(
+            self,
+            final_cells: List[Any],
+            download_func: Callable[[Any], Any],
+            desc: str = "Obtaining the attributes for each cell"
+    ) -> Dict[Any, Any]:
+        """
+        Download data for a list of cells in parallel using provided function.
+
+        Args:
+            final_cells (List[Any]):
+                List of cells to process.
+            download_func (Callable[[Any], Any]):
+                Function to download data for a single cell.
+            desc (str):
+                Description for the progress bar.
+
+        Returns:
+            Dict[Any, Any]:
+                Dictionary mapping each cell to its downloaded data
+                (or None if failed).
+        """
+        results = {}
+        pbar = tqdm(total=len(final_cells), desc=desc)
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_to_cell = {
+                executor.submit(download_func, cell): cell
+                for cell in final_cells
+            }
+            for future in concurrent.futures.as_completed(future_to_cell):
+                cell = future_to_cell[future]
+                pbar.update(1)
+                try:
+                    results[cell] = future.result()
+                except Exception as exc:
+                    results[cell] = None
+                    print(f'{cell} generated an exception: {exc}')
+
+        pbar.close()
+        return results
+
     def split_polygon_into_cells(
-        self,
-        bpoly: Polygon,
-        element_count: int = -1,
-        plot_mesh: str = ''
+            self,
+            bpoly: Polygon,
+            element_count: int = -1,
+            plot_mesh: str = ''
     ) -> List[Polygon]:
         """
         Divide a polygon into smaller cells based on its element count.
@@ -518,8 +575,8 @@ class ArcgisAPIServiceHelper:
 
     @staticmethod
     def _make_request_with_retry(
-        url: str,
-        params: Optional[Dict] = None
+            url: str,
+            params: Optional[Dict] = None
     ) -> requests.Response:
         """
         Make a GET request to the ArcGIS API with retry logic.
