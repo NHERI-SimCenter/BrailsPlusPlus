@@ -309,6 +309,83 @@ class ArcgisAPIServiceHelper:
 
         return datalist
 
+    def download_all_attr_for_region(
+        self,
+        region,
+        plot_cells=False,
+        task_description='Obtaining attributes for each cell'
+    ):
+        """
+        Download all attribute data for the specified region.
+
+        This method:
+            - Retrieves the boundary polygon of the region.
+            - Splits region into smaller cells for manageable data querying.
+            - Refines the mesh by recursively splitting oversized cells.
+            - Optionally plots the final mesh.
+            - Downloads data (e.g., bridge attributes) for each cell using a
+              provided data-fetching function.
+
+        Args:
+            region:
+                A Region object that provides a `.get_boundary()` method
+                returning a polygon, region name, and optional OSM ID.
+            plot_cells (bool, optional):
+                If True, generates and saves a visualization of the final
+                meshed cells.
+            task_description (str, optional):
+                A message string that describes the task being performed,
+                passed to the data-fetching method for logging or display.
+
+        Returns:
+            Tuple:
+                - downloaded_data (Dict[Polygon, List[Dict[str, Any]]]):
+                    Mapping from each final mesh cell polygon to a list of
+                    attribute dictionaries (e.g., representing bridges or other
+                    assets).
+                - final_cells (List[Polygon]):
+                    List of polygons representing the final meshed cells used
+                    for data querying.
+        """
+        # Get the region's boundary polygon and printable name:
+        boundary_polygon, region_name, _ = region.get_boundary()
+
+        print("\nMeshing the defined area...")
+        initial_cells = self.split_polygon_into_cells(boundary_polygon)
+
+        # Refine mesh by splitting cells that exceed element limits:
+        if len(initial_cells) > 1:
+            final_cells = []
+            cells_to_process = initial_cells.copy()
+
+            while cells_to_process:
+                cells_to_keep, cells_to_process = \
+                    self.categorize_and_split_cells(cells_to_process)
+                final_cells.extend(cells_to_keep)
+
+            print(
+                f'\nMeshing complete. Split {region_name} into '
+                f'{len(final_cells)} cells.')
+        else:
+            final_cells = initial_cells.copy()
+            print(
+                f'\nMeshing complete. Covered {region_name} with a single '
+                'rectangular cell.')
+
+        # Optionally plot the final mesh of cells:
+        if plot_cells:
+            mesh_plot_path = region_name.replace(" ", "_") + "_Mesh_Final.png"
+            GeoTools.plot_polygon_cells(
+                boundary_polygon, final_cells, mesh_plot_path)
+
+        # Download bridge attributes for each mesh cell:
+        downloded_data = self.fetch_data_for_cells(
+            final_cells,
+            self.download_all_attr_from_api,
+            desc=task_description
+        )
+        return downloded_data, final_cells
+
     def download_all_attr_from_api(self, cell: Polygon
                                    ) -> List[Dict[str, Any]]:
         """
