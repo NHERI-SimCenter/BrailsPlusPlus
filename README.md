@@ -28,10 +28,8 @@
 
 ## Installation instructions
 
-```BRAILS++``` is NOT YET available on PyPI. For now, please install ```BRAILS++``` by issuing the following command.
-
 ```shell
-pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
+pip install brails
 ```
 
 ## Acknowledgments
