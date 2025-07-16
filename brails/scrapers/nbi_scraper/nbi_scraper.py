@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-07-2025
+# 07-16-2025
 
 """
 This module defines a class for retrieving bridge data from NBI.
@@ -45,36 +45,47 @@ This module defines a class for retrieving bridge data from NBI.
     NBI_Scraper
 """
 
-import concurrent.futures
-from tqdm import tqdm
 from typing import Any, Dict, List
 from shapely.geometry import Point, Polygon
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import Asset, AssetInventory
-from brails.utils import GeoTools, ArcgisAPIServiceHelper
+from brails.utils import ArcgisAPIServiceHelper, UnitConverter
 
-# Define global variables:
-API_ENDPOINT = ('https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/'
-                'services/NTAD_National_Bridge_Inventory/FeatureServer/0/query'
-                )
+# Type of asset covered by the dataset:
 ASSET_TYPE = 'bridge'
-METRIC_ATTR = ['MIN_VERT_CLR_010',
-               'APPR_WIDTH_MT_032',
-               'NAV_VERT_CLR_MT_039',
-               'NAV_HORR_CLR_MT_040',
-               'HORR_CLR_MT_047',
-               'MAX_SPAN_LEN_MT_048',
-               'STRUCTURE_LEN_MT_049',
-               'LEFT_CURB_MT_050A',
-               'RIGHT_CURB_MT_050B',
-               'ROADWAY_WIDTH_MT_051',
-               'DECK_WIDTH_MT_052',
-               'VERT_CLR_OVER_MT_053',
-               'VERT_CLR_UND_054B',
-               'LAT_UND_MT_055B',
-               'LEFT_LAT_UND_MT_056',
-               'IMP_LEN_MT_076',
-               'MIN_NAV_CLR_MT_116']
+
+# API endpoint to access National Bridge Inventory data:
+API_ENDPOINT = (
+    'https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/'
+    'NTAD_National_Bridge_Inventory/FeatureServer/0/query'
+)
+
+# Attributes with associated units and the units they are defined in within
+# the dataset:
+DIMENSIONAL_ATTR = {'MIN_VERT_CLR_010': 'm',
+                    'KILOPOINT_011': 'km',
+                    'DETOUR_KILOS_019': 'km',
+                    'APPR_WIDTH_MT_032': 'm',
+                    'NAV_VERT_CLR_MT_039': 'm',
+                    'NAV_HORR_CLR_MT_040': 'm',
+                    'HORR_CLR_MT_047': 'm',
+                    'MAX_SPAN_LEN_MT_048': 'm',
+                    'STRUCTURE_LEN_MT_049': 'm',
+                    'LEFT_CURB_MT_050A': 'm',
+                    'RIGHT_CURB_MT_050B': 'm',
+                    'ROADWAY_WIDTH_MT_051': 'm',
+                    'DECK_WIDTH_MT_052': 'm',
+                    'VERT_CLR_OVER_MT_053': 'm',
+                    'VERT_CLR_UND_054B': 'm',
+                    'LAT_UND_MT_055B': 'm',
+                    'LEFT_LAT_UND_MT_056': 'm',
+                    'INVENTORY_RATING_066': 'ton',
+                    'IMP_LEN_MT_076': 'm',
+                    'MIN_NAV_CLR_MT_116': 'm'}
+
+# Default units to apply when not explicitly provided by the user:
+DEFAULT_UNITS = {'length': 'ft',
+                 'weight': 'lb'}
 
 
 class NBI_Scraper:
@@ -115,14 +126,8 @@ class NBI_Scraper:
                 provided or if 'length' is not specified, 'ft' (feet) will be
                 used as the default length unit.
         """
-        # If input_dict is None, default to an empty dictionary
-        if input_dict is None:
-            input_dict = {}
-
-        # Use the provided dictionary or default to 'ft'
-        self.length_unit = input_dict.get('length', 'ft').lower()
-        # TODO: Validate length input so that the user is notified of
-        # unsupported inputs.
+        # Parse units from input_dict or fall back to default units:
+        self.units = UnitConverter.parse_units(input_dict or {}, DEFAULT_UNITS)
         self.inventory = AssetInventory()
 
     def get_assets(self, region: RegionBoundary) -> AssetInventory:
@@ -154,122 +159,23 @@ class NBI_Scraper:
             raise TypeError("The 'region' argument must be an instance of the "
                             "'RegionBoundary' class.")
 
-        # Obtain the boundary polygon, print name, and OSM ID of the region:
-        bpoly, queryarea_printname, _ = region.get_boundary()
-
-        # Get the number of elements allowed per cell by the API:
-        api_tools = ArcgisAPIServiceHelper(API_ENDPOINT)
-
-        plot_cells = False  # Set to True for debugging purposes to plot cells
-
-        # Split the region polygon into smaller cells (initial stage):
-        print("\nMeshing the defined area...")
-        preliminary_cells = api_tools.split_polygon_into_cells(bpoly)
-
-        # If there are multiple cells, categorize and split them based on the
-        # element count in each cell:
-        if len(preliminary_cells) > 1:
-            final_cells = []
-            split_cells = preliminary_cells.copy()
-
-            # Continue splitting cells until all cells are within the element
-            # limit:
-            while len(split_cells) != 0:
-                cells_to_keep, split_cells = \
-                    api_tools.categorize_and_split_cells(split_cells)
-                final_cells += cells_to_keep
-            print(f'\nMeshing complete. Split {queryarea_printname} into '
-                  f'{len(final_cells)} cells')
-
-        # If only one cell, no splitting is needed:
-        else:
-            final_cells = preliminary_cells.copy()
-            print(f'\nMeshing complete. Covered {queryarea_printname} '
-                  'with a single rectangular cell')
-
-        # If plot_cells is True, generate a visualization of the final mesh:
-        if plot_cells:
-            mesh_final_fout = queryarea_printname.replace(
-                " ", "_") + "_Mesh_Final.png"
-            GeoTools.plot_polygon_cells(bpoly, final_cells, mesh_final_fout)
-
         # Download bridge data for each cell:
-        results = self._fetch_data_for_cells(final_cells)
+        api_tools = ArcgisAPIServiceHelper(API_ENDPOINT)
+        results, final_cells = api_tools.download_all_attr_for_region(
+            region,
+            task_description='Obtaining the bridge attributes for each cell'
+        )
 
         # Process the downloaded data and save it in an AssetInventory:
-        self._process_data(results, final_cells, bpoly)
+        self._process_data(region, final_cells, results)
         return self.inventory
 
-    def _fetch_data_for_cells(
-            self,
-            final_cells: List[Polygon]
-    ) -> Dict[Polygon, Any]:
-        """
-        Fetch bridge data for each polygonal cell using multithreading.
-
-        This method distributes the task of data retrieval across multiple
-        threads to efficiently query bridge attributes for a list of
-        geographic cells.
-
-        Args:
-            final_cells (List[Polygon]):
-                A list of Shapely Polygon objects representing the cells into
-                which the region was divided for API querying.
-
-        Returns:
-            Dict[Polygon, Any]:
-                A dictionary where each key is a Polygon cell and each value is
-                the data retrieved for that cell (or None if an error
-                occurred).
-        """
-        pbar = tqdm(
-            total=len(final_cells),
-            desc="Obtaining the bridge attributes for each cell",
-        )
-        results = {}
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_url = {
-                executor.submit(self._download_data, cell): cell
-                for cell in final_cells
-            }
-            for future in concurrent.futures.as_completed(future_to_url):
-                cell = future_to_url[future]
-                pbar.update(1)
-                try:
-                    results[cell] = future.result()
-                except Exception as exc:
-                    results[cell] = None
-                    print(f'{cell} generated an exception: {exc}')
-        pbar.close()
-
-        return results
-
-    @staticmethod
-    def _download_data(cell: Polygon) -> List[Dict[str, Any]]:
-        """
-        Download attribute data for a given cell using the ArcGIS API.
-
-        This method queries the ArcGIS API for all available attributes within
-        the specified polygon cell.
-
-        Args:
-            cell (Polygon):
-                A Shapely Polygon object representing the geographic cell for
-                which to retrieve bridge data.
-
-        Returns:
-            List[Dict[str, Any]]:
-                A list of dictionaries, each representing the attribute data
-                for a bridge within the cell. Each dictionary includes
-                'geometry' and 'attributes' keys as returned by the ArcGIS API.
-        """
-        api_tools = ArcgisAPIServiceHelper(API_ENDPOINT)
-        return api_tools.download_attr_from_api(cell, 'all')
-
-    def _process_data(self,
-                      results: Dict[Polygon, List[Dict[str, Any]]],
-                      final_cells: List[Polygon],
-                      boundary_polygon: Polygon) -> None:
+    def _process_data(
+        self,
+        region: RegionBoundary,
+        final_cells: List[Polygon],
+        results: Dict[Polygon, List[Dict[str, Any]]]
+    ) -> None:
         """
         Process the downloaded NBI data and store it in an AssetInventory.
 
@@ -278,17 +184,19 @@ class NBI_Scraper:
         needed, and constructs asset objects for the inventory.
 
         Args:
-            results (Dict[Polygon, List[Dict[str, Any]]]):
-                A mapping of each polygonal cell to a list of attribute
-                dictionaries, each representing a bridge.
+            region (RegionBoundary):
+                The region object containing the boundary polygon used to
+                filter relevant bridge data.
             final_cells (List[Polygon]):
-                The list of polygonal cells that define the meshed region.
-            boundary_polygon (Polygon):
-                The main geographic boundary of the region. Used to filter
-                bridges that fall outside the defined region.
+                List of polygonal cells that subdivide the region and contain
+                bridge data.
+            results (Dict[Polygon, List[Dict[str, Any]]]):
+                A mapping from each cell polygon to a list of dictionaries,
+                each representing a bridge and its associated attributes.
         """
-        # Get the data for cells that are fully contained within the bounding
-        # polygon:
+        # Obtain the boundary polygon for the region:
+        boundary_polygon, _, _ = region.get_boundary()
+
         # Identify the cells that are inside the bounding polygon and record
         # their data:
         data, data_to_filter = [], []
@@ -313,11 +221,16 @@ class NBI_Scraper:
         for index, item in enumerate(data):
             geometry = [[item['geometry']['x'], item['geometry']['y']]]
             asset_features = {**item['attributes'], 'type': ASSET_TYPE}
-            if self.length_unit == 'ft':
-                for feature in METRIC_ATTR:
-                    feature_Value = asset_features.get(feature)
-                    if feature_Value is not None:
-                        asset_features[feature] = feature_Value*3.28084
+            for feature, feature_unit in DIMENSIONAL_ATTR.items():
+                feature_Value = asset_features.get(feature)
+                if feature_Value is not None:
+                    unit_type = UnitConverter.get_unit_type(feature_unit)
+                    target_unit = self.units[unit_type]
+                    asset_features[feature] = UnitConverter.convert_unit(
+                        feature_Value,
+                        feature_unit,
+                        target_unit
+                    )
 
             # Create the Asset and add it to the inventory:
             asset = Asset(index, geometry, asset_features)
