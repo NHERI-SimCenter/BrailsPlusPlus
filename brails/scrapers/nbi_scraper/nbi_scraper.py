@@ -42,7 +42,7 @@ This module defines a class for retrieving bridge data from NBI.
 
 .. autosummary::
 
-    NBI_Scraper
+    NBIScraper
 """
 
 from typing import Any, Dict, List
@@ -88,7 +88,7 @@ DEFAULT_UNITS = {'length': 'ft',
                  'weight': 'lb'}
 
 
-class NBI_Scraper:
+class NBIScraper:
     """
     A class for scraping and processing National Bridge Inventory (NBI) data.
 
