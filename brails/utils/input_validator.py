@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-06-2025
+# 07-24-2025
 
 """
 This module provides a utility class for validating input data in BRAILS.
@@ -44,9 +44,8 @@ This module provides a utility class for validating input data in BRAILS.
 
       InputValidator
 """
-
+import os
 from typing import Any, List, Tuple
-from brails.utils.unit_converter import UNIT_TO_METER
 
 
 class InputValidator:
@@ -57,6 +56,9 @@ class InputValidator:
     structures such as points, linestrings, polygons, and their
     multi-geometries, ensuring conformance with geographic coordinate standards
     (longitude/latitude).
+
+    It also includes a lightweight utility for checking whether a file path
+    points to an image file based on its extension, without opening the file.
 
     All methods are designed to validate nested lists of floats representing
     coordinates, with specific rules for each geometry type.
@@ -85,6 +87,10 @@ class InputValidator:
         is_multipolygon(coordinates: List[List[List[float]]]) -> bool:
             Returns True if the coordinates form a valid MultiPolygon (a list
             of valid Polygons).
+        is_image(filepath: str) -> bool:
+            Returns True if the given path points to a file that exists and has
+            a valid image file extension ('.jpg', '.jpeg', '.png', '.bmp').
+            This method does not read or load the image file.
     """
 
     @staticmethod
@@ -293,19 +299,23 @@ class InputValidator:
         return True
 
     @staticmethod
-    def is_valid_unit(unit: str) -> str:
+    def is_image(filepath: str) -> bool:
         """
-        Validate length unit.
+        Perform a lightweight check to determine if the file is an image.
+
+        This function checks that the path exists, is a file, and has a valid
+        image file extension. It does not open or validate the contents of the
+        file, so it cannot detect corrupted or mislabeled files.
 
         Args:
-            unit (str):
-                The unit to validate.
+            filepath (str):
+                The path to the file to check.
 
         Returns:
             bool:
-                True if the unit is defined in UnitConveter, False otherwise.
+                True if the path points to a file with a supported image
+                extension, otherwise False.
         """
-        unit = unit.lower()
-        if unit not in UNIT_TO_METER:
-            return False
-        return True
+        valid_exts = ('.jpg', '.jpeg', '.png', '.bmp')
+        return os.path.isfile(filepath) and filepath.lower().endswith(
+            valid_exts)
