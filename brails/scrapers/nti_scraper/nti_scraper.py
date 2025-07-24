@@ -57,7 +57,7 @@ ASSET_TYPE = 'tunnel'
 # API endpoint to access National Tunnel Inventory data:
 API_ENDPOINT = (
     'https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/'
-    'NTAD_National_Tunnel_Inventory/FeatureServer/0'
+    'NTAD_National_Tunnel_Inventory/FeatureServer/0/query'
 )
 
 
