@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-06-2025
+# 07-24-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -225,21 +225,26 @@ class GeoTools:
         plt.show()
 
     @staticmethod
-    def write_polygon_to_geojson(poly: Polygon | MultiPolygon,
-                                 output_file: str):
+    def write_polygon_to_geojson(
+        poly: Union[Polygon, MultiPolygon],
+        output_file: str
+    ):
         """
         Write a Shapely Polygon or MultiPolygon to a GeoJSON file.
 
         Args:
-            poly (Polygon | MultiPolygon):
-                A Shapely polygon or MultiPolygon to be written.
+            poly (Union[Polygon, MultiPolygon]):
+                A Shapely Polygon or MultiPolygon to be written.
             output_file (str):
                 The output filename for the GeoJSON file.
 
+        Notes:
+            - This method does not perform validation on the geometry.
+            - The file extension will be replaced with '.geojson' if not
+              present.
         """
         if 'geojson' not in output_file.lower():
-            output_file = output_file.replace(
-                output_file.split('.')[-1], 'geojson')
+            output_file = output_file.rsplit('.', 1)[0] + '.geojson'
 
         # Create the GeoJSON structure:
         geojson = {
