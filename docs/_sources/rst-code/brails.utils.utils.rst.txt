@@ -1,0 +1,7 @@
+brails.utils.utils module
+=========================
+
+.. automodule:: brails.utils.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:

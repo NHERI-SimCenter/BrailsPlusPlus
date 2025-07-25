@@ -7,7 +7,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Image Processors &mdash; BRAILS++  documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
 
@@ -15,7 +15,7 @@
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../../_static/copybutton.js?v=f281be69"></script>
@@ -60,7 +60,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
@@ -110,13 +109,13 @@
 <span class="linenos">14</span><span class="sd">                  5) determine occupancy</span>
 <span class="linenos">15</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="linenos">16</span>
-<span class="linenos">17</span><span class="kn">import</span> <span class="nn">os</span>
-<span class="linenos">18</span><span class="kn">import</span> <span class="nn">argparse</span>
-<span class="linenos">19</span><span class="kn">import</span> <span class="nn">ast</span>
+<span class="linenos">17</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="linenos">18</span><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="linenos">19</span><span class="kn">import</span><span class="w"> </span><span class="nn">ast</span>
 <span class="linenos">20</span>
-<span class="linenos">21</span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="linenos">21</span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="linenos">22</span>
-<span class="linenos">23</span><span class="kn">from</span> <span class="nn">brails</span> <span class="kn">import</span> <span class="n">Importer</span>
+<span class="linenos">23</span><span class="kn">from</span><span class="w"> </span><span class="nn">brails</span><span class="w"> </span><span class="kn">import</span> <span class="n">Importer</span>
 <span class="linenos">24</span>
 <span class="linenos">25</span><span class="n">API_KEY_DIR</span> <span class="o">=</span> <span class="s1">&#39;../api_key.txt&#39;</span>
 <span class="linenos">26</span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">API_KEY_DIR</span><span class="p">):</span>
@@ -126,7 +125,7 @@
 <span class="linenos">30</span>    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s1">&#39;API key file not found. Please ensure the file&#39;</span>
 <span class="linenos">31</span>                            <span class="sa">f</span><span class="s1">&#39; exists at: </span><span class="si">{</span><span class="n">API_KEY_DIR</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 <span class="linenos">32</span>
-<span class="linenos">33</span><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<span class="linenos">33</span><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
 <span class="linenos">34</span>    
 <span class="linenos">35</span>    <span class="c1"># Create the argument parser</span>
 <span class="linenos">36</span>    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Demonstrate Importer.&quot;</span><span class="p">)</span>

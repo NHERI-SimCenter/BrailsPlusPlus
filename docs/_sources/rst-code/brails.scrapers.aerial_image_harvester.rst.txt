@@ -1,0 +1,7 @@
+brails.scrapers.aerial\_image\_harvester module
+===============================================
+
+.. automodule:: brails.scrapers.aerial_image_harvester
+   :members:
+   :undoc-members:
+   :show-inheritance:

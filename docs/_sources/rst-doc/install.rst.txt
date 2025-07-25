@@ -4,9 +4,17 @@
 Installation
 ************
 
-BRAILS++ is not yet available on PyPI. In the meantime, you can install BRAILS++ by running the following command in a terminal window:
+BRAILS++ is available on `PyPI <https://pypi.org/project/brails/>`_:
 
-.. code-block::
+.. code-block:: bash
 
-   pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
+   pip install brails
 
+.. note::
+
+   BRAILS++ is under continuous development. You can obtain the latest bleeding-edge version directly from GitHub using:
+
+   .. code-block:: bash
+
+      pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
+      

@@ -13,7 +13,7 @@ with open('README.md', encoding='utf-8') as f:
 setup(
     name='brails',
     version=version,
-    description='BRAILS++: Building Regional Asset Inventories at Large Scale',
+    description='BRAILS++: Building Regional Asset Inventories for Large Scale Simulation',
     long_description=long_description,
     author='NHERI SimCenter',
     author_email='nheri-simcenter@berkeley.edu',

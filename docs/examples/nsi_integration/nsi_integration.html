@@ -7,7 +7,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NSI Integration &mdash; BRAILS++  documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
 
@@ -15,7 +15,7 @@
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../../_static/copybutton.js?v=f281be69"></script>
@@ -63,7 +63,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
@@ -102,13 +101,13 @@
 <li><p>Integrate an existing <strong>AssetInventory</strong> with NSI. For each <strong>Asset</strong> in the asset inventory, the features from NSI are obtained and merged with the asset’s existing features. This is done by finding an asset in the NSI located in the footprint.</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">  1</span><span class="c1"># written: fmk, bacetiner</span>
-<span class="linenos">  2</span><span class="c1"># Last updated: 11-06-2024</span>
+<span class="linenos">  2</span><span class="c1"># Last updated: 03-12-2025</span>
 <span class="linenos">  3</span><span class="c1"># License: BSD-2</span>
 <span class="linenos">  4</span>
 <span class="linenos">  5</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="linenos">  6</span><span class="sd">brails_nsi.py</span>
 <span class="linenos">  7</span><span class="sd">=============</span>
-<span class="linenos">  8</span><span class="sd">Example demonstrating the use of NSI scraper module .</span>
+<span class="linenos">  8</span><span class="sd">Example demonstrating the use of NSI scraper module.</span>
 <span class="linenos">  9</span>
 <span class="linenos"> 10</span><span class="sd"> Purpose: Testing 1) get_class method of Importer</span>
 <span class="linenos"> 11</span><span class="sd">                  2) get_raw_data_given_boundary and</span>
@@ -118,93 +117,93 @@
 <span class="linenos"> 15</span><span class="sd">                     objects</span>
 <span class="linenos"> 16</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="linenos"> 17</span>
-<span class="linenos"> 18</span><span class="kn">import</span> <span class="nn">argparse</span>
-<span class="linenos"> 19</span><span class="kn">import</span> <span class="nn">sys</span>
-<span class="linenos"> 20</span><span class="kn">import</span> <span class="nn">os</span>
-<span class="linenos"> 21</span><span class="kn">import</span> <span class="nn">json</span>
-<span class="linenos"> 22</span>
-<span class="linenos"> 23</span><span class="c1"># the following line is not neeeded if brails is imported from pypi</span>
-<span class="linenos"> 24</span><span class="c1">#   .. it is included here as it allows us to test the code on a nightly basis</span>
-<span class="linenos"> 25</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;../../&quot;</span><span class="p">)</span>
-<span class="linenos"> 26</span>
-<span class="linenos"> 27</span><span class="kn">import</span> <span class="nn">brails</span>
-<span class="linenos"> 28</span>
-<span class="linenos"> 29</span><span class="kn">from</span> <span class="nn">brails</span> <span class="kn">import</span> <span class="n">Importer</span>
+<span class="linenos"> 18</span><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="linenos"> 19</span><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="linenos"> 20</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="linenos"> 21</span>
+<span class="linenos"> 22</span><span class="kn">from</span><span class="w"> </span><span class="nn">brails</span><span class="w"> </span><span class="kn">import</span> <span class="n">Importer</span>
+<span class="linenos"> 23</span>
+<span class="linenos"> 24</span><span class="c1"># the following line is not neeeded if brails is imported from pypi</span>
+<span class="linenos"> 25</span><span class="c1">#   .. it is included here as it allows us to test the code on a nightly basis</span>
+<span class="linenos"> 26</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;../../&quot;</span><span class="p">)</span>
+<span class="linenos"> 27</span>
+<span class="linenos"> 28</span><span class="n">FILE_PATH</span> <span class="o">=</span> <span class="s1">&#39;tmp/smallinv.geojson&#39;</span>
+<span class="linenos"> 29</span>
 <span class="linenos"> 30</span>
-<span class="linenos"> 31</span><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-<span class="linenos"> 32</span>    
-<span class="linenos"> 33</span>    <span class="c1"># Create the argument parser</span>
-<span class="linenos"> 34</span>    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Demonstrate Importer.&quot;</span><span class="p">)</span>
-<span class="linenos"> 35</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;scraper&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Footprint Scraper&quot;</span><span class="p">)</span>
-<span class="linenos"> 36</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Location&quot;</span><span class="p">)</span>
-<span class="linenos"> 37</span>
-<span class="linenos"> 38</span>    <span class="c1"># Parse the arguments</span>
-<span class="linenos"> 39</span>    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
-<span class="linenos"> 40</span>
-<span class="linenos"> 41</span>    <span class="c1"># Create an importer to get the required classes:</span>
-<span class="linenos"> 42</span>    <span class="n">importer</span> <span class="o">=</span> <span class="n">Importer</span><span class="p">()</span>
-<span class="linenos"> 43</span>    
-<span class="linenos"> 44</span>    <span class="c1"># Select a region and create its RegionBoundary:</span>
-<span class="linenos"> 45</span>    <span class="n">region_boundary_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s1">&#39;RegionBoundary&#39;</span><span class="p">)</span>
-<span class="linenos"> 46</span>    <span class="n">region_boundary_object</span> <span class="o">=</span> <span class="n">region_boundary_class</span><span class="p">({</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;locationName&#39;</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">location</span><span class="p">})</span>
-<span class="linenos"> 47</span>
-<span class="linenos"> 48</span>    <span class="c1">#</span>
-<span class="linenos"> 49</span>    <span class="c1"># Use NSI_Parser to get the NSI raw data for the specified region</span>
-<span class="linenos"> 50</span>    <span class="c1">#</span>
-<span class="linenos"> 51</span>    
-<span class="linenos"> 52</span>    <span class="n">nsi_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s1">&#39;NSI_Parser&#39;</span><span class="p">)</span>
-<span class="linenos"> 53</span>    <span class="n">nsi</span> <span class="o">=</span> <span class="n">nsi_class</span><span class="p">()</span>
-<span class="linenos"> 54</span>    <span class="n">nsi_inventory</span> <span class="o">=</span> <span class="n">nsi</span><span class="o">.</span><span class="n">get_raw_data_given_boundary</span><span class="p">(</span><span class="n">region_boundary_object</span><span class="p">,</span> <span class="s1">&#39;ft&#39;</span><span class="p">)</span>
-<span class="linenos"> 55</span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Total number of assets detected using NSI is </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">nsi_inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos"> 31</span><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">scraper</span><span class="p">):</span>
+<span class="linenos"> 32</span>    <span class="c1"># Create an importer to get the required classes:</span>
+<span class="linenos"> 33</span>    <span class="n">importer</span> <span class="o">=</span> <span class="n">Importer</span><span class="p">()</span>
+<span class="linenos"> 34</span>
+<span class="linenos"> 35</span>    <span class="c1"># Select a region and create its RegionBoundary:</span>
+<span class="linenos"> 36</span>    <span class="n">region_boundary_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s1">&#39;RegionBoundary&#39;</span><span class="p">)</span>
+<span class="linenos"> 37</span>    <span class="n">region_boundary_object</span> <span class="o">=</span> <span class="n">region_boundary_class</span><span class="p">(</span>
+<span class="linenos"> 38</span>        <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;locationName&#39;</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">location</span><span class="p">})</span>
+<span class="linenos"> 39</span>
+<span class="linenos"> 40</span>    <span class="c1">#</span>
+<span class="linenos"> 41</span>    <span class="c1"># Use NSI_Parser to get the NSI raw data for the specified region</span>
+<span class="linenos"> 42</span>    <span class="c1">#</span>
+<span class="linenos"> 43</span>
+<span class="linenos"> 44</span>    <span class="n">nsi_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s1">&#39;NSI_Parser&#39;</span><span class="p">)</span>
+<span class="linenos"> 45</span>    <span class="n">nsi</span> <span class="o">=</span> <span class="n">nsi_class</span><span class="p">()</span>
+<span class="linenos"> 46</span>    <span class="n">nsi_inventory</span> <span class="o">=</span> <span class="n">nsi</span><span class="o">.</span><span class="n">get_raw_data</span><span class="p">(</span><span class="n">region_boundary_object</span><span class="p">)</span>
+<span class="linenos"> 47</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Total number of assets detected using NSI is &#39;</span>
+<span class="linenos"> 48</span>          <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">nsi_inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos"> 49</span>
+<span class="linenos"> 50</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL NSI INVENTORY  *********&#39;</span><span class="p">)</span>
+<span class="linenos"> 51</span>    <span class="n">nsi_inventory_subset</span> <span class="o">=</span> <span class="n">nsi_inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+<span class="linenos"> 52</span>    <span class="n">nsi_inventory_subset</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="linenos"> 53</span>
+<span class="linenos"> 54</span>    <span class="c1"># Now Use the FootprintScraper to get footprints and integrate NSI</span>
+<span class="linenos"> 55</span>    <span class="c1"># inventory data - will integrate on smaller inventory set:</span>
 <span class="linenos"> 56</span>
-<span class="linenos"> 57</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL NSI INVENTORY  *********&#39;</span><span class="p">)</span>    
-<span class="linenos"> 58</span>    <span class="n">nsi_inventory_subset</span> <span class="o">=</span> <span class="n">nsi_inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>    
-<span class="linenos"> 59</span>    <span class="n">nsi_inventory_subset</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>        
-<span class="linenos"> 60</span>    
-<span class="linenos"> 61</span>    <span class="c1">#</span>
-<span class="linenos"> 62</span>    <span class="c1"># Now Use the FootprintScraper to get footprints and integrate NSI inventory data</span>
-<span class="linenos"> 63</span>    <span class="c1">#   - will integrate on smaller inventory set</span>
-<span class="linenos"> 64</span>    <span class="c1">#</span>
-<span class="linenos"> 65</span>
+<span class="linenos"> 57</span>    <span class="n">scraper_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="n">scraper</span><span class="p">)</span>
+<span class="linenos"> 58</span>    <span class="n">scraper</span> <span class="o">=</span> <span class="n">scraper_class</span><span class="p">({</span><span class="s1">&#39;length&#39;</span><span class="p">:</span> <span class="s1">&#39;ft&#39;</span><span class="p">})</span>
+<span class="linenos"> 59</span>    <span class="n">scraper_inventory</span> <span class="o">=</span> <span class="n">scraper</span><span class="o">.</span><span class="n">get_footprints</span><span class="p">(</span><span class="n">region_boundary_object</span><span class="p">)</span>
+<span class="linenos"> 60</span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Total number of assets detected using </span><span class="si">{</span><span class="n">scraper</span><span class="si">}</span><span class="s1"> &#39;</span>
+<span class="linenos"> 61</span>          <span class="sa">f</span><span class="s1">&#39;is </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">scraper_inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos"> 62</span>
+<span class="linenos"> 63</span>    <span class="c1"># Create inventories that are a small subset of the obtained footprints &amp;</span>
+<span class="linenos"> 64</span>    <span class="c1"># print:</span>
+<span class="linenos"> 65</span>    <span class="n">inventory_subset</span> <span class="o">=</span> <span class="n">scraper_inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
 <span class="linenos"> 66</span>
-<span class="linenos"> 67</span>    <span class="n">scraper_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="p">)</span>
-<span class="linenos"> 68</span>    <span class="n">scraper</span> <span class="o">=</span> <span class="n">scraper_class</span><span class="p">({</span><span class="s1">&#39;length&#39;</span><span class="p">:</span> <span class="s1">&#39;ft&#39;</span><span class="p">})</span>
-<span class="linenos"> 69</span>    <span class="n">scraper_inventory</span> <span class="o">=</span> <span class="n">scraper</span><span class="o">.</span><span class="n">get_footprints</span><span class="p">(</span><span class="n">region_boundary_object</span><span class="p">)</span>
-<span class="linenos"> 70</span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Total number of assets detected using </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="si">}</span><span class="s1"> is </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">scraper_inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>    
-<span class="linenos"> 71</span>    <span class="c1"># Create inventories that are a small subset of the obtained footprints &amp; print:</span>
-<span class="linenos"> 72</span>    <span class="n">inventory_subset1</span> <span class="o">=</span> <span class="n">scraper_inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
-<span class="linenos"> 73</span>    <span class="n">inventory_subset2</span> <span class="o">=</span> <span class="n">scraper_inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>    
-<span class="linenos"> 74</span>    
-<span class="linenos"> 75</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH NO NSI_DATA *********&#39;</span><span class="p">)</span>    
-<span class="linenos"> 76</span>    <span class="n">inventory_subset1</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
-<span class="linenos"> 77</span>    
-<span class="linenos"> 78</span>    <span class="c1"># integrate subset with raw and filtered NSI data</span>
-<span class="linenos"> 79</span>    <span class="n">subset_nsi_raw_data</span> <span class="o">=</span> <span class="n">nsi</span><span class="o">.</span><span class="n">get_raw_data_given_inventory</span><span class="p">(</span><span class="n">inventory_subset1</span><span class="p">,</span> <span class="s1">&#39;ft&#39;</span><span class="p">)</span>
-<span class="linenos"> 80</span>    <span class="n">subset_nsi_processed_data</span> <span class="o">=</span> <span class="n">nsi</span><span class="o">.</span><span class="n">get_filtered_data_given_inventory</span><span class="p">(</span><span class="n">inventory_subset2</span><span class="p">,</span> <span class="s1">&#39;ft&#39;</span><span class="p">)</span>
-<span class="linenos"> 81</span>    
-<span class="linenos"> 82</span>    <span class="c1">#</span>
-<span class="linenos"> 83</span>    <span class="c1"># Print the inventories</span>
-<span class="linenos"> 84</span>    <span class="c1">#</span>
-<span class="linenos"> 85</span>    
-<span class="linenos"> 86</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH RAW NSI DATA *********&#39;</span><span class="p">)</span>
-<span class="linenos"> 87</span>    <span class="n">subset_nsi_raw_data</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
-<span class="linenos"> 88</span>
-<span class="linenos"> 89</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH PROCESSES NSI DATA*********&#39;</span><span class="p">)</span>
-<span class="linenos"> 90</span>    <span class="n">subset_nsi_processed_data</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
-<span class="linenos"> 91</span>
-<span class="linenos"> 92</span>    <span class="c1">#</span>
-<span class="linenos"> 93</span>    <span class="c1"># Write the extracted inventory to a GeoJSON file:</span>
-<span class="linenos"> 94</span>    <span class="c1">#</span>
-<span class="linenos"> 95</span>    
-<span class="linenos"> 96</span>    <span class="n">FILE_PATH</span> <span class="o">=</span> <span class="s1">&#39;tmp/smallinv.geojson&#39;</span>
-<span class="linenos"> 97</span>    <span class="n">directory</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">FILE_PATH</span><span class="p">)</span>
-<span class="linenos"> 98</span>    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="linenos"> 99</span>    <span class="n">geojson</span> <span class="o">=</span> <span class="n">subset_nsi_processed_data</span><span class="o">.</span><span class="n">write_to_geojson</span><span class="p">(</span><span class="n">FILE_PATH</span><span class="p">)</span>
-<span class="linenos">100</span>
-<span class="linenos">101</span>    
-<span class="linenos">102</span><span class="c1"># Run the main function if this script is executed directly</span>
-<span class="linenos">103</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-<span class="linenos">104</span>    <span class="n">main</span><span class="p">()</span>        
+<span class="linenos"> 67</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH NO NSI_DATA *********&#39;</span><span class="p">)</span>
+<span class="linenos"> 68</span>    <span class="n">inventory_subset</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="linenos"> 69</span>
+<span class="linenos"> 70</span>    <span class="c1"># integrate subset with raw and filtered NSI data</span>
+<span class="linenos"> 71</span>    <span class="n">subset_nsi_processed_data</span> <span class="o">=</span> <span class="n">nsi</span><span class="o">.</span><span class="n">get_filtered_data_given_inventory</span><span class="p">(</span>
+<span class="linenos"> 72</span>        <span class="n">inventory_subset</span><span class="p">,</span> <span class="s1">&#39;ft&#39;</span><span class="p">)</span>
+<span class="linenos"> 73</span>
+<span class="linenos"> 74</span>    <span class="c1"># Print the inventories:</span>
+<span class="linenos"> 75</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">******** SMALL INVENTORY WITH PROCESSES NSI DATA*********&#39;</span><span class="p">)</span>
+<span class="linenos"> 76</span>    <span class="n">subset_nsi_processed_data</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="linenos"> 77</span>
+<span class="linenos"> 78</span>    <span class="c1"># Write the extracted inventory to a GeoJSON file:</span>
+<span class="linenos"> 79</span>    <span class="n">directory</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">FILE_PATH</span><span class="p">)</span>
+<span class="linenos"> 80</span>    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="linenos"> 81</span>
+<span class="linenos"> 82</span>    <span class="n">_</span> <span class="o">=</span> <span class="n">subset_nsi_processed_data</span><span class="o">.</span><span class="n">write_to_geojson</span><span class="p">(</span><span class="n">FILE_PATH</span><span class="p">)</span>
+<span class="linenos"> 83</span>
+<span class="linenos"> 84</span>
+<span class="linenos"> 85</span><span class="c1"># Run the main function if this script is executed directly:</span>
+<span class="linenos"> 86</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="linenos"> 87</span>    <span class="c1"># Set up command-line arguments:</span>
+<span class="linenos"> 88</span>    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s1">&#39;Get NSI inventory for a &#39;</span>
+<span class="linenos"> 89</span>                                     <span class="s1">&#39;location using the specified footprint &#39;</span>
+<span class="linenos"> 90</span>                                     <span class="s1">&#39;scraper.&#39;</span><span class="p">)</span>
+<span class="linenos"> 91</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;scraper&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;?&#39;</span><span class="p">,</span>
+<span class="linenos"> 92</span>                        <span class="n">default</span><span class="o">=</span><span class="s1">&#39;OSM_FootprintScraper&#39;</span><span class="p">,</span>
+<span class="linenos"> 93</span>                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Name of the footprint scraper.&quot;</span><span class="p">)</span>
+<span class="linenos"> 94</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;?&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;Tiburon, CA&#39;</span><span class="p">,</span>
+<span class="linenos"> 95</span>                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Name of the location to analyze.&quot;</span><span class="p">)</span>
+<span class="linenos"> 96</span>
+<span class="linenos"> 97</span>    <span class="c1"># Parse the command-line arguments:</span>
+<span class="linenos"> 98</span>    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+<span class="linenos"> 99</span>    <span class="nb">print</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+<span class="linenos">100</span>    <span class="k">try</span><span class="p">:</span>
+<span class="linenos">101</span>        <span class="c1"># Run the main function</span>
+<span class="linenos">102</span>        <span class="n">main</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">location</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="p">)</span>
+<span class="linenos">103</span>    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="linenos">104</span>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Error</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The script is executed by entering the following command in a terminal window:</p>

@@ -1,0 +1,314 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.utils.geo_tools module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">brails.utils.geo_tools module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/docs/rst-code/brails.utils.geo_tools.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.utils.geo_tools">
+<span id="brails-utils-geo-tools-module"></span><h1>brails.utils.geo_tools module<a class="headerlink" href="#module-brails.utils.geo_tools" title="Link to this heading"></a></h1>
+<p>This module defines a class for geospatial analysis and operations.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#brails.utils.geo_tools.GeoTools" title="brails.utils.geo_tools.GeoTools"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GeoTools</span></code></a>()</p></td>
+<td><p>A collection of static methods for geospatial analysis and operations.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.utils.geo_tools.</span></span><span class="sig-name descname"><span class="pre">GeoTools</span></span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A collection of static methods for geospatial analysis and operations.</p>
+<p>The GeoTools class provides various utility functions to perform common
+geospatial tasks, including distance calculations, polygon meshing,
+plotting, and GeoJSON file handling. The methods leverage Shapely
+geometries to operate on points and polygons, making it suitable for
+geographical data manipulation and visualization.</p>
+<dl class="simple">
+<dt>Methods:</dt><dd><dl class="simple">
+<dt>haversine_dist(p1: tuple, p2: tuple) -&gt; float:</dt><dd><p>Calculate the Haversine distance between two geographical points.</p>
+</dd>
+<dt>mesh_polygon(polygon: Polygon, rows: int, cols: int) -&gt;</dt><dd><p>list[Polygon]:
+Split a polygon into a grid of individual rectangular polygons.</p>
+</dd>
+<dt>plot_polygon_cells(bpoly: Polygon | MultiPolygon,</dt><dd><p>rectangles: list[Polygon], output_file: str = ‘’):
+Plot a polygon/its rectangular mesh, optionally saving the plot.</p>
+</dd>
+<dt>write_polygon_to_geojson(poly: Polygon | MultiPolygon,</dt><dd><p>output_file: str):
+Write a Shapely Polygon or MultiPolygon to a GeoJSON file.</p>
+</dd>
+<dt>match_points_to_polygons(points: list, polygons: list) -&gt;</dt><dd><p>tuple[list, dict]:
+Match points to polygons and return the correspondence data.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.haversine_dist">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">haversine_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.haversine_dist" title="Link to this definition"></a></dt>
+<dd><p>Calculate the Haversine distance between two points.</p>
+<p>This function computes the shortest distance over the earth’s surface
+between two points specified by their latitude and longitude.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>p1 (tuple):</dt><dd><p>The first point as a list containing two floating-point
+values, where the first element is the latitude and the second
+is the longitude of the point in degrees.</p>
+</dd>
+<dt>p2 (tuple):</dt><dd><p>The second point as a list containing two floating-point
+values, where the first element is the latitude and the second
+is the longitude of the point in degrees.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>float:</dt><dd><p>The Haversine distance between the two points in feet.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.is_box">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Polygon</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.is_box" title="Link to this definition"></a></dt>
+<dd><p>Determine whether a given Shapely geometry is a rectangular box.</p>
+<p>A box is defined as a Polygon with exactly four corners and opposite
+sides being equal. This function checks if the geometry is a Polygon
+with 5 coordinates (the 5th being a duplicate of the first to close the
+polygon), and verifies that opposite sides are equal, ensuring that the
+polygon is rectangular.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>geometry (Polygon):</dt><dd><p>A Shapely Polygon object to be checked.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>bool:</dt><dd><p>True if the Polygon is a rectangular box, False otherwise.</p>
+</dd>
+</dl>
+</dd>
+<dt>Raises:</dt><dd><dl class="simple">
+<dt>TypeError:</dt><dd><p>If the input is not a Shapely Polygon object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.match_points_to_polygons">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">match_points_to_polygons</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Point</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polygons</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Polygon</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Point</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Point</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.match_points_to_polygons" title="Link to this definition"></a></dt>
+<dd><p>Match points to polygons and return the correspondence data.</p>
+<p>This function finds Shapely points that fall within given polygons.
+If multiple points exist within a polygon, it selects the point closest
+to the polygon’s centroid.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>points (list):</dt><dd><p>A list of Shapely points.</p>
+</dd>
+<dt>polygons (list):</dt><dd><p>A list of polygon coordinates defined in EPSG 4326
+(longitude, latitude).</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>tuple[list, dict, list]:</dt><dd><ul class="simple">
+<li><p>A list of matched Shapely Point geometries.</p></li>
+<li><dl class="simple">
+<dt>A dictionary mapping each polygon (represented as a string)</dt><dd><p>to the corresponding matched point.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>A list of the indices of polygons matched to points, with</dt><dd><p>each index listed in the same order as the list of points.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.mesh_polygon">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mesh_polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">polygon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Polygon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Polygon</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.mesh_polygon" title="Link to this definition"></a></dt>
+<dd><p>Split a Spolygon into a grid of individual rectangular polygons.</p>
+<p>This function divides the area of the input polygon into a specified
+number of rows and columns, creating a mesh of rectangular cells.
+Each cell is checked for intersection with the input polygon, and
+only the intersecting parts are returned.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>polygon (Polygon):</dt><dd><p>A Shapely polygon to be meshed.</p>
+</dd>
+<dt>rows (int):</dt><dd><p>The number of rows to divide the polygon into.</p>
+</dd>
+<dt>cols (int):</dt><dd><p>The number of columns to divide the polygon into.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>list[Polygon]:</dt><dd><p>A list of Shapely polygons representing the individual
+rectangular cells that mesh the input polygon.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.plot_polygon_cells">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">plot_polygon_cells</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bpoly</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Polygon</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MultiPolygon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rectangles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Polygon</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.plot_polygon_cells" title="Link to this definition"></a></dt>
+<dd><p>Plot a polygon and its rectangular mesh, optionally saving the plot.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>bpoly (Polygon | MultiPolygon):</dt><dd><p>A Shapely polygon or MultiPolygon to plot.</p>
+</dd>
+<dt>rectangles (list[Polygon]):</dt><dd><p>A list of Shapely polygons representing the rectangular cells
+that mesh input polygon.</p>
+</dd>
+<dt>output_file (str, optional):</dt><dd><p>Filename to save the plot as a PNG image. If empty string, the
+plot is not saved.</p>
+</dd>
+</dl>
+</dd>
+<dt>Raises:</dt><dd><dl class="simple">
+<dt>ValueError:</dt><dd><p>If <cite>output_file</cite> is provided and an invalid filename is given.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.write_polygon_to_geojson">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">write_polygon_to_geojson</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">poly</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Polygon</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MultiPolygon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.write_polygon_to_geojson" title="Link to this definition"></a></dt>
+<dd><p>Write a Shapely Polygon or MultiPolygon to a GeoJSON file.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>poly (Union[Polygon, MultiPolygon]):</dt><dd><p>A Shapely Polygon or MultiPolygon to be written.</p>
+</dd>
+<dt>output_file (str):</dt><dd><p>The output filename for the GeoJSON file.</p>
+</dd>
+</dl>
+</dd>
+<dt>Notes:</dt><dd><ul class="simple">
+<li><p>This method does not perform validation on the geometry.</p></li>
+<li><p>The file extension will be replaced with ‘.geojson’ if not
+present.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, fmk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

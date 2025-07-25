@@ -4,7 +4,7 @@
 About
 *****
 
-The Building Regional Asset Inventories at Large Scale (BRAILS++) is an object-oriented framework for creating applications that focus on generating asset inventories for large geographic regions. The framework was developed by `NHERI SimCenter <https://simcenter.designsafe-ci.org/>`_ for the creation of asset inventories needed to understand the effects of natural hazards on the built environment.
+The Building Regional Asset Inventories for Large Scale Simulation (BRAILS++) is an object-oriented framework for creating applications that focus on generating asset inventories for large geographic regions. The framework was developed by `NHERI SimCenter <https://simcenter.designsafe-ci.org/>`_ for the creation of asset inventories needed to understand the effects of natural hazards on the built environment.
 
 Like any object-oriented framework, BRAILS provides a number of high level classes whose interfaces prescribe a means
 by which the classes in the workflow can be used. The following are these high level classes:
