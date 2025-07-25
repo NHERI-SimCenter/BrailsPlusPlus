@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Year Built Classification &mdash; BRAILS++  documentation</title>
+  <title>Raised Foundation Classification &mdash; BRAILS++  documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
@@ -68,9 +68,9 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Year Built Classification</li>
+      <li class="breadcrumb-item active">Raised Foundation Classification</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../../../_sources/brails/processors/year_built_classifier/README.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../../../_sources/brails/processors/foundation_classifier/README.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -78,54 +78,21 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="year-built-classification">
-<h1><a class="toc-backref" href="#id1" role="doc-backlink">Year Built Classification</a><a class="headerlink" href="#year-built-classification" title="Link to this heading"></a></h1>
-<nav class="contents" id="table-of-contents">
-<p class="topic-title">Table of Contents</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="#year-built-classification" id="id1">Year Built Classification</a></p>
-<ul>
-<li><p><a class="reference internal" href="#what-is-year-built-classification" id="id2">What is Year Built Classification</a></p>
-<ul>
-<li><p><a class="reference internal" href="#copyright" id="id3">Copyright</a></p></li>
-<li><p><a class="reference internal" href="#bsd-3-caluse-license" id="id4">BSD 3-Caluse license</a></p></li>
-</ul>
-</li>
-<li><p><a class="reference internal" href="#installation" id="id5">Installation</a></p></li>
-<li><p><a class="reference internal" href="#how-to-use" id="id6">How to use</a></p>
-<ul>
-<li><p><a class="reference internal" href="#input-data-format-for-training" id="id7">Input Data Format for Training</a></p></li>
-<li><p><a class="reference internal" href="#execute-with-pretrained-model" id="id8">Execute with pretrained model</a></p></li>
-<li><p><a class="reference internal" href="#cleaning-the-dataset" id="id9">Cleaning the Dataset</a></p></li>
-<li><p><a class="reference internal" href="#training-the-model" id="id10">Training the Model</a></p></li>
-<li><p><a class="reference internal" href="#foundation-classification-model-training" id="id11">Foundation Classification Model Training</a></p></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</nav>
-<section id="what-is-year-built-classification">
-<h2><a class="toc-backref" href="#id2" role="doc-backlink">What is Year Built Classification</a><a class="headerlink" href="#what-is-year-built-classification" title="Link to this heading"></a></h2>
-<p>With this module images of houses can be classifier into categories,
-where each represents a range of years in which the house was built.
-For classification, the path of a folder holding the images has to be supplied.
-The result will be a comma separated value file in that folder,
-listing the filenames and classification result.</p>
-<p>The code is optimized to extract suitable features from Google Streetview
-images to classify houses into decades. However, the code does not make
-assumptions about the semantic meaning of the provided folders. They
-have to be consistent between the training, validation and test folders but
-can be decades or shorter or longer and even uneven timespans.</p>
+  <section id="raised-foundation-classification">
+<h1>Raised Foundation Classification<a class="headerlink" href="#raised-foundation-classification" title="Link to this heading"></a></h1>
+<section id="what-is-raised-foundation-classification">
+<h2>What is Raised Foundation Classification<a class="headerlink" href="#what-is-raised-foundation-classification" title="Link to this heading"></a></h2>
+<p>The code in this package identifies if a building is on piles of piers or posts (PPP). For classification, the path of a folder holding the images has to be supplied. The result will be a comma-separated value file listing the filenames and classification results in that folder.</p>
+<p>There is further optional code to improve the quality and speed of the classification. Currently, classification reaches an F1-score of 72% on a random test set, holding out 20% of the data.</p>
 <section id="copyright">
-<h3><a class="toc-backref" href="#id3" role="doc-backlink">Copyright</a><a class="headerlink" href="#copyright" title="Link to this heading"></a></h3>
+<h3>Copyright<a class="headerlink" href="#copyright" title="Link to this heading"></a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Copyright</span> <span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="mi">2018</span><span class="p">,</span> <span class="n">The</span> <span class="n">Regents</span> <span class="n">of</span> <span class="n">the</span> <span class="n">University</span> <span class="n">of</span> <span class="n">California</span>
 <span class="n">Contact</span><span class="p">:</span> <span class="n">Sascha</span> <span class="n">Hornauer</span>  <span class="o">-</span> <span class="n">sascha</span><span class="o">.</span><span class="n">hornauer</span><span class="nd">@uni</span><span class="o">-</span><span class="n">oldenburg</span><span class="o">.</span><span class="n">de</span>
 </pre></div>
 </div>
 </section>
-<section id="bsd-3-caluse-license">
-<h3><a class="toc-backref" href="#id4" role="doc-backlink">BSD 3-Caluse license</a><a class="headerlink" href="#bsd-3-caluse-license" title="Link to this heading"></a></h3>
+<section id="bsd-3-clause-license">
+<h3>BSD 3-Clause license<a class="headerlink" href="#bsd-3-clause-license" title="Link to this heading"></a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Redistribution</span> <span class="ow">and</span> <span class="n">use</span> <span class="ow">in</span> <span class="n">source</span> <span class="ow">and</span> <span class="n">binary</span> <span class="n">forms</span><span class="p">,</span> <span class="k">with</span> <span class="ow">or</span> <span class="n">without</span>
 <span class="n">modification</span><span class="p">,</span> <span class="n">are</span> <span class="n">permitted</span> <span class="n">provided</span> <span class="n">that</span> <span class="n">the</span> <span class="n">following</span> <span class="n">conditions</span> <span class="n">are</span> <span class="n">met</span><span class="p">:</span>
 
@@ -155,110 +122,137 @@ can be decades or shorter or longer and even uneven timespans.</p>
 </section>
 </section>
 <section id="installation">
-<h2><a class="toc-backref" href="#id5" role="doc-backlink">Installation</a><a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
-<p>The following commands clone the BRAILS repository and enters the year built classification module.
-Requirements are installed using pip. Weight files of models will be downloaded automatically upon
-first run and saved in subfolders. The final command adds the current folder to the PYTHONPATH
-environment variable which is necessary for training.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/NHERI-SimCenter/BRAILS.git BRAILS
-cd BRAILS/brails/modules/Year_Built_Classifier
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<p>The following commands clone the BRAILS repository and enter the foundation classification module.
+Requirements are installed using pip. The final command adds the current folder to the PYTHONPATH environment variable, which is necessary for training.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>git https://github.com/NHERI-SimCenter/BrailsPlusPlus.git BrailsPlusPlus
+cd BrailsPlusPlus/brails/processors/FoundationClassifier
 python3 -m pip install -r requirements.txt
 export PYTHONPATH=$PYTHONPATH:`pwd`
 </pre></div>
 </div>
 </section>
 <section id="how-to-use">
-<h2><a class="toc-backref" href="#id6" role="doc-backlink">How to use</a><a class="headerlink" href="#how-to-use" title="Link to this heading"></a></h2>
+<h2>How to use<a class="headerlink" href="#how-to-use" title="Link to this heading"></a></h2>
+<section id="execute-with-the-pretrained-model">
+<h3>Execute with the pretrained model<a class="headerlink" href="#execute-with-the-pretrained-model" title="Link to this heading"></a></h3>
+<p>The detect code will download approximately 300 MB of required model weight files at the start of the process.</p>
+<p>Detection on a single image or all images in a folder is performed the same way. The default classifier with the provided checkpoint expects as input <cite>–image-path</cite>, i.e., the path for either a single image or a folder that contains a set of images.</p>
+<p>One way of improving detection is to mask the parts of the image which are not a building. That is done with <cite>–mask-buildings</cite>. Please see <cite>Pre-Saving Masked Images</cite> for information on how to create masks. If masks should not be used, remove the <cite>–mask-buildings</cite> flag from the command line. If masks should be generated on the fly, remove the <cite>–load-masks flag</cite>; however, this will take more computational time and GPU memory.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">detect</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">image</span><span class="o">-</span><span class="n">path</span> <span class="o">&lt;</span><span class="n">IMG_FOLDER</span> <span class="ow">or</span> <span class="n">IMAGE</span> <span class="n">PATH</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">mask</span><span class="o">-</span><span class="n">buildings</span> <span class="o">--</span><span class="n">load</span><span class="o">-</span><span class="n">masks</span>
+</pre></div>
+</div>
+<p>The result will be a comma-separated value file <em>&lt;IMG_FOLDER&gt;_prediction_results.csv</em>, which contains in each row a filename for each image and <cite>1</cite> if the building is higher than 8 ft or 0 otherwise.</p>
+</section>
+</section>
+<section id="optional-improvements">
+<h2>Optional Improvements<a class="headerlink" href="#optional-improvements" title="Link to this heading"></a></h2>
+<section id="pre-saving-masked-images">
+<h3>Pre-Saving Masked Images<a class="headerlink" href="#pre-saving-masked-images" title="Link to this heading"></a></h3>
+<p>One step of the detection is masking out the background from the buildings.
+This step can take up some time so for re-training of the model, it is suggested
+to pre-compute the masks with this command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">save_masked_images</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">image</span><span class="o">-</span><span class="n">path</span> <span class="o">&lt;</span><span class="n">IMG_FOLDER</span> <span class="ow">or</span> <span class="n">IMAGE</span> <span class="n">PATH</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Masks of images will be saved and expected at the same folder as the original images.</p>
+</section>
 <section id="input-data-format-for-training">
-<h3><a class="toc-backref" href="#id7" role="doc-backlink">Input Data Format for Training</a><a class="headerlink" href="#input-data-format-for-training" title="Link to this heading"></a></h3>
-<p>Training, validation and test folders should be separate. A top folder can contain the
-whole dataset as in the following structure. However, subfolders to train on can be chosen separately.</p>
+<h3>Input Data Format for Training<a class="headerlink" href="#input-data-format-for-training" title="Link to this heading"></a></h3>
+<p>Training, validation, and test folders should be separate. The name is arbitrary, and each path can be stated separately with command line parameters during training. Within each folder, there has to be one folder for each label, named <em>ppp_buildings</em>, containing images of buildings from the PPP category and others containing buildings that are not in that category. The exact structure holds for the val and test folders.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>IMG_FOLDER
 ├── train
-│   └── class 1
+│   └── ppp_buildings
 │       ├── image_00x.jpg
-│       └── image_00x.jpg
-│   └── class 2
-│       └── image_00x.jpg
+│       └── image_00x-mask.png
+│   └── other
+│       ├── image_00x.jpg
+│       └── image_00x-mask.png
 ├── val
 │   └── &lt;structure identical to train&gt;
 └── test
     └── &lt;structure identical to train&gt;
 </pre></div>
 </div>
-<p>Within each folder, each subfolder signifies one class. The user is free in how many classes should exist or
-how their year range should be. So e.g. if the user would like to have three classes, one for buildings
-older than 1970, one for 1970-2000 and one for 2000 onwards, three folders should be created: ‘1970’,’1970-2000’,’2000’
-and the desired building files have to be distributed accordingly by the user.</p>
-</section>
-<section id="execute-with-pretrained-model">
-<h3><a class="toc-backref" href="#id8" role="doc-backlink">Execute with pretrained model</a><a class="headerlink" href="#execute-with-pretrained-model" title="Link to this heading"></a></h3>
-<p>Detection on a single image or all images in a folder is started in the same way. The default will load
-a trained checkpoint and classify all images or a single image, provided with the –image-path argument.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">detect</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">image</span><span class="o">-</span><span class="n">path</span> <span class="o">&lt;</span><span class="n">IMG_FOLDER</span> <span class="ow">or</span> <span class="n">IMAGE</span> <span class="n">PATH</span><span class="o">&gt;</span>  <span class="o">--</span><span class="n">checkpoint</span> <span class="o">&lt;</span><span class="n">PATH</span> <span class="n">TO</span> <span class="n">CHECKPOINT</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p>The result will be a comma separated value file <em>&lt;IMG_FOLDER&gt;_prediction_results.csv</em> which contains in each
-row a filename for each image and the predicted year built range class as well as the ground truth, as taken
-from the folder names.
-If the image path points to a folder in the structure, described at <cite>Input Data Format for Training</cite> then the</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">calc</span><span class="o">-</span><span class="n">perf</span>
-</pre></div>
-</div>
-<p>command line argument can be set. This will evaluate the performance, using the folder structure as labels.
-Therefore, the label structure has to be the same as it was when the checkpoint was trained. It will show
-performance measures after testing all images and save a confusion matrix to show class-wise performance.</p>
-<p>The prediction falls in 6 categories:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">0</span> <span class="p">:</span> <span class="n">before</span> <span class="mi">1969</span>
-<span class="mi">1</span> <span class="p">:</span> <span class="mi">1970</span><span class="o">-</span><span class="mi">1979</span>
-<span class="mi">2</span> <span class="p">:</span> <span class="mi">1980</span><span class="o">-</span><span class="mi">1989</span>
-<span class="mi">3</span> <span class="p">:</span> <span class="mi">1990</span><span class="o">-</span><span class="mi">1999</span>
-<span class="mi">4</span> <span class="p">:</span> <span class="mi">2000</span><span class="o">-</span><span class="mi">2009</span>
-<span class="mi">5</span> <span class="p">:</span> <span class="n">after</span> <span class="mi">2010</span>
-</pre></div>
-</div>
+<p>For training it is necessary to create the masks beforehand, as described in the previous section.</p>
 </section>
 <section id="cleaning-the-dataset">
-<h3><a class="toc-backref" href="#id9" role="doc-backlink">Cleaning the Dataset</a><a class="headerlink" href="#cleaning-the-dataset" title="Link to this heading"></a></h3>
-<p>Many datasets have outliers which do not show buildings but empty properties or
-objects covering the camera. It is suggested to use the cleaning method described
-and provided in detail in the foundation classification module.</p>
+<h3>Cleaning the Dataset<a class="headerlink" href="#cleaning-the-dataset" title="Link to this heading"></a></h3>
+<p>Many datasets contain outliers that do not represent buildings, but instead consist images of obstructed buildings or objects that are not buildings. A semi-automated method for identifying and removing these noisy images from the dataset is outlined below.</p>
 </section>
 <section id="training-the-model">
-<h3><a class="toc-backref" href="#id10" role="doc-backlink">Training the Model</a><a class="headerlink" href="#training-the-model" title="Link to this heading"></a></h3>
-<p>Training can happen with or without soft labels. This is an experimental variation which
-supports the notion that the limits of the year built labels may not reflect actual visual
-differences in houses well. E.g. a separation by decades may lead to a training regime that
-tries to put the same architectural style in two different classes.</p>
+<h3>Training the Model<a class="headerlink" href="#training-the-model" title="Link to this heading"></a></h3>
+<p>Training can happen in two different ways: With an attention based network or with a standard ResNet-50, with or without unsupervised pretraining.</p>
 </section>
-<section id="foundation-classification-model-training">
-<h3><a class="toc-backref" href="#id11" role="doc-backlink">Foundation Classification Model Training</a><a class="headerlink" href="#foundation-classification-model-training" title="Link to this heading"></a></h3>
-<p>The model can be trained on existing data. The folder structure shown in <cite>Input Data Format for Training</cite>
-has to be observed so the right labels are assigned. The most important command line parameters are:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">image</span><span class="o">-</span><span class="n">path</span> <span class="n">Folder</span> <span class="n">on</span> <span class="n">which</span> <span class="n">to</span> <span class="n">train</span><span class="o">.</span> <span class="n">This</span> <span class="n">can</span> <span class="n">be</span> <span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span> <span class="n">the</span> <span class="n">train</span> <span class="n">folder</span> <span class="k">as</span> <span class="ow">in</span> <span class="n">the</span> <span class="nb">input</span> <span class="n">data</span> <span class="nb">format</span> <span class="n">example</span><span class="o">.</span>
+<section id="unsupervised-pretraining">
+<h3>Unsupervised Pretraining<a class="headerlink" href="#unsupervised-pretraining" title="Link to this heading"></a></h3>
+<p>The network used for foundation classification can be pre-trained on a different task to improve
+the results. Because of the unsupervised nature of this pre-training the whole dataset can be used,
+including validation and test data. It is also possible to set different sub-sets with the
+command line preferences. This step will produce a checkpoint which can be loaded for later
+foundation detection, called in the following &lt;NPID CHECKPOINT&gt;.</p>
+<p>The most important command line parameters are:</p>
+<pre class="literal-block">--train-data, --val-data for setting the folders in which images are kept for training and validation.
+Validation here is a kNN step which will judge the quality of the feature embedding of the network. The
+reported performance is correlated with the foundation detection performance but not the same
 
-<span class="o">--</span><span class="n">checkpoint</span> <span class="n">Load</span> <span class="n">a</span> <span class="n">checkpoint</span> <span class="n">to</span> <span class="k">continue</span> <span class="n">training</span>
+--resume Optionally, a checkpoint can be loaded which was pretrained on ImageNet to further improve training. The same
+parameter is used if training is interrupted and should be continued
 
-<span class="o">--</span><span class="n">exp</span><span class="o">-</span><span class="n">name</span> <span class="n">Folder</span> <span class="n">name</span> <span class="n">to</span> <span class="n">save</span> <span class="n">the</span> <span class="n">results</span> <span class="n">to</span>
+--name Logfiles and checkpoints will be created with this name as prefix.
 
-<span class="o">--</span><span class="n">soft</span><span class="o">-</span><span class="n">labels</span> <span class="n">Activate</span> <span class="n">use</span> <span class="n">of</span> <span class="n">soft</span> <span class="n">labels</span>
+--mask-buildings Masks are used to mask out buildings. See <a class="reference internal" href="#pre-saving-masked-images">Pre-Saving Masked Images</a> for how to create masks from images.
 
-<span class="o">--</span><span class="n">gaussian</span><span class="o">-</span><span class="n">std</span> <span class="n">Choose</span> <span class="n">standard</span> <span class="n">deviation</span> <span class="n">of</span> <span class="n">the</span> <span class="n">gaussian</span>
+--epochs How many epochs should be trained.
 
-<span class="o">--</span><span class="n">epochs</span> <span class="n">Epochs</span> <span class="n">to</span> <span class="n">train</span>
-</pre></div>
-</div>
-<p>All parameters can be seen by just parsing the -h parameter. The command to train 100 epochs is therefore:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">train</span><span class="o">.</span><span class="n">py</span>
-    <span class="o">--</span><span class="n">image</span><span class="o">-</span><span class="n">path</span> <span class="o">&lt;</span><span class="n">TRAINING</span> <span class="n">IMAGE</span> <span class="n">FOLDER</span><span class="o">&gt;</span>
-    <span class="o">--</span><span class="n">exp</span><span class="o">-</span><span class="n">name</span> <span class="o">&lt;</span><span class="n">NAME</span> <span class="n">FOR</span> <span class="n">LOGFILES</span> <span class="n">AND</span> <span class="n">CHECKPOINTS</span><span class="o">&gt;</span>
+--low-dim The embedded dimension of the approach. This is a hyperparameter which can be
+optimized. For most purposes the default of 128 will suffice. Smaller values can be
+chosen for datasets, significantly smaller than 1000 training images.</pre>
+<p>Further parameters can be seen by just parsing the -h parameter. The command to train 100 epochs is therefore:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">npid</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">py</span>
+    <span class="o">--</span><span class="n">train</span><span class="o">-</span><span class="n">data</span> <span class="o">&lt;</span><span class="n">TRAINING</span> <span class="n">IMAGE</span> <span class="n">FOLDER</span><span class="o">&gt;</span>
+    <span class="o">--</span><span class="n">val</span><span class="o">-</span><span class="n">data</span> <span class="o">&lt;</span><span class="n">VALIDATION</span> <span class="n">IMAGE</span> <span class="n">FOLDER</span><span class="o">&gt;</span>
+    <span class="o">--</span><span class="n">resume</span> <span class="o">&lt;</span><span class="n">CHECKPOINT</span> <span class="n">TO</span> <span class="n">LOAD</span><span class="o">&gt;</span>
+    <span class="o">--</span><span class="n">name</span> <span class="o">&lt;</span><span class="n">NAME</span> <span class="n">FOR</span> <span class="n">LOGFILES</span> <span class="n">AND</span> <span class="n">CHECKPOINTS</span><span class="o">&gt;</span>
+    <span class="o">--</span><span class="n">mask</span><span class="o">-</span><span class="n">buildings</span>
     <span class="o">--</span><span class="n">epochs</span> <span class="mi">100</span>
 </pre></div>
 </div>
-<p>This will create a folder with the experiment name and save epoch-wise training results in it, along
-with the checkpoints containing the weights. Note that this does only evaluate the results on the
-training set, with and without random perturbations. That means to investigate the
-validation and test performance, the detect script with activated –calc-perf option has to be used.</p>
+<p>During training two checkpoints will be saved in the same folder, one which is always the checkpoint of the
+latest epoch and one which is the best, according to the internal quality measure.</p>
+</section>
+<section id="foundation-classification-model-training">
+<h3>Foundation Classification Model Training<a class="headerlink" href="#foundation-classification-model-training" title="Link to this heading"></a></h3>
+<p>The model can be trained on existing data. The folder structure shown in <a class="reference internal" href="#input-data-format-for-training">Input Data Format for Training</a>
+has to be observed so the right labels are assigned. The most important command line parameters are:</p>
+<pre class="literal-block">--epochs Amount of epochs to train
+
+--train-data, --val-data, --test-data for setting the folders in which images are kept for training and validation.
+These folders should contain separate data. --test-data is only needed in combination with the --eval flag to
+check the performance on the test data.
+
+--eval Evaluate the trained model on the test set. A model should be loaded with the --checkpoint flag.
+
+--checkpoint Load a checkpoint to continue training or evaluate the performance on the test set.
+
+--mask-buildings Mask the buildings. Warning: Prior masking is mandatory. On the fly generation does not work for training.
+See <a class="reference internal" href="#pre-saving-masked-images">Pre-Saving Masked Images</a> for how to create masks from images.
+
+--freeze-layers When loading from a checkpoint, all layers apart from the final fully connected layer can be frozen
+for finetuning.
+
+--pretrained Removes saved classifier weights from a checkpoint and uses the remaining for pretraining. Load the checkpoint via --checkpoint
+
+--exp-name  Prefix for logfiles and checkpoints</pre>
+<p>Further parameters can be seen by just parsing the -h parameter. The command to train 100 epochs is therefore:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">train</span><span class="o">.</span><span class="n">py</span>
+    <span class="o">--</span><span class="n">train</span><span class="o">-</span><span class="n">data</span> <span class="o">&lt;</span><span class="n">TRAINING</span> <span class="n">IMAGE</span> <span class="n">FOLDER</span><span class="o">&gt;</span>
+    <span class="o">--</span><span class="n">val</span><span class="o">-</span><span class="n">data</span> <span class="o">&lt;</span><span class="n">VALIDATION</span> <span class="n">IMAGE</span> <span class="n">FOLDER</span><span class="o">&gt;</span>
+    <span class="o">--</span><span class="n">exp</span><span class="o">-</span><span class="n">name</span> <span class="o">&lt;</span><span class="n">NAME</span> <span class="n">FOR</span> <span class="n">LOGFILES</span> <span class="n">AND</span> <span class="n">CHECKPOINTS</span><span class="o">&gt;</span>
+    <span class="o">--</span><span class="n">mask</span><span class="o">-</span><span class="n">buildings</span>
+    <span class="o">--</span><span class="n">epochs</span> <span class="mi">100</span>
+</pre></div>
+</div>
 </section>
 </section>
 </section>

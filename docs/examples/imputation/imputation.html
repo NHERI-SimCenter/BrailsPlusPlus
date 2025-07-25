@@ -7,7 +7,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Imputation Algorithms &mdash; BRAILS++  documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
       <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-gallery.css?v=26227f6e" />
@@ -16,7 +16,7 @@
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../../_static/copybutton.js?v=f281be69"></script>
@@ -24,7 +24,7 @@
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="brails package" href="../../rst-code/brails.html" />
+    <link rel="next" title="Acknowledgements" href="../../rst-doc/acknowledgements.html" />
     <link rel="prev" title="Image Processors" href="../image_processor/image_processors.html" /> 
 </head>
 
@@ -66,7 +66,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
@@ -124,13 +123,13 @@ in an inventory. In this example, the user has a csv file that they will use to 
 <span class="linenos">10</span>
 <span class="linenos">11</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="linenos">12</span>
-<span class="linenos">13</span><span class="kn">import</span> <span class="nn">os</span>
-<span class="linenos">14</span><span class="kn">import</span> <span class="nn">sys</span>
-<span class="linenos">15</span><span class="kn">import</span> <span class="nn">json</span>
+<span class="linenos">13</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="linenos">14</span><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="linenos">15</span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="linenos">16</span>
-<span class="linenos">17</span><span class="kn">from</span> <span class="nn">brails.utils.importer</span> <span class="kn">import</span> <span class="n">Importer</span>
-<span class="linenos">18</span><span class="kn">from</span> <span class="nn">brails.types.image_set</span> <span class="kn">import</span> <span class="n">ImageSet</span>
-<span class="linenos">19</span><span class="kn">from</span> <span class="nn">brails.types.asset_inventory</span> <span class="kn">import</span> <span class="n">Asset</span><span class="p">,</span> <span class="n">AssetInventory</span>
+<span class="linenos">17</span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Importer</span>
+<span class="linenos">18</span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.types.image_set</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageSet</span>
+<span class="linenos">19</span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.types.asset_inventory</span><span class="w"> </span><span class="kn">import</span> <span class="n">Asset</span><span class="p">,</span> <span class="n">AssetInventory</span>
 <span class="linenos">20</span>
 <span class="linenos">21</span>
 <span class="linenos">22</span><span class="c1"># create the importer</span>
@@ -153,8 +152,8 @@ in an inventory. In this example, the user has a csv file that they will use to 
 <span class="linenos">39</span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;INCOMPLETE ASSET: </span><span class="si">{</span><span class="n">inventory</span><span class="o">.</span><span class="n">get_asset_features</span><span class="p">(</span><span class="mi">4</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 <span class="linenos">40</span>
 <span class="linenos">41</span><span class="n">knn_imputer_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s2">&quot;KnnImputer&quot;</span><span class="p">)</span>
-<span class="linenos">42</span><span class="n">imputer</span><span class="o">=</span><span class="n">knn_imputer_class</span><span class="p">()</span>
-<span class="linenos">43</span><span class="n">new_inventory</span> <span class="o">=</span> <span class="n">imputer</span><span class="o">.</span><span class="n">impute</span><span class="p">(</span><span class="n">inventory</span><span class="p">,</span><span class="n">n_possible_worlds</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="linenos">42</span><span class="n">imputer</span><span class="o">=</span><span class="n">knn_imputer_class</span><span class="p">(</span><span class="n">inventory</span><span class="p">,</span><span class="n">n_possible_worlds</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="linenos">43</span><span class="n">new_inventory</span> <span class="o">=</span> <span class="n">imputer</span><span class="o">.</span><span class="n">impute</span><span class="p">()</span>
 <span class="linenos">44</span>
 <span class="linenos">45</span><span class="c1">#</span>
 <span class="linenos">46</span><span class="c1"># Saving the imputed database into a geojson file </span>
@@ -226,7 +225,7 @@ output.</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../image_processor/image_processors.html" class="btn btn-neutral float-left" title="Image Processors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../../rst-code/brails.html" class="btn btn-neutral float-right" title="brails package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../../rst-doc/acknowledgements.html" class="btn btn-neutral float-right" title="Acknowledgements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
