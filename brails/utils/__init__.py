@@ -43,6 +43,7 @@ Available classes:
 - InputValidator: Class for validating BRAILS input data
 - InputValidator: Class for validating BRAILS AssetInventory objects
 - SpatialJoinMethods: Methods to spatially merge AssetInventory objects
+- ModelUtils: Utility class for computer vision models in BRAILS
 
 """
 from .importer import Importer
@@ -53,3 +54,4 @@ from .unit_converter import UnitConverter
 from .input_validator import InputValidator
 from .inventory_validator import InventoryValidator
 from .spatial_join_methods.base import SpatialJoinMethods
+from .model_utils import ModelUtils
