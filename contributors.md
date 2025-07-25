@@ -6,6 +6,8 @@
 - John Vouvakis for the Importer class
 - Sangri-Yi for Imputation & Inference
 - Brian Wang for Incorporation of Large Scale Vision Models utilized in some segmetation and classification classes
+- Steven Klepac & Arthriya Subgranon for  for the Detectron2-based First Floor Height prediction module
+
 
 ## Feedback, Suggestions, Provision of Existing Algorithms & Data
 - Large Scale Vision Model Incorporation: Stella Yu, Fei Pan

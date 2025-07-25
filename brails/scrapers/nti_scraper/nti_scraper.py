@@ -38,11 +38,11 @@
 # 07-16-2025
 
 """
-This module defines a class for retrieving bridge data from NBI.
+This module defines a class for retrieving tunnel data from NTI.
 
 .. autosummary::
 
-    NBIScraper
+    NTIScraper
 """
 
 from typing import Any, Dict, List
@@ -52,47 +52,39 @@ from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import ArcgisAPIServiceHelper, UnitConverter
 
 # Type of asset covered by the dataset:
-ASSET_TYPE = 'bridge'
+ASSET_TYPE = 'tunnel'
 
-# API endpoint to access National Bridge Inventory data:
+# API endpoint to access National Tunnel Inventory data:
 API_ENDPOINT = (
     'https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/'
-    'NTAD_National_Bridge_Inventory/FeatureServer/0/query'
+    'NTAD_National_Tunnel_Inventory/FeatureServer/0/query'
 )
+
 
 # Attributes with associated units and the units they are defined in within
 # the dataset:
-DIMENSIONAL_ATTR = {'MIN_VERT_CLR_010': 'm',
-                    'KILOPOINT_011': 'km',
-                    'DETOUR_KILOS_019': 'km',
-                    'APPR_WIDTH_MT_032': 'm',
-                    'NAV_VERT_CLR_MT_039': 'm',
-                    'NAV_HORR_CLR_MT_040': 'm',
-                    'HORR_CLR_MT_047': 'm',
-                    'MAX_SPAN_LEN_MT_048': 'm',
-                    'STRUCTURE_LEN_MT_049': 'm',
-                    'LEFT_CURB_MT_050A': 'm',
-                    'RIGHT_CURB_MT_050B': 'm',
-                    'ROADWAY_WIDTH_MT_051': 'm',
-                    'DECK_WIDTH_MT_052': 'm',
-                    'VERT_CLR_OVER_MT_053': 'm',
-                    'VERT_CLR_UND_054B': 'm',
-                    'LAT_UND_MT_055B': 'm',
-                    'LEFT_LAT_UND_MT_056': 'm',
-                    'INVENTORY_RATING_066': 'ton',
-                    'IMP_LEN_MT_076': 'm',
-                    'MIN_NAV_CLR_MT_116': 'm'}
+DIMENSIONAL_ATTR = {'detour_length_a7': 'mi',
+                    'tunnel_length_g1': 'ft',
+                    'min_vert_clearance_over_tunnel_': 'ft',
+                    'roadway_width_curb_to_curb_g3': 'ft',
+                    'left_sidewalk_width_g4': 'ft',
+                    'right_sidewalk_width_g5': 'ft',
+                    'posting_load_gross_l5': 'ton_us',
+                    'posting_load_axle_l6': 'ton_us',
+                    'posting_load_type_3_l7': 'ton_us',
+                    'posting_load_type_3S2_l8': 'ton_us',
+                    'posting_load_type_33_l9': 'ton_us'}
 
 # Default units to apply when not explicitly provided by the user:
 DEFAULT_UNITS = {'length': 'ft',
                  'weight': 'lb'}
 
 
-class NBIScraper:
+class NTIScraper:
     """
-    A class for scraping and processing National Bridge Inventory (NBI) data.
+    A class for scraping and processing National Tunnel Inventory (NTI) data.
 
-    The class handles tasks such as fetching and processing bridge data,
+    The class handles tasks such as fetching and processing tunnel data,
     meshing the region into smaller cells for efficient data retrieval, and
     organizing the results into an AssetInventory.
 
@@ -104,7 +96,7 @@ class NBIScraper:
 
     Methods:
         get_assets(region: RegionBoundary) -> AssetInventory:
-            Retrieves bridge inventory data within a given region boundary,
+            Retrieves tunnel inventory data within a given region boundary,
             processes the data, and returns the inventory of assets.
     """
 
@@ -132,20 +124,20 @@ class NBIScraper:
 
     def get_assets(self, region: RegionBoundary) -> AssetInventory:
         """
-        Retrieve bridge inventory within a given region.
+        Retrieve tunnel inventory within a given region.
 
         This method processes the region boundary, splits it into smaller
-        cells, fetches the necessary bridge data for each cell, and returns the
-        processed bridge asset inventory.
+        cells, fetches the necessary tunnel data for each cell, and returns the
+        processed tunnel asset inventory.
 
         Args:
             region (RegionBoundary):
                 A `RegionBoundary` object representing the geographic region
-                for which to retrieve bridge inventory data.
+                for which to retrieve tunnel inventory data.
 
         Returns:
             AssetInventory:
-                An `AssetInventory` object containing the bridge assets within
+                An `AssetInventory` object containing the tunnel assets within
                 the specified region.
 
         Raises:
@@ -159,11 +151,11 @@ class NBIScraper:
             raise TypeError("The 'region' argument must be an instance of the "
                             "'RegionBoundary' class.")
 
-        # Download bridge data for each cell:
+        # Download tunnel data for each cell:
         api_tools = ArcgisAPIServiceHelper(API_ENDPOINT)
         results, final_cells = api_tools.download_all_attr_for_region(
             region,
-            task_description='Obtaining the bridge attributes for each cell'
+            task_description='Obtaining the attributes of tunnels in each cell'
         )
 
         # Process the downloaded data and save it in an AssetInventory:
@@ -177,22 +169,22 @@ class NBIScraper:
         results: Dict[Polygon, List[Dict[str, Any]]]
     ) -> None:
         """
-        Process the downloaded NBI data and store it in an AssetInventory.
+        Process the downloaded NTI data and store it in an AssetInventory.
 
-        This method filters bridge data retrieved from each cell based on
+        This method filters tunnel data retrieved from each cell based on
         whether the geometry lies within the region boundary, converts units if
         needed, and constructs asset objects for the inventory.
 
         Args:
             region (RegionBoundary):
                 The region object containing the boundary polygon used to
-                filter relevant bridge data.
+                filter relevant tunnel data.
             final_cells (List[Polygon]):
                 List of polygonal cells that subdivide the region and contain
-                bridge data.
+                tunnel data.
             results (Dict[Polygon, List[Dict[str, Any]]]):
                 A mapping from each cell polygon to a list of dictionaries,
-                each representing a bridge and its associated attributes.
+                each representing a tunnel and its associated attributes.
         """
         # Obtain the boundary polygon for the region:
         boundary_polygon, _, _ = region.get_boundary()
@@ -215,7 +207,7 @@ class NBIScraper:
                 data.append(item)
 
         # Display the number of elements detected:
-        print(f'\nFound a total of {len(data)} bridges.')
+        print(f'\nFound a total of {len(data)} tunnels.')
 
         # Save the results in the inventory:
         for index, item in enumerate(data):
@@ -235,8 +227,3 @@ class NBIScraper:
             # Create the Asset and add it to the inventory:
             asset = Asset(index, geometry, asset_features)
             self.inventory.add_asset(index, asset)
-
-        # TODO: Remove duplicate bridges resulting from the way NBI stores data
-        # across different states. Solution likely requires using
-        # structure_number_008, othr_state_struc_no_099, and
-        # other_state_pcnt_098b fields.

@@ -35,15 +35,21 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 07-14-2025
+# 07-15-2025
 
 """
-This module defines a class for performing unit conversions.
+This module defines a class for performing unit parsing and conversions.
 
 .. autosummary::
 
     UnitConverter
 """
+# Implemented unit types:
+LENGTH = 'length'
+AREA = 'area'
+WEIGHT = 'weight'
+
+# Conversion factors from meters:
 UNIT_TO_METER = {
     'm': 1.0,
     'km': 1000.0,
@@ -55,6 +61,7 @@ UNIT_TO_METER = {
     'mi': 1609.344
 }
 
+# Conversion factors from kilograms:
 UNIT_TO_KG = {
     'mg': 0.000001,
     'g': 0.001,
@@ -66,7 +73,7 @@ UNIT_TO_KG = {
     'ton_uk': 1016.04691  # UK ton
 }
 
-
+# Common aliases for the implemented units:
 UNIT_ALIASES = {
     # Length
     'meter': 'm', 'meters': 'm',
@@ -107,13 +114,13 @@ class UnitConverter:
     - Weight (e.g., kilograms to pounds)
 
     Supported unit types and examples:
-        • Length units:
+        Length units:
             'm', 'km', 'cm', 'mm', 'in', 'ft', 'yd', 'mi'
 
-        • Area units (derived from squared base length units):
+        Area units (derived from squared base length units):
             'm2', 'km2', 'cm2', 'mm2', 'in2', 'ft2', 'yd2', 'mi2'
 
-        • Weight units:
+        Weight units:
             - Metric: 'mg', 'g', 'kg', 'ton' (metric ton = 1,000 kg)
             - Imperial:
                 'oz'       = ounce
@@ -129,17 +136,32 @@ class UnitConverter:
             - Square meters for area
             - Kilograms for weight
 
-     Methods:
-        - convert_length(value, from_unit, to_unit):
-            Convert length units.
-        - convert_area(value, from_unit, to_unit):
-            Convert area units.
-        - convert_weight(value, from_unit, to_unit):
-            Convert weight units.
-        - convert_unit(value, from_unit, to_unit):
-            General-purpose converter (auto-detects type).
-        - print_supported_units():
-            Display all supported units.
+    Methods:
+        convert_length(value, from_unit, to_unit) -> float:
+            Convert a numeric value between supported length units.
+        convert_area(value, from_unit, to_unit) -> float:
+            Convert a numeric value between supported area units (e.g., m2 to
+            ft2).
+        convert_weight(value, from_unit, to_unit) -> float:
+            Convert a numeric value between supported weight units (e.g., kg to
+            lb).
+        convert_unit(value, from_unit, to_unit) -> float:
+            Auto-detect the category (length, area, or weight) and convert
+            between compatible units.
+        normalize_unit(unit) -> str:
+            Standardize unit strings and resolve common aliases (e.g., "meters"
+            is "m").
+        get_unit_type(unit) -> str:
+            Return the category of a unit ('length', 'area', or 'weight').
+        unit_valid(unit, expected_unit_type) -> bool:
+            Check if a unit belongs to the expected category and raise an error
+            if not.
+        parse_units(input_dict, unit_defaults) -> dict:
+            Extract and validate units from a dictionary, applying defaults
+            where needed.
+        get_supported_units(unit_type='all') -> str:
+            Return a formatted string listing supported units for a given type
+            or all types.
 
     Notes:
         - Area conversions are based on the square of length conversions.
@@ -151,37 +173,91 @@ class UnitConverter:
         32.8084
 
         >>> UnitConverter.convert_area(100, 'm2', 'ft2')
-        1076.39
+        1076.391041671
 
         >>> UnitConverter.convert_weight(1, 'ton', 'lb')
-        2204.62
+        2204.6226218487757
 
-        >>> UnitConverter.print_supported_units()
+        >>> UnitConverter.convert_unit(5, 'km', 'mi')
+        3.106855
+
+        >>> UnitConverter.convert_unit(2500, 'g', 'lb')
+        5.51156
+
+        >>> UnitConverter.normalize_unit('Meters')
+        'm'
+
+        >>> UnitConverter.get_unit_type('yd2')
+        'area'
+
+        >>> UnitConverter.unit_valid('oz', 'weight')
+        True
+
+        >>> UnitConverter.parse_units({'weight': 'lb'},
+                                      {'length': 'm', 'weight': 'kg'})
+        {'length': 'm', 'weight': 'lb'}
+
+        >>> print(UnitConverter.get_supported_units())
+        Length: cm, ft, in, km, m, mi, mm, yd
+        Area:   cm2, ft2, in2, km2, m2, mi2, mm2, yd2
+        Weight: g, kg, lb, mg, oz, ton, ton_uk, ton_us
+
     """
 
-    @staticmethod
-    def get_supported_units() -> str:
+    def get_supported_units(unit_type: str = 'all') -> str:
         """
-        Return a formatted string listing all supported units.
+        Return a formatted string listing supported units for a unit type.
+
+        Args:
+            unit_type (str):
+                The type of unit to retrieve ('length', 'area', 'weight', or
+                'all'). Defaults to 'all'.
 
         Returns:
             str:
-                A human-readable string of supported unit categories and units.
+                A human-readable string of supported units.
         """
+        unit_type = unit_type.lower()
+
         length_units = ', '.join(sorted(UNIT_TO_METER.keys()))
         area_units = ', '.join(sorted(f"{u}2" for u in UNIT_TO_METER.keys()))
         weight_units = ', '.join(sorted(UNIT_TO_KG.keys()))
 
-        return (
-            "\nSupported Units:\n"
-            f"  Length: {length_units}\n"
-            f"  Area:   {area_units}\n"
-            f"  Weight: {weight_units}\n"
-        )
+        unit_map = {
+            LENGTH: f"  Length: {length_units}",
+            AREA: f"  Area:   {area_units}",
+            WEIGHT: f"  Weight: {weight_units}"
+        }
+
+        if unit_type == 'all':
+            return 'Supported Units: \n' + "\n".join(unit_map.values()) + "\n"
+        elif unit_type in unit_map:
+            return unit_map[unit_type] + "\n"
+        else:
+            supported_types = ', '.join(sorted(unit_map.keys()) + ['all'])
+            return (f"Error: Invalid unit type '{unit_type}'. Supported types "
+                    f"are: {supported_types}.\n"
+                    )
 
     @staticmethod
     def normalize_unit(unit: str):
-        """Normalize unit name by reformatting and resolving aliases."""
+        """
+        Normalize unit name by reformatting and resolving aliases.
+
+        This function ensures consistent internal representation of units,
+        allowing users to use common names or variations (e.g., "meters",
+        "LBS", "square foot") which will be mapped to standard short forms
+        (e.g., "m", "lb", "ft2").
+
+        Args:
+            unit (str):
+                The input unit string to normalize.
+
+        Returns:
+            str:
+                The standardized unit string. If no alias is found, returns the
+                cleaned input.
+        """
         unit = unit.strip().lower()
         return UNIT_ALIASES.get(unit, unit)
 
@@ -198,16 +274,76 @@ class UnitConverter:
                 If unit is not recognized.
         """
         if unit.endswith('2') and unit[:-1] in UNIT_TO_METER:
-            return 'area'
+            return AREA
         elif unit in UNIT_TO_METER:
-            return 'length'
+            return LENGTH
         elif unit in UNIT_TO_KG:
-            return 'weight'
+            return WEIGHT
         else:
-            unit_list = UnitConverter.get_supported_units()
+            unit_list = UnitConverter.get_supported_units('all')
             raise ValueError(
-                f"Unsupported or unknown unit: '{unit}. {unit_list}'"
+                f"Unsupported or unknown unit: '{unit}'. \n"
+                f"{unit_list}"
             )
+
+    @staticmethod
+    def unit_valid(unit: str, expected_unit_type: str) -> bool:
+        """
+        Validate that a unit belongs to the expected unit type.
+
+        Args:
+            unit (str):
+                The unit to check (e.g., 'm', 'kg', 'ft2').
+            expected_unit_type (str):
+                The expected type ('length', 'area', or 'weight').
+
+        Returns:
+            bool:
+                True if the unit matches the expected type. False otherwise
+        """
+        actual_unit_type = UnitConverter.get_unit_type(unit)
+        if actual_unit_type == expected_unit_type:
+            return True
+        return False
+
+    @staticmethod
+    def parse_units(input_dict: dict, unit_defaults: dict) -> dict:
+        """
+        Parse and validate units from input_dict based on defaults.
+
+        Args:
+            input_dict (dict):
+                Dictionary with unit inputs.
+            unit_defaults (dict):
+                Default unit values for each unit type.
+
+        Returns:
+            dict:
+                Validated units per type (e.g., {'length': 'ft',
+                'weight': 'lb'}).
+
+        Raises:
+            ValueError:
+                If a unit is invalid.
+        """
+        parsed_units = {}
+        for unit_type, default in unit_defaults.items():
+            raw_value = input_dict.get(unit_type)
+            unit_value = (raw_value or default).lower()
+
+            if raw_value is None:
+                print(f"No {unit_type} unit specified. Using default: "
+                      f"'{default}'.")
+
+            if not UnitConverter.unit_valid(unit_value, unit_type):
+                supported_units = UnitConverter.get_supported_units(unit_type)
+                raise ValueError(
+                    f"Incorrect {unit_type} unit defined: '{unit_value}'. "
+                    f"Supported {unit_type} units: {supported_units}"
+                )
+
+            parsed_units[unit_type] = unit_value
+        return parsed_units
 
     @staticmethod
     def convert_length(value: float, from_unit: str, to_unit: str) -> float:
@@ -285,7 +421,7 @@ class UnitConverter:
         return converted_value
 
     @staticmethod
-    def convert_weight(value, from_unit, to_unit):
+    def convert_weight(value: float, from_unit: str, to_unit: str):
         """
         Convert a weight value from one unit to another.
 
@@ -365,11 +501,11 @@ class UnitConverter:
 
             )
 
-        if from_type == 'length':
+        if from_type == LENGTH:
             return UnitConverter.convert_length(value, from_unit, to_unit)
-        elif from_type == 'area':
+        elif from_type == AREA:
             return UnitConverter.convert_area(value, from_unit, to_unit)
-        elif from_type == 'weight':
+        elif from_type == WEIGHT:
             return UnitConverter.convert_weight(value, from_unit, to_unit)
 
         raise ValueError("Unhandled unit type: {}".format(from_type))

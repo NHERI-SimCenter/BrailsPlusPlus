@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 06-05-2025
+# 07-24-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -49,7 +49,6 @@ This module defines classes associated with asset inventories.
 
 import csv
 import json
-import logging
 import random
 from copy import deepcopy
 from datetime import datetime
@@ -62,7 +61,6 @@ except ImportError:
     # For Python <3.8, use the backport
     from importlib_metadata import version
 
-import numpy as np
 import pandas as pd
 from shapely import box
 from shapely.geometry import shape
@@ -637,7 +635,7 @@ class AssetInventory:
                 of assets in the inventory.
         """
         if not isinstance(nsamples, int) or nsamples <= 0:
-            ValueError('Number of samples must be a positive integer.')
+            raise ValueError('Number of samples must be a positive integer.')
 
         if nsamples > len(self.inventory):
             raise ValueError('Number of samples cannot exceed the number of '
@@ -654,18 +652,18 @@ class AssetInventory:
 
         return result
 
-    def get_extent(self, buffer: Union[str, List[int]] = 'default') -> box:
+    def get_extent(self, buffer: Union[str, List[float]] = 'default') -> box:
         """
         Calculate the geographical extent of the inventory.
 
         Args:
-            buffer (str or list[int]):
-                A string or a list of 4 integers.
+            buffer (str or list[float]):
+                A string or a list of 4 floats.
                 - 'default' applies preset buffer values.
                 - 'none' applies zero buffer values.
-                - A list of 4 integers defines custom buffer values for each
-                  edge of the bounding box in the order minlon, maxlon, minlat,
-                  maxlat.
+                - A list of 4 floats defines custom buffer values for each
+                  edge of the bounding box in the order:
+                  [minlon buffer, minlat buffer, maxlon buffer, maxlat buffer].
 
         Returns:
             shapely.geometry.box:
@@ -676,22 +674,24 @@ class AssetInventory:
             ValueError: If the buffer input is invalid.
         """
         # Check buffer input:
-        buffer_levels = buffer.lower()
+        error_msg = ("Invalid buffer input. Valid options for the buffer input"
+                     "are 'default', 'none', or a list of 4 integers.")
 
-        if buffer == 'default':
-            buffer_levels = [0.0002, 0.0001, 0.0002, 0.0001]
-        elif buffer == 'none':
-            buffer_levels = [0, 0, 0, 0]
+        if isinstance(buffer, str):
+            if buffer.lower() == 'default':
+                buffer_levels = [0.0002, 0.0001, 0.0002, 0.0001]
+            elif buffer.lower() == 'none':
+                buffer_levels = [0, 0, 0, 0]
+            else:
+                raise ValueError(error_msg)
         elif (
             isinstance(buffer, list)
             and len(buffer) == 4
-            and all(isinstance(x, int) for x in buffer)
+            and all(isinstance(x, (int, float)) for x in buffer)
         ):
             buffer_levels = buffer.copy()
         else:
-            raise ValueError('Invalid buffer input. Valid options for the '
-                             "buffer input are 'default', 'none', or a list of"
-                             ' 4 integers.')
+            raise ValueError(error_msg)
 
         # Determine the geographical extent of the inventory:
         minlon, maxlon, minlat, maxlat = 180, -180, 90, -90
@@ -838,9 +838,11 @@ class AssetInventory:
             bool:
                 True if asset was removed, False otherwise.
         """
-        del self.inventory[asset_id]
-
-        return True
+        if asset_id in self.inventory:
+            del self.inventory[asset_id]
+            return True
+        else:
+            return False
 
     def remove_features(self, feature_list: List[str]) -> bool:
         """
@@ -959,8 +961,8 @@ class AssetInventory:
         lat = ["latitude", "lat"]
         lon = ["longitude", "lon", "long"]
         key_names = csv_reader.fieldnames
-        lat_id = np.where([y.lower() in lat for y in key_names])[0]
-        lon_id = np.where([x.lower() in lon for x in key_names])[0]
+        lat_id = [i for i, y in enumerate(key_names) if y.lower() in lat]
+        lon_id = [i for i, x in enumerate(key_names) if x.lower() in lon]
         if len(lat_id) == 0:
             raise Exception(
                 "The key 'Latitude' or 'Lat' (case insensitive) not found. "
@@ -1091,7 +1093,7 @@ class AssetInventory:
         asset_json = self.get_geojson()
         features_json = asset_json["features"]
         bldg_properties = [
-            (self.inventory[i].features | {"index": i})
+            {**self.inventory[i].features, "index": i}
             for dummy, i in enumerate(self.inventory)
         ]
 
