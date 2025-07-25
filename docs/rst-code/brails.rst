@@ -14,6 +14,7 @@ Subpackages
 
    brails.filters
    brails.imputers
+   brails.inferers
    brails.processors
    brails.scrapers
    brails.types
