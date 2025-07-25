@@ -52,40 +52,42 @@ import pickle
 import time
 from typing import Optional, Dict
 
-import torch
 import cv2
 import numpy as np
 from shapely import Polygon
 from tqdm import tqdm
 
 from brails.types.image_set import ImageSet
+from brails.utils import InputValidator, ModelUtils
 
 
 class FFHPredictorKlepac:
     """
-    Class to estimate the First Floor Height (FFH) of buildings from images.
+    Predict Building First Floor Heights from images using a Detectron2 model.
 
-    This class manages loading a Detectron2-based model (either a default or
-    user-provided) to perform roof classification and estimate the first floor
-    elevation using image inputs.
+    `FFHPredictorKlepac` automates the process of detecting key building
+    components (houses and doors) in an image and estimates the first floor
+    elevation based on their relative positions. It supports both default and
+    user-specified models, preprocesses input images, and allows batch
+    predictions over a collection of images.
 
-    Features:
-    - Downloads and caches a default model if no model path is provided.
-    - Supports preprocessing images (cropping and resizing) before prediction.
-    - Calculates FFH by analyzing house and door polygons detected in model
-      outputs.
-    - Provides an interface to perform batch predictions on a collection of
-      images.
+    Main Features:
+    - Automatically downloads and caches a default model if none is provided.
+    - Crops and resizes input images for optimal model performance.
+    - Detects houses and doors to estimate FFH using geometric heuristics.
+    - Provides batch prediction over a user-supplied image collection.
 
     Args:
-        input_data (Optional[dict]): Optional initialization parameters,
-            including: 'modelPath': path to a custom model file to use instead
-            of the default.
+        input_data (Optional[dict]):
+            Optional dictionary with initialization parameters.
+            Supported key:
+                - 'modelPath': Path to a user-provided Detectron2 model file.
 
-    Usage example:
-        predictor = FFHPredictorKlepac(input_data={'modelPath':
-                                                   'path/to/custom_model.pkl'})
-        results = predictor.predict(image_set)
+    Example:
+        >>> predictor = FFHPredictorKlepac(
+            input_data={'modelPath': 'path/to/custom_model.pkl'}
+            )
+        >>> results = predictor.predict(image_set)
     """
 
     def __init__(self, input_data: Optional[dict] = None):
@@ -93,8 +95,7 @@ class FFHPredictorKlepac:
         Initialize the FFHPredictorKlepac.
 
         If no model path is provided in input_data, the class downloads a
-        default model. If prediction classes are not provided om input_data,
-        roof type precitions are made for flat, galble, and hip roofs.
+        default model.
 
         Args:
             input_data (Optional[dict]): A dictionary containing initialization
@@ -103,35 +104,20 @@ class FFHPredictorKlepac:
         # If input_data is provided, check if it contains 'modelPath' key:
 
         if input_data is not None:
-            super().__init__(input_data)
             model_path = input_data['modelPath']
         else:
             model_path = None
 
         # if no model_file provided, use the one previously downloaded or
         # download it if not existing:
-        if model_path is None:
-            os.makedirs('tmp/models', exist_ok=True)
-            model_path = 'tmp/models/klepac_ffh_predictor.pkl'
-            if not os.path.isfile(model_path):
-                print(
-                    '\n\nLoading default roof classifier model file to '
-                    'tmp/models folder...')
-                torch.hub.download_url_to_file(
-                    'https://www.dropbox.com/scl/fi/qi35w6x4wqtr8k9dmpq2o/'
-                    'klepac_ffh_predictor.pkl?rlkey=wa95bdqzvsrqsg92gdrxs6ykm&'
-                    'st=7h2nbaw9&dl=1',
-                    model_path,
-                    progress=True
-                )
-                print('Default roof classifier model loaded')
-            else:
-                print(
-                    f"\nDefault roof classifier model in {model_path} loaded")
-        else:
-            print(
-                '\nInferences will be performed using the custom model in'
-                f' {model_path}')
+        model_path = ModelUtils.get_model_path(
+            default_filename='klepac_ffh_predictor.pkl',
+            download_url=(
+                'https://www.dropbox.com/scl/fi/qi35w6x4wqtr8k9dmpq2o/'
+                'klepac_ffh_predictor.pkl?rlkey=wa95bdqzvsrqsg92gdrxs6ykm&'
+                'st=7h2nbaw9&dl=1'),
+            model_description='building door detection model'
+        )
 
         self.model_path = model_path
 
@@ -266,14 +252,13 @@ class FFHPredictorKlepac:
         inference, and the FFH is calculated from model outputs.
 
         Args:
-        images (ImageSet)
-            An object containing image data with the following attributes:
-            - `dir_path` (str): Path to the directory containing the image
-               files.
-            - `images` (dict): Dictionary where keys are image identifiers and
-              values are image metadata objects that must have a `filename`
-              attribute.
-
+            images (ImageSet):
+                An ImageSet object with the following attributes:
+                  - dir_path (str): Path to the directory containing image
+                    files.
+                  - images (Dict[str, Any]): Dictionary mapping image keys to
+                    objects with a `filename` attribute (e.g., image filename
+                    string).
         Returns:
         Dict[str, Optional[float]]
             A dictionary mapping each image key to its predicted first floor
@@ -284,6 +269,7 @@ class FFHPredictorKlepac:
         NotADirectoryError
             If `images.dir_path` is not a valid directory path.
         """
+        # Load the predictor model from the model path:
         with open(self.model_path, 'rb') as f:
             predictor = pickle.load(f)
 
@@ -292,25 +278,35 @@ class FFHPredictorKlepac:
         # Start program timer:
         start_time = time.time()
 
+        # Get the image directory and validate its existence:
         data_dir = images.dir_path
         if not os.path.isdir(data_dir):
             raise NotADirectoryError(f"Predict method failed. '{data_dir}' "
                                      "is not a directory")
 
+        # Initialize dictionary to store predictions:
         predictions = {}
+
+        # Iterate over images and apply the model:
         for key, im in tqdm(images.images.items()):
             im_path = os.path.join(data_dir, im.filename)
-            if os.path.isfile(im_path):
+            if InputValidator.is_image(im_path):
+                # Read and preprocess the image
                 image = cv2.imread(im_path)
                 image_processed = self._preprocess_image(image)
+
+                # Run the model prediction:
                 outputs = predictor(image_processed)
+
+                # Compute first floor height from model output:
                 predictions[key] = self._calculate_ffh(outputs)
             else:
+                # Skip invalid image files:
                 predictions[key] = None
 
-        # End program timer and display execution time:
+        # End timer and print total execution time:
         end_time = time.time()
-        hours, rem = divmod(end_time-start_time, 3600)
+        hours, rem = divmod(end_time - start_time, 3600)
         minutes, seconds = divmod(rem, 60)
         print(f"\nTotal execution time: {int(hours):02}:{int(minutes):02}:"
               f"{seconds:05.2f}")

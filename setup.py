@@ -27,7 +27,7 @@ setup(
                    '/csail_seg/data/color150.mat',
                    'processors/foundation_classifier/csail_segmentation_tool'
                    '/csail_seg/config/*.yaml',
-                   'brails/inferers/hazus_inferer_wind/input_schema.json'
+                   'inferers/hazus_inferer_wind/input_schema.json'
                    ]
     },
     install_requires=[
@@ -53,7 +53,6 @@ setup(
         'torch<=2.5.0',
         'torchvision<=0.20.0',
         'transformers',
-        'typing',
         'wget',
         'yacs',
         'webcolors',
