@@ -1,0 +1,228 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.processors.chimney_detector.chimney_detector module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">brails.processors.chimney_detector.chimney_detector module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/docs/rst-code/brails.processors.chimney_detector.chimney_detector.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.processors.chimney_detector.chimney_detector">
+<span id="brails-processors-chimney-detector-chimney-detector-module"></span><h1>brails.processors.chimney_detector.chimney_detector module<a class="headerlink" href="#module-brails.processors.chimney_detector.chimney_detector" title="Link to this heading"></a></h1>
+<p>Class object to use and retrain the chimney detector model.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.chimney_detector.chimney_detector.ChimneyDetector">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.chimney_detector.chimney_detector.</span></span><span class="sig-name descname"><span class="pre">ChimneyDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.chimney_detector.ChimneyDetector" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class to manage and configure the system for detecting chimneys.</p>
+<p>This class provides an organized structure to store system parameters and
+configurations required for training and inference tasks in a chimney
+detection system. It initializes a nested dictionary to hold various
+configurations and parameters for different stages of processing.</p>
+<dl>
+<dt>Attributes:</dt><dd><dl class="simple">
+<dt>system_dict (dict):</dt><dd><p>A dictionary to store system configurations and parameters,
+initialized with nested dictionaries for training and inference
+settings.</p>
+</dd>
+</dl>
+</dd>
+<dt>Methods:</dt><dd><dl>
+<dt>train(self, comp_coeff: int = 3, top_only: bool = False,</dt><dd><blockquote>
+<div><p>optim: str = “adamw”, lr: float = 1e-4, nepochs: int = 25,
+ngpu: int = 1) -&gt; None:</p>
+</div></blockquote>
+<p>Sets up parameters for training the chimney detection model.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.chimney_detector.chimney_detector.ChimneyDetector.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="brails.types.image_set.html#brails.types.image_set.ImageSet" title="brails.types.image_set.ImageSet"><span class="pre">ImageSet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'tmp/models/efficientdet-d4_chimneyDetector.pth'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#brails.processors.chimney_detector.chimney_detector.ChimneyDetector.predict" title="Link to this definition"></a></dt>
+<dd><p>Predict the existence of chimneys in buildings from the given images.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>images (ImageSet):</dt><dd><p>ImageSet object containing the collection of images to be
+analyzed.</p>
+</dd>
+<dt>modelPath (str):</dt><dd><p>The file path to the pre-trained model. If the default path is
+used, the model will be downloaded (default is
+‘tmp/models/efficientdet-d4_chimneyDetector.pth’).</p>
+</dd>
+</dl>
+</dd>
+<dt><a href="#id1"><span class="problematic" id="id2">Returns_</span></a>:</dt><dd><dl class="simple">
+<dt>predictions (dict):</dt><dd><p>Existence of chimneys with the keys being the same keys used in
+ImageSet.images.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>This method processes the images provided, loads the specified model,
+and performs inference to determine the existence of chimneys in each
+building. It handles the setup of the inference environment, manages
+model loading, and provides a report on the execution time.</p>
+<p>It also includes functions for polygon creation, intersection checks,
+and managing thresholds during inference to ensure accurate
+predictions.</p>
+<p>The results of the predictions are also stored in the instance’s system
+dictionary under the key ‘predictions’.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.chimney_detector.chimney_detector.ChimneyDetector.retrain">
+<span class="sig-name descname"><span class="pre">retrain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'adamw'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nepochs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ngpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#brails.processors.chimney_detector.chimney_detector.ChimneyDetector.retrain" title="Link to this definition"></a></dt>
+<dd><p>Retrain the chimney detection model with specified parameters.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>optim (str):</dt><dd><p>Optimizer to use for training (default is “adamw”).</p>
+</dd>
+<dt>lr (float):</dt><dd><p>The learning rate for the optimizer (default is 1e-4).</p>
+</dd>
+<dt>nepochs (int):</dt><dd><p>Number of epochs to train the model (default is 25).</p>
+</dd>
+<dt>ngpu (int):</dt><dd><p>The number of GPUs to use for training (default is 1).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>This method configures the training parameters, sets the training and
+validation datasets, initializes the model architecture, and starts
+the re-training process for the default chimney detector in
+BRAILS++.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.chimney_detector.chimney_detector.ChimneyDetector.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comp_coeff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'adamw'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nepochs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ngpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#brails.processors.chimney_detector.chimney_detector.ChimneyDetector.train" title="Link to this definition"></a></dt>
+<dd><p>Train a chimney detection model.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>comp_coeff (int):</dt><dd><p>Coefficient for comparison, default is 3.</p>
+</dd>
+<dt>top_only (bool):</dt><dd><p>If True, only the top layers are trained, default is False.</p>
+</dd>
+<dt>optim (str):</dt><dd><p>Optimizer type, default is “adamw”.</p>
+</dd>
+<dt>lr (float):</dt><dd><p>Learning rate, default is 1e-4.</p>
+</dd>
+<dt>nepochs (int):</dt><dd><p>Number of epochs for training, default is 25.</p>
+</dd>
+<dt>ngpu (int):</dt><dd><p>Number of GPUs to use, default is 1.</p>
+</dd>
+</dl>
+</dd>
+<dt>Updates:</dt><dd><dl class="simple">
+<dt>self.system_dict (dict[str, dict[str, Any]]):</dt><dd><p>Updates the model configuration parameters for training in the
+system dictionary.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, fmk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

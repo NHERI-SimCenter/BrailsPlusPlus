@@ -1,0 +1,7 @@
+brails.utils.brails\_importer module
+====================================
+
+.. automodule:: brails.utils.brails_importer
+   :members:
+   :undoc-members:
+   :show-inheritance:

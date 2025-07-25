@@ -1,0 +1,215 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.processors.vlm_segmenter.segment_anything.modeling.sam module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">brails.processors.vlm_segmenter.segment_anything.modeling.sam module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/docs/rst-code/brails.processors.vlm_segmenter.segment_anything.modeling.sam.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.processors.vlm_segmenter.segment_anything.modeling.sam">
+<span id="brails-processors-vlm-segmenter-segment-anything-modeling-sam-module"></span><h1>brails.processors.vlm_segmenter.segment_anything.modeling.sam module<a class="headerlink" href="#module-brails.processors.vlm_segmenter.segment_anything.modeling.sam" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_segmenter.segment_anything.modeling.sam.</span></span><span class="sig-name descname"><span class="pre">Sam</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_encoder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.html#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.ImageEncoderViT" title="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.ImageEncoderViT"><span class="pre">ImageEncoderViT</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt_encoder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="brails.processors.vlm_segmenter.segment_anything.modeling.prompt_encoder.html#brails.processors.vlm_segmenter.segment_anything.modeling.prompt_encoder.PromptEncoder" title="brails.processors.vlm_segmenter.segment_anything.modeling.prompt_encoder.PromptEncoder"><span class="pre">PromptEncoder</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_decoder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="brails.processors.vlm_segmenter.segment_anything.modeling.mask_decoder.html#brails.processors.vlm_segmenter.segment_anything.modeling.mask_decoder.MaskDecoder" title="brails.processors.vlm_segmenter.segment_anything.modeling.mask_decoder.MaskDecoder"><span class="pre">MaskDecoder</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_mean</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[123.675,</span> <span class="pre">116.28,</span> <span class="pre">103.53]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_std</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[58.395,</span> <span class="pre">57.12,</span> <span class="pre">57.375]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.device">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">device</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batched_input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multimask_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.forward" title="Link to this definition"></a></dt>
+<dd><p>Predicts masks end-to-end from provided images and prompts.
+If prompts are not known in advance, using SamPredictor is
+recommended over calling the model directly.</p>
+<dl>
+<dt>Arguments:</dt><dd><dl>
+<dt>batched_input (list(dict)): A list over input images, each a</dt><dd><p>dictionary with the following keys. A prompt key can be
+excluded if it is not present.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>‘image’: The image as a torch tensor in 3xHxW format,</dt><dd><p>already transformed for input to the model.</p>
+</dd>
+<dt>‘original_size’: (tuple(int, int)) The original size of</dt><dd><p>the image before transformation, as (H, W).</p>
+</dd>
+<dt>‘point_coords’: (torch.Tensor) Batched point prompts for</dt><dd><p>this image, with shape BxNx2. Already transformed to the
+input frame of the model.</p>
+</dd>
+<dt>‘point_labels’: (torch.Tensor) Batched labels for point prompts,</dt><dd><p>with shape BxN.</p>
+</dd>
+<dt>‘boxes’: (torch.Tensor) Batched box inputs, with shape Bx4.</dt><dd><p>Already transformed to the input frame of the model.</p>
+</dd>
+<dt>‘mask_inputs’: (torch.Tensor) Batched mask inputs to the model,</dt><dd><p>in the form Bx1xHxW.</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+<dt>multimask_output (bool): Whether the model should predict multiple</dt><dd><p>disambiguating masks, or return a single mask.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>(list(dict)): A list over input images, where each element is</dt><dd><dl class="simple">
+<dt>as dictionary with the following keys.</dt><dd><dl class="simple">
+<dt>‘masks’: (torch.Tensor) Batched binary mask predictions,</dt><dd><p>with shape BxCxHxW, where B is the number of input prompts,
+C is determiend by multimask_output, and (H, W) is the
+original size of the image.</p>
+</dd>
+<dt>‘iou_predictions’: (torch.Tensor) The model’s predictions</dt><dd><p>of mask quality, in shape BxC.</p>
+</dd>
+<dt>‘low_res_logits’: (torch.Tensor) Low resolution logits with</dt><dd><p>shape BxCxHxW, where H=W=256. Can be passed as mask input
+to subsequent iterations of prediction.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.image_format">
+<span class="sig-name descname"><span class="pre">image_format</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'RGB'</span></em><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.image_format" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.mask_threshold">
+<span class="sig-name descname"><span class="pre">mask_threshold</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></em><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.mask_threshold" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.postprocess_masks">
+<span class="sig-name descname"><span class="pre">postprocess_masks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">original_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.postprocess_masks" title="Link to this definition"></a></dt>
+<dd><p>Remove padding and upscale masks to the original image size.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><dl class="simple">
+<dt>masks (torch.Tensor): Batched masks from the mask_decoder,</dt><dd><p>in BxCxHxW format.</p>
+</dd>
+<dt>input_size (tuple(int, int)): The size of the image input to the</dt><dd><p>model, in (H, W) format. Used to remove padding.</p>
+</dd>
+<dt>original_size (tuple(int, int)): The original size of the image</dt><dd><p>before resizing for input to the model, in (H, W) format.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>(torch.Tensor): Batched masks in BxCxHxW format, where (H, W)</dt><dd><p>is given by original_size.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.preprocess">
+<span class="sig-name descname"><span class="pre">preprocess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.sam.Sam.preprocess" title="Link to this definition"></a></dt>
+<dd><p>Normalize pixel values and pad to a square input.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, fmk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
