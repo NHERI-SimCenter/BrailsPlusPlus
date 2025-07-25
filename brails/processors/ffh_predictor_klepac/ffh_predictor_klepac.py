@@ -40,7 +40,7 @@
 # 07-24-2025
 
 """
-This module defines a class for retrieving tunnel data from NTI.
+This is a class that predicts building First Floor Heights from images.
 
 .. autosummary::
 
