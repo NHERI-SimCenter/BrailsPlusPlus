@@ -98,11 +98,11 @@ def clean_floats(obj: Any) -> Any:  # TODO: Check if this is needed
 
 class Asset:
     """
-    A data structure for an asset that holds it coordinates and features.
+    A data structure for an asset that holds its coordinates and features.
 
     Attributes:
         asset_id (str|int):: Unique identifier for the asset.
-        coordinates (list[List[float]]): A list of coordinate pairs
+        coordinates (list[list[float]]): A list of coordinate pairs
             [[lon1, lat1], [lon2, lat2], ..., [lonN, latN]].
         features (dict[str, any]): A dictionary of features (attributes) for
             the asset.
@@ -116,8 +116,8 @@ class Asset:
     def __init__(
         self,
         asset_id: Union[str, int],
-        coordinates: List[List[float]],
-        features: Dict[str, Any] = None,
+        coordinates: list[list[float]],
+        features: dict[str, Any] = None,
     ) -> None:
         """
         Initialize an Asset with an asset ID, coordinates, and features.
@@ -145,7 +145,7 @@ class Asset:
 
     def add_features(
             self,
-            additional_features: Dict[str, Any],
+            additional_features: dict[str, Any],
             overwrite: bool = True
     ) -> Tuple[bool, int]:
         """
@@ -200,12 +200,12 @@ class Asset:
 
         return updated, n_pw
 
-    def remove_features(self, feature_list: List[str]) -> bool:
+    def remove_features(self, feature_list: list[str]) -> bool:
         """
         Update the existing features in the asset.
 
         Args:
-            feature_list (dict[str, any]): List of features to be removed
+            feature_list (list[str, any]): List of features to be removed
 
         Return:
             bool: True if features are removed
@@ -266,7 +266,7 @@ class AssetInventory:
 
     def __init__(self) -> None:
         """Initialize AssetInventory with an empty inventory dictionary."""
-        self.inventory = {}
+        self.inventory: dict = {}
         self.n_pw = 1
 
     def add_asset(self, asset_id: Union[str, int], asset: Asset) -> bool:
@@ -1014,6 +1014,158 @@ class AssetInventory:
             asset = Asset(id, coordinates, bldg_features)
             self.add_asset(id, asset)
             id_counter += 1
+
+        return True
+
+    def read_from_geojson(
+        self,
+        file_path: str,
+        keep_existing: bool = False
+    ) -> bool:
+        """
+        Read inventory data from a GeoJSON file and add it to the inventory.
+
+        This method loads an asset inventory from a provided GeoJSON file path.
+        The GeoJSON should be a FeatureCollection where each Feature represents
+        an asset with geometry and properties.
+
+        Args:
+            file_path (str):
+                The path to the GeoJSON file
+            keep_existing (bool):
+                If False, the inventory will be cleared before loading.
+                If True, new assets will be added to existing inventory.
+                Defaults to False.
+
+        Returns:
+            bool:
+                True if assets were added successfully, False otherwise.
+
+        Raises:
+            Exception:
+                If the file doesn't exist, is not valid JSON, or doesn't
+                conform to the expected GeoJSON schema.
+        """
+        if not keep_existing:
+            self.inventory = {}
+
+        # Attempt to open and parse the file
+        try:
+            with open(file_path, mode="r", encoding="utf-8") as geojson_file:
+                data = json.load(geojson_file)
+        except FileNotFoundError:
+            raise Exception(f"The file {file_path} does not exist.")
+        except json.JSONDecodeError as e:
+            raise Exception(f"The file {file_path} is not valid JSON: {e}")
+
+        # Validate basic GeoJSON structure
+        if not isinstance(data, dict):
+            raise Exception("GeoJSON must be a dictionary object.")
+
+        if data.get("type") != "FeatureCollection":
+            raise Exception("GeoJSON must be a FeatureCollection.")
+
+        if "features" not in data:
+            raise Exception("GeoJSON FeatureCollection must contain 'features'.")
+
+        features = data["features"]
+        if not isinstance(features, list):
+            raise Exception("GeoJSON 'features' must be a list.")
+
+        # Process each feature
+        id_counter = 1
+        if keep_existing and len(self.inventory) > 0:
+            # Start ID counter after existing assets
+            existing_ids = [k for k in self.inventory.keys() 
+                          if isinstance(k, int)]
+            if existing_ids:
+                id_counter = max(existing_ids) + 1
+
+        for i, feature in enumerate(features):
+            # Validate feature structure
+            if not isinstance(feature, dict):
+                print(f"Warning: Skipping invalid feature at index {i} "
+                      f"(not a dictionary)")
+                continue
+
+            if feature.get("type") != "Feature":
+                print(f"Warning: Skipping feature at index {i} "
+                      f"(type is not 'Feature')")
+                continue
+
+            # Extract geometry
+            geometry = feature.get("geometry")
+            if not geometry:
+                print(f"Warning: Skipping feature at index {i} "
+                      f"(no geometry)")
+                continue
+
+            # Convert geometry to coordinates format expected by Asset class
+            coordinates = []
+            geom_type = geometry.get("type")
+            geom_coords = geometry.get("coordinates")
+
+            if not geom_coords:
+                print(f"Warning: Skipping feature at index {i} "
+                      f"(no coordinates in geometry)")
+                continue
+
+            try:
+                if geom_type == "Point":
+                    # Point: coordinates are [lon, lat]
+                    coordinates = [geom_coords]
+                elif geom_type == "LineString":
+                    # LineString: coordinates are [[lon1, lat1], [lon2, lat2], ...]
+                    coordinates = geom_coords
+                elif geom_type == "Polygon":
+                    # Polygon: coordinates are [[[lon1, lat1], [lon2, lat2], ...]]
+                    # We take the exterior ring (first array)
+                    coordinates = geom_coords[0]
+                else:
+                    print(f"Warning: Skipping feature at index {i} "
+                          f"(unsupported geometry type: {geom_type})")
+                    continue
+            except (IndexError, TypeError) as e:
+                print(f"Warning: Skipping feature at index {i} "
+                      f"(invalid coordinates structure: {e})")
+                continue
+
+            # Extract properties (features)
+            properties = feature.get("properties", {})
+            if not isinstance(properties, dict):
+                print(f"Warning: Feature at index {i} has invalid properties "
+                      f"(not a dictionary), using empty properties")
+                properties = {}
+
+            # Determine asset ID
+            asset_id = None
+
+            # First, check if there's an 'id' field at the feature level
+            if "id" in feature:
+                asset_id = feature["id"]
+            # Then check if there's an 'id' in properties
+            elif "id" in properties:
+                asset_id = properties.pop("id")  # Remove from properties
+            else:
+                # Use auto-generated ID
+                asset_id = id_counter
+                id_counter += 1
+
+            # Convert string IDs to int if they represent integers
+            if isinstance(asset_id, str) and asset_id.isdigit():
+                asset_id = int(asset_id)
+
+            # Create and add the asset
+            try:
+                asset = Asset(asset_id, coordinates, properties)
+                success = self.add_asset(asset_id, asset)
+                if not success:
+                    print(f"Warning: Asset with ID {asset_id} already exists, "
+                          f"skipping feature at index {i}")
+            except Exception as e:
+                print(f"Warning: Failed to create asset from feature at "
+                      f"index {i}: {e}")
+                continue
 
         return True
 
