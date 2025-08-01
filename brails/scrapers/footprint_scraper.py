@@ -1,9 +1,44 @@
-# Writtten: Barbaros Cetiner (_polygon_area and create_asset_inventory from FootprintHandler in original BRAILS)
-#           minor edits for BRAIS++ making abstract class fmk 03/24
-# license: BSD-3 (see LICENSCE.txt file: https://github.com/NHERI-SimCenter/BrailsPlusPlus)
+# Copyright (c) 2025 The Regents of the University of California
+#
+# This file is part of BRAILS++.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# You should have received a copy of the BSD 3-Clause License along with
+# BRAILS. If not, see <http://www.opensource.org/licenses/>.
+#
+# Contributors:
+# Barbaros Cetiner
+#
+# Last updated:
+# 08-01-2025
 
 """
-This module defines abstract FootprintScraper class
+This module defines abstract FootprintScraper class.
 
 .. autosummary::
 
@@ -11,173 +46,204 @@ This module defines abstract FootprintScraper class
 """
 
 from abc import ABC, abstractmethod
+from typing import List, Tuple, Union
+
+from numpy import append, arctan2, cos, deg2rad, diff, pi, sin, sqrt
 from shapely.geometry import Polygon
 
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.types.region_boundary import RegionBoundary
+from brails.utils import UnitConverter
 
-from numpy import arctan2, cos, sin, sqrt, pi, append, diff, deg2rad
+# Global constants for plan area calculations and asset typing:
+EARTH_RADIUS_FT = 20925721.784777  # Earth's radius in feet (WGS-84)
+ASSET_TYPE = 'building'
 
 
 class FootprintScraper(ABC):
     """
-    Abstract base class representing a class that optains footprints for a region.
+    Abstract base class for getting building footprints within a region.
 
-      Methods:
-         get_footprints(location): An abstract method to return the footprint given a location
+    This class defines the interface for any footprint scraper implementation.
+
+    Attributes:
+        name (str):
+            Name or identifier for the scraper.
+        footprints (List):
+            A list to store retrieved footprint geometries.
+        centroids (List):
+            A list to store centroid coordinates of the footprints.
+
+    Methods:
+        get_footprints(region):
+            Abstract method to return building footprints for a given region.
     """
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, name: str) -> None:
+        """
+        Initialize the footprint scraper.
+
+        Args:
+            name (str):
+                Name or identifier for the scraper.
+        """
+        self.name: str = name
         self.footprints = []
         self.centroids = []
 
     @abstractmethod
     def get_footprints(self, region: RegionBoundary) -> AssetInventory:
         """
-        An abstract class that must be implemented by subclasses.
+        Retrieve building footprints and attributes within a specified region.
 
-        This method will be used by the caller to obtain the footprints for builings in an area.
+        This method must be implemented by subclasses to provide access to
+        building-level footprint and attribute data for a given geographic
+        boundary. It is typically used by downstream components to extract
+        spatial information for analysis or visualization.
 
         Args:
-              region (Region):
-                   The region of interest.
+            region (RegionBoundary):
+                The geographic region of interest.
 
         Returns:
-              BuildingInventory:
-                    A building inventory for buildings in the region.
-
+            AssetInventory:
+                An inventory containing the footprints of buildings within the
+                specified region.
         """
         pass
 
-    def _polygon_area(self, lats, lons, length_unit):
+    def _polygon_area(
+        self,
+        lats: Union[List[float], Tuple[float, ...]],
+        lons: Union[List[float], Tuple[float, ...]],
+        length_unit: str = 'ft'
+    ) -> float:
         """
-        Method to return area of a foorprint
+        Calculate the approximate area of a polygon on the Earth's surface.
+
+        The area is computed using Green's Theorem applied to a spherical
+        surface, which approximates the Earth as a perfect sphere.
 
         Args:
-              lats (array):
-                   Array of latitudes
-              lons (array):
-                   Array of longitude
-              length_unit (str):
-                   Length unit, 'ft' by default, anything but 'm' is ignored in current code
+            lats (list or tuple of float):
+                Latitudes of the polygon vertices in degrees.
+            lons (list or tuple of float):
+                Longitudes of the polygon vertices in degrees.
+            length_unit (str):
+                Desired output length unit to use for area calculation
+                (e.g., 'ft', 'm'). Defaults to 'ft'.
 
         Returns:
-              area (double):
-                    The area
-
+            float:
+                Area of the polygon in the requested unit.
         """
-        radius = 20925721.784777  # Earth's radius in feet
-
         lats = deg2rad(lats)
         lons = deg2rad(lons)
 
-        # Line integral based on Green's Theorem, assumes spherical Earth
-
-        # close polygon
-        if lats[0] != lats[-1]:
+        # Close the polygon if not already closed
+        if lats[0] != lats[-1] or lons[0] != lons[-1]:
             lats = append(lats, lats[0])
             lons = append(lons, lons[0])
 
-        # colatitudes relative to (0,0)
+        # Compute spherical coordinates relative to origin (0,0):
         a = sin(lats / 2) ** 2 + cos(lats) * sin(lons / 2) ** 2
         colat = 2 * arctan2(sqrt(a), sqrt(1 - a))
 
-        # azimuths relative to (0,0)
+        # Azimuths relative to (0,0):
         az = arctan2(cos(lats) * sin(lons), sin(lats)) % (2 * pi)
 
-        # Calculate diffs
-        # daz = diff(az) % (2*pi)
+        # Angle differences, adjusted to [-pi, pi]:
         daz = diff(az)
         daz = (daz + pi) % (2 * pi) - pi
 
-        deltas = diff(colat) / 2
-        colat = colat[0:-1] + deltas
+        # Midpoint colatitudes:
+        colat_mid = colat[:-1] + diff(colat) / 2
 
-        # Perform integral
-        integrands = (1 - cos(colat)) * daz
+        # Green's theorem integral:
+        integrands = (1 - cos(colat_mid)) * daz
+        spherical_area_ratio = abs(sum(integrands)) / (4 * pi)
+        spherical_area_ratio = min(
+            spherical_area_ratio, 1 - spherical_area_ratio
+        )
 
-        # Integrate
-        area = abs(sum(integrands)) / (4 * pi)
+        # Convert to area in square feet:
+        area_sqft = spherical_area_ratio * 4 * pi * EARTH_RADIUS_FT**2
 
-        # Area in ratio of sphere total area:
-        area = min(area, 1 - area)
-
-        # Area in sqft:
-        areaout = area * 4 * pi * radius**2
-
-        # Area in sqm:
-        if length_unit == "m":
-            areaout = areaout / (3.28084**2)
-
-        return areaout
+        # Convert to requested unit:
+        return UnitConverter.convert_unit(area_sqft, 'ft2', length_unit)
 
     def _create_asset_inventory(
-        self, footprints: list, attributes: dict, length_unit: str
+        self,
+        footprints: list,
+        attributes: dict,
+        length_unit: str
     ) -> AssetInventory:
         """
-        This method will be used by the subclasses to form the AssetInventory given footprints & atttributes
+        Construct AssetInventory object from footprints and attributes.
+
+        This method is intended to be used by subclasses to assemble an
+        AssetInventory from raw geometric and attribute data.
 
         Args:
-              footprints (list):
-                      footprint of each building, each entry a list of lon, lat points
-              attributes (dict):
-                      dict of atttributes, each value a list of attributes for each bldg
-              length_unit (str):
-                      indicating length unit 'ft' for example
+            footprints (list):
+                A list of building footprints. Each footprint is a list of
+                [lon, lat] coordinate pairs defining the polygon.
+            attributes (dict):
+                A dictionary of attribute lists, where each key corresponds to
+                an attribute name (e.g., "height", "material") and each value
+                is a list with one entry per building.
+            length_unit (str):
+                Unit of length to use for derived measurements
+                (e.g., 'ft', 'm').
 
         Returns:
-              AssetInventory:
-                      A building inventory for buildings in the region.
-
+            AssetInventory:
+                An inventory containing building assets for the specified
+                region.
         """
-
-        attributes["fpAreas"] = []
-        for fp in footprints:
-            lons = []
-            lats = []
-            for pt in fp:
-                lons.append(pt[0])
-                lats.append(pt[1])
-
-            attributes["fpAreas"].append(
-                int(self._polygon_area(lats, lons, length_unit))
-            )
+        # TODO: Need to calculate footprint areas after removing bad polygons.
+        # Compute footprint areas:
+        attributes['footprintArea'] = []
+        for footprint in footprints:
+            lons, lats = zip(*footprint)
+            area = int(self._polygon_area(list(lats), list(lons), length_unit))
+            attributes['footprintArea'].append(area)
 
         # Calculate centroids of the footprints and remove footprint data that
         # does not form a polygon:
-
         self.footprints = []
         self.centroids = []
-        ind_remove = []
+        valid_indices = []
 
-        for ind, footprint in enumerate(footprints):
+        for index, footprint in enumerate(footprints):
             try:
-                self.centroids.append(Polygon(footprint).centroid)
+                polygon = Polygon(footprint)
+                centroid = polygon.centroid
                 self.footprints.append(footprint)
-            except:
-                if ind == 0:
-                    print("removing", ind, footprint)
-                ind_remove.append(ind)
-                pass
+                self.centroids.append(centroid)
+                valid_indices.append(index)
+            except Exception as e:
+                print(
+                    f'[Warning] Invalid footprint at index {index}, '
+                    f'skipping. Error: {e}'
+                )
+                continue
 
-        # Remove attribute corresponding to the removed footprints:
-        for i in sorted(ind_remove, reverse=True):
-            for key in attributes.keys():
-                del attributes[key][i]
+        # Filter attributes to keep only valid entries:
+        for key in attributes:
+            attributes[key] = [attributes[key][i] for i in valid_indices]
 
-        # Place the results into an AssetInventory
+        # Assemble AssetInventory:
         inventory = AssetInventory()
+        for index, footprint in enumerate(self.footprints):
+            asset_features = {'type': ASSET_TYPE}
+            for key, values in attributes.items():
+                value = values[index]
+                asset_features[key] = "NA" if value is None else value
+            # TODO: Need remove NA's from the inventory. # Note: This may
+            # affect imputers. Need to verify compatibility before proceeding.
 
-        for ind, fp in enumerate(footprints):
+            asset = Asset(index, footprint, asset_features)
+            inventory.add_asset(index, asset)
 
-            asset_features = {'type':'Building'}
-            for key in attributes.keys():
-                attr = attributes[key][ind]
-                asset_features[key] = "NA" if attr is None else attr
-
-            asset = Asset(ind, fp, asset_features)
-            inventory.add_asset(ind, asset)
-
-        # return the inventory
         return inventory
