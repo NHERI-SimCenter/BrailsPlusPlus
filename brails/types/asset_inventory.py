@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 07-24-2025
+# 08-01-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -879,25 +879,21 @@ class AssetInventory:
         """
         geojson = self.get_geojson()
 
-        print(f'GEOJSON {geojson}')
+        # Ensure each feature has an 'id' field in the top-level feature object
+        # This is the variation of GeoJSON that is used in R2D:
+        for index, feature in enumerate(geojson['features']):
+            feature_id = feature['properties'].pop("id", str(index))
+            feature['id'] = str(feature_id)
 
-        # Modify the GeoJSON features to include an 'id' field:
-        # This is the variation of GeoJSON that is used in R2D
-
-        print(f'FILE: {output_file}')
-
-        for i, ft in enumerate(geojson["features"]):
-            if "id" in ft['properties']:
-                id = ft['properties'].pop("id")
-            else:
-                id = str(i)
-            ft['id'] = str(id)
-
-        # Write the created GeoJSON dictionary into a GeoJSON file:
+        # If a file name is provided, write the created GeoJSON dictionary into
+        # a GeoJSON file:
         if output_file:
-            with open(output_file, "w", encoding="utf-8") as file_out:
-                json.dump(clean_floats(geojson), file_out, indent=2)
-
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(clean_floats(geojson), f, indent=2)
+            print(
+                f"Wrote {len(geojson['features'])} features to: "
+                '{output_file}'
+            )
         return geojson
 
     def read_from_csv(
