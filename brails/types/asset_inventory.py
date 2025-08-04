@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 08-02-2025
+# 08-04-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -52,7 +52,9 @@ import json
 import random
 from copy import deepcopy
 from datetime import datetime
-from typing import Union, List, Tuple, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from collections.abc import Iterable
 
 try:
     # Python 3.8+
@@ -113,7 +115,7 @@ class Asset:
     Methods:
         add_features(additional_features, overwrite=True) -> tuple[bool, int]:
             Add or update features; optionally overwrite existing ones.
-        remove_features(feature_list) -> bool:
+        remove_features(features_to_remove) -> bool:
             Remove specified features from the asset.
         print_info() -> None:
             Print the asset's coordinates and features.
@@ -207,27 +209,30 @@ class Asset:
 
         return updated, n_pw
 
-    def remove_features(self, feature_list: List[str]) -> bool:
+    def remove_features(self, features_to_remove: Iterable[str]) -> bool:
         """
         Remove specified features from the asset.
 
         Args:
-            feature_list (List[str]):
-                List of feature keys to remove from the asset's features.
+            features_to_remove (Iterable[str]):
+                An iterable of feature keys to remove from the Asset features.
+                Accepts types like list, tuple, set, or dict_keys.
 
         Returns:
             bool:
                 True if at least one feature was removed; False otherwise.
 
         Raises:
-            TypeError: If feature_list is not a list of strings.
+            TypeError: If features_to_remove is not an iterable of strings.
         """
-        if (not isinstance(feature_list, list) or
-                not all(isinstance(k, str) for k in feature_list)):
-            raise TypeError('feature_list must be a list of strings.')
+        if (not isinstance(features_to_remove, Iterable) or
+                not all(isinstance(k, str) for k in features_to_remove)):
+            raise TypeError(
+                'features_to_remove must be an iterable of strings.'
+            )
 
         removed_count = 0
-        for feature_key in feature_list:
+        for feature_key in features_to_remove:
             if feature_key in self.features:
                 del self.features[feature_key]
                 removed_count += 1
@@ -274,7 +279,7 @@ class AssetInventory:
             method.
         print_info(): Print the asset inventory.
         remove_asset(asset_id): Remove an asset to the inventory.
-        remove_features(feature_list): Remove specified features from all
+        remove_features(features_to_remove): Remove specified features from all
             assets in the inventory.
         read_from_csv(file_path, keep_existing, str_type, id_column): Read
             inventory dataset from a csv table
@@ -847,13 +852,14 @@ class AssetInventory:
         else:
             return False
 
-    def remove_features(self, feature_list: List[str]) -> bool:
+    def remove_features(self, features_to_remove: Iterable[str]) -> bool:
         """
         Remove specified features from all assets in the inventory.
 
         Args:
-            feature_list (List[str]):
-                List of feature keys to remove from each asset's features.
+            features_to_remove (Iterable[str]):
+                An iterable of feature keys to remove from each Asset.
+                Accepts types like list, tuple, dict_keys, etc.
 
         Returns:
             bool:
@@ -861,13 +867,15 @@ class AssetInventory:
                 False otherwise.
 
         Raises:
-            TypeError: If feature_list is not a list of strings.
+            TypeError: If features_to_remove is not an iterable of strings.
         """
-        if (not isinstance(feature_list, list)
-                or not all(isinstance(f, str) for f in feature_list)):
-            raise TypeError('feature_list must be a list of strings.')
+        if (not isinstance(features_to_remove, Iterable)
+                or not all(isinstance(f, str) for f in features_to_remove)):
+            raise TypeError(
+                'features_to_remove must be an iterable of strings.'
+            )
 
-        return any(asset.remove_features(feature_list)
+        return any(asset.remove_features(features_to_remove)
                    for asset in self.inventory.values())
 
     def write_to_geojson(self, output_file: str = "") -> Dict:
