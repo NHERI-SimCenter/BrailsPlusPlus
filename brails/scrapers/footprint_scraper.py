@@ -170,7 +170,7 @@ class FootprintScraper(ABC):
         area_sqft = spherical_area_ratio * 4 * pi * EARTH_RADIUS_FT**2
 
         # Convert to requested unit:
-        return UnitConverter.convert_unit(area_sqft, 'ft2', length_unit)
+        return UnitConverter.convert_unit(area_sqft, 'ft2', f'{length_unit}2')
 
     def _create_asset_inventory(
         self,

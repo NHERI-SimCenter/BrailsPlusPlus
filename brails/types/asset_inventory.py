@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 08-01-2025
+# 08-05-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -47,12 +47,15 @@ This module defines classes associated with asset inventories.
     Asset
 """
 
+import os
 import csv
 import json
 import random
 from copy import deepcopy
 from datetime import datetime
-from typing import Union, List, Tuple, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from collections.abc import Iterable
 
 try:
     # Python 3.8+
@@ -63,13 +66,13 @@ except ImportError:
 
 import pandas as pd
 from shapely import box
-from shapely.geometry import shape
+from shapely.geometry import shape, LineString, Polygon
 
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 
 
-def clean_floats(obj: Any) -> Any:  # TODO: Check if this is needed
+def clean_floats(obj: Any) -> Any:
     """
     Recursively convert float values that are mathematically integers to int.
 
@@ -98,19 +101,27 @@ def clean_floats(obj: Any) -> Any:  # TODO: Check if this is needed
 
 class Asset:
     """
-    A data structure for an asset that holds it coordinates and features.
+    Represents a spatial asset with geometry coordinates, and attributes.
 
     Attributes:
-        asset_id (str|int):: Unique identifier for the asset.
-        coordinates (list[List[float]]): A list of coordinate pairs
+        asset_id (str | int):
+            Unique identifier for the asset.
+        coordinates (list[list[float]]):
+            List of coordinate pairs in the form
             [[lon1, lat1], [lon2, lat2], ..., [lonN, latN]].
-        features (dict[str, any]): A dictionary of features (attributes) for
-            the asset.
+        features (dict[str, Any]):
+            Dictionary of feature keys and their associated values representing
+            the asset's attributes.
 
     Methods:
-        add_features(additional_features: dict[str, any],
-            overwrite: bool = True): Update the existing features in the asset.
-        print_info(): Print the coordinates and features of the asset.
+        add_features(additional_features, overwrite=True) -> Tuple[bool, int]:
+            Add or update features; optionally overwrite existing ones.
+        get_centroid()-> List[List[Optional[float]]]:
+            Get the centroid of the asset geometry.
+        remove_features(features_to_remove) -> bool:
+            Remove specified features from the asset.
+        print_info() -> None:
+            Print the asset's coordinates and features.
     """
 
     def __init__(
@@ -123,12 +134,13 @@ class Asset:
         Initialize an Asset with an asset ID, coordinates, and features.
 
         Args:
-            asset_id (str|int): The unique identifier for the asset.
-            coordinates (list[list[float]]): A two-dimensional list
-                representing the geometry of the asset in [[lon1, lat1],
-                [lon2, lat2], ..., [lonN, latN]] format.
-            features (dict[str, Any], optional): A dictionary of features.
-                Defaults to an empty dict.
+            asset_id (str|int):
+                The unique identifier for the asset.
+            coordinates (list[list[float]]):
+                A two-dimensional list representing the geometry of the asset
+                in [[lon1, lat1], [lon2, lat2], ..., [lonN, latN]] format.
+            features (dict[str, Any], optional):
+                A dictionary of features. Defaults to an empty dict.
         """
         coords_check, output_msg = InputValidator.validate_coordinates(
             coordinates)
@@ -152,10 +164,10 @@ class Asset:
         Update the existing features in the asset.
 
         Args:
-            additional_features (dict[str, any]): New features to merge into
-                the asset's features.
-            overwrite (bool, optional): Whether to overwrite existing features.
-                Defaults to True.
+            additional_features (dict[str, any]):
+                New features to merge into the asset's features.
+            overwrite (bool, optional):
+                Whether to overwrite existing features. Defaults to True.
         """
         n_pw = 1
 
@@ -200,20 +212,62 @@ class Asset:
 
         return updated, n_pw
 
-    def remove_features(self, feature_list: List[str]) -> bool:
+    def get_centroid(self) -> List[List[Optional[float]]]:
         """
-        Update the existing features in the asset.
+        Get the centroid of the asset geometry.
+
+        Returns:
+            [[x, y]] if centroid can be calculated, [[None, None]] otherwise.
+        """
+        coords = self.coordinates
+        if not coords:
+            return [[None, None]]
+
+        try:
+            if InputValidator.is_point(coords):
+                return coords
+            elif InputValidator.is_linestring(coords):
+                geometry = LineString(coords)
+            elif InputValidator.is_polygon(coords):
+                geometry = Polygon(coords)
+            else:
+                return [[None, None]]
+
+            centroid = geometry.centroid
+            return [[centroid.x, centroid.y]]
+
+        except Exception:
+            return [[None, None]]
+
+    def remove_features(self, features_to_remove: Iterable[str]) -> bool:
+        """
+        Remove specified features from the asset.
 
         Args:
-            feature_list (dict[str, any]): List of features to be removed
+            features_to_remove (Iterable[str]):
+                An iterable of feature keys to remove from the Asset features.
+                Accepts types like list, tuple, set, or dict_keys.
 
-        Return:
-            bool: True if features are removed
+        Returns:
+            bool:
+                True if at least one feature was removed; False otherwise.
+
+        Raises:
+            TypeError: If features_to_remove is not an iterable of strings.
         """
-        for key in list(feature_list):
-            self.features.pop(key, None)
+        if (not isinstance(features_to_remove, Iterable) or
+                not all(isinstance(k, str) for k in features_to_remove)):
+            raise TypeError(
+                'features_to_remove must be an iterable of strings.'
+            )
 
-        return True
+        removed_count = 0
+        for feature_key in features_to_remove:
+            if feature_key in self.features:
+                del self.features[feature_key]
+                removed_count += 1
+
+        return removed_count > 0
 
     def print_info(self) -> None:
         """Print the coordinates and features of the asset."""
@@ -247,7 +301,6 @@ class AssetInventory:
         get_coordinates(): Return a list of footprints.
         get_extent(buffer): Calculate the geographical extent of the inventory.
         get_geojson(): Return inventory as a geojson dict.
-
         get_random_sample(size, seed): Get subset of the inventory.
         write_to_geojson(): Write inventory to file in GeoJSON format. Also
                             return inventory as a geojson dict.
@@ -256,7 +309,8 @@ class AssetInventory:
             method.
         print_info(): Print the asset inventory.
         remove_asset(asset_id): Remove an asset to the inventory.
-        remove_features(feature_list): Remove features from the inventory.
+        remove_features(features_to_remove): Remove specified features from all
+            assets in the inventory.
         read_from_csv(file_path, keep_existing, str_type, id_column): Read
             inventory dataset from a csv table
         add_asset_features_from_csv(file_path, id_column): Add asset features
@@ -505,22 +559,6 @@ class AssetInventory:
 
             centroid = shape(geometry).centroid
             asset.coordinates = [[centroid.x, centroid.y]]
-
-    # def remove_asset_features(self, asset_id: str | int, feature_list: list) -> tuple[bool, dict]:
-    #     """
-    #     Get features of a particular asset.
-
-    #     Args:
-    #         asset_id (str|int): The unique identifier for the asset.
-    #         feature_list (list): The list of features to be removed
-
-    #     Returns:
-    #         bool: True if features were removed, False otherwise.
-    #     """
-    #     asset = self.inventory.get(asset_id, None)
-    #     asset.remove_features(feature_list)
-
-    #    return True
 
     def get_asset_coordinates(
             self,
@@ -844,22 +882,31 @@ class AssetInventory:
         else:
             return False
 
-    def remove_features(self, feature_list: List[str]) -> bool:
+    def remove_features(self, features_to_remove: Iterable[str]) -> bool:
         """
         Remove specified features from all assets in the inventory.
 
         Args:
-            feature_list (list[str]):
-                The unique identifier for the asset.
+            features_to_remove (Iterable[str]):
+                An iterable of feature keys to remove from each Asset.
+                Accepts types like list, tuple, dict_keys, etc.
 
         Returns:
             bool:
-                True if features were removed, False otherwise.
-        """
-        for _, asset in self.inventory.items():
-            asset.remove_features(feature_list)
+                True if at least one feature was removed from any asset,
+                False otherwise.
 
-        return True
+        Raises:
+            TypeError: If features_to_remove is not an iterable of strings.
+        """
+        if (not isinstance(features_to_remove, Iterable)
+                or not all(isinstance(f, str) for f in features_to_remove)):
+            raise TypeError(
+                'features_to_remove must be an iterable of strings.'
+            )
+
+        return any(asset.remove_features(features_to_remove)
+                   for asset in self.inventory.values())
 
     def write_to_geojson(self, output_file: str = "") -> Dict:
         """
@@ -890,10 +937,10 @@ class AssetInventory:
         if output_file:
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(clean_floats(geojson), f, indent=2)
-            print(
-                f"Wrote {len(geojson['features'])} features to: "
-                '{output_file}'
-            )
+                print(
+                    f"Wrote {len(geojson['features'])} assets to "
+                    f'{os.path.abspath(output_file)}'
+                )
         return geojson
 
     def read_from_csv(
@@ -987,7 +1034,8 @@ class AssetInventory:
             bldg_features.pop(lat_key)
             bldg_features.pop(lon_key)
 
-            # TODO: what should the types be?
+            # TODO: Avoid hardcoding types here; consider using dynamic type
+            # handling or type hints instead.
             if "type" in bldg_features.keys():
                 if bldg_features["type"] not in ["building", "bridge"]:
                     raise Exception(f"The csv file {file_path} cannot have a "

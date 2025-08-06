@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 07-24-2025
+# 08-05-2025
 
 """
 This module provides a utility class for validating input data in BRAILS.
@@ -163,21 +163,6 @@ class InputValidator:
         return True, "Coordinates input is valid"
 
     @staticmethod
-    def is_valid_geometry(coordinates: List[List[float]]) -> bool:
-        """
-        Validate whether the given coordinates represent a valid geometry.
-
-        Args:
-            coordinates (list[list[float]]):
-                A list of coordinate pairs.
-
-        Returns:
-            bool:
-                True if the coordinates are valid, False otherwise.
-        """
-        return InputValidator.validate_coordinates(coordinates)[0]
-
-    @staticmethod
     def is_point(coordinates: List[List[float]]) -> bool:
         """
         Determine whether the given coordinates represent a point.
@@ -192,7 +177,7 @@ class InputValidator:
             bool:
                 True if the coordinates represent a point, False otherwise.
         """
-        if not InputValidator.is_valid_geometry(coordinates):
+        if not InputValidator.validate_coordinates(coordinates)[0]:
             return False
 
         return len(coordinates) == 1
@@ -200,12 +185,19 @@ class InputValidator:
     @staticmethod
     def is_linestring(coordinates: List[List[float]]) -> bool:
         """
-        Determine whether the given coordinates represent a linestring.
+        Determine whether the input represents a valid BRAILS LineString.
 
-        In BRAILS, a linestring is defined as a sequence of at least two
-        coordinate pairs, and it is not closed (the first and last points are
-        different). If exactly two points are provided, it is considered a
-        valid linestring
+        In BRAILS, a valid LineString must:
+        - Be a list of coordinate pairs, where each pair is a list of exactly
+          two float values: [longitude, latitude].
+        - Contain at least two coordinate pairs.
+        - Not be a nested structure beyond one level (i.e., must be a list of
+          lists, not a list of list of lists).
+        - The first and last coordinate pairs must not be the same (i.e., the
+          LineString must not be closed, to avoid confusion with a Polygon).
+
+        This function strictly rejects inputs with excessive nesting, such as
+        MultiLineStrings (i.e., lists of list of coordinate pairs).
 
         Args:
             coordinates (list[list[float]]):
@@ -216,11 +208,18 @@ class InputValidator:
                 True if the coordinates represent a linestring, False
                 otherwise.
         """
-        if not InputValidator.is_valid_geometry(coordinates):
+        if not InputValidator.validate_coordinates(coordinates)[0]:
             return False
 
-        return len(coordinates) == 2 or (len(coordinates) > 2
-                                         and coordinates[0] != coordinates[-1])
+        return (len(coordinates) >= 2
+                and all(
+                    isinstance(pair, list)
+                    and len(pair) == 2
+                    and all(isinstance(coord, float) for coord in pair)
+                    for pair in coordinates
+        )
+            and coordinates[0] != coordinates[-1]
+        )
 
     @staticmethod
     def is_multilinestring(coordinates: List[List[List[float]]]) -> bool:
@@ -240,7 +239,7 @@ class InputValidator:
                 True if the coordinates represent a MultiLineString, False
                 otherwise.
         """
-        if not InputValidator.is_valid_geometry(coordinates):
+        if not InputValidator.validate_coordinates(coordinates)[0]:
             return False
 
         for linestring in coordinates:
@@ -252,11 +251,21 @@ class InputValidator:
     @staticmethod
     def is_polygon(coordinates: List[List[float]]) -> bool:
         """
-        Determine whether the given coordinates represent a polygon.
+        Determine whether the input represents a valid BRAILS Polygon geometry.
 
-        In BRAILS, a polygon is defined as a sequence of at least three
-        coordinate pairs where the first and last coordinates are the same
-        (closed loop).
+        A valid Polygon must:
+        - Be a list of coordinate pairs.
+        - Each coordinate pair must be a list of exactly two float values:
+            [longitude, latitude].
+        - Contain at least three coordinate pairs, plus a fourth that closes
+          the shape.
+        - The first and last coordinate pairs must be the same
+          (i.e., the polygon must form a closed loop).
+        - The structure must be exactly one level deep: a list of coordinate
+          pairs, not a list of lists of coordinate lists.
+
+        This function performs structural and type checks and uses
+        `validate_coordinates()` to ensure coordinate validity.
 
         Args:
             coordinates (list[list[float]]):
@@ -266,15 +275,23 @@ class InputValidator:
             bool:
                 True if the coordinates represent a polygon, False otherwise.
         """
-        if not InputValidator.is_valid_geometry(coordinates):
+        if not InputValidator.validate_coordinates(coordinates)[0]:
             return False
 
-        return len(coordinates) > 2 and coordinates[0] == coordinates[-1]
+        return (len(coordinates) >= 2
+                and all(
+                    isinstance(pair, list)
+                    and len(pair) == 2
+                    and all(isinstance(coord, float) for coord in pair)
+                    for pair in coordinates
+        )
+            and coordinates[0] == coordinates[-1]
+        )
 
     @staticmethod
     def is_multipolygon(coordinates: List[List[List[float]]]) -> bool:
         """
-        Determine whether the given coordinates represent a MultiPolygon.
+        Determine whether given coordinates represent a BRAILS MultiPolygon.
 
         In BRAILS, a MultiPolygon is defined as a list of valid polygons,
         where each polygon is a closed loop with at least 3 points.
@@ -289,7 +306,7 @@ class InputValidator:
                 True if the coordinates represent a MultiPolygon, False
                 otherwise.
         """
-        if not InputValidator.is_valid_geometry(coordinates):
+        if not InputValidator.validate_coordinates(coordinates)[0]:
             return False
 
         for polygon in coordinates:
