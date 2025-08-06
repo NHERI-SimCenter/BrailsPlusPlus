@@ -66,7 +66,7 @@ except ImportError:
 
 import pandas as pd
 from shapely import box
-from shapely.geometry import shape
+from shapely.geometry import shape, LineString, Polygon
 
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
@@ -114,8 +114,10 @@ class Asset:
             the asset's attributes.
 
     Methods:
-        add_features(additional_features, overwrite=True) -> tuple[bool, int]:
+        add_features(additional_features, overwrite=True) -> Tuple[bool, int]:
             Add or update features; optionally overwrite existing ones.
+        get_centroid()-> List[List[Optional[float]]]:
+            Get the centroid of the asset geometry.
         remove_features(features_to_remove) -> bool:
             Remove specified features from the asset.
         print_info() -> None:
@@ -209,6 +211,33 @@ class Asset:
                     updated = True
 
         return updated, n_pw
+
+    def get_centroid(self) -> List[List[Optional[float]]]:
+        """
+        Get the centroid of the asset geometry.
+
+        Returns:
+            [[x, y]] if centroid can be calculated, [[None, None]] otherwise.
+        """
+        coords = self.coordinates
+        if not coords:
+            return [[None, None]]
+
+        try:
+            if InputValidator.is_point(coords):
+                return coords
+            elif InputValidator.is_linestring(coords):
+                geometry = LineString(coords)
+            elif InputValidator.is_polygon(coords):
+                geometry = Polygon(coords)
+            else:
+                return [[None, None]]
+
+            centroid = geometry.centroid
+            return [[centroid.x, centroid.y]]
+
+        except Exception:
+            return [[None, None]]
 
     def remove_features(self, features_to_remove: Iterable[str]) -> bool:
         """
