@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 08-04-2025
+# 08-05-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -47,6 +47,7 @@ This module defines classes associated with asset inventories.
     Asset
 """
 
+import os
 import csv
 import json
 import random
@@ -907,10 +908,10 @@ class AssetInventory:
         if output_file:
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(clean_floats(geojson), f, indent=2)
-            print(
-                f"Wrote {len(geojson['features'])} features to: "
-                '{output_file}'
-            )
+                print(
+                    f"Wrote {len(geojson['features'])} assets to "
+                    f'{os.path.abspath(output_file)}'
+                )
         return geojson
 
     def read_from_csv(
