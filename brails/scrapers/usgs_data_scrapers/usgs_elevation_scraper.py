@@ -53,7 +53,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import requests
 from shapely.geometry import Point
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from brails.constants import DEFAULT_UNITS
 from brails.types.asset_inventory import Asset, AssetInventory
@@ -62,6 +62,7 @@ from brails.utils import ArcgisAPIServiceHelper, UnitConverter
 
 
 API_ENDPOINT = "https://epqs.nationalmap.gov/v1/json"
+API_ELEVATION_UNIT = 'Feet'
 
 ELEVATION_FEATURE_NAMES = {
     "centroid": "centroid_elevation",
@@ -72,8 +73,6 @@ ELEVATION_FEATURE_NAMES = {
     "median": "median_elevation",
     "stddev": "stddev_elevation"
 }
-
-DEFAULT_ELEVATION_UNIT = 'ft'
 
 
 class USGSElevationScraper:
@@ -230,7 +229,7 @@ class USGSElevationScraper:
     def get_region_elevation_data(
         self,
         region: RegionBoundary,
-        num_points: int,
+        num_points: int = 2000,
         seed: Optional[int] = None
     ) -> AssetInventory:
         """
@@ -241,6 +240,7 @@ class USGSElevationScraper:
                 RegionBoundary object with a `get_boundary()` method.
             num_points (int):
                 Total number of points to sample within the region boundary.
+                Defaults to 2000
             seed (int, optional):
                 Random seed for reproducibility. Default is None.
 
@@ -288,14 +288,14 @@ class USGSElevationScraper:
             elevation = result['elevation']
             if elevation is not None:
                 elevation = UnitConverter.convert_length(
-                    elevation, DEFAULT_ELEVATION_UNIT, target_length_unit)
+                    elevation, API_ELEVATION_UNIT, target_length_unit)
 
             asset = Asset(
                 asset_id=asset_id,
                 coordinates=[[x, y]],
                 features={"elevation": elevation}
             )
-            inventory.add_asset(asset)
+            inventory.add_asset(asset_id, asset)
 
         return inventory
 
@@ -327,7 +327,7 @@ class USGSElevationScraper:
         params = {
             "x": x,
             "y": y,
-            "units": DEFAULT_ELEVATION_UNIT,
+            "units": API_ELEVATION_UNIT,
             "wkid": 4326,
             "includeDate": "false"
         }
@@ -399,8 +399,8 @@ class USGSElevationScraper:
                     result = future.result()
                 except Exception as e:
                     coord = coords_list[index]
-                    result = {"x": coord[0], "y": coord[1], "elevation": None}
-                    print(f"Exception for {coord}: {e}")
+                    result = {'x': coord[0], 'y': coord[1], 'elevation': None}
+                    print(f'Exception for {coord}: {e}')
                 results[index] = result
 
         pbar.close()
@@ -488,10 +488,10 @@ class USGSElevationScraper:
 
         # Assign elevations back to the corresponding assets (in-place):
         for i, idx in enumerate(valid_indices):
-            elevation = elevation_results[i].get('elevation')
+            elevation = elevation_results[i]['elevation']
             if elevation is not None:
                 converted = UnitConverter.convert_length(
-                    elevation, DEFAULT_ELEVATION_UNIT, target_length_unit)
+                    elevation, API_ELEVATION_UNIT, target_length_unit)
                 assets[idx].features[feature_name] = converted
 
     def _compute_asset_elevation_features(
@@ -563,7 +563,7 @@ class USGSElevationScraper:
                 if elev is not None:
                     elev = UnitConverter.convert_length(
                         elev,
-                        DEFAULT_ELEVATION_UNIT,
+                        API_ELEVATION_UNIT,
                         target_length_unit
                     )
                 elevations.append(elev)
