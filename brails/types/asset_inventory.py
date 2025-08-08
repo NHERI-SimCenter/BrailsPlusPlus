@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 08-05-2025
+# 08-07-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -100,28 +100,16 @@ def clean_floats(obj: Any) -> Any:
 
 
 class Asset:
-    """
-    Represents a spatial asset with geometry coordinates, and attributes.
+    """A spatial asset with geometry coordinates, and attributes.
 
-    Attributes:
-        asset_id (str | int):
+    Args:
+        asset_id (str or int):
             Unique identifier for the asset.
         coordinates (list[list[float]]):
-            List of coordinate pairs in the form
-            [[lon1, lat1], [lon2, lat2], ..., [lonN, latN]].
-        features (dict[str, Any]):
-            Dictionary of feature keys and their associated values representing
-            the asset's attributes.
-
-    Methods:
-        add_features(additional_features, overwrite=True) -> Tuple[bool, int]:
-            Add or update features; optionally overwrite existing ones.
-        get_centroid()-> List[List[Optional[float]]]:
-            Get the centroid of the asset geometry.
-        remove_features(features_to_remove) -> bool:
-            Remove specified features from the asset.
-        print_info() -> None:
-            Print the asset's coordinates and features.
+            Geometry coordinates of the asset, typically as a list of [x, y]
+            pairs.
+        features (dict[str, Any], optional):
+            Additional attributes/features of the asset. Defaults to None.
     """
 
     def __init__(
@@ -134,7 +122,7 @@ class Asset:
         Initialize an Asset with an asset ID, coordinates, and features.
 
         Args:
-            asset_id (str|int):
+            asset_id (str or int):
                 The unique identifier for the asset.
             coordinates (list[list[float]]):
                 A two-dimensional list representing the geometry of the asset
@@ -164,10 +152,39 @@ class Asset:
         Update the existing features in the asset.
 
         Args:
-            additional_features (dict[str, any]):
+            additional_features (dict[str, Any]):
                 New features to merge into the asset's features.
             overwrite (bool, optional):
                 Whether to overwrite existing features. Defaults to True.
+
+        Returns:
+            tuple[bool, int]:
+                A tuple containing two values:
+
+                - updated (bool): True if any features were added or updated,
+                  False otherwise.
+                - n_pw (int): Number of possible worlds.
+
+        Examples:
+            >>> asset = Asset(asset_id='123', coordinates=[[0, 0], [1, 1]])
+            >>> updated, n_pw = asset.add_features({'roof_type': 'gable'})
+            >>> print(updated, n_pw)
+            True 1
+
+            >>> updated, n_pw = asset.add_features(
+                {'possible_heights': [10, 15, 20]},
+                overwrite=True
+            )
+            >>> print(updated, n_pw)
+            True 3
+
+            >>> # When overwrite=False, existing keys are not updated
+            >>> updated, n_pw = asset.add_features(
+                {'roof_type': 'flat', 'color': 'red'},
+                overwrite=False
+            )
+            >>> print(updated, n_pw)
+            True 1
         """
         n_pw = 1
 
@@ -217,7 +234,18 @@ class Asset:
         Get the centroid of the asset geometry.
 
         Returns:
-            [[x, y]] if centroid can be calculated, [[None, None]] otherwise.
+            list[list[float]]:
+                [[x, y]] if centroid can be calculated, [[None, None]]
+                otherwise.
+
+        Examples:
+            >>> asset = Asset(asset_id='123', coordinates=[[0, 0], [2, 2]])
+            >>> asset.get_centroid()
+            [[1.0, 1.0]]
+
+            >>> empty_asset = Asset(asset_id='empty', coordinates=[])
+            >>> empty_asset.get_centroid()
+            [[None, None]]
         """
         coords = self.coordinates
         if not coords:
@@ -244,16 +272,23 @@ class Asset:
         Remove specified features from the asset.
 
         Args:
-            features_to_remove (Iterable[str]):
+            features_to_remove(Iterable[str]):
                 An iterable of feature keys to remove from the Asset features.
                 Accepts types like list, tuple, set, or dict_keys.
 
         Returns:
-            bool:
-                True if at least one feature was removed; False otherwise.
+            bool: True if at least one feature was removed; False otherwise.
 
         Raises:
             TypeError: If features_to_remove is not an iterable of strings.
+
+        Example:
+            >>> asset = Asset(asset_id='123', coordinates=[[0, 0], [1, 1]])
+            >>> asset.features = {'color': 'red', 'height': 10}
+            >>> asset.remove_features(['color'])
+            True
+            >>> asset.features
+            {'height': 10}
         """
         if (not isinstance(features_to_remove, Iterable) or
                 not all(isinstance(k, str) for k in features_to_remove)):
@@ -270,53 +305,31 @@ class Asset:
         return removed_count > 0
 
     def print_info(self) -> None:
-        """Print the coordinates and features of the asset."""
+        """
+        Print the asset's coordinates and feature attributes.
+
+        This method outputs the spatial coordinates and all associated
+        feature key-value pairs of the asset to the console.
+
+        Returns:
+            None
+
+        Examples:
+            >>> asset = Asset(
+                asset_id='123',
+                coordinates=[[0, 0], [2, 2]],
+                features={'roof_type': 'gable'}
+            )
+            >>> asset.print_info()
+                Coordinates:  [[0, 0], [2, 2]]
+                Features:  {'roof_type': 'gable'}
+        """
         print("\t Coordinates: ", self.coordinates)
         print("\t Features: ", self.features)
 
 
 class AssetInventory:
-    """
-    A class representing a Asset Inventory.
-
-    Attributes:
-        inventory (dict): The inventory stored in a dict accessed by asset_id
-
-     Methods:
-        add_asset(asset_id, Asset): Add an asset to the inventory.
-        add_asset_coordinates(asset_id, coordinates): Add an asset to the
-            inventory with just a list of coordinates.
-        add_asset_features(asset_id, features, overwrite): Append new features
-            to the asset.
-        add_model_predictions(predictions, feature_key): Add model predictions
-            to assets under a specified feature key.
-        change_feature_names(feature_name_mapping): Rename feature names in an
-            AssetInventory using user-specified mapping.
-        convert_polygons_to_centroids(): Convert polygon geometries in the
-            inventory to their centroid points.
-        get_asset_coordinates(asset_id): Get coordinates of a particular
-            assset.
-        get_asset_features(asset_id): Get features of a particular assset.
-        get_asset_ids(): Return the asset ids as a list.
-        get_coordinates(): Return a list of footprints.
-        get_extent(buffer): Calculate the geographical extent of the inventory.
-        get_geojson(): Return inventory as a geojson dict.
-        get_random_sample(size, seed): Get subset of the inventory.
-        write_to_geojson(): Write inventory to file in GeoJSON format. Also
-                            return inventory as a geojson dict.
-        join(inventory_to_join, method="get_points_in_polygons"): Perform a
-            spatial join with another AssetInventory using the specified
-            method.
-        print_info(): Print the asset inventory.
-        remove_asset(asset_id): Remove an asset to the inventory.
-        remove_features(features_to_remove): Remove specified features from all
-            assets in the inventory.
-        read_from_csv(file_path, keep_existing, str_type, id_column): Read
-            inventory dataset from a csv table
-        add_asset_features_from_csv(file_path, id_column): Add asset features
-            from a csv file.
-
-    """
+    """A class representing a Asset Inventory."""
 
     def __init__(self) -> None:
         """Initialize AssetInventory with an empty inventory dictionary."""
@@ -328,18 +341,31 @@ class AssetInventory:
         Add an Asset to the inventory.
 
         Args:
-            asset_id (str | int):
+            asset_id(str or int):
                 The unique identifier for the asset.
-            asset (Asset):
+            asset(Asset):
                 The asset to be added.
 
         Returns:
-            bool:
-                True if the asset was added successfully, False otherwise.
+            bool: True if the asset was added successfully, False otherwise.
 
         Raises:
-            TypeError:
-                If `asset` is not an instance of `Asset`.
+            TypeError: If `asset` is not an instance of `Asset`.
+
+        Example:
+            >>> asset = Asset(
+                asset_id='001',
+                coordinates=[[0, 0]],
+                features={'type': 'building'}
+            )
+            >>> inventory = AssetInventory()
+            >>> success = inventory.add_asset('001', asset)
+            >>> print(success)
+            True
+            >>> # Adding the same asset_id again will fail
+            >>> success = inventory.add_asset('001', asset)
+            >>> print(success)
+            False
         """
         if not isinstance(asset, Asset):
             raise TypeError("Expected an instance of Asset.")
@@ -361,15 +387,26 @@ class AssetInventory:
         Add an Asset to the inventory by adding its coordinate information.
 
         Args:
-            asset_id (str|int):
+            asset_id(str or int):
                 The unique identifier for the asset.
-            coordinates (list[list[float]]):
+            coordinates(list[list[float]]):
                 A two-dimensional list
                 representing the geometry in [[lon1, lat1], [lon2, lat2], ...,
                 [lonN, latN]] format.
 
         Returns:
             bool: True if the asset was added successfully, False otherwise.
+
+        Example:
+            >>> inventory = AssetInventory()
+            >>> coords = [[-122.42, 37.77], [-122.43, 37.78], [-122.44, 37.79]]
+            >>> success = inventory.add_asset_coordinates('A123', coords)
+            >>> print(success)
+            True
+            >>> # Attempt to add the same asset_id again
+            >>> success = inventory.add_asset_coordinates('A123', coords)
+            >>> print(success)
+            False
         """
         existing_asset = self.inventory.get(asset_id, None)
 
@@ -394,17 +431,42 @@ class AssetInventory:
         Add new asset features to the Asset with the specified ID.
 
         Args:
-            asset_id (str|int):
+            asset_id(str | int):
                 The unique identifier for the asset.
-            new_features (dict):
+            new_features(dict):
                 A dictionary of features to add to the asset.
-            overwrite (bool):
+            overwrite(bool):
                 Whether to overwrite existing features with the
                 same keys. Defaults to True.
 
         Returns:
-            bool: True if features were successfully added, False if the asset
+            bool:
+                True if features were successfully added, False if the asset
                 does not exist or the operation fails.
+
+        Example:
+            >>> inventory = AssetInventory()
+            >>> inventory.add_asset_coordinates(
+                'A123',
+                [[0.0, 0.0], [1.0, 1.0]]
+            )
+            True
+            >>> features = {'height': 10, 'material': 'concrete'}
+            >>> success = inventory.add_asset_features('A123', features)
+            >>> print(success)
+            True
+            >>> # Add features without overwriting existing keys
+            >>> more_features = {'material': 'steel', 'color': 'red'}
+            >>> success = inventory.add_asset_features(
+                'A123',
+                more_features,
+                overwrite=False
+            )
+            >>> print(success)
+            True
+            >>> asset = inventory.inventory['A123']
+            >>> print(asset.features)
+            {'height': 10, 'material': 'concrete', 'color': 'red'}
         """
         asset = self.inventory.get(asset_id, None)
         if asset is None:
@@ -436,25 +498,36 @@ class AssetInventory:
         key. Items without a matching prediction are left unchanged.
 
         Args:
-            predictions (dict):
+            predictions(dict):
                 A dictionary where keys correspond to inventory items and
                 values represent the predicted features to be added.
-            feature_key (str):
+            feature_key(str):
                 The key under which the predictions will be stored as a new
                 feature in each inventory item.
+
+        Returns:
+            None
 
         Raises:
             TypeError:
                 If `predictions` is not a dictionary or `feature_key` is not a
                 string.
             ValueError:
-                If none of the keys in `predictions` exist in `self.inventory`.
+                If none of the keys in `predictions` exist in the inventory.
 
         Example:
-            self.add_model_predictions(predictions={1:'gable',
-                                                    3:'flat',
-                                                    12:'hip'},
-                                       feature_key='roof_type')
+            Suppose the inventory contains assets with IDs 1, 3, and 12. To add
+            predicted roof types for these assets:
+
+            >>> predictions = {1: 'gable', 3: 'flat', 12: 'hip'}
+            >>> inventory.add_model_predictions(
+                predictions,
+                feature_key='roof_type'
+            )
+
+            After this call, each asset with an ID in `predictions` will have a
+            new feature `'roof_type'` set to the corresponding predicted value.
+
         """
         # Validate predictions input:
         if not isinstance(predictions, dict):
@@ -483,7 +556,7 @@ class AssetInventory:
         Rename feature names in an AssetInventory using user-specified mapping.
 
         Args:
-            feature_name_mapping (dict):
+            feature_name_mapping(dict):
                 A dictionary where keys are the original feature names and
                 values are the new feature names.
 
@@ -528,7 +601,7 @@ class AssetInventory:
         centroid. Point geometries are left unchanged.
 
         This function is useful for spatial operations that require point
-        representations of larger geometries (e.g., matching, distance
+        representations of larger geometries(e.g., matching, distance
                                               calculations).
 
         Notes:
@@ -538,8 +611,8 @@ class AssetInventory:
               ambiguous.
 
         Modifies:
-            self.inventory (dict):
-                Updates the `coordinates` field of each asset in-place by
+            self.inventory(dict):
+                Updates the `coordinates` field of each asset in -place by
                 replacing polygons and linestrings with their centroid.
         """
         for key, asset in self.inventory.items():
@@ -568,14 +641,14 @@ class AssetInventory:
         Get the coordinates of a particular asset.
 
         Args:
-            asset_id (str | int):
+            asset_id(str | int):
                 The unique identifier for the asset.
 
         Returns:
             tuple[bool, list]]:
                 A tuple where the first element is a boolean
                 indicating whether the asset was found, and the second element
-                is a list of coordinate pairs in the format [[lon1, lat1],
+                is a list of coordinate pairs in the format[[lon1, lat1],
                 [lon2, lat2], ..., [lonN, latN]] if the asset is present.
                 Returns an empty list if the asset is not found.
         """
@@ -593,7 +666,7 @@ class AssetInventory:
         Get features of a particular asset.
 
         Args:
-            asset_id (str|int):
+            asset_id(str | int):
                 The unique identifier for the asset.
 
         Returns:
@@ -625,13 +698,13 @@ class AssetInventory:
             self
     ) -> Tuple[List[List[List[float]]], List[Union[str, int]]]:
         """
-        Get geometry (coordinates) and keys of all assets in the inventory.
+        Get geometry(coordinates) and keys of all assets in the inventory.
 
         Returns:
             tuple[list[list[list[float, float]]], list[str | int]]: A tuple
                 containing:
                 - A list of coordinates for each asset, where each coordinate
-                    is represented as a list of [longitude, latitude] pairs.
+                    is represented as a list of[longitude, latitude] pairs.
                 - A list of asset keys corresponding to each Asset.
         """
         coordinates = [asset.coordinates for asset in self.inventory.values()]
@@ -653,13 +726,13 @@ class AssetInventory:
         optional `seed` for reproducibility.
 
         Args:
-            nsamples (int):
+            nsamples(int):
                 The number of assets to randomly sample from the inventory.
                 Must be a positive integer not exceeding the total number of
                 assets.
-            seed (int | float | str | bytes | bytearray | None, optional):
+            seed(int | float | str | bytes | bytearray | None, optional):
                 A seed value for the random generator to ensure
-                reproducibility. If None, the system default (current system
+                reproducibility. If None, the system default(current system
                 time) is used.
 
         Returns:
@@ -695,7 +768,7 @@ class AssetInventory:
         Calculate the geographical extent of the inventory.
 
         Args:
-            buffer (str or list[float]):
+            buffer(str or list[float]):
                 A string or a list of 4 floats.
                 - 'default' applies preset buffer values.
                 - 'none' applies zero buffer values.
@@ -752,14 +825,14 @@ class AssetInventory:
 
         The function constructs a valid GeoJSON `FeatureCollection`, where each
         asset is represented as a `Feature`. Each feature contains:
-        - A `geometry` field (Point, LineString, or Polygon) based on the
+        - A `geometry` field(Point, LineString, or Polygon) based on the
           asset's coordinates.
         - A `properties` field containing asset-specific metadata.
 
         Additionally, the GeoJSON output includes:
-        - A timestamp (`generated`) indicating when the data was created.
-        - The `BRAILS` package version (if available).
-        - A Coordinate Reference System (`crs`) definition set to "CRS84".
+        - A timestamp(`generated`) indicating when the data was created.
+        - The `BRAILS` package version(if available).
+        - A Coordinate Reference System(`crs`) definition set to "CRS84".
 
         Returns:
             dict:
@@ -817,9 +890,9 @@ class AssetInventory:
         Merge with another AssetInventory using specified spatial join method.
 
         Args:
-            inventory_to_join (AssetInventory):
+            inventory_to_join(AssetInventory):
                 The inventory to be joined with the current one.
-            method (str):
+            method(str):
                 The spatial join method to use. Defaults to 'get_points_in_
                 polygons'. The method defines how the join operation is
                 executed between inventories.
@@ -851,7 +924,7 @@ class AssetInventory:
         """
         Print summary information about the AssetInventory.
 
-        This method outputs the name of the class, the type of data structure
+        This method outputs the name of the class , the type of data structure
         used to store the inventory, and basic information about each asset
         in the inventory, including its key and features.
 
@@ -869,7 +942,7 @@ class AssetInventory:
         Remove an Asset from the inventory.
 
         Args:
-            asset_id (str|int):
+            asset_id(str | int):
                 The unique identifier for the asset.
 
         Returns:
@@ -887,7 +960,7 @@ class AssetInventory:
         Remove specified features from all assets in the inventory.
 
         Args:
-            features_to_remove (Iterable[str]):
+            features_to_remove(Iterable[str]):
                 An iterable of feature keys to remove from each Asset.
                 Accepts types like list, tuple, dict_keys, etc.
 
@@ -913,11 +986,11 @@ class AssetInventory:
         Write inventory to a GeoJSON file and return the GeoJSON dictionary.
 
         This method generates a GeoJSON representation of the asset inventory,
-        writes it to the specified file path (if provided), and returns the
+        writes it to the specified file path(if provided), and returns the
         GeoJSON object.
 
         Args:
-            output_file (str, optional):
+            output_file(str, optional):
                 Path to the output GeoJSON file. If empty, no file is written.
 
         Returns:
@@ -954,13 +1027,13 @@ class AssetInventory:
         Read inventory data from a CSV file and add it to the inventory.
 
         Args:
-            file_path (str):
+            file_path(str):
                   The path to the CSV file
-            keep_existing (bool):
+            keep_existing(bool):
                   If False, the inventory will be initialized
-            str_type (str):
+            str_type(str):
                   "building" or "bridge"
-            id_column (str):
+            id_column(str):
                   The name of column that contains id values. If None, new
                   indices will be assigned
 
@@ -1070,9 +1143,9 @@ class AssetInventory:
         Read inventory data from a CSV file and add it to the inventory.
 
         Args:
-            file_path (str):
+            file_path(str):
                   The path to the CSV file
-            id_column (str):
+            id_column(str):
                   The name of column that contains id values. If None, new
                   indicies will be assigned
 
@@ -1112,8 +1185,8 @@ class AssetInventory:
 
         This method processes the internal asset inventory and returns:
         - A DataFrame containing the features of each asset, with support for
-          multiple possible worlds (realizations).
-        - A DataFrame containing centroid coordinates (latitude and longitude)
+          multiple possible worlds(realizations).
+        - A DataFrame containing centroid coordinates(latitude and longitude)
           for spatial operations.
         - The total number of assets in the inventory.
 
@@ -1123,9 +1196,9 @@ class AssetInventory:
 
         Returns:
             Tuple[pd.DataFrame, pd.DataFrame, int]:
-                - Asset feature DataFrame (indexed by asset ID).
+                - Asset feature DataFrame(indexed by asset ID).
                 - Asset geometry DataFrame with 'Lat' and 'Lon' columns.
-                - Total number of assets (int).
+                - Total number of assets(int).
 
         Raises:
             ValueError:
@@ -1226,17 +1299,17 @@ class AssetInventory:
 
     def get_world_realization(self, id: int = 0) -> 'AssetInventory':
         """
-        Extract a single realization (possible world) from an inventory.
+        Extract a single realization(possible world) from an inventory.
 
         This method generates a new `AssetInventory` instance where all
         features containing multiple possible worlds are reduced to a single
         realization specified by `id`. Features that are not lists are copied
-        as-is.
+        as - is .
 
         Args:
-            id (int, default=0):
+            id(int, default=0):
                 The index of the realization to extract. Must be within the
-                range of available possible worlds (0-based indexing).
+                range of available possible worlds(0-based indexing).
 
         Returns:
             AssetInventory:
@@ -1297,10 +1370,10 @@ class AssetInventory:
         by updating the realization at the specified index `id`.
 
         Args:
-            id (int):
-                The index of the world (realization) to update. Must be less
+            id(int):
+                The index of the world(realization) to update. Must be less
                 than `self.n_pw`.
-            world_realization (AssetInventory):
+            world_realization(AssetInventory):
                 An AssetInventory instance representing a single realization
                 of the world. All features in this inventory must be scalar
                 (i.e., not lists).
@@ -1367,7 +1440,7 @@ class AssetInventory:
 
     def get_n_pw(self) -> int:  # move to Asset
         """
-        Get the number of possible worlds (realizations) in the inventory.
+        Get the number of possible worlds(realizations) in the inventory.
 
         Returns:
             int:
@@ -1380,7 +1453,7 @@ class AssetInventory:
         Identify features that contain multiple realizations across assets.
 
         Iterates through all assets and returns two lists:
-        - Keys associated with multi-valued features (i.e., lists).
+        - Keys associated with multi-valued features(i.e., lists).
         - All unique feature keys present in the inventory.
 
         Returns:
