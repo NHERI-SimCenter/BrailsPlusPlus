@@ -136,7 +136,7 @@ class Asset:
             self.coordinates = coordinates
         else:
             print(
-                f'{output_msg} Setting coordinates for asset '
+                f'{output_msg} \nSetting coordinates for asset '
                 f'{asset_id} to an empty list'
             )
             self.coordinates = []
@@ -431,7 +431,7 @@ class AssetInventory:
         Add new asset features to the Asset with the specified ID.
 
         Args:
-            asset_id(str | int):
+            asset_id(str or int):
                 The unique identifier for the asset.
             new_features(dict):
                 A dictionary of features to add to the asset.
@@ -447,9 +447,9 @@ class AssetInventory:
         Example:
             >>> inventory = AssetInventory()
             >>> inventory.add_asset_coordinates(
-                'A123',
-                [[0.0, 0.0], [1.0, 1.0]]
-            )
+                    'A123',
+                    [[0.0, 0.0], [1.0, 1.0]]
+                )
             True
             >>> features = {'height': 10, 'material': 'concrete'}
             >>> success = inventory.add_asset_features('A123', features)
@@ -458,10 +458,10 @@ class AssetInventory:
             >>> # Add features without overwriting existing keys
             >>> more_features = {'material': 'steel', 'color': 'red'}
             >>> success = inventory.add_asset_features(
-                'A123',
-                more_features,
-                overwrite=False
-            )
+                    'A123',
+                    more_features,
+                    overwrite=False
+                )
             >>> print(success)
             True
             >>> asset = inventory.inventory['A123']
@@ -521,9 +521,9 @@ class AssetInventory:
 
             >>> predictions = {1: 'gable', 3: 'flat', 12: 'hip'}
             >>> inventory.add_model_predictions(
-                predictions,
-                feature_key='roof_type'
-            )
+                    predictions,
+                    feature_key='roof_type'
+                )
 
             After this call, each asset with an ID in `predictions` will have a
             new feature `'roof_type'` set to the corresponding predicted value.
@@ -564,6 +564,32 @@ class AssetInventory:
             TypeError:
                 If the mapping is not a dictionary or contains invalid
                 key-value pairs.
+
+        Example:
+            First create an `AssetInventory` with two assets with ids `asset1`
+            and `asset2`.
+
+            >>> inventory = AssetInventory()
+            >>> asset1 = Asset(
+            ...     asset_id='asset1',
+            ...     coordinates=[[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]],
+            ...     features={'old_name': 100, 'unchanged': 50}
+            ... )
+            >>> inventory.add_asset('asset1', asset1)
+            >>> asset2 = Asset(
+            ...     asset_id='asset2',
+            ...     coordinates=[[0, 0], [1, 1]],
+            ...     features={'old_name': 200}
+            ... )
+            >>> inventory.add_asset('asset2', asset2)
+
+            Then change the names of the features of these assets.
+
+            >>> inventory.change_feature_names({'old_name': 'new_name'})
+            >>> inventory.inventory['asset1'].features
+            {'new_name': 100, 'unchanged': 50}
+            >>> inventory.inventory['asset2'].features
+            {'new_name': 200}
         """
         # Validate that feature_name_mapping is a dictionary:
         if not isinstance(feature_name_mapping, dict):
@@ -602,18 +628,34 @@ class AssetInventory:
 
         This function is useful for spatial operations that require point
         representations of larger geometries(e.g., matching, distance
-                                              calculations).
+        calculations).
 
-        Notes:
+        Note:
             - Polygon coordinates are wrapped in a list to ensure proper
               GeoJSON structure.
-            - Linestrings are treated as such unless the geometry is invalid or
-              ambiguous.
+            - Linestrings are converted to points at their centroid unless the
+              geometry is invalid or ambiguous.
 
         Modifies:
-            self.inventory(dict):
-                Updates the `coordinates` field of each asset in -place by
+            self.inventory (dict):
+                Updates the `coordinates` field of each asset in-place by
                 replacing polygons and linestrings with their centroid.
+
+        Example:
+            >>> inventory = AssetInventory()
+            >>> inventory.add_asset_coordinates(
+                    'asset1',
+                    [[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]   # Polygon
+                )
+            >>> inventory.add_asset_coordinates(
+                    'asset2',
+                    [[0, 0], [1, 1]]                           # LineString
+                )
+            >>> inv.convert_polygons_to_centroids()
+            >>> inv['asset1'].coordinates
+            [[0.5, 0.5]]
+            >>> inv['asset2'].coordinates
+            [[0.5, 0.5]]
         """
         for key, asset in self.inventory.items():
             if InputValidator.is_point(asset.coordinates):
@@ -641,16 +683,28 @@ class AssetInventory:
         Get the coordinates of a particular asset.
 
         Args:
-            asset_id(str | int):
+            asset_id(str or int):
                 The unique identifier for the asset.
 
         Returns:
-            tuple[bool, list]]:
-                A tuple where the first element is a boolean
-                indicating whether the asset was found, and the second element
-                is a list of coordinate pairs in the format[[lon1, lat1],
-                [lon2, lat2], ..., [lonN, latN]] if the asset is present.
-                Returns an empty list if the asset is not found.
+            tuple[bool, list]:
+                - **bool** – Indicates whether the asset was found.
+                - **list** – A list of coordinate pairs in the format
+                  ``[[lon1, lat1], [lon2, lat2], ..., [lonN, latN]]`` if
+                  found, or an empty list if the asset does not exist.
+        Example:
+            >>> inventory = AssetInventory({
+            ...     "A101": Asset(
+                coordinates=[[30.123, -97.456], [30.124, -97.457]]
+                ),
+            ...     "B202": Asset(
+                coordinates=[[40.789, -74.123], [40.790, -74.124]]
+                )
+            ... })
+            >>> inventory.get_asset_coordinates("A101")
+            (True, [[30.123, -97.456], [30.124, -97.457]])
+            >>> inventory.get_asset_coordinates("Z999")
+            (False, [])
         """
         asset = self.inventory.get(asset_id, None)
         if asset is None:
