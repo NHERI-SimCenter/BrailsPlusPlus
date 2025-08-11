@@ -27,5 +27,6 @@ Submodules
    brails.utils.inventory_validator
    brails.utils.model_utils
    brails.utils.plot_tools
+   brails.utils.rapid_utils
    brails.utils.segmentation_utils
    brails.utils.unit_converter
