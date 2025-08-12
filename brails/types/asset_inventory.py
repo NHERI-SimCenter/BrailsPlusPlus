@@ -355,7 +355,18 @@ class Asset:
 
 
 class AssetInventory:
-    """A class representing an Asset Inventory."""
+    """
+    A class representing a collection of Assets managed as an inventory.
+
+    This class provides methods to add, manipulate, join, write and query
+    a collaction of :`class:Asset` objects.
+
+    To import the :class:`AssetInventory` class, use:
+
+    .. code-block:: python
+
+        from brails.types.asset_inventory import AssetInventory
+    """
 
     def __init__(self) -> None:
         """Initialize AssetInventory with an empty inventory dictionary."""
