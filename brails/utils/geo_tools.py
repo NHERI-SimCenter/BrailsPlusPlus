@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 07-24-2025
+# 08-13-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -48,14 +48,14 @@ This module defines a class for geospatial analysis and operations.
 import json
 from math import radians, sin, cos, atan2, sqrt
 from typing import Dict, List, Tuple, Union
+
 import matplotlib.pyplot as plt
 from shapely import to_geojson
 from shapely.geometry import Point, Polygon, MultiPolygon
 from shapely.strtree import STRtree
 
-# Constants:
-R_EARTH_KM = 6371.0
-KM2_FEET = 3280.84
+from brails.utils.unit_converter import UnitConverter
+from brails.constants import R_EARTH_KM
 
 
 class GeoTools:
@@ -68,21 +68,11 @@ class GeoTools:
     geometries to operate on points and polygons, making it suitable for
     geographical data manipulation and visualization.
 
-    Methods:
-        haversine_dist(p1: tuple, p2: tuple) -> float:
-          Calculate the Haversine distance between two geographical points.
-        mesh_polygon(polygon: Polygon, rows: int, cols: int) ->
-            list[Polygon]:
-            Split a polygon into a grid of individual rectangular polygons.
-        plot_polygon_cells(bpoly: Polygon | MultiPolygon,
-            rectangles: list[Polygon], output_file: str = ''):
-            Plot a polygon/its rectangular mesh, optionally saving the plot.
-        write_polygon_to_geojson(poly: Polygon | MultiPolygon,
-            output_file: str):
-            Write a Shapely Polygon or MultiPolygon to a GeoJSON file.
-        match_points_to_polygons(points: list, polygons: list) ->
-            tuple[list, dict]:
-            Match points to polygons and return the correspondence data.
+    To import the :class:`GeoTools` class, use:
+
+    .. code-block:: python
+
+        from brails.utils import GeoTools
     """
 
     @staticmethod
@@ -107,8 +97,14 @@ class GeoTools:
                 is the longitude of the point in degrees.
 
         Returns:
-            float:
-                The Haversine distance between the two points in feet.
+            float: The Haversine distance between the two points in feet.
+
+        Example:
+            >>> p1 = (37.7749, -122.4194)  # San Francisco, CA
+            >>> p2 = (34.0522, -118.2437)  # Los Angeles, CA
+            >>> distance = GeoTools.haversine_dist(p1, p2)
+            >>> round(distance / 5280)  # convert feet to miles
+            347
         """
         # Convert coordinate values from degrees to radians:
         lat1, lon1 = radians(p1[0]), radians(p1[1])
@@ -124,7 +120,7 @@ class GeoTools:
         c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
         # Return distance between the two points in feet:
-        return R_EARTH_KM * c * KM2_FEET
+        return UnitConverter.convert_length(R_EARTH_KM * c, 'km', 'ft')
 
     @staticmethod
     def mesh_polygon(polygon: Polygon, rows: int, cols: int) -> List[Polygon]:
@@ -138,7 +134,7 @@ class GeoTools:
 
         Args:
             polygon (Polygon):
-                A Shapely polygon to be meshed.
+                A Shapely Polygon to be meshed.
             rows (int):
                 The number of rows to divide the polygon into.
             cols (int):
@@ -146,8 +142,18 @@ class GeoTools:
 
         Returns:
             list[Polygon]:
-                A list of Shapely polygons representing the individual
-                rectangular cells that mesh the input polygon.
+                A list of Shapely Polygons representing the individual
+                rectangular cells that mesh the ``polygon`` input.
+
+        Example:
+            >>> from shapely.geometry import Polygon
+            >>> poly = Polygon([(0, 0), (4, 0), (4, 3), (0, 3)])
+            >>> cells = GeoTools.mesh_polygon(poly, rows=2, cols=2)
+            >>> len(cells)
+            4
+            >>> # Access coordinates of first cell
+            >>> cells[0].bounds
+            (0.0, 0.0, 2.0, 1.5)
         """
         # Get bounds of the polygon:
         min_x, min_y, max_x, max_y = polygon.bounds
@@ -182,25 +188,46 @@ class GeoTools:
         return rectangles
 
     @staticmethod
-    def plot_polygon_cells(bpoly: Union[Polygon, MultiPolygon],
-                           rectangles: List[Polygon],
-                           output_file: str = ''):
+    def plot_polygon_cells(
+            bpoly: Union[Polygon, MultiPolygon],
+            rectangles: List[Polygon],
+            output_file: str = ''
+    ) -> None:
         """
         Plot a polygon and its rectangular mesh, optionally saving the plot.
 
+        This function visualizes a Shapely Polygon or MultiPolygon along with
+        its rectangular mesh of cells. Each cell is plotted in blue, and the
+        base polygon is outlined in black.
+
         Args:
-            bpoly (Polygon | MultiPolygon):
-                A Shapely polygon or MultiPolygon to plot.
+            bpoly (Polygon or MultiPolygon):
+                A Shapely Polygon or MultiPolygon to plot.
             rectangles (list[Polygon]):
-                A list of Shapely polygons representing the rectangular cells
-                that mesh input polygon.
+                A list of Shapely Polygon objects representing the rectangular
+                cells that mesh input polygon.
             output_file (str, optional):
                 Filename to save the plot as a PNG image. If empty string, the
                 plot is not saved.
 
+        Returns:
+            None
+
         Raises:
             ValueError:
-                If `output_file` is provided and an invalid filename is given.
+                If ``output_file`` is provided and an invalid filename is
+                given.
+
+        Example:
+            >>> from shapely.geometry import Polygon
+            >>> poly = Polygon([(0, 0), (4, 0), (4, 3), (0, 3)])
+            >>> cells = GeoTools.mesh_polygon(poly, rows=2, cols=2)
+            >>> GeoTools.plot_polygon_cells(poly, cells)
+            >>> GeoTools.plot_polygon_cells(
+            ...     poly,
+            ...     cells,
+            ...     output_file='mesh_plot.png'
+            ... )
         """
         # Plot the base polygon:
         if bpoly.geom_type == "MultiPolygon":
@@ -233,7 +260,7 @@ class GeoTools:
         Write a Shapely Polygon or MultiPolygon to a GeoJSON file.
 
         Args:
-            poly (Union[Polygon, MultiPolygon]):
+            poly (Polygon or MultiPolygon):
                 A Shapely Polygon or MultiPolygon to be written.
             output_file (str):
                 The output filename for the GeoJSON file.
@@ -242,6 +269,22 @@ class GeoTools:
             - This method does not perform validation on the geometry.
             - The file extension will be replaced with '.geojson' if not
               present.
+
+        Returns:
+            None
+
+        Examples:
+            >>> from shapely.geometry import Polygon, MultiPolygon
+            >>> poly = Polygon([(0, 0), (4, 0), (4, 3), (0, 3)])
+            >>> GeoTools.write_polygon_to_geojson(poly, 'my_polygon.geojson')
+
+            >>> poly1 = Polygon([(0, 0), (2, 0), (2, 2), (0, 2)])
+            >>> poly2 = Polygon([(3, 0), (5, 0), (5, 2), (3, 2)])
+            >>> mpoly = MultiPolygon([poly1, poly2])
+            >>> GeoTools.write_polygon_to_geojson(
+            ...     mpoly,
+            ...     'my_multipolygon.geojson'
+            ... )
         """
         if 'geojson' not in output_file.lower():
             output_file = output_file.rsplit('.', 1)[0] + '.geojson'
@@ -287,19 +330,20 @@ class GeoTools:
         to the polygon's centroid.
 
         Args:
-            points (list):
-                A list of Shapely points.
-            polygons (list):
-                A list of polygon coordinates defined in EPSG 4326
+            points (list[Point]):
+                A list of Shapely points
+            polygons (list[Polygon]):
+                A list of Shapely Polygons defined in EPSG 4326
                 (longitude, latitude).
 
         Returns:
             tuple[list, dict, list]:
-                - A list of matched Shapely Point geometries.
+
+                - A list of matched Shapely points.
                 - A dictionary mapping each polygon (represented as a string)
-                    to the corresponding matched point.
+                  to the corresponding matched point.
                 - A list of the indices of polygons matched to points, with
-                    each index listed in the same order as the list of points.
+                  each index listed in the same order as the list of points.
         """
         # Create an STR tree for the input points:
         pttree = STRtree(points)
@@ -361,28 +405,43 @@ class GeoTools:
 
         Args:
             geometry (Polygon):
-                A Shapely Polygon object to be checked.
+                A Shapely Polygon to be checked.
 
         Returns:
             bool:
-                True if the Polygon is a rectangular box, False otherwise.
+                ``True`` if the ``geometry`` is a rectangular box, ``False``
+                otherwise.
 
         Raises:
             TypeError:
-                If the input is not a Shapely Polygon object.
+                If the input is not a Shapely Polygon
+
+
+        Examples:
+            >>> from shapely.geometry import Polygon
+            >>> # A rectangle:
+            >>> rect = Polygon([(0, 0), (2, 0), (2, 1), (0, 1), (0, 0)])
+            >>> GeoTools.is_box(rect)
+            True
+
+            >>> # A non-rectangle polygon:
+            >>> poly = Polygon([(0, 0), (1, 0), (2, 1), (0, 1), (0, 0)])
+            >>> GeoTools.is_box(poly)
+            False
         """
         # Check if the input is a polygon:
         if not isinstance(geometry, Polygon):
-            TypeError('Invalid geometry input. Expected a Shapely Polygon '
-                      'object.')
+            raise TypeError(
+                'Invalid geometry input. Expected a Shapely Polygon object.'
+            )
 
         # Check if the geometry has exactly 4 corners:
-        if len(geometry.exterior.coords) == 5:
-            # Check if opposite sides are equal (box property):
-            x1, y1 = geometry.exterior.coords[0]
-            x2, y2 = geometry.exterior.coords[1]
-            x3, y3 = geometry.exterior.coords[2]
-            x4, y4 = geometry.exterior.coords[3]
+        coords = list(geometry.exterior.coords)
+        if len(coords) != 5:
+            return False
 
-            return (x1 == x2 and y1 == y4 and x3 == x4 and y2 == y3)
-        return False
+        # Extract points:
+        (x1, y1), (x2, y2), (x3, y3), (x4, y4), _ = coords
+
+        # Check if opposite sides are equal (box property):
+        return (x1 == x4 and x2 == x3 and y1 == y2 and y3 == y4)
