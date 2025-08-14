@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-13-2025
+# 08-14-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -51,7 +51,9 @@ from typing import Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 from shapely import to_geojson
-from shapely.geometry import Point, Polygon, MultiPolygon
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, \
+    Point, Polygon
+from shapely.geometry.base import BaseGeometry
 from shapely.strtree import STRtree
 
 from brails.utils.unit_converter import UnitConverter
@@ -393,55 +395,46 @@ class GeoTools:
         return ptskeep, fp2ptmap, ind_fp_matched
 
     @staticmethod
-    def is_box(geometry: Polygon) -> bool:
+    def geometry_to_list_of_lists(geom: BaseGeometry) -> List[List[float]]:
         """
-        Determine whether a given Shapely geometry is a rectangular box.
-
-        A box is defined as a Polygon with exactly four corners and opposite
-        sides being equal. This function checks if the geometry is a Polygon
-        with 5 coordinates (the 5th being a duplicate of the first to close the
-        polygon), and verifies that opposite sides are equal, ensuring that the
-        polygon is rectangular.
+        Convert a Shapely geometry into a list of coordinate lists.
 
         Args:
-            geometry (Polygon):
-                A Shapely Polygon to be checked.
+            geom (BaseGeometry):
+                A Shapely geometry (such as Point, Polygon)
 
         Returns:
-            bool:
-                ``True`` if the ``geometry`` is a rectangular box, ``False``
-                otherwise.
-
-        Raises:
-            TypeError:
-                If the input is not a Shapely Polygon
-
+            List[List[float]] or List[List[List[float]]]:
+                A list of ``[lon, lat]`` values or nested list objects
+                for complex geometries.
 
         Examples:
-            >>> from shapely.geometry import Polygon
-            >>> # A rectangle:
-            >>> rect = Polygon([(0, 0), (2, 0), (2, 1), (0, 1), (0, 0)])
-            >>> GeoTools.is_box(rect)
-            True
-
-            >>> # A non-rectangle polygon:
-            >>> poly = Polygon([(0, 0), (1, 0), (2, 1), (0, 1), (0, 0)])
-            >>> GeoTools.is_box(poly)
-            False
+            >>> from shapely.geometry import Point, Polygon
+            >>> GeoTools.geometry_to_list_of_lists(Point(1.0, 2.0))
+            [[1.0, 2.0]]
+            >>> square = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+            >>> GeoTools.geometry_to_list_of_lists(square)
+            [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]
         """
-        # Check if the input is a polygon:
-        if not isinstance(geometry, Polygon):
-            raise TypeError(
-                'Invalid geometry input. Expected a Shapely Polygon object.'
-            )
+        if isinstance(geom, Point):
+            return [[geom.x, geom.y]]
 
-        # Check if the geometry has exactly 4 corners:
-        coords = list(geometry.exterior.coords)
-        if len(coords) != 5:
-            return False
+        elif isinstance(geom, LineString):
+            return [list(coord) for coord in geom.coords]
 
-        # Extract points:
-        (x1, y1), (x2, y2), (x3, y3), (x4, y4), _ = coords
+        elif isinstance(geom, MultiLineString):
+            return [
+                [list(coord) for coord in line.coords] for line in geom.geoms
+            ]
 
-        # Check if opposite sides are equal (box property):
-        return (x1 == x4 and x2 == x3 and y1 == y2 and y3 == y4)
+        elif isinstance(geom, Polygon):
+            return [list(coord) for coord in geom.exterior.coords]
+
+        elif isinstance(geom, MultiPolygon):
+            return [
+                [list(coord) for coord in polygon.exterior.coords]
+                for polygon in geom.geoms
+            ]
+
+        else:
+            raise TypeError(f"Unsupported geometry type: {type(geom)}")
