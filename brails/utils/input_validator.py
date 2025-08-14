@@ -46,6 +46,7 @@ This module provides a utility class for validating input data in BRAILS.
 """
 import os
 from typing import Any, List, Tuple
+from shapely.geometry import Polygon
 
 
 class InputValidator:
@@ -467,3 +468,57 @@ class InputValidator:
         valid_exts = ('.jpg', '.jpeg', '.png', '.bmp')
         return os.path.isfile(filepath) and filepath.lower().endswith(
             valid_exts)
+
+    @staticmethod
+    def is_box(geometry: Polygon) -> bool:
+        """
+        Determine whether a given Shapely geometry is a rectangular box.
+
+        A box is defined as a Polygon with exactly four corners and opposite
+        sides being equal. This function checks if the geometry is a Polygon
+        with 5 coordinates (the 5th being a duplicate of the first to close the
+        polygon), and verifies that opposite sides are equal, ensuring that the
+        polygon is rectangular.
+
+        Args:
+            geometry (Polygon):
+                A Shapely Polygon to be checked.
+
+        Returns:
+            bool:
+                ``True`` if the ``geometry`` is a rectangular box, ``False``
+                otherwise.
+
+        Raises:
+            TypeError:
+                If the input is not a Shapely Polygon
+
+
+        Examples:
+            >>> from shapely.geometry import Polygon
+            >>> # A rectangle:
+            >>> rect = Polygon([(0, 0), (2, 0), (2, 1), (0, 1), (0, 0)])
+            >>> GeoTools.is_box(rect)
+            True
+
+            >>> # A non-rectangle polygon:
+            >>> poly = Polygon([(0, 0), (1, 0), (2, 1), (0, 1), (0, 0)])
+            >>> GeoTools.is_box(poly)
+            False
+        """
+        # Check if the input is a polygon:
+        if not isinstance(geometry, Polygon):
+            raise TypeError(
+                'Invalid geometry input. Expected a Shapely Polygon object.'
+            )
+
+        # Check if the geometry has exactly 4 corners:
+        coords = list(geometry.exterior.coords)
+        if len(coords) != 5:
+            return False
+
+        # Extract points:
+        (x1, y1), (x2, y2), (x3, y3), (x4, y4), _ = coords
+
+        # Check if opposite sides are equal (box property):
+        return (x1 == x4 and x2 == x3 and y1 == y2 and y3 == y4)
