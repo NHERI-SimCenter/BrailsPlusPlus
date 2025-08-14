@@ -42,7 +42,7 @@ This module defines utilities for creating visually-appealing figures.
 
 .. autosummary::
 
-    plotTools
+    PlotTools
 """
 
 import random
@@ -57,22 +57,17 @@ class PlotTools:
     """
     A utility class for generating visually-appealing image grids.
 
-    The `PlotTools` class provides static methods to visualize model
+    The :class:`PlotTools` class provides static methods to visualize model
     predictions alongside images, enabling intuitive and structured displays
     for both qualitative evaluation and presentation purposes. It is designed
-    to support image sets managed through the `ImageSet` class and prediction
-    outputs from classification models.
+    to support image sets managed through the :class:`ImageSet` class and
+    prediction outputs from classification models.
 
-    Methods:
-        show_predictions(
-            images: ImageSet,
-            predictions: Dict[str, Union[int, str]],
-            attribute_name: str,
-            num_samples: Union[int, str] = 'all',
-            crop_image: bool = True
-        ) -> None:
-            Display a grid of images annotated with model predictions. Images
-            are optionally cropped and resized for consistent presentation.
+    To import the :class:`PlotTools` class, use:
+
+    .. code-block:: python
+
+        from brails.utils import PlotTools
     """
 
     @staticmethod
@@ -87,14 +82,14 @@ class PlotTools:
         Display a set of images along with their corresponding predictions.
 
         This method randomly samples a specified number of images from the
-        provided `images` object, optionally crops the images, resizes them,
+        provided ``images`` object, optionally crops the images, resizes them,
         and then displays them in a grid with the associated predictions.
 
         Args:
             images (ImageSet):
                 A custom object that holds image paths and metadata. It should
-                have an attribute 'images' (a list of image objects) and
-                'dir_path' (a string representing the directory path where
+                have an attribute ``images`` (a list of image objects) and
+                ``dir_path`` (a string representing the directory path where
                 images are located).
             predictions (dict):
                 A dictionary where the keys are image identifiers (e.g., file
@@ -104,12 +99,12 @@ class PlotTools:
                 The name of the attribute being predicted, which is displayed
                 in the title for each image.
             num_samples (int or str, optional)
-                The number of images to display. If set to 'all', all images in
-                the set will be displayed. Defaults to 'all'.
+                The number of images to display. If set to ``'all'``, all
+                images in the set will be displayed. Defaults to ``'all'``.
             crop_image (bool, optional):
-                If set to `True`, the images will be cropped (top 1/6 and
-                bottom 1/4 removed). If set to `False`, the images will be
-                displayed without cropping. Defaults to `True`.
+                If set to ``True``, the images will be cropped (top 1/6 and
+                bottom 1/4 removed). If set to ``False``, the images will be
+                displayed without cropping. Defaults to ``True``.
 
         Returns:
             None
@@ -125,9 +120,13 @@ class PlotTools:
           image aspect ratio.
 
         Example:
-        show_predictions(images=my_image_set, predictions=my_predictions,
-                         attribute_name='Class', num_samples=5,
-                         crop_image=True)
+            PlotTools.show_predictions(
+                images=my_image_set,
+                predictions=my_predictions,
+                attribute_name="Class",
+                num_samples=5,
+                crop_image=True,
+            )
         """
         images_files = {}
         for key in images.images:

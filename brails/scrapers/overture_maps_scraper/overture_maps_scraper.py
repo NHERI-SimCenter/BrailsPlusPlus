@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 07-31-2025
+# 07-13-2025
 
 """
 This module define the base class for scraping OvertureMaps data.
@@ -93,50 +93,34 @@ class OvertureMapsScraper(ABC):
     """
     A base class for accessing and processing data from Overture Maps.
 
-    This class provides static methods for:
+    This is a base class and is **not intended to be instantiated directly**.
+    To use it, either:
+
+    - Import and instantiate a subclass
+      (e.g., ``Importer().get_class('OvertureMapsFootprintScraper')``)
+    - Or subclass it yourself and implement additional logic.
+
+    Direct imports of this base class are typically only needed when creating
+    new Overture Maps scrapers.
+
+    Provided static methods include:
+
     - Fetching release version names from the Overture Maps release index.
     - Constructing S3 paths to specific dataset partitions.
-    - Reading datasets from S3 into Pandas DataFrames with optional spatial
-      filtering.
+    - Reading datasets from S3 into a Pandas DataFrame with optional
+      spatial filtering.
     - Normalizing bounding box coordinates to a consistent format.
     - Formatting source metadata from NumPy arrays or lists of dictionaries.
-    - Converting Shapely geometries into coordinate list formats.
-
-    Methods:
-        fetch_release_names() -> List[str]:
-            Fetch the list of available Overture Maps release versions.
-
-        read_to_pandas(
-            overture_release: str,
-            overture_type: str,
-            bbox: Optional[Tuple[float, float, float, float]] = None,
-            connect_timeout: Optional[int] = None,
-            request_timeout: Optional[int] = None
-        ) -> pd.DataFrame:
-            Load a dataset from the specified release and type into a Pandas
-            DataFrame.
-
-        normalize_bbox_order(
-            bbox: Union[Tuple[float, float, float, float], list]
-        ) -> Tuple[float, float, float, float]:
-            Ensure a bounding box is in (xmin, ymin, xmax, ymax) format.
-
-        format_sources(
-            sources_array: Union[np.ndarray, List[Dict]]
-        ) -> Optional[str]:
-            Convert a list or array of metadata dictionaries into a formatted
-            string.
-
-        geometry_to_list_of_lists(
-            geom: BaseGeometry
-        ) -> List[List[float]]:
-            Convert a Shapely geometry into a list or nested lists of
-            coordinates.
     """
+
     @staticmethod
-    def fetch_release_names() -> List[str]:
+    def fetch_release_names(print_releases: bool = False) -> List[str]:
         """
         Fetch the list of release names from the OvertureMaps releases YAML.
+
+        Args:
+            print_releases (bool, optional):
+                If ``True``, print the list of releases. Defaults to ``False``.
 
         Returns:
             List[str]:
@@ -145,7 +129,38 @@ class OvertureMapsScraper(ABC):
         with urllib.request.urlopen(OVERTURE_RELEASES_URL) as resp:
             text = resp.read().decode("utf-8")
             releases = re.findall(r'release:\s*"([^"]+)"', text)
+
+        if print_releases:
+            print("Available releases:")
+            for release in releases:
+                print(f"  - {release}")
+
         return releases
+
+    @staticmethod
+    def normalize_bbox_order(
+        bbox: Union[Tuple[float, float, float, float], list]
+    ) -> Tuple[float, float, float, float]:
+        """
+        Reorder bbox coordinates to ensure (xmin, ymin, xmax, ymax) format.
+
+        Args:
+            bbox (tuple or list):
+                A sequence of four numeric coordinates (x1, y1, x2, y2).
+
+        Returns:
+            Tuple[float, float, float, float]:
+                Bounding box reordered as (xmin, ymin, xmax, ymax).
+        """
+        if not (isinstance(bbox, (tuple, list)) and len(bbox) == 4):
+            raise ValueError(
+                "bbox must be a tuple or list of exactly four elements")
+
+        x1, y1, x2, y2 = bbox
+        xmin, xmax = sorted([x1, x2])
+        ymin, ymax = sorted([y1, y2])
+
+        return xmin, ymin, xmax, ymax
 
     @staticmethod
     def _dataset_path(release: str, overture_type: str) -> str:
@@ -166,7 +181,7 @@ class OvertureMapsScraper(ABC):
         return f"{S3_BASE_PATH}/{release}/theme={theme}/type={overture_type}/"
 
     @staticmethod
-    def read_to_pandas(
+    def _read_to_pandas(
         overture_release: str,
         overture_type: str,
         bbox: Optional[Tuple[float, float, float, float]] = None,
@@ -229,32 +244,7 @@ class OvertureMapsScraper(ABC):
         return table.to_pandas()
 
     @staticmethod
-    def normalize_bbox_order(
-        bbox: Union[Tuple[float, float, float, float], list]
-    ) -> Tuple[float, float, float, float]:
-        """
-        Reorder bbox coordinates to ensure (xmin, ymin, xmax, ymax) format.
-
-        Args:
-            bbox (tuple or list):
-                A sequence of four numeric coordinates (x1, y1, x2, y2).
-
-        Returns:
-            Tuple[float, float, float, float]:
-                bbox reordered as (xmin, ymin, xmax, ymax).
-        """
-        if not (isinstance(bbox, (tuple, list)) and len(bbox) == 4):
-            raise ValueError(
-                "bbox must be a tuple or list of exactly four elements")
-
-        x1, y1, x2, y2 = bbox
-        xmin, xmax = sorted([x1, x2])
-        ymin, ymax = sorted([y1, y2])
-
-        return xmin, ymin, xmax, ymax
-
-    @staticmethod
-    def format_sources(sources_array):
+    def _format_sources(sources_array):
         """
         Format a NumPy array or list of dictionaries into a single string.
 
@@ -292,40 +282,3 @@ class OvertureMapsScraper(ABC):
                     formatted_parts.append(", ".join(parts))
 
         return "; ".join(formatted_parts) if formatted_parts else None
-
-    @staticmethod
-    def geometry_to_list_of_lists(geom: BaseGeometry) -> List[List[float]]:
-        """
-        Convert a Shapely geometry into a list of coordinate lists.
-
-        Args:
-            geom (BaseGeometry):
-                A Shapely geometry (Point, Polygon, MultiPolygon, etc.)
-
-        Returns:
-            List[List[float]] or List[List[List[float]]]:
-                A list of [x, y] coordinates or nested lists for complex
-                geometries.
-        """
-        if isinstance(geom, Point):
-            return [[geom.x, geom.y]]
-
-        elif isinstance(geom, LineString):
-            return [list(coord) for coord in geom.coords]
-
-        elif isinstance(geom, MultiLineString):
-            return [
-                list(coord) for line in geom.geoms for coord in line.coords
-            ]
-
-        elif isinstance(geom, Polygon):
-            return [list(coord) for coord in geom.exterior.coords]
-
-        elif isinstance(geom, MultiPolygon):
-            return [
-                [list(coord) for coord in polygon.exterior.coords]
-                for polygon in geom.geoms
-            ]
-
-        else:
-            raise TypeError(f"Unsupported geometry type: {type(geom)}")
