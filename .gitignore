@@ -66,8 +66,8 @@ tmp
 /docs/source/_autosummary/
 /docs/source/notebooks/*.ipynb
 docs/source/notebooks/.ipynb_checkpoints/
-apiKey.txt
-api_key.txt
+*key.txt
+*Key.txt
 *#
 build
 rst-code
