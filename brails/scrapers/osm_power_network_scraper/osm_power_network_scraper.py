@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 12-05-2024
+# 08-14-2025
 
 """
 This module defines the class scraping power network data from OSM.
@@ -49,7 +49,7 @@ import requests
 
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import Asset, AssetInventory
-from brails.utils import GeoTools
+from brails.utils import InputValidator
 
 OVERPASS_URL = "http://overpass-api.de/api/interpreter"
 
@@ -113,7 +113,7 @@ class OSM_PowerNetworkScraper:
 
         else:
             # If the bounding polygon is rectangular:
-            if GeoTools.is_box(bpoly):
+            if InputValidator.is_box(bpoly):
                 # Convert the bounding polygon coordinates to latitude and
                 # longitude fashion:
                 bbox_coords = bpoly.bounds

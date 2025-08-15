@@ -24,10 +24,6 @@ moc*
 *.dll
 *pycache*
 
-# Fortran module files
-*.mod
-*.smod
-
 # Compiled Static libraries
 *.lai
 *.la
@@ -38,33 +34,36 @@ moc*
 *.exe
 *.out
 *.app
-EE_UQ
-StochasticGroundMotion
-
-# QT
-*.pro.user
-qcustomplot.h
-qcustomplot.cpp
-*.stash
-qrc_images.cpp
-qrc_images1.cpp
-qrc_styles.cpp
 
 # OTHER
 *.pyc
 *.autosave
 
+# Logs
 debug.log
-tmp.SimCenter
-build
-userID.sh
-.DS_Store
+
+# Temporary files and folders
 tmp
+tmp.SimCenter
+*#
+.DS_Store
+.ipynb_checkpoints
+docs/source/notebooks/.ipynb_checkpoints/
+
+# Build and distribution artifacts
+build
 /brails.egg-info/
+dist
+rst-code
+
+# Coverage reports
 /.coverage
 /coverage.xml
+
+# Documentation
 /docs/source/_autosummary/
 /docs/source/notebooks/*.ipynb
+
 docs/source/notebooks/.ipynb_checkpoints/
 *key.txt
 *Key.txt
@@ -72,3 +71,5 @@ docs/source/notebooks/.ipynb_checkpoints/
 build
 rst-code
 .ipynb_checkpoints
+
+

@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-05-2025
+# 08-12-2025
 
 """This defines the global constants used in BRAILS++."""
 
@@ -45,3 +45,5 @@ DEFAULT_UNITS: Dict[str, str] = {
     'length': 'ft',
     'weight': 'lb',
 }
+
+R_EARTH_KM = 6371

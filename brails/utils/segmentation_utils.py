@@ -35,14 +35,17 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-06-2025
+# 08-12-2025
 
 """
 This module provides utilities for visualizing segmentation results.
 
 .. autosummary::
+    :toctree: _autosummary
+    :nosignatures:
 
-    plot_tools
+    create_overlaid_image
+    decode_segmap
 """
 
 import os
