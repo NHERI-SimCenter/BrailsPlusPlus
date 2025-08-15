@@ -37,10 +37,10 @@
 
 #
 # Last updated:
-# 06-05-2025
+# 08-15-2025
 
 """
-This module contains classes for managing and manipulating image sets.
+This module contains classes for managing and manipulating sets of image.
 
 Classes:
     - Image: A class to represent an individual image.
@@ -52,12 +52,18 @@ Classes:
 """
 
 import os
-from typing import Optional, Dict, Any, Union, List
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 
 class Image:
     """
     Represents an image and its associated metadata.
+
+    To import the :class:`Image` class, use:
+
+    .. code-block:: python
+
+        from brails.types.image_set import Image
 
     Attributes:
         filename (str):
@@ -66,13 +72,6 @@ class Image:
                 A dictionary containing metadata or properties related to the
                 image, such as camera settings, location, or depth maps.
 
-    Methods:
-        set_image(filename):
-            Update the filename associated with the image.
-        update_properties(additional_properties):
-            Merge new key-value pairs into the existing image properties.
-        print_info():
-            Print the filename and any associated properties to the console.
     """
 
     def __init__(
@@ -87,34 +86,75 @@ class Image:
             filename (str):
                 The name of the image file.
             properties (Optional[Dict[str, Any]]):
-                Optional dictionary of image properties.
+                Optional dictionary of image properties. Defaults to an empty
+                dictionary if not provided.
+
+        Examples:
+            >>> img = Image('cat.png')
+            >>> img.filename
+            'cat.png'
+            >>> img.properties
+            {}
+
+            >>> img = Image('dog.jpg', {'width': 800, 'height': 600})
+            >>> img.properties
+            {'width': 800, 'height': 600}
         """
         self.filename = filename
         self.properties = properties if properties is not None else {}
 
     def update_properties(self, additional_properties: Dict[str, Any]) -> None:
         """
-        Update the image's properties.
+        Update image properties.
 
         Args:
             additional_properties (Dict[str, Any]):
                 Key-value pairs to update image properties.
+
+        Example:
+            >>> img = Image(
+            ...     'gstrt_4769427063_-12213443753.jpg',
+            ...     {'width': 640}
+            ... )
+            >>> img.update_properties({'height': 480, 'cam_elevation': 12.1})
+            >>> img.properties
+            {'width': 640, 'height': 480, 'cam_elevation': 12.1}
         """
         self.properties.update(additional_properties)
 
     def print_info(self) -> None:
-        """Print the image filename and properties, if any."""
+        """
+        Print the image filename and properties.
+
+        If no properties are set, only the filename will be printed.
+
+        Examples:
+            >>> img = Image('gstrt_4769427063_-12213443753.jpg')
+            >>> img.print_info()
+            filename: 'gstrt_4769427063_-12213443753.jpg'
+
+            >>> img.update_properties({'width': 640, 'height': 480})
+            >>> img.print_info()
+            filename: 'gstrt_4769427063_-12213443753.jpg'
+            properties: {'width': 640, 'height': 480}
+        """
         if not self.properties:
             print('filename:', self.filename)
         else:
             print('filename:', self.filename, 'properties:', self.properties)
 
-    def set_image(self, filename: str) -> None:
+    def update_filename(self, filename: str) -> None:
         """
         Update the filename for the image.
 
         Args:
             filename (str): New filename for the image.
+
+        Example:
+            >>> img = Image('building.jpg')
+            >>> img.update_filename('gstrt_4769427063_-12213443753.jpg')
+            >>> img.filename
+            'gstrt_4769427063_-12213443753.jpg'
         """
         self.filename = filename
 
@@ -123,28 +163,59 @@ class ImageSet:
     """
     A collection of Image objects.
 
+    The :class:`ImageSet` class can be imported using the syntax below:
+
+    .. code-block:: python
+
+        from brails.types.image_set import ImageSet
+
     Attributes:
         dir_path (str):
             Path to the directory containing image files.
         images (Dict[Union[str, int], Image]):
-            Dictionary of Image objects keyed by user-defined identifiers.
-
-    Methods:
-        set_directory(path_to_dir, include_existing_images,
-                      limited_to_extension_types):
-            Set the directory path and optionally load existing images.
-        add_image(key, filename, properties):
-            Add a new Image to the collection.
-        get_image(key):
-            Retrieve an Image by its key.
-        print_info():
-            Print the directory path and details of all stored images.
+            Dictionary of :class:`Image` objects keyed by user-defined
+            identifiers.
     """
 
     def __init__(self):
         """Initialize an empty ImageSet."""
         self.dir_path = ''
         self.images: Dict[Union[str, int], Image] = {}
+
+    def __len__(self) -> int:
+        """
+        Return the number of images in the set.
+
+        Examples:
+            >>> img_set = ImageSet()
+            >>> len(img_set)
+            0
+
+            >>> img_set.add_image(1, "facade.jpg")
+            True
+            >>> len(img_set)
+            1
+        """
+        return len(self.images)
+
+    def __iter__(self) -> Iterator[Image]:
+        """
+        Iterate over the images in the set.
+
+        Yields:
+            Image: Each :class:`Image` object in the set.
+
+        Examples:
+            >>> img_set = ImageSet()
+            >>> img_set.add_image(1, "roof.jpg")
+            >>> img_set.add_image(2, "facade.jpg")
+            True
+            >>> for img in img_set:
+            ...     print(img.filename)
+            roof.jpg
+            facade.jpg
+        """
+        return iter(self.images.values())
 
     def add_image(
         self,
@@ -165,7 +236,20 @@ class ImageSet:
 
         Returns:
             bool:
-                True if image was added; False if the key already exists.
+                ``True`` if image was added; ``False`` if the key already
+                exists.
+
+        Examples:
+            >>> img_set = ImageSet()
+            >>> img_set.add_image(
+            ...     1,
+            ...     'building_front.jpg',
+            ...     {'width': 1920, 'height': 1080}
+            ... )
+            True
+
+            >>> img_set.add_image(1, 'street_view.png')  # Duplicate key
+            False
         """
         if properties is None:
             properties = {}
@@ -187,21 +271,56 @@ class ImageSet:
 
         Returns:
             Optional[Image]:
-                The image if found; otherwise, None.
+                The :class:`Image` if found; otherwise, ``None``.
+
+        Examples:
+            >>> img_set = ImageSet()
+            >>> img_set.add_image('main', 'roof_detail.jpg')
+            True
+
+            >>> img = img_set.get_image('main')
+            >>> img.filename
+            'roof_detail.jpg'
         """
         return self.images.get(key)
 
     def print_info(self) -> None:
-        """Print the image directory and details of each image in the set."""
-        print("directory:", self.dir_path)
+        """
+        Print information about the image set.
+
+        Displays:
+            - The directory path (if set).
+            - The number of images in the set.
+            - The key, filename, and any properties for each image.
+
+        Examples:
+            >>> img_set = ImageSet()
+            >>> img_set.add_image('north_view', 'north_building.jpg')
+            >>> img_set.add_image(
+            ...     'east_view',
+            ...     'east_building.jpg',
+            ...     {'location': (36.0142, -75.6679)}
+            ... )
+            True
+            >>> img_set.print_info()
+            Directory:
+            Total number of images: 2
+            List of Images
+            ----------------
+            - key: north_view, filename: north_building.jpg
+            - key: east_view, filename: east_building.jpg,
+            properties: {'location': (36.0142, -75.6679)}
+        """
+        print('Directory:', self.dir_path)
         if self.images:
-            print("images (num images:", len(self.images), ")\n")
+            print(f'Total number of images: {len(self.images)}\n')
+            print('List of Images\n----------------')
             for key, image in self.images.items():
                 if not image.properties:
-                    print('key:', key, 'filename:', image.filename)
+                    print(f'- key: {key}, filename: {image.filename}')
                 else:
-                    print('key:', key, 'filename:', image.filename,
-                          'properties:', image.properties)
+                    print(f'- key: {key}, filename: {image.filename}, ',
+                          f'properties: {image.properties}')
         print('\n')
 
     def set_directory(
@@ -217,44 +336,77 @@ class ImageSet:
             path_to_dir (str):
                 Path to the directory containing image files.
             include_existing_images (bool):
-                Whether to add existing image files in the directory.
+                If ``True``, add existing image files in the directory
+                to the set using numeric keys starting at 1.
             limited_to_extension_types (Optional[List[str]]):
-                If set, only include files with these extensions.
+                If provided, only include files whose extensions match
+                one of the allowed types (e.g., ``['.jpg', '.png']``).
 
         Returns:
             bool:
-                True if the directory is valid and set; False otherwise.
+                ``True`` if the directory exists and was set;
+                ``False`` if the directory does not exist.
+
+        Examples:
+            Assuming the path ``/data/images`` exists:
+
+            >>> img_set = ImageSet()
+            >>> img_set.set_directory(
+            ...     '/data/images',
+            ...     include_existing_images=True,
+            ...     limited_to_extension_types=['.jpg', '.png']
+            )
+            True
+
+            Assuming the path ``/DOES-NOT-EXIST`` does not exist:
+
+            >>> img_set.set_directory('/DOES-NOT-EXIST')
+            Warning: the specified path /DOES-NOT-EXIST is not a valid
+            directory
+            False
         """
         if not os.path.isdir(path_to_dir):
-            print(f'Warning: the supplied directory {path_to_dir} is not a '
+            print(f'Warning: the specified path {path_to_dir} is not a '
                   'valid directory')
             return False
 
         self.dir_path = path_to_dir
 
-        # If instructed to include current images in the directory:
-        # - Retrieve the list of files.
-        # - For each file, construct the full path.
-        # - Include the file if there is no extension filter, or if its
-        # extension matches the allowed list.
         if include_existing_images:
+            # Collect all integer keys from the current images dictionary:
+            existing_int_keys = [k for k in self.images.keys()
+                                 if isinstance(k, int)]
 
-            count = 0
+            # Determine the starting index for new images
+            # If there are no existing integer keys, start at 0:
+            index = max(existing_int_keys, default=-1) + 1
+
+            # Prepare a list of allowed extensions in lowercase if specified
+            # Otherwise, allow all file types:
+            extensions_allowed = [e.lower() for e in
+                                  limited_to_extension_types] if \
+                limited_to_extension_types else None
+
+            # List all entries (files and directories) in the target directory:
             entries = os.listdir(self.dir_path)
             for entry in entries:
 
                 # Get the full path of the entry:
                 full_path = os.path.join(self.dir_path, entry)
 
-                # Check if the entry is a file:
+                # Only proceed if the entry is a file (skip directories):
                 if os.path.isfile(full_path):
+                    # Extract the file extension in lowercase:
+                    ext = os.path.splitext(full_path)[1].lower()
 
+                    # Check if the file extension is allowed. If no
+                    # restrictions are set, all files are allowed:
                     if (
-                        limited_to_extension_types is None
-                        or os.path.splitext(full_path)[1] in
-                        limited_to_extension_types
+                        limited_to_extension_types is None or
+                        ext in extensions_allowed
                     ):
-
-                        count += 1
-                        self.images[count] = Image(entry)
+                        # Add the file as an Image object to the images
+                        # dictionary:
+                        self.images[index] = Image(entry)
+                        index += 1
         return True
