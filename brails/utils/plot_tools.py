@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-06-2025
+# 08-16-2025
 
 """
 This module defines utilities for creating visually-appealing figures.
@@ -45,11 +45,14 @@ This module defines utilities for creating visually-appealing figures.
     PlotTools
 """
 
-import random
 import math
-from typing import Union, Dict
+import os
+import random
+from typing import Dict, Optional, Union
+
 import matplotlib.pyplot as plt
 from PIL import Image
+
 from brails.types.image_set import ImageSet
 
 
@@ -69,6 +72,96 @@ class PlotTools:
 
         from brails.utils import PlotTools
     """
+
+    @staticmethod
+    def plot_images(
+        imageset: ImageSet,
+        rows: int = 2,
+        cols: int = 3,
+        random_seed: Optional[int] = None
+    ) -> None:
+        """
+        Plot a random subset of images from an image set in a grid layout.
+
+        Args:
+            imageset (ImageSet):
+                A BRAILS ``ImageSet`` object containing the images to be
+                displayed.
+            rows (int, optional):
+                Number of rows in the display grid. Defaults to 2.
+            cols (int, optional):
+                Number of columns in the display grid. Defaults to 3.
+            random_seed (Optional[int], optional):
+                Seed for reproducible random sampling. Defaults to None.
+
+        Returns:
+            None: This function only displays the images using ``matplotlib``.
+
+        Raises:
+            ValueError:
+                If the number of available images is smaller than
+                ``rows * cols``.
+
+        Example:
+        >>> google_satellite = importer.get_class('GoogleSatellite')()
+        >>> images_satellite = google_satellite.get_images(
+        ...     small_inventory,
+        ...     'tmp/satellite/'
+        ... )
+        >>> PlotTools.plot_images(
+        ...     images_satellite,
+        ...     rows=3,
+        ...     cols=4,
+        ...     random_seed=42
+        ... )
+        # Output:
+        # A matplotlib figure is displayed with a 2x3 grid of randomly
+        # selected images from the ImageSet. Each subplot shows one image
+        # with its filename as the title.
+        """
+        images_list = [os.path.join(imageset.dir_path, im.filename)
+                       for im in imageset.images.values()]
+
+        if random_seed is not None:
+            random.seed(random_seed)
+
+        n_images = rows * cols
+        if len(images_list) < n_images:
+            raise ValueError(
+                f'Not enough images. Need at least {n_images}, got '
+                '{len(images_list)}.'
+            )
+
+        # Randomly sample images:
+        selected_images = random.sample(images_list, n_images)
+
+        # Create the plot:
+        fig, axes = plt.subplots(rows, cols, figsize=(3*cols, 3*rows))
+        axes = axes.flatten()
+
+        for ax, img_path in zip(axes, selected_images):
+            try:
+                img = Image.open(img_path)
+                ax.imshow(img)
+                ax.axis("off")
+                ax.set_title(os.path.basename(img_path), fontsize=8)
+            except Exception as e:
+                ax.text(
+                    0.5,
+                    0.5,
+                    f'Error: {type(e).__name__}\n{os.path.basename(img_path)}',
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    color="gray")
+                ax.axis("off")
+
+        # Hide any unused axes:
+        for ax in axes[len(selected_images):]:
+            ax.axis("off")
+
+        plt.tight_layout()
+        plt.show()
 
     @staticmethod
     def show_predictions(
