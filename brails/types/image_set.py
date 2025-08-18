@@ -65,7 +65,7 @@ class Image:
 
         from brails.types.image_set import Image
 
-    Attributes:
+    Parameters:
         filename (str):
             The name of the file containing the image.
         properties (dict):
@@ -169,7 +169,7 @@ class ImageSet:
 
         from brails.types.image_set import ImageSet
 
-    Attributes:
+    Parameters:
         dir_path (str):
             Path to the directory containing image files.
         images (Dict[Union[str, int], Image]):
