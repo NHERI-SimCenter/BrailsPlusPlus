@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-14-2025
+# 08-18-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -51,7 +51,7 @@ from typing import Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 from shapely import to_geojson
-from shapely.geometry import LineString, MultiLineString, MultiPolygon, \
+from shapely.geometry import box, LineString, MultiLineString, MultiPolygon, \
     Point, Polygon
 from shapely.geometry.base import BaseGeometry
 from shapely.strtree import STRtree
@@ -438,3 +438,100 @@ class GeoTools:
 
         else:
             raise TypeError(f"Unsupported geometry type: {type(geom)}")
+
+    @staticmethod
+    def bbox2poly(
+        query_area: Tuple[float, ...],
+        output_file: str = ''
+    ) -> Tuple[Polygon, str]:
+        """
+        Get the boundary polygon for a region based on its coordinates.
+
+        This method parses the provided bounding polygon coordinates into a
+        polygon object. The polygon  must be defined by at least two pairs of
+        longitude/latitude values (i.e., at least 4 elements) and must have an
+        even number of elements.  If a file name is provided in the `outfile`
+        argument, the resulting polygon is saved to a GeoJSON file.
+
+        Args:
+            query_area (tuple):
+                A tuple containing longitude/latitude pairs that define a
+                bounding box. The tuple should contain at least two pairs of
+                coordinates (i.e., 4 values), and the number of elements must
+                be an even number.
+            output_file (str, optional):
+                If a file name is provided, the resulting polygon will be
+                written to the specified file in GeoJSON format.
+
+        Raises:
+            TypeError:
+                If ``queryarea`` is not a tuple.
+            ValueError:
+                If the tuple has an odd number of elements or fewer than two
+                pairs.
+
+        Returns:
+            Tuple[Polygon, str]:
+
+                - The bounding polygon as a Shapely Polygon.
+                - A human-readable string representation of the bounding
+                  polygon.
+
+        Example:
+            Simple bounding box (two coordinate pairs):
+
+            >>> from brails.utils import GeoTools
+            >>> coords = (-122.3, 37.85, -122.25, 37.9)
+            >>> bpoly, description = GeoTools.bbox2poly(coords)
+            >>> print(bpoly)
+            POLYGON ((-122.3 37.85, -122.3 37.9, -122.25 37.9, -122.25 37.85,
+                      -122.3 37.85))
+            >>> print(description)
+            the bounding box: (-122.3, 37.85, -122.25, 37.9)
+
+            A triangular polygon:
+
+            >>> long_coords = (
+            ...     -122.3, 37.85, -122.28, 37.86, -122.26, 37.87, -122.25,
+            ...     37.9
+            ... )
+            >>> bpoly_long, desc_long = GeoTools.bbox2poly(long_coords)
+            >>> print(bpoly_long)
+            POLYGON ((-122.3 37.85, -122.28 37.86, -122.26 37.87, -122.25 37.9,
+            -122.3 37.85))
+            >>> print(desc_long)
+            the bounding polygon: [(-122.3, 37.85), (-122.28, 37.86),
+            (-122.26, 37.87), (-122.25, 37.9)]
+        """
+        if not isinstance(query_area, tuple):
+            raise TypeError(
+                'queryarea must be a tuple of longitude/latitude values.'
+            )
+
+        n_coords = len(query_area)
+
+        if n_coords < 4 or n_coords % 2 != 0:
+            raise ValueError(
+                'Bounding polygon must be defined as tuple consisting of at'
+                'least two longitude/latitude pairs and an even number of '
+                'elements.'
+            )
+
+        # Convert tuple into list of coordinate pairs
+        coords = [(query_area[i], query_area[i + 1])
+                  for i in range(0, n_coords, 2)]
+
+        # Create Shapely polygon
+        bpoly = box(*query_area) if n_coords == 4 else Polygon(coords)
+
+        # Build human-readable description
+        if n_coords == 4:
+            queryarea_printname = f'the bounding box: {query_area}'
+        else:
+            queryarea_printname = f'the bounding polygon: {coords}'
+
+        # Write to file if requested
+        if output_file:
+            GeoTools.write_polygon_to_geojson(bpoly, output_file)
+
+        return bpoly, queryarea_printname
