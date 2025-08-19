@@ -103,21 +103,21 @@ class PlotTools:
                 ``rows * cols``.
 
         Example:
-        >>> google_satellite = importer.get_class('GoogleSatellite')()
-        >>> images_satellite = google_satellite.get_images(
-        ...     small_inventory,
-        ...     'tmp/satellite/'
-        ... )
-        >>> PlotTools.plot_images(
-        ...     images_satellite,
-        ...     rows=3,
-        ...     cols=4,
-        ...     random_seed=42
-        ... )
-        # Output:
-        # A matplotlib figure is displayed with a 2x3 grid of randomly
-        # selected images from the ImageSet. Each subplot shows one image
-        # with its filename as the title.
+            >>> google_satellite = importer.get_class('GoogleSatellite')()
+            >>> images_satellite = google_satellite.get_images(
+            ...     small_inventory,
+            ...     'tmp/satellite/'
+            ... )
+            >>> PlotTools.plot_images(
+            ...     images_satellite,
+            ...     rows=3,
+            ...     cols=4,
+            ...     random_seed=42
+            ... )
+            # Output:
+            # A matplotlib figure is displayed with a 2x3 grid of randomly
+            # selected images from the ImageSet. Each subplot shows one image
+            # with its filename as the title.
         """
         images_list = [os.path.join(imageset.dir_path, im.filename)
                        for im in imageset.images.values()]
@@ -204,21 +204,21 @@ class PlotTools:
                 This method directly displays the plot of images and their
                 predictions, and does not return any value.
 
-        Notes:
-        - The images are resized to fit the grid, adjusting for the maximum
-          image height.
-        - Axes are hidden for a cleaner presentation, and the prediction value
-          is displayed as the title for each image.
-        - The method handles both cropping and resizing while maintaining the
-          image aspect ratio.
+        Note:
+            - The images are resized to fit the grid, adjusting for the maximum
+              image height.
+            - Axes are hidden for a cleaner presentation, and the prediction
+              value is displayed as the title for each image.
+            - The method handles both cropping and resizing while maintaining
+              the image aspect ratio.
 
         Example:
-            PlotTools.show_predictions(
-                images=my_image_set,
-                predictions=my_predictions,
-                attribute_name="Class",
-                num_samples=5,
-                crop_image=True,
+            >>> PlotTools.show_predictions(
+            ...     images=my_image_set,
+            ...     predictions=my_predictions,
+            ...     attribute_name="Class",
+            ...     num_samples=5,
+            ...     crop_image=True,
             )
         """
         images_files = {}

@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 06-05-2025
+# 08-18-2025
 
 """
 This module defines RegionBoundary class to store region boundary polygons.
@@ -47,24 +47,22 @@ This module defines RegionBoundary class to store region boundary polygons.
 """
 
 import unicodedata
-from dataclasses import dataclass
 from itertools import groupby
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import requests
-from shapely.geometry import box, LineString, MultiPolygon, Polygon
+from shapely.geometry import LineString, MultiPolygon
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import linemerge, polygonize, unary_union
-from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from brails.utils import GeoTools
 
 
-@dataclass
 class RegionInput:
     """
     Input configuration for a specific region type.
 
-    Attributes:
+    Parameters:
         dataType (type):
             The expected data type for the input (e.g., str, tuple).
         validationConditions (function):
@@ -75,17 +73,26 @@ class RegionInput:
             input data.
 
     Example:
-        location_name_input = RegionInput(
-            dataType=str,
-            validationConditions=lambda data, dataType: isinstance(data,
-                                                                   dataType),
-            errorMessage="'data' must be a string"
-        )
+        >>> location_name_input = RegionInput(
+        ...     dataType=str,
+        ...     validationConditions=lambda data, dataType: isinstance(
+        ...         data,
+        ...         dataType
+        ...     ),
+        ...     errorMessage="'data' must be a string"
+        ... )
     """
 
-    dataType: type                  # Expected data type for the input
-    validationConditions: Callable  # Validation function that checks the data
-    errorMessage: str               # Error message when validation fails
+    def __init__(
+        self,
+        dataType: type,
+        validationConditions: Callable[[Any, type], bool],
+        errorMessage: str
+    ):
+        """Initialize a RegionInput instance."""
+        self.dataType = dataType
+        self.validationConditions = validationConditions
+        self.errorMessage = errorMessage
 
 
 # Define the supported input types with validation logic
@@ -114,57 +121,89 @@ class RegionBoundary:
     specify the type of region (e.g., location name or polygon) and the
     corresponding data.
 
-    Attributes:
-        type (str):
+    To import the :class:`RegionBoundary` class, you can use one of the
+    following approaches:
+
+    **Using the importer utility:**
+
+    .. code-block:: python
+
+        from brails import Importer
+
+        importer = Importer()
+        region_boundary_class = importer.get_class("RegionBoundary")
+
+    **Or by direct import:**
+
+    .. code-block:: python
+
+        from brails.types.region_boundary import RegionBoundary
+
+    Parameters:
+        input_type (str):
             The type of the region (e.g., 'locationName', 'locationPolygon').
-        data (str or tuple):
-            The data associated with the region, validated according to the
+        query_area (str or tuple):
+            Description of the region, validated according to the
             specified type. Either a location name, e.g., 'Berkeley, CA', or a
             tuple, such as (-93.27968, 30.22733, -93.14492, 30.15774)
-
-    Methods:
-        get_boundary():
-            Returns the boundary polygon of the specified region.
     """
 
-    def __init__(self, input_dict: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, input_dict: Dict[str, Any]) -> None:
         """
-        Initialize and validate a RegionBoundary instance from input data.
+        Initialize a RegionBoundary instance from input data.
 
         Args:
-            input_dict (Optional[Dict[str, Any]]):
-                Dictionary containing:
-                - 'type': the region input type (must match a key in
-                   SUPPORTED_INPUTS)
-                - 'data': the actual input data (validated using the
-                   corresponding rule)
+            input_dict (Dict[str, Any]):
+                A dictionary specifying the region definition. Must include:
+
+                - ``'type'`` (str):
+                    How the region is defined. Supported values are:
+                      - ``'locationName'`` – a place name
+                          (e.g., 'Berkeley, CA')
+                      - ``'locationPolygon'`` – a polygon defined by
+                          coordinates
+                - ``'data'`` (str | tuple[float, ...]):
+                    Region data corresponding to the chosen type:
+                      - For ``'locationName'``: a string
+                      - For ``'locationPolygon'``: a tuple of coordinates in
+                        the form ``(lon1, lat1, lon2, lat2, ..., lonN, latN)``
 
         Raises:
-            TypeError:
-                If input_dict is not a dictionary.
-            ValueError:
-                If required keys are missing or if validation fails.
+            TypeError: If ``input_dict`` is not a dictionary.
+            ValueError: If required keys are missing, the type is unsupported,
+                or the data fails validation.
+
+        Example:
+            >>> RegionBoundary(
+            ...     {'type': 'locationName', 'data': 'Berkeley, CA'}
+            ... )
         """
+        # Check if input_dict is a dictionary:
         if not isinstance(input_dict, dict):
-            raise TypeError('Input must be a dictionary that includes '
-                            "information on the 'type' and 'data' required to "
-                            'specify the region. For example to retrieve the '
-                            'region boundary for Berkeley, CA, the input '
-                            'should be:'
-                            " {'type': 'locationName', 'data': Berkeley, CA}")
+            raise TypeError(
+                'Input must be a dictionary that includes '
+                "information on the 'type' and 'data' required to "
+                'specify the region. For example to retrieve the region '
+                'boundary for Berkeley, CA, the input should be: '
+                "{'type': 'locationName', 'data': 'Berkeley, CA'}"
+            )
 
-        if 'type' not in input_dict:
-            raise ValueError("Input dictionary must contain a 'type' key.")
+        # Check if input_dict contains the required keys:
+        required_keys = {'type', 'data'}
+        missing = required_keys - input_dict.keys()
+        if missing:
+            label = 'keys' if len(missing) > 1 else 'key'
+            raise ValueError(
+                f'Input dictionary is missing required {label}: {missing}'
+            )
 
-        if 'data' not in input_dict:
-            raise ValueError("Input dictionary must contain a 'data' key.")
-
+        # Get input type information:
         input_type = input_dict['type']
 
         if input_type not in SUPPORTED_INPUTS:
             raise ValueError(f"{input_type} is not supported.")
 
-        self.type = input_type
+        self.input_type = input_type
 
         # Get the validation conditions for the given type:
         data_type = SUPPORTED_INPUTS[input_type].dataType
@@ -174,10 +213,10 @@ class RegionBoundary:
         # Check if the data matches the expected type and passes validation
         # conditions:
         if validation_conditions(input_dict['data'], data_type):
-            self.data = input_dict['data']
+            self.query_area = input_dict['data']
         else:
             raise ValueError(
-                f"Invalid 'data' specified for {input_dict['type']}: "
+                f"Invalid 'data' specified for {input_dict['type']}. "
                 f"{SUPPORTED_INPUTS[input_type].errorMessage}")
 
     def get_boundary(
@@ -194,29 +233,57 @@ class RegionBoundary:
 
         Returns:
             Tuple[BaseGeometry, str, Optional[Union[int, str]]]:
-                - A Shapely geometry object representing the region boundary.
-                - A human-readable description of the query area.
-                - An optional OSM ID (or similar identifier) for the boundary,
-                  if available.
+                A tuple containing, in sequence:
+                  1. A Shapely geometry representing the region boundary.
+                  2. A human-readable description of the query area.
+                  3. An optional identifier (e.g., OSM ID) if available.
 
         Raises:
-            ValueError: If the input data type is not 'locationName' or
-                        'locationPolygon', or if the data is invalid for the
-                        given type.
+            RuntimeError: If input type is unexpectedly invalid.
+
+        Examples:
+            Fetch boundary information based on the provided location name.
+
+            >>> from brails import Importer
+            >>> importer = Importer()
+            >>> region_boundary_class = importer.get_class("RegionBoundary")
+            >>> rb = region_boundary_class(
+            ...     {'type': 'locationName', 'data': 'Berkeley, CA'}
+            ... )
+            >>> geom, desc, osm_id = rb.get_boundary()
+            Searching for Berkeley, CA...
+            Found Berkeley, Alameda County, California, United States
+            >>> print(geom.bounds)
+            (-122.3686918, 37.8356877, -122.2341962, 37.9066896)
+            >>> print(desc)
+            Berkeley
+            >>> print(osm_id)
+            2833528
+
+            Get region boundary data for a bounding box.
+
+            >>> coords = (-122.3, 37.85, -122.25, 37.9)
+            >>> rb = region_boundary_class(
+            ...     {'type': 'locationPolygon', 'data': coords}
+            ... )
+            >>> geom, desc, osm_id = rb.get_boundary()
+            >>> geom.geom_type
+            'Polygon'
+            >>> print(desc)
+            the bounding box: (-122.3, 37.85, -122.25, 37.9)
         """
-        queryarea = self.data
+        if self.input_type == "locationName":
+            return self._fetch_roi(self.query_area)
 
-        if self.type == 'locationName':
-            result = self._fetch_roi(queryarea)
-        elif self.type == 'locationPolygon':
-            result = self._bbox2poly(queryarea)
-        else:
-            raise ValueError('Invalid data type for query area.')
+        if self.input_type == "locationPolygon":
+            bpoly_tuple = GeoTools.bbox2poly(self.query_area)
+            return bpoly_tuple + (None,)
 
-        return result
+        # Defensive check – should never happen due to __init__ validation:
+        raise RuntimeError(f"Unexpected input_type: {self.input_type!r}")
 
+    @staticmethod
     def _fetch_roi(
-        self,
         queryarea: str,
         outfile: Union[bool, str] = False
     ) -> Tuple[BaseGeometry, str, str]:
@@ -230,18 +297,19 @@ class RegionBoundary:
 
         Args:
             queryarea (str):
-                The area to search for, which can is a string representing a
+                The area to search for, which is a string representing a
                 location name (e.g., 'Berkeley, CA')
             outfile (bool or str, optional):
                 If a file name is given, the resulting polygon will be saved to
                 the specified file in GeoJSON format. The default value is
-                False.
+                ``False``.
 
         Returns:
             tuple:
                 A tuple containing the following:
+
                 - bpoly: The bounding polygon as a Shapely geometry object
-                         (e.g., Polygon or MultiPolygon).
+                         (e.g., ``Polygon`` or ``MultiPolygon``).
                 - queryarea_printname: A human-readable name of the query area
                                        (e.g., 'Berkeley').
                 - queryarea_osmid: The OpenStreetMap ID of the found area.
@@ -259,8 +327,9 @@ class RegionBoundary:
         """
         # Search for the query area using Nominatim API:
         print(f"\nSearching for {queryarea}...")
-        queryarea = queryarea.replace(" ", "+").replace(",", "+")
 
+        # Format query string for Nominatim:
+        queryarea = queryarea.replace(" ", "+").replace(",", "+")
         queryarea_formatted = ""
         for i, j in groupby(queryarea):
             if i == "+":
@@ -350,72 +419,3 @@ class RegionBoundary:
             GeoTools.write_polygon_to_geojson(bpoly, outfile)
 
         return bpoly, queryarea_printname, queryarea_osmid
-
-    def _bbox2poly(
-        self,
-        queryarea: Tuple[float, ...],
-        outfile: Union[bool, str] = False
-    ) -> Tuple[Polygon, str, Optional[None]]:
-        """
-        Get the boundary polygon for a region based on its coordinates.
-
-        This method parses the provided bounding polygon coordinates into a
-        polygon object. The polygon can be defined by at least two pairs of
-        longitude/latitude values, with an even number of elements. If a file
-        name is provided in the `outfile` argument, the resulting polygon is
-        saved to a GeoJSON file.
-
-        Args:
-            queryarea (tuple):
-                A tuple containing longitude/latitude pairs that define a
-                bounding box. The tuple should contain at least two pairs of
-                coordinates (i.e., 4 values), and the number of elements must
-                be an even number.
-            outfile (bool or str, optional):
-                If a file name is provided, the resulting polygon will be
-                written to the specified file in GeoJSON format. Defaults to
-                False.
-
-        Raises:
-            ValueError:
-                If the `queryarea` contains an odd number of elements or fewer
-                than two pairs of coordinates.
-
-        Returns:
-            Tuple[Polygon, str, Optional[None]]:
-                - The bounding polygon (`bpoly`).
-                - A human-readable string representation of the bounding box
-                  (`queryarea_printname`).
-                - `None` as a placeholder (for future extensions, if needed).
-        """
-        # Parse the entered bounding box into a polygon:
-        if len(queryarea) % 2 == 0 and len(queryarea) != 0:
-            if len(queryarea) == 4:
-                bpoly = box(*queryarea)
-                queryarea_printname = f"the bounding box: {list(queryarea)}"
-            elif len(queryarea) > 4:
-                queryarea_printname = "the bounding box: ["
-                bpolycoords = []
-                for i in range(int(len(queryarea) / 2)):
-                    bpolycoords.append([queryarea[2 * i],
-                                        queryarea[2 * i + 1]])
-                    queryarea_printname += (f'{queryarea[2*i]}, '
-                                            f'{queryarea[2*i+1]}, ')
-                bpoly = Polygon(bpolycoords)
-                queryarea_printname = queryarea_printname[:-2] + "]"
-            else:
-                raise ValueError(
-                    'Less than two longitude/latitude pairs were entered to '
-                    'define the bounding box entry. A bounding box can be '
-                    'defined by using at least two longitude/latitude pairs.'
-                )
-        else:
-            raise ValueError('Incorrect number of elements detected in the '
-                             'tuple for the bounding box. Please check to see '
-                             'if you are missing a longitude or latitude '
-                             'value.'
-                             )
-        if outfile:
-            GeoTools.write_polygon_to_geojson(bpoly, outfile)
-
-        return bpoly, queryarea_printname, None
