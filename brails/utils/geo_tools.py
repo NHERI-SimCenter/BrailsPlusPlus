@@ -465,7 +465,7 @@ class GeoTools:
 
         Raises:
             TypeError:
-                If ``queryarea`` is not a tuple.
+                If ``query_area`` is not a tuple.
             ValueError:
                 If the tuple has an odd number of elements or fewer than two
                 pairs.
@@ -505,7 +505,7 @@ class GeoTools:
         """
         if not isinstance(query_area, tuple):
             raise TypeError(
-                'queryarea must be a tuple of longitude/latitude values.'
+                'Query area must be a tuple of longitude/latitude values.'
             )
 
         n_coords = len(query_area)
