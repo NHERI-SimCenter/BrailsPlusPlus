@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-06-2025
+# 08-18-2025
 
 """
 This module provides a utility class for validating AssetInventory objects.
@@ -55,25 +55,11 @@ class InventoryValidator:
     valid  instance of `AssetInventory`, and for enforcing that validation with
     clear error reporting.
 
-    Methods:
-    is_inventory(inventory: AssetInventory) -> bool:
-        Returns True if the input is an instance of AssetInventory, otherwise
-        False.
-    validate_inventory(inventory: AssetInventory) -> None:
-        Raises a TypeError if the input is not an instance of AssetInventory.
+    The :class:`InventoryValidator` class can be imported using:
 
-    Examples:
-    >>> from brails.utils.input_validator import InventoryValidator
-    >>> inventory = AssetInventory(...)  # assume valid initialization
-    >>> InventoryValidator.is_inventory(inventory)
-    True
-    >>> InventoryValidator.validate_inventory(inventory)
-    # passes silently
+    .. code-block:: python
 
-    >>> InventoryValidator.validate_inventory("not an inventory")
-    Traceback (most recent call last):
-        ...
-    TypeError: Expected an instance of AssetInventory for inventory input.
+        from brails.utils import InventoryValidator
     """
 
     @staticmethod
@@ -87,8 +73,19 @@ class InventoryValidator:
 
         Returns:
             bool:
-                True if the object is an instance of AssetInventory, False
-                otherwise.
+                ``True`` if the object is an instance of
+                :class:`~brails.types.asset_inventory.AssetInventory`,
+                ``False`` otherwise.
+
+        Examples:
+            >>> from brails.types.asset_inventory import AssetInventory
+            >>> from brails.utils import InventoryValidator
+            >>> inv = AssetInventory()
+            >>> InventoryValidator.is_inventory(inv)
+            True
+
+            >>> InventoryValidator.is_inventory("not an inventory")
+            False
         """
         # Lazy import to avoid circular importing of AssetInventory:
         from brails.types.asset_inventory import AssetInventory
@@ -105,7 +102,20 @@ class InventoryValidator:
 
         Raises:
             TypeError:
-                If the input is not an instance of AssetInventory.
+                If the input is not an instance of
+                :class:`~brails.types.asset_inventory.AssetInventory`.
+
+        Examples:
+            >>> from brails.types.asset_inventory import AssetInventory
+            >>> from brails.utils import InventoryValidator
+            >>> inv = AssetInventory()
+            >>> InventoryValidator.validate_inventory(inv)
+
+            Invalid input raises an error:
+
+                >>> InventoryValidator.validate_inventory("wrong type")
+                TypeError: Expected an instance of AssetInventory for
+                inventory input.
         """
         if not InventoryValidator.is_inventory(inventory):
             raise TypeError('Expected an instance of AssetInventory for '

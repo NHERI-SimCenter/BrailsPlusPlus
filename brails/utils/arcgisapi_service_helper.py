@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-18-2025
+# 08-19-2025
 
 """
 This module defines a class for retrieving data from ArcGIS services APIs.
@@ -99,7 +99,7 @@ class ArcgisAPIServiceHelper:
             The maximum number of elements the API allows per query, fetched
             from the ArcGIS service.
 
-    Notes:
+    Note:
         - The class assumes a uniform distribution of elements across polygons
           when splitting.
         - The retry strategy uses exponential backoff to handle transient
@@ -178,7 +178,7 @@ class ArcgisAPIServiceHelper:
             >>> print(max_records)
             1000
 
-        Notes:
+        Note:
             - The function expects the API to return a JSON response containing
               a `maxRecordCount` key.
             - A retry strategy is implemented for the HTTPS request to handle
@@ -674,7 +674,7 @@ class ArcgisAPIServiceHelper:
                 A list of polygons representing the rectangular grid cells
                 covering the input polygon.
 
-        Notes:
+        Note:
             - If the element count is below or equal to
               ``max_elements_per_cell``, the polygon's envelope is returned as
               a single cell.

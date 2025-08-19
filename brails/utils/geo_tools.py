@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-18-2025
+# 08-19-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -267,7 +267,7 @@ class GeoTools:
             output_file (str):
                 The output filename for the GeoJSON file.
 
-        Notes:
+        Note:
             - This method does not perform validation on the geometry.
             - The file extension will be replaced with '.geojson' if not
               present.

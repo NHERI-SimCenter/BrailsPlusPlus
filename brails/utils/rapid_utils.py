@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 07-30-2025
+# 08-19-2025
 
 """
 This is a utility class for datasets created by the RAPID facility at UW.
@@ -68,15 +68,14 @@ class RAPIDUtils:
     """
     Utility class for datasets created by the RAPID facility at UW.
 
-    This class provides static methods to ensure necessary model files are
-    available locally, downloading them if needed. Intended for use in
-    applications that rely on pre-trained model weights.
+    This class provides methods to extract asset-specific imagery from
+    datasets collected by the RAPID facility at UW.
 
-    Methods:
-        get_model_path(model_path, default_filename, download_url,
-                       model_description):
-            Ensures a model file exists locally or downloads it to a default
-            location.
+    Please use the following statement to import the :class:`RAPIDUtils` class.
+
+    .. code-block:: python
+
+        from brails.utils import RAPIDUtils
     """
 
     def __init__(self, dataset_path: Union[str, Path]):
@@ -85,7 +84,7 @@ class RAPIDUtils:
 
         Args:
             dataset_path (Union[str, Path]):
-                Path to the raster dataset file.
+                Path to the dataset file or folder.
         Raises:
             ValueError: If the provided path is not a valid
         """
@@ -115,23 +114,73 @@ class RAPIDUtils:
         overlay_asset_outline: bool = False
     ) -> ImageSet:
         """
-        Extract aerial imagery patches from a raster image.
+        Extract aerial imagery patches for each asset from a raster dataset.
 
         Args:
             asset_inventory (AssetInventory):
-                Asset inventory object containing geometries and metadata.
+                Inventory object containing asset geometries and metadata.
             save_directory (str):
-                Directory to save extracted images.
+                Directory where extracted images will be saved.
             max_missing_data_ratio (float, optional):
-                Maximum allowed proportion of missing data (0-1).
-                Defaults to 0.2.
+                Maximum allowed proportion of missing data (0-1). Default is
+                ``0.2``.
             overlay_asset_outline (bool, optional):
-                If True, overlays the asset polygon on the image.
-                Defaults to False.
+                If ``True``, overlay the asset polygon on the saved image.
+                Default is ``False``.
 
         Returns:
             ImageSet:
-                An object containing metadata about saved image paths.
+                Object containing metadata and paths of saved images.
+
+        Example:
+            The following example assumes that a valid orthomosaic raster file
+            exists at ``raster_test_data.tif``. Actual outputs may vary
+            depending on the specific contents of the raster file.
+
+            Step 1: Import required packages and load the raster dataset.
+            Note that :class:`RAPIDUtils` automatically identifies the methods
+            applicable for the loaded dataset:
+
+            >>> from brails.utils import RAPIDUtils, Importer
+            >>> rapid_utils = RAPIDUtils('raster_test_data.tif')
+            Detected orthomosaic data.
+            Applicable methods for this data type are:
+            'extract_aerial_imagery', 'get_mosaic_bbox_wgs84'.
+
+            Step 2: Retrieve building footprints covering the extent of the
+            dataset:
+
+            >>> importer = Importer()
+            >>> region_data = {
+            ...     "type": "locationPolygon",
+            ...     "data": rapid_utils.dataset_extent
+            ... }
+            >>> region_boundary_object = importer.get_class(
+            ...     'RegionBoundary'
+            ... )(region_data)
+            >>> osm_footprint_scraper = importer.get_class(
+            ...     'OSM_FootprintScraper'
+            ... )({'length': 'ft'})
+            >>> scraper_inventory = osm_footprint_scraper.get_footprints(
+            ...     region_boundary_object
+            ... )
+            Found a total of 503 building footprints in the bounding box:
+            (-122.1421632630, 47.69423131358, -122.12908634292, 47.70804716657)
+
+            Step 3: Extract building-level imagery from the orthomosaic
+            dataset. Optionally overlay the building footprints to aid computer
+            vision applications:
+
+            >>> image_set = rapid_utils.extract_aerial_imagery(
+            ...     scraper_inventory,
+            ...     'images_raster_test/overlaid_imagery',
+            ...     overlay_asset_outline=True
+            ... )
+            Images will be saved to: /home/bacetiner/Documents/SoftwareTesting/
+            images_raster_test/overlaid_imagery
+            Extracting aerial imagery...: 100%|██████████| 503/503
+            [01:04<00:00,  7.79it/s]
+            Extracted aerial imagery for a total of 397 assets.
         """
         base_dir_path = Path(save_directory).resolve()
         base_dir_path.mkdir(parents=True, exist_ok=True)
@@ -199,8 +248,22 @@ class RAPIDUtils:
 
         Returns:
             Tuple[float, float, float, float]:
-                The bounding box coordinates in WGS84 as
-                (min_longitude, min_latitude, max_longitude, max_latitude).
+                The bounding box coordinates in WGS84, returned as
+                ``(min_longitude, min_latitude, max_longitude, max_latitude)``.
+
+        Example:
+            The following example assumes that a valid orthomosaic raster file
+            exists at ``raster_test_data.tif``. Actual outputs may vary
+            depending on the specific contents of the raster file.
+
+            >>> from brails.utils import RAPIDUtils
+            >>> rapid_utils = RAPIDUtils('raster_test_data.tif')
+            Detected orthomosaic data.
+            Applicable methods for this data type are:
+            'extract_aerial_imagery', 'get_mosaic_bbox_wgs84'.
+            >>> bbox_wgs84 = rapid_utils.get_mosaic_bbox_wgs84()
+            >>> print(bbox_wgs84)
+            (-122.1421632630, 47.69423131358, -122.12908634292, 47.70804716657)
         """
         with rasterio_open(
             self.dataset_path,

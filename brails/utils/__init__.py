@@ -32,20 +32,28 @@
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 
 """
-utils module of the brails package.
+This module provides a collection of utility classes for BRAILS++.
 
 Available classes:
-- Importer: Class for importing class files
-- GeoTools: Class containing static methods geospatial analysis & operations
-- ArcgisAPIServiceHelper: Class for interacting with an ArcGIS API service
-- PlotTools: Class for creating visually-appealing figures
-- UnitConverter: Class converting between different units of length and area
-- InputValidator: Class for validating BRAILS input data
-- InputValidator: Class for validating BRAILS AssetInventory objects
-- SpatialJoinMethods: Methods to spatially merge AssetInventory objects
-- ModelUtils: Utility class for computer vision models in BRAILS
-- RAPIDUtils: Utility class for datasets created by the RAPID facility at UW
 
+    - :class:`Importer`: Class for importing class files.
+    - :class:`GeoTools`: Class containing static methods for geospatial
+      analysis and operations.
+    - :class:`ArcgisAPIServiceHelper`: Class for interacting with an ArcGIS API
+      service.
+    - :class:`PlotTools`: Class for creating visually appealing figures.
+    - :class:`UnitConverter`: Class for converting between different units of
+      length, area, and weight.
+    - :class:`InputValidator`: Class for validating BRAILS input data.
+    - :class:`InventoryValidator`: Class for validating BRAILS
+      ``AssetInventory`` objects.
+    - :class:`SpatialJoinMethods`: Methods to spatially merge
+      ``AssetInventory`` objects.
+    - :class:`ModelUtils`: Utility class for computer vision models in BRAILS.
+    - :class:`RAPIDUtils`: Utility class for datasets created by the RAPID
+      facility at UW.
+    - :class:`SegmentationUtils`:  Utility class for creating visualizations of 
+      segmentation masks on images.
 """
 from .importer import Importer
 from .geo_tools import GeoTools
@@ -57,3 +65,4 @@ from .inventory_validator import InventoryValidator
 from .spatial_join_methods.base import SpatialJoinMethods
 from .model_utils import ModelUtils
 from .rapid_utils import RAPIDUtils
+from .segmentation_utils import SegmentationUtils
