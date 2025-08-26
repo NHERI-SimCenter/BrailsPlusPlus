@@ -47,12 +47,12 @@ import json
 import pandas as pd
 from pathlib import Path
 import jsonschema
-from jsonschema import validate, ValidationError 
+from jsonschema import validate, ValidationError
 
 import numpy as np
 
 from brails.types.asset_inventory import AssetInventory
-from brails.inferers.inferenceEngine import InferenceEngine
+from brails.inferers.inference_engine import InferenceEngine
 from brails.inferers.hazus_inferer_wind.auto_HU_NJ import auto_populate
 
 from brails.utils import GeoTools
@@ -66,6 +66,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.filterwarnings(action="ignore", category=UserWarning)
+
 
 class HazusInfererWind(InferenceEngine):
     """
@@ -86,27 +87,27 @@ class HazusInfererWind(InferenceEngine):
         seed=1,
         overwirte_existing=True,
         clean_features=False,
-        planArea_key = "PlanArea",
-        numberOfStories_key = "NumberOfStories",
-        occupancyClass_key = "OccupancyClass",
-        BuildingType_key = "BuildingType",
-        designLevel_H_key = "DesignLevel_H",
-        yearBuilt_key = "YearBuilt",
-        roofSystem_key = "RoofSystem",
-        roofShape_key = "RoofShape",
-        roofSlope_key = "RoofSlope",
-        avgJanTemp_key = "AvgJanTemp",
-        Height_key = "Height",
-        windowArea_key = "WindowArea",
-        numberOfUnits_key = "NumberOfUnits",
-        hasGarage_key = "HasGarage",
-        floodZone_key = "FloodZone",
-        windZone_key = "WindZone",
-        designWindSpeed_key = "DesignWindSpeed",
-        LULC_key = "LULC",
-        z0_key = "Z0",
-        sheathingThickness_key = "SheathingThickness",
-        use_default = True
+        planArea_key="PlanArea",
+        numberOfStories_key="NumberOfStories",
+        occupancyClass_key="OccupancyClass",
+        BuildingType_key="BuildingType",
+        designLevel_H_key="DesignLevel_H",
+        yearBuilt_key="YearBuilt",
+        roofSystem_key="RoofSystem",
+        roofShape_key="RoofShape",
+        roofSlope_key="RoofSlope",
+        avgJanTemp_key="AvgJanTemp",
+        Height_key="Height",
+        windowArea_key="WindowArea",
+        numberOfUnits_key="NumberOfUnits",
+        hasGarage_key="HasGarage",
+        floodZone_key="FloodZone",
+        windZone_key="WindZone",
+        designWindSpeed_key="DesignWindSpeed",
+        LULC_key="LULC",
+        z0_key="Z0",
+        sheathingThickness_key="SheathingThickness",
+        use_default=True
     ):
         """
         Make inference based on Auto population script developed for NJ
@@ -171,9 +172,8 @@ class HazusInfererWind(InferenceEngine):
         if existing_worlds == 1:
             n_pw = n_possible_worlds  # if zero, it will give the most likely value
             logger.warning(
-                    f"The existing inventory does not contain multiple possible worlds. {n_pw} worlds will be generated for new features"
+                f"The existing inventory does not contain multiple possible worlds. {n_pw} worlds will be generated for new features"
             )
-
 
         else:
             if (
@@ -207,7 +207,8 @@ class HazusInfererWind(InferenceEngine):
 
         input_inventory_subset = input_inventory.get_world_realization(0)
         input_inventory_json = self.to_json(input_inventory_subset)
-        essential_features = self.infer_building_one_by_one(input_inventory_json,n_pw)
+        essential_features = self.infer_building_one_by_one(
+            input_inventory_json, n_pw)
 
         #
         # loop over the second ~ n_pw worlds if needed
@@ -217,10 +218,12 @@ class HazusInfererWind(InferenceEngine):
             # get inventory realization
             inventory_realization = input_inventory.get_world_realization(nw)
             input_inventory_json = self.to_json(inventory_realization)
-            essential_features_tmp = self.infer_building_one_by_one(input_inventory_json,n_pw)
+            essential_features_tmp = self.infer_building_one_by_one(
+                input_inventory_json, n_pw)
 
             essential_features = self.merge_two_json(
-                essential_features_tmp, essential_features, shrink=(nw == existing_worlds - 1)
+                essential_features_tmp, essential_features, shrink=(
+                    nw == existing_worlds - 1)
             )
 
         #
@@ -231,14 +234,16 @@ class HazusInfererWind(InferenceEngine):
             # create a fresh inventory
             output_inventory = AssetInventory()
             for index, feature in essential_features.items():
-                output_inventory.add_asset_coordinates(index, input_inventory.get_asset_coordinates(index)[1])
+                output_inventory.add_asset_coordinates(
+                    index, input_inventory.get_asset_coordinates(index)[1])
                 output_inventory.add_asset_features(index, feature)
                 updated = True
 
         else:
             output_inventory = copy.deepcopy(input_inventory)
             for index, feature in essential_features.items():
-                output_inventory.add_asset_features(index, feature, overwrite=True)
+                output_inventory.add_asset_features(
+                    index, feature, overwrite=True)
                 updated = True
 
         #
@@ -294,7 +299,7 @@ class HazusInfererWind(InferenceEngine):
 
         return C
 
-    def infer_building_one_by_one(self, inventory_json,n_pw):
+    def infer_building_one_by_one(self, inventory_json, n_pw):
 
         for pw in range(n_pw):
             new_features_tmp = {}
@@ -309,7 +314,7 @@ class HazusInfererWind(InferenceEngine):
 
                 new_features_tmp[key] = essential_features
 
-            if pw==0:
+            if pw == 0:
                 # first possible world
                 new_features = new_features_tmp
             else:
@@ -317,16 +322,17 @@ class HazusInfererWind(InferenceEngine):
                     new_features_tmp, new_features, shrink=(pw == n_pw - 1)
                 )
 
-
         return new_features
 
     def to_json(self, this_inventory):
         inventory_json = {}
         for key, asset in this_inventory.inventory.items():
             if len(asset.coordinates) == 1:
-                geometry = {"type": "Point", "coordinates": [asset.coordinates[0][:]]}
+                geometry = {"type": "Point", "coordinates": [
+                    asset.coordinates[0][:]]}
             else:
-                geometry = {"type": "Polygon", "coordinates": asset.coordinates}
+                geometry = {"type": "Polygon",
+                            "coordinates": asset.coordinates}
 
             feature = {
                 "type": "Feature",
@@ -340,8 +346,7 @@ class HazusInfererWind(InferenceEngine):
 
         return inventory_json
 
-
-    def validate(self, input_inventory, silence = False):
+    def validate(self, input_inventory, silence=False):
 
         init = time.time()
 
@@ -349,10 +354,9 @@ class HazusInfererWind(InferenceEngine):
         # stored next to the mapping script
         current_file_path = os.path.dirname(__file__)
         schema_path = os.path.join(current_file_path, "input_schema.json")
-        
+
         with Path(schema_path).open(encoding="utf-8") as f:
             input_schema = json.load(f)
-
 
         def check_building(gi):
             # gi is a dictionary of {feature:value} pairs
@@ -361,17 +365,16 @@ class HazusInfererWind(InferenceEngine):
             for key, item in gi.items():
                 if pd.isna(item):
                     gi[key] = None
-            
+
             # validate the provided features against the required inputs
             validate(instance=gi, schema=input_schema)
-    
 
         invalid_id = []
         error_record = {}
         bldg_count = 0
         for id in input_inventory.get_asset_ids():
             try:
-                check_building(input_inventory.get_asset_features(id)[1])        
+                check_building(input_inventory.get_asset_features(id)[1])
             except ValidationError as e:
                 invalid_id += [id]
                 error_record[id] = e.message
@@ -379,24 +382,24 @@ class HazusInfererWind(InferenceEngine):
 
         print(f'Done validation. It took {round(time.time() - init, 2)} sec.')
 
-        if not silence: 
-            if len(invalid_id)>0: 
+        if not silence:
+            if len(invalid_id) > 0:
                 logger.warning(
-                        f"The inventory has {len(invalid_id)} assets ({round(len(invalid_id) / bldg_count * 100, 2)}%) that are identified as invalid. This means the information on the specific combinations of input features are not found in the Hazus DL library. You can use <correct> method to quickly project those features to a valid feature combination. See documentation."
+                    f"The inventory has {len(invalid_id)} assets ({round(len(invalid_id) / bldg_count * 100, 2)}%) that are identified as invalid. This means the information on the specific combinations of input features are not found in the Hazus DL library. You can use <correct> method to quickly project those features to a valid feature combination. See documentation."
                 )
             else:
                 print("Good to go")
 
         return invalid_id, error_record
 
-
     def correct(self, input_inventory, invalid_id=None, weights={}):
 
         init = time.time()
 
         # re-running validation, in case the user changed some inputs
-        if invalid_id==None:
-            invalid_id, error_record = self.validate(input_inventory, silence = True)
+        if invalid_id == None:
+            invalid_id, error_record = self.validate(
+                input_inventory, silence=True)
 
         n_assets = len(input_inventory.inventory)
         n_invalid = len(invalid_id)
@@ -405,16 +408,20 @@ class HazusInfererWind(InferenceEngine):
 
         # record the invalid building properties
         target_bldg = {}
-        target_loc={}
+        target_loc = {}
         for count_invalid, id in enumerate(invalid_id):
-            target_bldg[count_invalid] = copy.deepcopy(output_inventory.get_asset_features(id)[1])
-            target_loc[count_invalid] = np.mean(output_inventory.get_asset_coordinates(id)[1],axis=0)
-            output_inventory.inventory[id].remove_features(target_bldg[count_invalid].keys()) # clean up the features so that it will not get a highscore
-        
+            target_bldg[count_invalid] = copy.deepcopy(
+                output_inventory.get_asset_features(id)[1])
+            target_loc[count_invalid] = np.mean(
+                output_inventory.get_asset_coordinates(id)[1], axis=0)
+            # clean up the features so that it will not get a highscore
+            output_inventory.inventory[id].remove_features(
+                target_bldg[count_invalid].keys())
+
         # compute the score of each of the valid assets
         score = np.zeros([n_assets, n_invalid])
         for count_assets, bldg_id in enumerate(output_inventory.get_asset_ids(), start=0):
-            # for this building,  
+            # for this building,
 
             bldg_features = output_inventory.get_asset_features(bldg_id)[1]
             for count_invalid in range(n_invalid):
@@ -422,22 +429,22 @@ class HazusInfererWind(InferenceEngine):
                 # compute the score
                 for target_feature, target_value in target_bldg[count_invalid].items():
                     if target_feature in bldg_features:
-                        score[count_assets, count_invalid] += (bldg_features[target_feature] == target_value ) * weights.get(target_feature,1)
-
+                        score[count_assets, count_invalid] += (
+                            bldg_features[target_feature] == target_value) * weights.get(target_feature, 1)
 
         # index_of_max_score = np.argmax(score, axis = 0)
 
         # for count_invalid, id in enumerate(invalid_id):
         #     output_inventory.add_asset_features(id, output_inventory.get_asset_features(index_of_max_score[count_invalid])[1])
 
-
-        max_score = np.max(score, axis = 0)
+        max_score = np.max(score, axis=0)
 
         for count_invalid, id in enumerate(invalid_id):
-            
-            tie_indices = np.where(max_score[count_invalid] == score[:,count_invalid])[0]
 
-            if len(tie_indices)==1:
+            tie_indices = np.where(
+                max_score[count_invalid] == score[:, count_invalid])[0]
+
+            if len(tie_indices) == 1:
                 # only one candidate
                 selected_neighbor = tie_indices[0]
             else:
@@ -445,19 +452,22 @@ class HazusInfererWind(InferenceEngine):
                 target_point = target_loc[count_invalid]
                 my_distance = []
                 for t_idx in tie_indices:
-                    candi_point = np.mean(output_inventory.get_asset_coordinates(t_idx)[1],axis=0)
-                    my_distance += [GeoTools.haversine_dist(target_point.tolist(), candi_point.tolist())]
+                    candi_point = np.mean(
+                        output_inventory.get_asset_coordinates(t_idx)[1], axis=0)
+                    my_distance += [GeoTools.haversine_dist(
+                        target_point.tolist(), candi_point.tolist())]
                 selected_neighbor = tie_indices[np.argmin(my_distance)]
 
-            output_inventory.add_asset_features(id, output_inventory.get_asset_features(selected_neighbor)[1])
+            output_inventory.add_asset_features(
+                id, output_inventory.get_asset_features(selected_neighbor)[1])
 
-        if len(invalid_id)==0:
+        if len(invalid_id) == 0:
             print(
-                    f"Nothing happened. All good to go."
+                f"Nothing happened. All good to go."
             )
         else:
             print(
-                     f"{n_invalid} Assets ({round(n_invalid / n_assets * 100, 2)}%) are corrected. Now good to go."
+                f"{n_invalid} Assets ({round(n_invalid / n_assets * 100, 2)}%) are corrected. Now good to go."
             )
         print(f'Done correction. It took {round(time.time() - init, 2)} sec.')
 

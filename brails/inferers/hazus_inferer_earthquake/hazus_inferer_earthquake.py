@@ -48,7 +48,7 @@ import logging
 import pandas as pd
 from brails.utils import Importer
 from brails.types.asset_inventory import AssetInventory
-from brails.inferers.inferenceEngine import InferenceEngine
+from brails.inferers.inference_engine import InferenceEngine
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
@@ -163,7 +163,8 @@ class HazusInfererEarthquake(InferenceEngine):
             )  # missing
 
             self.check_keys(
-                needed_keys=[self.occupancyClass_key], inventory_df=bldg_properties_df
+                needed_keys=[
+                    self.occupancyClass_key], inventory_df=bldg_properties_df
             )
 
         #
@@ -219,7 +220,8 @@ class HazusInfererEarthquake(InferenceEngine):
 
             print(f">> Step3-2 : Inferring {keys_to_infer_DL}")
 
-            inventory_realization = self.input_inventory.get_world_realization(0)
+            inventory_realization = self.input_inventory.get_world_realization(
+                0)
             bldg_properties_df, bldg_geometries_df, nbldg = (
                 inventory_realization.get_dataframe()
             )
@@ -276,7 +278,8 @@ class HazusInfererEarthquake(InferenceEngine):
 
             for nw in range(1, existing_worlds):
                 # get inventory realization
-                inventory_realization = self.input_inventory.get_world_realization(nw)
+                inventory_realization = self.input_inventory.get_world_realization(
+                    nw)
                 new_prop_tmp, inventory_realization_df = (
                     self.get_era_height_foundation_class(
                         inventory_realization,
@@ -299,12 +302,12 @@ class HazusInfererEarthquake(InferenceEngine):
             output_inventory = deepcopy(self.input_inventory)
 
             for index, feature in new_prop.items():
-                output_inventory.add_asset_features(index, feature, overwrite=True)
+                output_inventory.add_asset_features(
+                    index, feature, overwrite=True)
                 # updated = True
 
         else:
             output_inventory = deepcopy(self.input_inventory)
- 
 
         #
         # Change names
@@ -330,7 +333,8 @@ class HazusInfererEarthquake(InferenceEngine):
         #
 
         dummy, provided_keys = output_inventory.get_multi_keys()
-        missing_keys = set(target_keys_json.values()).difference(set(provided_keys))
+        missing_keys = set(target_keys_json.values()
+                           ).difference(set(provided_keys))
         if missing_keys:  # nonempty
             logger.warning(
                 f"Unable to create inventory that is readily runnable in R2D (pelicun) due to missing {', '.join(missing_keys)}"
@@ -495,7 +499,8 @@ class HazusInfererEarthquake(InferenceEngine):
 
         if target_key in provided_keys:
             avail_percentage = (
-                100 - sum(inventory_df[key].isnull()) / len(inventory_df[key]) * 100
+                100 - sum(inventory_df[key].isnull()) /
+                len(inventory_df[key]) * 100
             )
 
             if self.overwirte_existing and (avail_percentage < 100):
@@ -544,7 +549,8 @@ class HazusInfererEarthquake(InferenceEngine):
         # get hazus DL rulesets
         #
 
-        height_classes = {"Low-Rise": [1, 2, 3], "Mid-Rise": [4, 5, 6], "High-Rise": list(range(7, 200))}
+        height_classes = {
+            "Low-Rise": [1, 2, 3], "Mid-Rise": [4, 5, 6], "High-Rise": list(range(7, 200))}
 
         # design_level_W1 = {
         #         "Moderate-Code": list(range(1,1975)),
@@ -584,7 +590,8 @@ class HazusInfererEarthquake(InferenceEngine):
         if designLevel_key in keys_to_infer:
             bldg_properties_df[designLevel_key] = ""
             for design_class, year_list in design_level.items():
-                in_class_index = bldg_properties_df[yearBuilt_key].isin(year_list)
+                in_class_index = bldg_properties_df[yearBuilt_key].isin(
+                    year_list)
                 if sum(in_class_index) > 0:
                     bldg_properties_df.loc[in_class_index, designLevel_key] = (
                         design_class
