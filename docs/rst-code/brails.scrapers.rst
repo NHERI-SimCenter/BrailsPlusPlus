@@ -22,8 +22,8 @@ Subpackages
    brails.scrapers.osm_footprint_scraper
    brails.scrapers.osm_power_network_scraper
    brails.scrapers.overture_maps_scraper
-   brails.scrapers.rapid_image_processors
    brails.scrapers.usa_footprint_scraper
+   brails.scrapers.usgs_data_scrapers
 
 Submodules
 ----------

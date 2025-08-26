@@ -41,6 +41,7 @@ setup(
         'plotly',
         'pycocotools',
         'pyarrow',
+        'rasterio',
         'reverse-geocode',
         'requests',
         'scikit-learn',

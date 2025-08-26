@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 07-16-2025
+# 08-06-2025
 
 """
 This module defines a class for retrieving bridge data from NBI.
@@ -47,6 +47,7 @@ This module defines a class for retrieving bridge data from NBI.
 
 from typing import Any, Dict, List
 from shapely.geometry import Point, Polygon
+from brails.constants import DEFAULT_UNITS
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import ArcgisAPIServiceHelper, UnitConverter
@@ -82,10 +83,6 @@ DIMENSIONAL_ATTR = {'MIN_VERT_CLR_010': 'm',
                     'INVENTORY_RATING_066': 'ton',
                     'IMP_LEN_MT_076': 'm',
                     'MIN_NAV_CLR_MT_116': 'm'}
-
-# Default units to apply when not explicitly provided by the user:
-DEFAULT_UNITS = {'length': 'ft',
-                 'weight': 'lb'}
 
 
 class NBIScraper:

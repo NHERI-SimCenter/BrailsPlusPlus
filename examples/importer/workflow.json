@@ -1,0 +1,55 @@
+{
+  "_comment": "Building workflow #1 — Demonstrates integration of image filters, processors, and BRAILS++ prediction modules.",
+  "workflows": [
+    {
+      "type": "buildingInventory",
+      "location": {
+        "classType": "boundingBox",
+        "appData": {
+          "coordinates": "-122.2,55.6,-122.56,55.7"
+        }
+      },
+      "footprintSource": {
+        "classType": "OvertureMaps",
+        "appData": {
+          "LengthUnit": "m"
+        }
+      },
+      "augmentFiles": [
+        {
+          "classType": "basic",
+          "appData": {
+            "fileName": "assessor.csv",
+            "colMapping": "mapAssessor.json"
+          }
+        },
+        {
+          "classType": "basic",
+          "appData": {
+            "fileName": "myData.csv",
+            "colMapping": "None"
+          }
+        }
+      ],
+      "satelliteImageSource": {
+        "classType": "Google",
+        "appData": {
+          "gcpKey": "YOUR-GCP-KEY"
+        }
+      },
+      "streetImageSource": {
+        "classType": "Google",
+        "appData": {
+          "gcpKey": "YOUR-GCP-KEY"
+        }
+      },
+      "streetFilters": [
+        {
+          "classType": "VanishingPoint",
+          "appData": {}
+        }
+      ]
+    }
+  ]
+}
+

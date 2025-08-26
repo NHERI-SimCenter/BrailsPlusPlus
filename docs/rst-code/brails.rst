@@ -26,4 +26,5 @@ Submodules
 .. toctree::
    :maxdepth: 1
 
+   brails.constants
    brails.exceptions

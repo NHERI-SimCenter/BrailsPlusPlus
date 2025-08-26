@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 11-04-2024
+# 08-20-2025
 
 """Initializations and metadata for the brails package."""
 
@@ -45,7 +45,8 @@ from .utils.importer import Importer
 
 # Package metadata:
 name = 'brails'
-__version__ = '4.1.1'
-__copyright__ = 'Copyright (c) 2024' \
-    'The Regents of the University of California'
+__version__ = '4.1.3'
+__copyright__ = (
+    'Copyright (c) 2024, The Regents of the University of California'
+)
 __license__ = 'BSD 3-Clause License'
