@@ -109,7 +109,7 @@ class Asset:
         from brails.types.asset_inventory import Asset
 
 
-    Args:
+    Attributes:
         asset_id (str or int):
             Unique identifier for the asset.
         coordinates (list[list[float]]):

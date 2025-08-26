@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-14-2025
+# 08-19-2025
 
 """
 This module defines a class for performing unit parsing and conversions.
@@ -159,7 +159,7 @@ class UnitConverter:
         - Optional rounding precision for conversion results.
         - Raises errors for mismatched or unsupported units.
 
-    Notes:
+    Note:
         - All conversions are first mapped to the category’s base unit, then
           converted to the target unit.
         - Passing None or NaN values returns them unchanged.
@@ -167,8 +167,7 @@ class UnitConverter:
 
     **Importing instructions:**
 
-        The following lines is suggested to import the
-        :class:`~brails.utils.unit_converter.UnitConverter` class.
+        The following line is suggested to import the :class:`UnitConverter`.
 
         .. code-block:: python
 
@@ -181,19 +180,19 @@ class UnitConverter:
 
         Args:
             unit_type(str):
-                The type of unit to retrieve('length', 'area', 'weight', or
-                'all'). Defaults to 'all'.
+                The type of unit to retrieve(``'length'``, ``'area'``,
+                ``'weight'``, or ``'all'``). Defaults to ``'all'``.
 
         Returns:
             str:
                 A human-readable string of supported units.
-        Example:
-            >> > print(UnitConverter.get_supported_units())
+        Examples:
+            >>> print(UnitConverter.get_supported_units())
             Length: cm, ft, in , km, m, mi, mm, yd
             Area:   cm2, ft2, in2, km2, m2, mi2, mm2, yd2
             Weight: g, kg, lb, mg, oz, ton, ton_uk, ton_us
 
-            >> > print(UnitConverter.get_supported_units(unit_type='length'))
+            >>> print(UnitConverter.get_supported_units(unit_type='length'))
             Length: cm, ft, in , km, m, mi, mm, yd
         """
         unit_type = unit_type.lower()
@@ -224,9 +223,9 @@ class UnitConverter:
         Normalize unit name by reformatting and resolving aliases.
 
         This function ensures consistent internal representation of units,
-        allowing users to use common names or variations(e.g., "meters",
-        "LBS", "square foot") which will be mapped to standard short forms
-        (e.g., "m", "lb", "ft2").
+        allowing users to use common names or variations(e.g., ``'meters'``,
+        ``'LBS'``, ``'square foot'``) which will be mapped to standard short
+        forms (e.g., ``'m'``, ``'lb'``, ``'ft2'``).
 
         Args:
             unit(str):
@@ -237,11 +236,11 @@ class UnitConverter:
                 The standardized unit string. If no alias is found, returns the
                 cleaned input.
 
-        Example:
-            >> > UnitConverter.normalize_unit('Meters')
+        Examples:
+            >>> UnitConverter.normalize_unit('Meters')
             'm'
 
-            >> > UnitConverter.normalize_unit('kilogram')
+            >>> UnitConverter.normalize_unit('kilogram')
             'kg'
         """
         unit = unit.strip().lower()
@@ -250,7 +249,7 @@ class UnitConverter:
     @staticmethod
     def get_unit_type(unit: str):
         """
-        Identify unit type as 'length', 'area', or 'weight'.
+        Identify unit type as ``'length'``, ``'area'``, or ``'weight'``.
 
         Returns:
             str:
@@ -260,7 +259,7 @@ class UnitConverter:
                 If unit is not recognized.
 
         Example:
-            >> > UnitConverter.get_unit_type('yd2')
+            >>> UnitConverter.get_unit_type('yd2')
             'area'
         """
         if unit.endswith('2') and unit[:-1] in UNIT_TO_METER:
@@ -283,19 +282,20 @@ class UnitConverter:
 
         Args:
             unit(str):
-                The unit to check(e.g., 'm', 'kg', 'ft2').
+                The unit to check(e.g., ``'m'``, ``'kg'``, ``'ft2'``).
             expected_unit_type(str):
-                The expected type('length', 'area', or 'weight').
+                The expected type(``'length'``, ``'area'``, or ``'weight'``).
 
         Returns:
             bool:
-                True if the unit matches the expected type. False otherwise
+                ``True`` if the unit matches the expected type. ``False``
+                otherwise
 
         Examples:
-            >> > UnitConverter.unit_valid('oz', 'weight')
+            >>> UnitConverter.unit_valid('oz', 'weight')
             True
 
-            >> > UnitConverter.unit_valid('m2', 'length')
+            >>> UnitConverter.unit_valid('m2', 'length')
             False
         """
         actual_unit_type = UnitConverter.get_unit_type(unit)
@@ -316,14 +316,14 @@ class UnitConverter:
 
         Returns:
             dict:
-                Validated units per type(e.g., {'length': 'ft',
-                'weight': 'lb'}).
+                Validated units per type(e.g.,
+                ``{'length': 'ft', 'weight': 'lb'}``).
         Raises:
             ValueError:
                 If a unit is invalid.
 
         Example:
-            >> > UnitConverter.parse_units(
+            >>> UnitConverter.parse_units(
             ...     input_dict={'weight': 'lb'},
             ...     unit_defaults={'length': 'm', 'weight': 'kg'}
             ...)
@@ -380,10 +380,10 @@ class UnitConverter:
                 If either unit is unsupported.
 
         Examples:
-            >> > UnitConverter.convert_length(10, 'm', 'ft')
+            >>> UnitConverter.convert_length(10, 'm', 'ft')
             32.81
 
-            >> > UnitConverter.convert_length(10, 'm', 'ft', precision=4)
+            >>> UnitConverter.convert_length(10, 'm', 'ft', precision=4)
             32.8084
         """
         from_unit = UnitConverter.normalize_unit(from_unit)
@@ -430,10 +430,10 @@ class UnitConverter:
                 If either unit is unsupported.
 
         Examples:
-            >> > UnitConverter.convert_area(100, 'm2', 'ft2')
+            >>> UnitConverter.convert_area(100, 'm2', 'ft2')
             1076.39
 
-            >> > UnitConverter.convert_area(100, 'm2', 'ft2', precision=5)
+            >>> UnitConverter.convert_area(100, 'm2', 'ft2', precision=5)
             1076.39104
         """
         # Strip the '2' from area units to get base length units:
@@ -486,10 +486,10 @@ class UnitConverter:
                 If either unit is unsupported.
 
         Examples:
-            >> > UnitConverter.convert_weight(1, 'ton', 'lb')
+            >>> UnitConverter.convert_weight(1, 'ton', 'lb')
             2204.62
 
-            >> > UnitConverter.convert_weight(1, 'ton', 'lb', precision=1)
+            >>> UnitConverter.convert_weight(1, 'ton', 'lb', precision=1)
             2204.6
         """
         from_unit = UnitConverter.normalize_unit(from_unit)
@@ -517,7 +517,7 @@ class UnitConverter:
         Convert a numerical value between compatible units.
 
         This method supports conversions across three unit categories: length,
-        area, and weight. Unit aliases(e.g., "kg" for "kilogram") are
+        area, and weight. Unit aliases(e.g., ``'kg'`` for ``'kilogram'``) are
         supported. The function automatically detects the category of the input
         and output units and ensures they are compatible.
 
@@ -525,11 +525,11 @@ class UnitConverter:
             value(float):
                 The numerical value to convert.
             from_unit(str):
-                The source unit(e.g., "meter", "sqft", "kg"). Aliases are
-                supported.
+                The source unit (e.g., ``'meter'``, ``'sqft'``, ``'kg'``).
+                Aliases are supported.
             to_unit(str):
                 The target unit for conversion. Must be in the same category as
-                `from_unit`.
+                ``from_unit``.
             precision(int, optional):
                 Number of decimal places to round the result to. Defaults to 2.
 
@@ -540,14 +540,14 @@ class UnitConverter:
 
         Raises:
             ValueError:
-                If the units belong to different categories(e.g., length vs
+                If the units belong to different categories (e.g., length vs
                 weight), are unrecognized, or if the unit type is unsupported.
 
         Examples:
-            >> > UnitConverter.convert_unit(5, 'km', 'mi')
+            >>> UnitConverter.convert_unit(5, 'km', 'mi')
             3.11
 
-            >> > UnitConverter.convert_unit(2500, 'g', 'lb', precision=3)
+            >>> UnitConverter.convert_unit(2500, 'g', 'lb', precision=3)
             5.512
         """
         from_unit = UnitConverter.normalize_unit(from_unit)
