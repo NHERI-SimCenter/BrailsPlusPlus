@@ -45,7 +45,7 @@ This module defines classes associated with household inventories.
 
 import json
 from datetime import datetime
-from typing import Union, Tuple, Any, Optional
+from typing import Any, Dict, List, Tuple
 
 try:
     # Python 3.8+
@@ -87,27 +87,26 @@ def clean_floats(obj: Any) -> Any:
 
 
 class Household:
-    """
-    A data structure for a household that holds its features.
+    """A household with features and attributes.
+
+    To import the :class:`Household` class, use:
+
+    .. code-block:: python
+
+        from brails.types.household_inventory import Household
+
 
     Attributes:
-        household_id (int): Unique identifier for the household.
-        features (dict[str, any]): A dictionary of features (attributes) for
-            the household.
-
-    Methods:
-        add_features(additional_features: dict[str, any],
-            overwrite: bool = True): Update the existing features in the 
-            household.
-        remove_features(feature_list: list[str]): Remove specified features 
-            from the household.
-        print_info(): Print the features of the household.
+        household_id (int):
+            Unique identifier for the household.
+        features (dict[str, Any]):
+            A dictionary of features (attributes) for the household.
     """
 
     def __init__(
         self,
         household_id: int,
-        features: dict[str, Any] = None,
+        features: Dict[str, Any] = None,
     ) -> None:
         """
         Initialize a Household with a household ID and features.
@@ -122,7 +121,7 @@ class Household:
 
     def add_features(
             self,
-            additional_features: dict[str, Any],
+            additional_features: Dict[str, Any],
             overwrite: bool = True
     ) -> Tuple[bool, int]:
         """
@@ -182,12 +181,12 @@ class Household:
 
         return updated, n_pw
 
-    def remove_features(self, feature_list: list[str]) -> bool:
+    def remove_features(self, feature_list: List[str]) -> bool:
         """
         Remove specified features from the household.
 
         Args:
-            feature_list (list[str]): List of features to be removed
+            feature_list (List[str]): List of features to be removed
 
         Return:
             bool: True if features are removed
@@ -206,31 +205,21 @@ class Household:
 
 class HouseholdInventory:
     """
-    A class representing a Household Inventory.
+    A class representing a collection of Households managed as an inventory.
 
-    Attributes:
-        inventory (dict): The inventory stored in a dict accessed by household_id
+    This class provides methods to add, manipulate, write and query
+    a collection of :class:`Household` objects.
 
-     Methods:
-        add_household(household_id, Household): Add a household to the inventory.
-        add_household_features(household_id, features, overwrite): Append new 
-            features to the household.
-        change_feature_names(feature_name_mapping): Rename feature names in a
-            HouseholdInventory using user-specified mapping.
-        get_household_features(household_id): Get features of a particular 
-            household.
-        get_household_ids(): Return the household ids as a list.
-        print_info(): Print the household inventory.
-        remove_household(household_id): Remove a household from the inventory.
-        remove_features(feature_list): Remove features from the inventory.
-        to_json(): Generate JSON representation and optionally write to file.
-        read_from_json(file_path, keep_existing): Read inventory dataset from a 
-            JSON file.
+    To import the :class:`HouseholdInventory` class, use:
+
+    .. code-block:: python
+
+        from brails.types.household_inventory import HouseholdInventory
     """
 
     def __init__(self) -> None:
         """Initialize HouseholdInventory with an empty inventory dictionary."""
-        self.inventory: dict = {}
+        self.inventory: Dict = {}
         self.n_pw = 1
 
     def add_household(self, household_id: int, household: Household) -> bool:
@@ -244,12 +233,26 @@ class HouseholdInventory:
                 The household to be added.
 
         Returns:
-            bool:
-                True if the household was added successfully, False otherwise.
+            bool: ``True`` if the household was added successfully, ``False``
+            otherwise.
 
         Raises:
-            TypeError:
-                If `household` is not an instance of `Household`.
+            TypeError: If ``household`` is not an instance of :class:`Household`.
+
+        Examples:
+            >>> household = Household(
+            ...     household_id=1,
+            ...     features={'income': 50000, 'size': 3}
+            ... )
+            >>> inventory = HouseholdInventory()
+            >>> success = inventory.add_household(1, household)
+            >>> print(success)
+            True
+
+            >>> # Adding the same household_id again will fail
+            >>> success = inventory.add_household(1, household)
+            >>> print(success)
+            False
         """
         if not isinstance(household, Household):
             raise TypeError("Expected an instance of Household.")
@@ -265,7 +268,7 @@ class HouseholdInventory:
     def add_household_features(
         self,
         household_id: int,
-        new_features: dict[str, Any],
+        new_features: Dict[str, Any],
         overwrite: bool = True
     ) -> bool:
         """
@@ -303,7 +306,7 @@ class HouseholdInventory:
 
     def change_feature_names(
             self,
-            feature_name_mapping: dict[str, str]
+            feature_name_mapping: Dict[str, str]
     ) -> None:
         """
         Rename features in a HouseholdInventory using user-specified mapping.
@@ -409,7 +412,7 @@ class HouseholdInventory:
             return True
         return False
 
-    def remove_features(self, feature_list: list[str]) -> bool:
+    def remove_features(self, feature_list: List[str]) -> bool:
         """
         Remove specified features from all households in the inventory.
 
