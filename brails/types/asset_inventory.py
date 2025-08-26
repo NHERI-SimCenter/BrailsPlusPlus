@@ -217,8 +217,9 @@ class Asset:
 
     def print_info(self) -> None:
         """Print the coordinates and features of the asset."""
-        print("\t Coordinates: ", self.coordinates)
-        print("\t Features: ", self.features)
+        print("Coordinates: ", self.coordinates)
+        features_json = json.dumps(self.features, indent=2)
+        print(f"Features: {features_json}")
 
 
 class AssetInventory:
