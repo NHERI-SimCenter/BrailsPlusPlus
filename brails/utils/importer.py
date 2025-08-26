@@ -32,11 +32,12 @@
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 #
 # Contributors:
-# Frank McKenna
+# John Vouvakis
 # Barbaros Cetiner
+# Frank McKenna
 #
 # Last updated:
-# 06-06-2025
+# 08-18-2025
 
 """
 Utility classes and methods for the brails module.
@@ -65,7 +66,13 @@ class Importer:
     the package scope to avoid conflicts. Classes can be retrieved and
     instantiated by their name using the get_class method.
 
-    Attributes:
+    The :class:`Importer` class can be imported as below.
+
+    .. code-block:: python
+
+        from brails import Importer
+
+    Parameters:
         package_path (Path):
             The file system path to the root of the package.
         max_parse_levels (int):
@@ -74,32 +81,12 @@ class Importer:
         classes (dict):
             A dictionary mapping class names to their module paths.
 
-    Methods:
-        get_object(json_object: Dict[str, Any]) -> Any:
-            Creates an object instance from a dictionary containing class type
-            and data.
-
-        get_class(class_name: str) -> Any:
-            Retrieves a class by name from the package and returns the class
-            object.
-
-        __repr__() -> str:
-            Returns a human-readable summary of available classes and their
-            modules.
-
     Raises:
         NotFoundError:
             Raised when a package or class is not found, or required keys are
             missing.
         BrailsError:
             Raised when duplicate class names exist across different modules.
-
-    Example:
-        >>> importer = Importer("brails")
-        >>> obj = importer.get_object({
-        ...     "classType": "MyModel",
-        ...     "objData": {...}
-        ... })
     """
 
     def __init__(self, package_name="brails"):
@@ -121,16 +108,25 @@ class Importer:
 
         Args:
             json_object (dict[str, Any]):
-                A dictionary containing "classType" and "objData" keys.
+                A dictionary containing ``classType`` and ``objData`` keys.
 
         Returns:
             Any:
-                An instance of the specified class, initialized with `objData`.
+                An instance of the specified class, initialized with
+                ``objData``.
 
         Raises:
             NotFoundError:
-                If "classType" or "objData" is missing, or if the class is not
-                found.
+                If ``classType`` or ``objData`` is missing, or if the class is
+                not found.
+
+        Example:
+            >>> from brails import Importer
+            >>> importer = Importer()
+            >>> obj = importer.get_object({
+            ...     "classType": "MyModel",
+            ...     "objData": {...}
+            ... })
         """
         class_type = json_object.get("classType")
         if class_type is None:
@@ -170,12 +166,16 @@ class Importer:
 
         Returns:
             Any:
-                The class object if found, otherwise raises BrailsError.
+                The class object if found, otherwise raises ``BrailsError``.
 
         Raises:
             NotFoundError:
                 If the class cannot be found.
 
+        Example:
+            >>> from brails import Importer
+            >>> importer = Importer()
+            >>> class_obj = importer.get_class(class_name)
         """
         module_path = self.classes.get(class_name)
         if module_path:

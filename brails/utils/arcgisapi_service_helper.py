@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-11-2025
+# 08-19-2025
 
 """
 This module defines a class for retrieving data from ArcGIS services APIs.
@@ -47,11 +47,13 @@ This module defines a class for retrieving data from ArcGIS services APIs.
 
 import math
 import concurrent.futures
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import requests
 from requests.adapters import HTTPAdapter, Retry
 from tqdm import tqdm
 from shapely.geometry import Polygon
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 from brails.utils import GeoTools
 
 
@@ -73,6 +75,7 @@ class ArcgisAPIServiceHelper:
     This class allows users to interact with an ArcGIS API endpoint to retrieve
     information about elements within specific polygons. It supports
     functionality for:
+
     - Retrieving the maximum number of elements that can be returned per query.
     - Categorizing and splitting polygon cells based on the element count.
     - Dividing polygons into smaller rectangular cells to ensure a balance of
@@ -83,48 +86,20 @@ class ArcgisAPIServiceHelper:
     handling transient network errors, and parsing the responses to determine
     element counts within specific regions.
 
-    Attributes:
+    To import the :class:`ArcgisAPIServiceHelper` class, use:
+
+    .. code-block:: python
+
+        from brails.utils import ArcgisAPIServiceHelper
+
+    Parameters:
         api_endpoint_url (str):
             The base URL of the ArcGIS API endpoint used for requests.
         max_elements_per_cell (int):
             The maximum number of elements the API allows per query, fetched
             from the ArcGIS service.
 
-    Methods:
-        fetch_max_records_per_query() -> int:
-            Retrieves the maximum number of records returned by the API in a
-            single query.
-        categorize_and_split_cells(preliminary_cells: list[Polygon]
-                                   ) -> tuple[list[Polygon], list[Polygon]]:
-            Categorizes and splits polygons based on their element count.
-            Returns two lists: cells to keep and cells to split.
-        split_polygon_into_cells(bpoly: Polygon, element_count: int = -1,
-                                 plot_mesh: str = '') -> list[Polygon]:
-            Divides a polygon into smaller cells if the element count exceeds
-            the threshold.
-        download_attr_from_api(cell: Polygon,
-                               requested_fields: list[str] | str) -> list:
-            Fetches specific attribute fields from the API for a given polygon.
-        get_element_counts(bpoly: Polygon) -> int:
-            Retrieves the count of elements within a given polygon's bounding
-            box.
-        fetch_data_for_cells(final_cells: list, download_func: Callable,
-                             desc: str) -> dict:
-            Concurrently applies a download function to a list of cells with
-            progress tracking.
-
-    Example Usage:
-        # Instantiate the helper class with an API endpoint:
-        api_helper = ArcgisAPIServiceHelper("https://api.example.com/query")
-
-        # Fetch the maximum number of records per query:
-        max_records = api_helper.fetch_max_records_per_query()
-
-        # Split polygons into cells based on element count:
-        cells_to_keep, cells_to_split = api_helper.categorize_and_split_cells(
-            preliminary_cells)
-
-    Notes:
+    Note:
         - The class assumes a uniform distribution of elements across polygons
           when splitting.
         - The retry strategy uses exponential backoff to handle transient
@@ -134,9 +109,10 @@ class ArcgisAPIServiceHelper:
           and splitting polygons.
 
     Raises:
-        ValueError: If an invalid Polygon or parameter is passed to a method.
-        NotImplementedError: If the requested functionality is not supported
-        by the API.
+        ValueError:
+            If an invalid Polygon or parameter is passed to a method.
+            ``NotImplementedError``: If the requested functionality is not
+            supported by the API.
         HTTPError: If the HTTP request fails after retries.
     """
 
@@ -145,9 +121,10 @@ class ArcgisAPIServiceHelper:
         Initialize the ArcgisAPIServiceHelper class object.
 
         This constructor initializes an instance of the
-        `ArcgisAPIServiceHelper` class. It accepts the base URL of the ArcGIS
+        ``ArcgisAPIServiceHelper`` class. It accepts the base URL of the ArcGIS
         API endpoint and automatically fetches the maximum number of elements
-        allowed per query by calling the `fetch_max_records_per_query` method.
+        allowed per query by calling the ``fetch_max_records_per_query``
+        method.
 
         Args:
             api_endpoint_url (str):
@@ -182,8 +159,7 @@ class ArcgisAPIServiceHelper:
 
 
         Returns:
-            int:
-                The maximum number of elements the API allows per query.
+            int: The maximum number of elements the API allows per query.
 
         Raises:
             ValueError:
@@ -195,12 +171,14 @@ class ArcgisAPIServiceHelper:
 
         Example:
             >>> api_tools = ArcgisAPIServiceHelper(
-                "https://api.example.com/data/query")
+            ...     'https://sampleserver6.arcgisonline.com/arcgis/rest/'
+            ...     'services/Census/MapServer/3/query'
+            ... )
             >>> max_records = api_tools.fetch_max_records_per_query()
             >>> print(max_records)
             1000
 
-        Notes:
+        Note:
             - The function expects the API to return a JSON response containing
               a `maxRecordCount` key.
             - A retry strategy is implemented for the HTTPS request to handle
@@ -248,8 +226,37 @@ class ArcgisAPIServiceHelper:
 
         Raises:
             ValueError:
-                If the input 'cell' is not a valid Polygon or
-                'requested_fields' is not valid.
+                If the ``cell`` input is not a valid ``Polygon`` or
+                ``requested_fields`` is not valid.
+
+        Example:
+            >>> from shapely.geometry import box
+            >>> from brails.utils import ArcgisAPIServiceHelper
+            >>> api_endpoint = ('https://services5.arcgis.com/7nsPwEMP38bSkCjy'
+            ...     '/arcgis/rest/services/Building_Footprints/FeatureServer'
+            ...     '/0/query')
+            >>> api_tools = ArcgisAPIServiceHelper(api_endpoint)
+            >>> cell = box(-118.244, 34.041, -118.243, 34.041)
+            >>> data = api_tools.download_attr_from_api(
+            ...     cell,
+            ...     ['HEIGHT', 'ELEV']
+            ... )
+            >>> print(data)
+            [{'attributes': {'HEIGHT': 37.14, 'ELEV': 292.15},
+              'geometry': {'rings': [[[-118.24332934719, 34.0407349647641],
+                 [-118.243413068638, 34.0406417365415],
+                 [-118.243415138653, 34.0406430242604],
+                 [-118.243416898264, 34.0406440782071],
+                 [-118.243682323766, 34.0408091186429],
+                 [-118.243541516086, 34.04096427197],
+                 [-118.243533076239, 34.0409678617538],
+                 [-118.243522111045, 34.0409659050115],
+                 [-118.2434982541, 34.0409913987935],
+                 [-118.243502997061, 34.0409990828814],
+                 [-118.243501803082, 34.0410085657733],
+                 [-118.243492197701, 34.0410198786033],
+                 [-118.243226233836, 34.0408560099184],
+                 [-118.24332934719, 34.0407349647641]]]}}]
         """
         # Validate the 'cell' input and get its bounding box coordinates:
         if not isinstance(cell, Polygon):
@@ -328,10 +335,10 @@ class ArcgisAPIServiceHelper:
 
         Args:
             region:
-                A Region object that provides a `.get_boundary()` method
+                A Region object that provides a ``get_boundary()`` method
                 returning a polygon, region name, and optional OSM ID.
             plot_cells (bool, optional):
-                If True, generates and saves a visualization of the final
+                If ``True``, generates and saves a visualization of the final
                 meshed cells.
             task_description (str, optional):
                 A message string that describes the task being performed,
@@ -346,6 +353,40 @@ class ArcgisAPIServiceHelper:
                 - final_cells (List[Polygon]):
                     List of polygons representing the final meshed cells used
                     for data querying.
+
+        Example:
+            >>> from brails.utils import ArcgisAPIServiceHelper, Importer
+            >>> importer = Importer()
+            >>> region_boundary_class = importer.get_class('RegionBoundary')
+            >>> region_boundary = region_boundary_class(
+            ...         {'type': 'locationName', 'data': 'Los Angeles, CA'}
+            ...     )
+            >>> api_endpoint = ('https://services5.arcgis.com/7nsPwEMP38bSkCjy'
+            ...     '/arcgis/rest/services/Building_Footprints/FeatureServer'
+            ...     '/0/query')
+            >>> api_tools = ArcgisAPIServiceHelper(api_endpoint)
+            >>> (
+            ...     downloaded_data,
+            ...     final_cells
+            ... ) = api_tools.download_all_attr_for_region(
+            ...     region_boundary,
+            ...     plot_cells=False
+            ... )
+            Searching for Los Angeles, CA...
+            Found Los Angeles, Los Angeles County, California, United States
+            Meshing the defined area...
+            Obtaining the number of elements in each cell:
+            100%|██████████| 661/661 [00:07<00:00, 89.60it/s]
+            Obtaining the number of elements in each cell:
+            100%|██████████| 2576/2576 [00:27<00:00, 92.85it/s]
+            Obtaining the number of elements in each cell:
+            100%|██████████| 1146/1146 [00:11<00:00, 97.85it/s]
+            Meshing complete. Split Los Angeles into 3824 cells.
+            Obtaining attributes for each cell:  100%|██████████| 3824/3824
+            [02:46<00:00, 22.93it/s]
+            >>> total_assets = sum(map(len, downloaded_data.values()))
+            >>> print(f'Total number of assets: {total_assets}')
+            Total number of assets: 1282028
         """
         # Get the region's boundary polygon and printable name:
         boundary_polygon, region_name, _ = region.get_boundary()
@@ -403,7 +444,38 @@ class ArcgisAPIServiceHelper:
             List[Dict[str, Any]]:
                 A list of dictionaries, each representing the attribute data
                 for a bridge within the cell. Each dictionary includes
-                'geometry' and 'attributes' keys as returned by the ArcGIS API.
+                ``geometry`` and ``attributes`` keys as returned by the ArcGIS
+                API.
+        Example:
+            >>> from shapely.geometry import box
+            >>> from brails.utils import ArcgisAPIServiceHelper
+            >>> api_endpoint = (
+            ...     'https://services5.arcgis.com/7nsPwEMP38bSkCjy'
+            ...     '/arcgis/rest/services/Building_Footprints/FeatureServer'
+            ...     '/0/query'
+            ... )
+            >>> api_tools = ArcgisAPIServiceHelper(api_endpoint)
+            >>> cell = box(-118.244, 34.041, -118.243, 34.041)
+            >>> data = api_tools.download_all_attr_from_api(cell)
+            >>> print(data)
+            [{'attributes': {'OBJECTID': 385248, 'CODE': 'Building', 'BLD_ID':
+            '487907837328', 'HEIGHT': 37.14, 'ELEV': 292.15, 'AREA': 9665,
+            'LARIAC_SOURCE': 'LARIAC2', 'LARIAC_DATE': '2008',
+            'AIN': '5147028043', 'STATUS': 'Unchanged', 'CODE_NUM': 1},
+              'geometry': {'rings': [[[-118.24332934719, 34.0407349647641],
+                 [-118.243413068638, 34.0406417365415],
+                 [-118.243415138653, 34.0406430242604],
+                 [-118.243416898264, 34.0406440782071],
+                 [-118.243682323766, 34.0408091186429],
+                 [-118.243541516086, 34.04096427197],
+                 [-118.243533076239, 34.0409678617538],
+                 [-118.243522111045, 34.0409659050115],
+                 [-118.2434982541, 34.0409913987935],
+                 [-118.243502997061, 34.0409990828814],
+                 [-118.243501803082, 34.0410085657733],
+                 [-118.243492197701, 34.0410198786033],
+                 [-118.243226233836, 34.0408560099184],
+                 [-118.24332934719, 34.0407349647641]]]}}]
         """
         return self.download_attr_from_api(cell, 'all')
 
@@ -414,14 +486,16 @@ class ArcgisAPIServiceHelper:
         """
         Categorize/split a list of polygon cells based on their element count.
 
-        This method processes a list of polygons (preliminary_cells) by first
-        obtaining the number of elements contained within each polygon. If a
-        polygon contains more elements than the specified maximum allowed per
-        cell (max_elements_per_cell), the polygon is split into smaller cells.
-        The method returns two lists:
-        - A list of cells that are kept as is (those that do not exceed the
-          element threshold).
-        - A list of split cells (those that exceeded the element threshold).
+        This method processes a list of polygons (``preliminary_cells``) by
+        first obtaining the number of elements contained within each polygon.
+        If a polygon contains more elements than the specified maximum allowed
+        per cell (``max_elements_per_cell``), the polygon is split into smaller
+        cells. The method returns two lists:
+
+            - A list of cells that are kept as is (those that do not exceed the
+              element threshold).
+            - A list of split cells (those that exceeded the element
+              threshold).
 
         Args:
             preliminary_cells (list[Polygon]):
@@ -429,11 +503,28 @@ class ArcgisAPIServiceHelper:
                 cells to be processed.
 
         Returns:
-            tuple: A tuple containing two lists of Polygon objects:
-                - The first list contains the cells to keep (those with
-                  elements <= max_elements_per_cell).
-                - The second list contains the split cells (those with
-                  elements > max_elements_per_cell).
+            tuple: A tuple containing two lists of Shapely Polygon objects:
+
+                - The first list contains the cells to keep (those with number
+                  of elements <= ``max_elements_per_cell``).
+                - The second list contains the split cells (those with number
+                  of elements > ``max_elements_per_cell``).
+
+        Example:
+            >>> from shapely.geometry import box
+            >>> from brails.utils import ArcgisAPIServiceHelper
+            >>> api_endpoint = (
+            ...     'https://services1.arcgis.com/Hp6G80Pky0om7QvQ'
+            ...     '/arcgis/rest/services/Transmission_Lines_gdb/'
+            ...     'FeatureServer/0/query'
+            ... )
+            >>> api_tools = ArcgisAPIServiceHelper(api_endpoint)
+            >>> cell = box(-81.334, 37.299, -71.908, 40.295)
+            >>> cells_to_keep, cells_to_split = api_tools.categorize_and_split_cells([cell])
+            >>> print(f"Cells to keep: {len(cells_to_keep)}")
+            Cells to keep: 0
+            >>> print(f"Cells to split: {len(cells_to_split)}")
+            Cells to split: 21
         """
         # Download the element count for each cell:
         results = self.fetch_data_for_cells(
@@ -483,7 +574,12 @@ class ArcgisAPIServiceHelper:
             desc: str = "Obtaining the attributes for each cell"
     ) -> Dict[Any, Any]:
         """
-        Download data for a list of cells in parallel using provided function.
+        Download data for a list of cells using the provided function.
+
+        Each cell in ``final_cells`` is processed concurrently using a thread
+        pool. Results are stored in a dictionary mapping each cell to its
+        downloaded data. If a cell's download fails, the value will be
+        ``None``.
 
         Args:
             final_cells (List[Any]):
@@ -496,7 +592,36 @@ class ArcgisAPIServiceHelper:
         Returns:
             Dict[Any, Any]:
                 Dictionary mapping each cell to its downloaded data
-                (or None if failed).
+                (or ``None`` if failed).
+
+        Example:
+            >>> from shapely.geometry import box
+            >>> from brails.utils import ArcgisAPIServiceHelper
+            >>> api_endpoint = (
+            ...     'https://services1.arcgis.com/Hp6G80Pky0om7QvQ/'
+            ...     'arcgis/rest/services/Transmission_Lines_gdb/'
+            ...     'FeatureServer/0/query'
+            ... )
+            >>> api_helper = ArcgisAPIServiceHelper(api_endpoint)
+            >>> cells = [
+            ...     box(-86.940, 24.545, -77.513, 27.992),
+            ...     box(-77.499, 38.779, -76.910, 38.966)
+            ... ]
+            >>> results = api_helper.fetch_data_for_cells(
+            ...     cells,
+            ...     api_helper.download_all_attr_from_api
+            ... )
+            Obtaining the attributes for each cell: 100%|██████████| 2/2
+            [00:00<00:00,  2.37it/s]
+            >>> for cell, data in results.items():
+            ...     print(
+            ...         f'Cell bounds: {cell.bounds}',
+            ...         f'Number of assets: {len(data)}'
+            ...     )
+            Cell bounds: (-77.499, 38.779, -76.91, 38.966)
+            Number of assets: 152
+            Cell bounds: (-86.94, 24.545, -77.513, 27.992)
+            Number of assets: 1376
         """
         results = {}
         pbar = tqdm(total=len(final_cells), desc=desc)
@@ -527,38 +652,56 @@ class ArcgisAPIServiceHelper:
         """
         Divide a polygon into smaller cells based on its element count.
 
-        If the number of elements exceeds the specified threshold
-        (max_elements_per_cell), the polygon will be divided into multiple
-        rectangular cells with a margin of error. The grid is generated under
-        the assumption that the elements are uniformly distributed across the
-        polygon, and it can be split based on the ratio of element_count to
-        max_elements_per_cell to get cells that do not exceed the  max elements
-        specified per cellapproximate balance. Please note that, this method
-        does not guarantee that each cell will contain fewer than the specified
-        maximum number of elements.
+        If the number of elements exceeds ``max_elements_per_cell``, the
+        polygon is split into multiple rectangular cells. The grid is generated
+        under the assumption that elements are roughly uniformly distributed,
+        so the method produces an approximate balance of elements per cell.
+        This method does not guarantee that every cell will be under the
+        maximum element threshold.
 
         Args:
             bpoly (Polygon):
-                The polygon to be split into rectangular cells.
+                The polygon to split into rectangular cells.
             element_count (int, optional):
-                The total number of elements in the polygon. If not provided,
-                the method will compute this using `get_element_counts`.
+                Total number of elements in the polygon. If not provided, the
+                method will compute this using ``get_element_counts`` method.
             plot_mesh (str, optional):
                 If provided, the generated mesh will be plotted using
-                `GeoTools.plot_polygon_cells`.
+                ``GeoTools.plot_polygon_cells`` and saved to this file path.
 
         Returns:
-            list:
-                A list of polygons (or bounding boxes) representing the
-                rectangular grid cells that cover the input polygon.
+            List[Polygon]:
+                A list of polygons representing the rectangular grid cells
+                covering the input polygon.
 
-        Notes:
+        Note:
             - If the element count is below or equal to
-              `max_elements_per_cell`, the entire polygon's envelope is
-              returned as a single cell.
-            - If the element count exceeds `max_elements_per_cell`, the polygon
-              is divided into smaller cells based on the bounding box aspect
-              ratio.
+              ``max_elements_per_cell``, the polygon's envelope is returned as
+              a single cell.
+            - If the element count exceeds ``max_elements_per_cell``, the
+              polygon is split into smaller cells based on the bounding box
+              aspect ratio.
+
+        Example:
+            >>> from shapely.geometry import box
+            >>> from brails.utils import ArcgisAPIServiceHelper
+            >>> api_endpoint = (
+            ...     "https://services1.arcgis.com/Hp6G80Pky0om7QvQ/"
+            ...     "arcgis/rest/services/Public_Schools/FeatureServer/0/query"
+            ... )
+            >>> helper = ArcgisAPIServiceHelper(api_endpoint)
+            >>> # Create polygon for bounding box
+            >>> cell = box(-105.638, 24.966, -67.933, 38.031)
+            >>> # Split polygon into smaller cells
+            >>> rectangles = helper.split_polygon_into_cells(cell)
+            >>> for rect in rectangles[:2]:
+            ...      print(rect.wkt)
+            POLYGON ((-105.638 24.966, -67.933 24.966,
+            -67.933 26.153727272727274, -105.638 26.153727272727274,
+            -105.638 24.966))
+            POLYGON ((-105.638 26.153727272727274, -67.933 26.153727272727274,
+            -67.933 27.341454545454546, -105.638 27.341454545454546,
+            -105.638 26.153727272727274))
         """
         if element_count == -1:
             # Get the number of elements in the input polygon bpoly:
@@ -629,6 +772,22 @@ class ArcgisAPIServiceHelper:
             int:
                 The count of elements within the bounding box, or 0 if an
                 error occurs.
+
+        Example:
+            >>> from shapely.geometry import box
+            >>> from brails.utils import ArcgisAPIServiceHelper
+            >>>
+            >>> api_endpoint = (
+            ...     'https://services1.arcgis.com/Hp6G80Pky0om7QvQ/'
+            ...     'arcgis/rest/services/Public_Schools/FeatureServer/0/query'
+            ... )
+            >>> helper = ArcgisAPIServiceHelper(api_endpoint)
+            >>> # Create a polygon covering the specified bounding box
+            >>> cell = box(-86.940, 24.545, -77.513, 27.992)
+            >>> # Get the element count for that polygon
+            >>> count = helper.get_element_counts(cell)
+            >>> print(count)
+            2109
         """
         # Get the coordinates of the bounding box for input polygon bpoly:
         bbox = bpoly.bounds

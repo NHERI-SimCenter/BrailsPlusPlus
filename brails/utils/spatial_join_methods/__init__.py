@@ -32,15 +32,26 @@
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 
 """
-Spatial join methods of the brails package.
+Methods for performing spatial joins in BRAILS++.
+
+This module provides classes and methods for performing spatial joins 
+between AssetInventory objects.
 
 Available classes:
-- GetPointsInPolygons: A spatial join method for finding points in polygons
-- GetPointsNearPolygons: A spatial join method for finding points in or near
-                         polygons
-- DistanceBasedPointMatcher: A spatial join strategy that matches points based
-                             on Euclidean distance.
+
+- :class:`GetPointsInPolygons`
+    Performs a spatial join to find point assets contained within polygon 
+    assets.
+
+- :class:`GetPointsNearPolygons`
+    Finds point assets that are either inside or near polygon assets,
+    useful for proximity analysis.
+
+- :class:`DistanceBasedPointMatcher`
+    Matches point assets to polygon assets based on Euclidean distance, 
+    allowing flexible nearest-neighbor spatial joins.
 """
+
 from .get_points_in_polygons import GetPointsInPolygons
 from .get_points_near_polygons import GetPointsNearPolygons
 from .distance_based_point_matcher import DistanceBasedPointMatcher

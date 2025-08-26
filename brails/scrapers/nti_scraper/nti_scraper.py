@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 07-16-2025
+# 08-06-2025
 
 """
 This module defines a class for retrieving tunnel data from NTI.
@@ -47,6 +47,7 @@ This module defines a class for retrieving tunnel data from NTI.
 
 from typing import Any, Dict, List
 from shapely.geometry import Point, Polygon
+from brails.constants import DEFAULT_UNITS
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import ArcgisAPIServiceHelper, UnitConverter
@@ -74,10 +75,6 @@ DIMENSIONAL_ATTR = {'detour_length_a7': 'mi',
                     'posting_load_type_3_l7': 'ton_us',
                     'posting_load_type_3S2_l8': 'ton_us',
                     'posting_load_type_33_l9': 'ton_us'}
-
-# Default units to apply when not explicitly provided by the user:
-DEFAULT_UNITS = {'length': 'ft',
-                 'weight': 'lb'}
 
 
 class NTIScraper:

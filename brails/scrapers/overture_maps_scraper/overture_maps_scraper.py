@@ -1,4 +1,4 @@
-# Copyright (c) 2024 The Regents of the University of California
+# Copyright (c) 2025 The Regents of the University of California
 #
 # This file is part of BRAILS++.
 #
@@ -35,347 +35,250 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 01-08-2025
+# 07-13-2025
 
 """
-This module defines the class scraping data from Overture Maps.
+This module define the base class for scraping OvertureMaps data.
 
 .. autosummary::
 
     OvertureMapsScraper
 """
 
+from abc import ABC
 import re
 import urllib.request
+from typing import Optional, List, Tuple, Union
+from tqdm import tqdm
 
 import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
-from pyarrow import fs
-from shapely import wkb, Polygon, MultiPolygon
-from shapely.coords import CoordinateSequence
+import pyarrow.fs as fs
 
-from brails.types.asset_inventory import Asset, AssetInventory
-from brails.types.region_boundary import RegionBoundary
+
+from shapely.geometry import Point, Polygon, MultiPolygon, LineString
+from shapely.geometry import MultiLineString
+from shapely.geometry.base import BaseGeometry
+
+
+import numpy as np
+
+# Global constants for base paths, URLs, and type-theme mapping:
+S3_BASE_PATH = 'overturemaps-us-west-2/release'
+OVERTURE_RELEASES_URL = ('https://raw.githubusercontent.com/OvertureMaps/data/'
+                         'main/overture_releases.yaml')
 
 TYPE_THEME_MAP = {
-    'address': 'addresses',
-    'bathymetry': 'base',
-    'building': 'buildings',
-    'building_part': 'buildings',
-    'division': 'divisions',
-    'division_area': 'divisions',
-    'division_boundary': 'divisions',
-    'place': 'places',
-    'segment': 'transportation',
-    'connector': 'transportation',
-    'infrastructure': 'base',
-    'land': 'base',
-    'land_cover': 'base',
-    'land_use': 'base',
-    'water': 'base',
+    "address": "addresses",
+    "bathymetry": "base",
+    "building": "buildings",
+    "building_part": "buildings",
+    "division": "divisions",
+    "division_area": "divisions",
+    "division_boundary": "divisions",
+    "place": "places",
+    "segment": "transportation",
+    "connector": "transportation",
+    "infrastructure": "base",
+    "land": "base",
+    "land_cover": "base",
+    "land_use": "base",
+    "water": "base",
 }
 
-EXCLUDE_COLUMNS = ['geometry', 'id', 'bbox', 'version', 'sources']
 
-
-class OvertureMapsScraper:
+class OvertureMapsScraper(ABC):
     """
-    A class for interacting with Overture Maps data.
+    A base class for accessing and processing data from Overture Maps.
 
-    This scraper enables the retrieval of geospatial data from Overture Maps
-    based on defined region boundaries and requested element types. The class
-    supports data filtering, conversion, and parsing into a structured format
-    (`AssetInventory`) for further use.
+    This is a base class and is **not intended to be instantiated directly**.
+    To use it, either:
 
-    Attributes:
-        length_unit (str): The unit of measurement for lengths (default is
-                           'ft').
+    - Import and instantiate a subclass
+      (e.g., ``Importer().get_class('OvertureMapsFootprintScraper')``)
+    - Or subclass it yourself and implement additional logic.
 
-    Methods:
-        __init__(input_dict: dict):
-            Initializes the scraper with a specified length unit.
+    Direct imports of this base class are typically only needed when creating
+    new Overture Maps scrapers.
 
-        get_available_element_types(return_types: bool = False) -> list | None:
-            Retrieves and optionally returns a list of element types supported
-            by the scraper.
+    Provided static methods include:
 
-        get_elements(region: RegionBoundary, requested_elements: list
-                     ) -> AssetInventory:
-            Queries and retrieves geospatial elements within a specified region
-            and returns them as an inventory.
+    - Fetching release version names from the Overture Maps release index.
+    - Constructing S3 paths to specific dataset partitions.
+    - Reading datasets from S3 into a Pandas DataFrame with optional
+      spatial filtering.
+    - Normalizing bounding box coordinates to a consistent format.
+    - Formatting source metadata from NumPy arrays or lists of dictionaries.
     """
 
-    def __init__(self, input_dict: dict):
-        """
-        Initialize the class object with length units.
-
-        Args:
-            input_dict(dict):
-                A dictionary specifying length units. If not provided, 'ft' is
-                assumed by default..
-        """
-        self.length_unit = input_dict.get('length', 'ft')
-
     @staticmethod
-    def get_available_element_types(return_types: bool = False) -> list | None:
+    def fetch_release_names(print_releases: bool = False) -> List[str]:
         """
-        Retrieve list of element types that can be returned by the scraper.
-
-        This method returns a list of element types that can be returned by
-        this scraper and enabled in Overture Maps. Optionally, it can return
-        the list of  available element types when the `return_types` flag is
-        set to True.
+        Fetch the list of release names from the OvertureMaps releases YAML.
 
         Args:
-            return_types(bool):
-                If True, the method will return the list of available element
-                types. If False (default), the method only prints the available
-                types.
+            print_releases (bool, optional):
+                If ``True``, print the list of releases. Defaults to ``False``.
 
         Returns:
-            list | None:
-                A list of available element types if `return_types` is True,
-                otherwise None.
-
-        Example:
-            get_available_element_types()     # Prints the types, returns None.
-            get_available_element_types(True)  # Returns a list of available
-                                                element types.
+            List[str]:
+                A list of release version strings.
         """
-        available_types = ', '.join(f"'{key}'" for key in TYPE_THEME_MAP)
+        with urllib.request.urlopen(OVERTURE_RELEASES_URL) as resp:
+            text = resp.read().decode("utf-8")
+            releases = re.findall(r'release:\s*"([^"]+)"', text)
 
-        print('The elements types that can be returned by this scraper are: '
-              f'{available_types}')
-        # TODO: Fix this so that it either returns values or not
-        if return_types:
-            return available_types
+        if print_releases:
+            print("Available releases:")
+            for release in releases:
+                print(f"  - {release}")
 
-    def get_elements(self,
-                     region: RegionBoundary,
-                     requested_elements: list) -> AssetInventory:
-        """
-        Retrieve geospatial elements within a specified region.
-
-        Args:
-            region(RegionBoundary):
-                The geographical boundary defining the region of interest.
-                Must provide methods to retrieve the boundary polygon, its
-                name, and identifier.
-            requested_elements(list):
-                A list of element types to query, where the first element
-                determines the data theme and dataset type for the request.
-
-        Returns:
-            AssetInventory:
-                An inventory of assets, including their geometries and
-                attributes, parsed from the requested data within the
-                specified region.
-
-        Raises:
-            ValueError:
-                If no data is available for the specified region or if the
-                requested data cannot be retrieved.
-
-        Workflow:
-            1. Determines the dataset path based on the requested element
-               type and theme.
-            2. Queries the dataset to filter elements within the specified
-               region boundary using bounding box coordinates.
-            3. Downloads the data and converts it into a pandas DataFrame.
-            4. Parses geometries(e.g., Polygon, MultiPolygon) and their
-               attributes from the data.
-            5. Stores each parsed geometry and its associated attributes in an
-               `AssetInventory` object.
-
-        Notes:
-            - The function supports filtering based on bounding boxes for
-              performance optimization.
-            - Geometries are converted from Well-Known Binary(WKB) to Shapely
-              objects for processing.
-            - Attributes are extracted from the dataset, excluding predefined
-              columns in `EXCLUDE_COLUMNS`.
-            - Geometries include Polygons and MultiPolygons. Non-supported
-              geometries are skipped.
-
-        Example:
-            >> > region = RegionBoundary(...)
-            >> > requested_elements = ['building', 'road']
-            >> > inventory = get_elements(region, requested_elements)
-            >> > print(inventory)
-        """
-        # TODO: Run queries and create an inventory for multiple requested
-        # elements
-        # TODO: Return only the elements within the RegionBoundary
-
-        overture_type = requested_elements[0]
-        theme = TYPE_THEME_MAP[overture_type]
-
-        release = self._get_latest_release()
-
-        path = (f'overturemaps-us-west-2/release/{release}/theme={theme}'
-                f'/type={overture_type}/')
-
-        bpoly, _, _ = region.get_boundary()
-        bbox = bpoly.bounds
-        xmin, ymin, xmax, ymax = bbox
-        spatial_filter = (
-            (pc.field("bbox", "xmin") < xmax)
-            & (pc.field("bbox", "xmax") > xmin)
-            & (pc.field("bbox", "ymin") < ymax)
-            & (pc.field("bbox", "ymax") > ymin)
-        )
-
-        print('\nDownloading requested data from Overture Maps...')
-        dataset = ds.dataset(
-            path, filesystem=fs.S3FileSystem(
-                anonymous=True, region="us-west-2")
-        )
-        batches = dataset.to_batches(filter=spatial_filter)
-
-        non_empty_batches = (b for b in batches if b.num_rows > 0)
-
-        geoarrow_schema = self._geoarrow_schema_adapter(dataset.schema)
-        reader = pa.RecordBatchReader.from_batches(
-            geoarrow_schema, non_empty_batches)
-
-        dfs = []
-        for record_batch in reader:
-            # Convert each RecordBatch to a pandas DataFrame:
-            df = record_batch.to_pandas()
-
-            if 'geometry' in df.columns:
-                df['geometry'] = df['geometry'].apply(
-                    lambda x: wkb.loads(x) if x is not None else None)
-
-            dfs.append(df)
-
-        if len(dfs) == 0:
-            raise ValueError('No data available for the specified region')
-
-        # Concatenate all DataFrames if needed:
-        final_df = pd.concat(dfs, ignore_index=True)
-        print('Requested data downloaded.\n')
-
-        print('Parsing downloaded data...')
-        final_df = final_df[final_df.columns.drop(EXCLUDE_COLUMNS)]
-
-        inventory_final = AssetInventory()
-        asset_id = 1
-        for _, row in final_df.iterrows():
-            geometry = row['geometry']
-
-            coordinates = []
-            if isinstance(geometry, Polygon):
-                coords = self._parse_coordinate_sequence(
-                    geometry.exterior.coords)
-                coordinates.append(coords)
-            elif isinstance(geometry, MultiPolygon):
-                polygons = list(geometry.geoms)
-                for polygon in polygons:
-                    coords = self._parse_coordinate_sequence(
-                        polygon.exterior.coords)
-                    coordinates.append(coords)
-            else:
-                continue
-
-            attributes = row.dropna().drop(['geometry']).to_dict()
-
-            for coords in coordinates:
-                inventory_final.add_asset(asset_id, Asset(
-                    asset_id, coords, attributes))
-                asset_id += 1
-            # TODO: Include asset type in attributes
-            # TODO: Unit conversion
-        print('Data successfully parsed.')
-
-        return inventory_final
+        return releases
 
     @staticmethod
-    def _get_latest_release():
+    def normalize_bbox_order(
+        bbox: Union[Tuple[float, float, float, float], list]
+    ) -> Tuple[float, float, float, float]:
         """
-        Fetch version number from the title of Overture releases webpage.
+        Reorder bbox coordinates to ensure (xmin, ymin, xmax, ymax) format.
+
+        Args:
+            bbox (tuple or list):
+                A sequence of four numeric coordinates (x1, y1, x2, y2).
+
+        Returns:
+            Tuple[float, float, float, float]:
+                Bounding box reordered as (xmin, ymin, xmax, ymax).
+        """
+        if not (isinstance(bbox, (tuple, list)) and len(bbox) == 4):
+            raise ValueError(
+                "bbox must be a tuple or list of exactly four elements")
+
+        x1, y1, x2, y2 = bbox
+        xmin, xmax = sorted([x1, x2])
+        ymin, ymax = sorted([y1, y2])
+
+        return xmin, ymin, xmax, ymax
+
+    @staticmethod
+    def _dataset_path(release: str, overture_type: str) -> str:
+        """
+        Return the S3 path of the Overture dataset to use.
+
+        Args:
+            overture_type (str):
+                The overture sub-partition type.
+            release (str):
+                The release version string.
 
         Returns:
             str:
-                The version number of the latest release or raises an error if
-                not found.
-
-        Raises:
-            ValueError:
-                If the version number cannot be extracted from the title.
+                The full S3 path string.
         """
-        url = 'https://docs.overturemaps.org/release/latest/'
-
-        try:
-            # Fetch the webpage content
-            with urllib.request.urlopen(url) as response:
-                # Decode the response using the page's encoding
-                charset = response.headers.get_content_charset() or 'utf-8'
-                html = response.read().decode(charset)
-
-            # Use a regex to extract the title tag content
-            title_match = re.search(r'<title data-rh=true>(.*?)\s?\|', html)
-
-            if title_match:
-                version = title_match.group(1).strip()
-                if version:
-                    return version
-
-                raise ValueError('Version number is empty.')
-
-            raise ValueError('The version number for the latest release could '
-                             'not be extracted from the title.')
-
-        except urllib.error.URLError as e:
-            raise ValueError(f'Error fetching the webpage: {e}') from e
-        except Exception as e:
-            raise ValueError(f'An error occurred: {e}') from e
+        theme = TYPE_THEME_MAP[overture_type]
+        return f"{S3_BASE_PATH}/{release}/theme={theme}/type={overture_type}/"
 
     @staticmethod
-    def _geoarrow_schema_adapter(schema: pa.Schema) -> pa.Schema:
+    def _read_to_pandas(
+        overture_release: str,
+        overture_type: str,
+        bbox: Optional[Tuple[float, float, float, float]] = None,
+        connect_timeout: Optional[int] = None,
+        request_timeout: Optional[int] = None,
+    ) -> pd.DataFrame:
         """
-        Convert a geoarrow-compatible schema to a proper geoarrow schema.
-
-        This assumes there is a single "geometry" column with WKB formatting
+        Read an Overture dataset from S3 into a Pandas DataFrame.
 
         Args:
-            schema: pa.Schema
+            overture_release (str):
+                Dataset release version specifying which data to retrieve.
+            overture_type (str):
+                The dataset type to load.
+            bbox (Optional[Tuple[float, float, float, float]]):
+                Optional bounding box (xmin, ymin, xmax, ymax) to filter data
+                spatially.
+            connect_timeout (Optional[int]):
+                Timeout in seconds for establishing the S3 connection.
+            request_timeout (Optional[int]):
+                Timeout in seconds for data requests.
 
         Returns:
-            pa.Schema
-            A copy of the input schema with the geometry field replaced with
-            a new one with the proper geoarrow ARROW: extension metadata
-
+            pd.DataFrame:
+                The dataset content as a Pandas DataFrame.
         """
-        geometry_field_index = schema.get_field_index("geometry")
-        geometry_field = schema.field(geometry_field_index)
-        geoarrow_geometry_field = geometry_field.with_metadata(
-            {b"ARROW:extension:name": b"geoarrow.wkb"}
+        path = OvertureMapsScraper._dataset_path(
+            overture_release, overture_type
         )
 
-        geoarrow_schema = schema.set(
-            geometry_field_index, geoarrow_geometry_field)
+        if bbox is not None:
+            bbox = OvertureMapsScraper.normalize_bbox_order(bbox)
+            xmin, ymin, xmax, ymax = bbox
+            filter_expr = (
+                (pc.field("bbox", "xmin") < xmax) &
+                (pc.field("bbox", "xmax") > xmin) &
+                (pc.field("bbox", "ymin") < ymax) &
+                (pc.field("bbox", "ymax") > ymin)
+            )
+        else:
+            filter_expr = None
 
-        return geoarrow_schema
+        filesystem = fs.S3FileSystem(
+            anonymous=True,
+            region="us-west-2",
+            connect_timeout=connect_timeout,
+            request_timeout=request_timeout,
+        )
+
+        dataset = ds.dataset(path, filesystem=filesystem)
+
+        batches = []
+        batch_iterator = dataset.to_batches(
+            batch_size=10000, filter=filter_expr)
+
+        for batch in tqdm(batch_iterator, desc="Reading dataset batches"):
+            batches.append(batch)
+
+        table = pa.Table.from_batches(batches)
+        return table.to_pandas()
 
     @staticmethod
-    def _parse_coordinate_sequence(sequence: CoordinateSequence):
+    def _format_sources(sources_array):
         """
-        Convert a coordinate sequence into a list of lists.
+        Format a NumPy array or list of dictionaries into a single string.
+
+        Each dictionary's non-empty values are formatted as key: value pairs,
+        separated by commas. Multiple dictionaries are separated by semicolons.
 
         Args:
-            sequence(shapely.coords.CoordinateSequence):
-                A Shapely CoordinateSequence of coordinates.
+            sources_array (Union[np.ndarray, List[Dict]]):
+                Array or list of source dictionaries.
 
         Returns:
-            list: A list of lists, where each inner list represents a
-            coordinate from the input sequence.
-
-        Example:
-            Input: [(1, 2), (3, 4), (5, 6)]
-            Output: [[1, 2], [3, 4], [5, 6]]
+            Optional[str]:
+                Formatted string or None if input is empty or invalid.
         """
-        sequence_list = list(sequence)
-        return [list(item) for item in sequence_list]
+        if sources_array is None:
+            return None
+
+        # Convert to list if it is a NumPy array:
+        if isinstance(sources_array, np.ndarray):
+            sources_list = sources_array.tolist()
+        elif isinstance(sources_array, list):
+            sources_list = sources_array
+        else:
+            return None
+
+        if not sources_list:
+            return None
+
+        formatted_parts = []
+        for source in sources_list:
+            if isinstance(source, dict):
+                parts = [f"{k}: {v}" for k,
+                         v in source.items() if v not in (None, "", [])]
+                if parts:
+                    formatted_parts.append(", ".join(parts))
+
+        return "; ".join(formatted_parts) if formatted_parts else None
