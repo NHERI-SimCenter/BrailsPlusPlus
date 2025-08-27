@@ -33,7 +33,6 @@
 #
 # Contributors:
 # Barbaros Cetiner
-# Frank McKenna
 #
 # Last updated:
 # 08-26-2025
@@ -54,7 +53,7 @@ class InferenceEngine(ABC):
     """
     Abstract base class for adding derived features to assets in an inventory.
 
-    Subclasses must implement the `infer` method to augment assets with
+    Subclasses must implement the ``infer`` method to augment assets with
     additional features.
     """
 
