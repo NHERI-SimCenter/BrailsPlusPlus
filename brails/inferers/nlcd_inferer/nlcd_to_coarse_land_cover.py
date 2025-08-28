@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-26-2025
+# 08-27-2025
 
 """
 Ruleset that maps USGS NLCD classes to a coarser land cover categories.
@@ -45,7 +45,7 @@ Ruleset that maps USGS NLCD classes to a coarser land cover categories.
     NLCDToCoarseLandCover
 """
 
-
+import copy
 from brails.types.asset_inventory import AssetInventory
 from brails.inferers.inference_engine import InferenceEngine
 
@@ -123,14 +123,52 @@ class NLCDToCoarseLandCover(InferenceEngine):
             asset_inventory (AssetInventory):
                 An inventory object containing assets with a ``'land_cover'``
                 field.
+
+        Example:
+            >>> from brails import Importer
+            >>> from brails.types.asset_inventory import Asset, AssetInventory
+            >>> importer = Importer()
+            >>> inv = AssetInventory()
+            >>> _ = inv.add_asset('A1', Asset(
+            ...     'A1',
+            ...     [[-105.0, 40.0]],
+            ...     {'land_cover': 'Evergreen Forest'}
+            ... ))
+            >>> _ = inv.add_asset('A2', Asset(
+            ...     'A2',
+            ...     [[-104.9, 39.5]],
+            ...     {'land_cover': 'Grasslands/Herbaceous'}
+            ... ))
+            >>> _ = inv.add_asset('A3', Asset(
+            ...     'A3',
+            ...     [[-105.1, 39.7]],
+            ...     {'land_cover': 'Desert'}  # unmapped
+            ... ))
+            >>> _ = inv.add_asset('A4', Asset(
+            ...     'A4',
+            ...     [[-104.8, 40.2]],
+            ...     {}  # missing
+            ... ))
+            >>> nlcd_inferer = importer.get_class('NLCDToCoarseLandCover')()
+            >>> updated_inv = nlcd_inferer.infer(inv)
+            >>> for asset_id, asset in updated_inv.inventory.items():
+            ...     print(asset_id, asset.features['LandCover'])
+            A1 Trees
+            A2 Open
+            A3 Unknown
+            A4 Unknown
         """
-        for asset in input_inventory.inventory.values():
+        output_inventory = copy.deepcopy(input_inventory)
+
+        for asset in output_inventory.inventory.values():
             fine_val = asset.features.get(INPUT_KEY)
             if fine_val is None:
                 coarse_val = MISSING_VALUE_PLACEHOLDER
             else:
-                coarse_val = self.mapping.get(
+                coarse_val = LAND_COVER_MAPPING.get(
                     fine_val,
                     MISSING_VALUE_PLACEHOLDER
                 )
             asset.features[OUTPUT_KEY] = coarse_val
+
+        return output_inventory
