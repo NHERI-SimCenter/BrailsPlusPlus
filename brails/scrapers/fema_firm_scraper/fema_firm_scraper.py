@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-27-2025
+# 08-28-2025
 
 """
 Class for scraping FEMA FIRM infomation for inidividual assets in an inventory.
@@ -76,11 +76,22 @@ NULL_VALUE = -9999
 
 class FEMAFIRMScraper(AssetDataAugmenter):
     """
-    A class for scraping and processing National Tunnel Inventory (NTI) data.
+    A class for scraping FEMA Flood Insurance Rate Map (FIRM) data.
 
-    The class handles tasks such as fetching and processing tunnel data,
-    meshing the region into smaller cells for efficient data retrieval, and
-    organizing the results into an AssetInventory.
+    The scraper retrieves FEMA FIRM layers from the configured API endpoint,
+    processes the flood hazard information, and assigns relevant attributes
+    (e.g., flood zone classification, subtype, base flood elevation) to
+    each asset in an :class:`AssetInventory`.
+
+    To use :class:`FEMAFIRMScraper`, include the following lines in your
+    code:
+
+    .. code-block:: python
+
+        from brails import Importer
+
+        importer = Importer()
+        firm_scraper = importer.get_class('FEMAFIRMScraper')
 
     Parameters:
         units (str):
@@ -170,6 +181,16 @@ class FEMAFIRMScraper(AssetDataAugmenter):
 
         Returns:
             List[str]: A list of attribute names provided by the API.
+
+
+        Example:
+            >>> from brails import Importer
+            >>> importer = Importer()
+            >>>
+            >>> firm_Scraper = importer.get_class('FEMAFIRMScraper')
+            >>> attributes = firm_Scraper.get_available_attributes()
+            >>> print(attributes[:5])
+            ['OBJECTID', 'DFIRM_ID', 'FLD_AR_ID', 'STUDY_TYP', 'FLD_ZONE']
         """
         return ArcgisAPIServiceHelper.fetch_api_fields(API_ENDPOINT)
 
@@ -197,6 +218,40 @@ class FEMAFIRMScraper(AssetDataAugmenter):
         Raises:
             TypeError:
                 If `input_inventory` is not an instance of AssetInventory.
+
+        Example:
+            >>> from brails.types.asset_inventory import Asset, AssetInventory
+            >>> from brails import Importer
+            >>>
+            >>> asset1 = Asset(1, [[-91.5302, 41.6611]])
+            >>> asset2 = Asset(2, [[-91.5340, 41.6625]])
+            >>> inventory = AssetInventory()
+            >>> _ = inventory.add_asset(1, asset1)
+            >>> _ = inventory.add_asset(2, asset2)
+            >>>
+            >>> importer = Importer()
+            >>> firm_scraper = importer.get_class('FEMAFIRMScraper')()
+            >>> updated_assets = firm_scraper.populate_feature(inventory)
+            No length unit specified. Using default: 'ft'.
+            No weight unit specified. Using default: 'lb'.
+            Meshing the defined area...
+            Meshing complete. Covered the bounding box: (-91.53420000000001,
+            41.660999999999994, -91.52999999999999, 41.662600000000005) with a
+            single rectangular cell.
+            Obtaining the FIRM information for the bounding box with
+            coordinates (-91.53420000000001, 41.660999999999994,
+            -91.52999999999999, 41.662600000000005): 100%|██████████| 1/1
+            [00:00<00:00,  1.12it/s]AssetInventory
+            >>> updated_assets.print_info()
+            Inventory stored in:  dict
+            Key:  1 Asset:
+                 Coordinates:  [[-91.5302, 41.6611]]
+                 Features:  {'FLD_ZONE': 'X', 'ZONE_SUBTY':
+            'AREA OF MINIMAL FLOOD HAZARD', 'STATIC_BFE': -9999.0}
+            Key:  2 Asset:
+                 Coordinates:  [[-91.534, 41.6625]]
+                 Features:  {'FLD_ZONE': 'X', 'ZONE_SUBTY':
+            'AREA OF MINIMAL FLOOD HAZARD', 'STATIC_BFE': -9999.0}
         """
         bbox = input_inventory.get_extent().bounds
 
@@ -280,7 +335,7 @@ class FEMAFIRMScraper(AssetDataAugmenter):
                 asset.features.update(
                     firm_data_filtered[polygon_index]['attributes']
                 )
-
+            # TODO: Remove null values.
             # Convert dimensional attributes to target units:
             for feature, original_unit in DIMENSIONAL_ATTR.items():
                 value = asset.features.get(feature)
