@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brails"
+# Version is read from brails/__init__.py via setup.py
+dynamic = ["version", "dependencies", "readme"]
+
+description = "BRAILS++: Building Regional Asset Inventories for Large Scale Simulation"
+authors = [
+  { name = "NHERI SimCenter", email = "nheri-simcenter@berkeley.edu" }
+]
+license = { text = "BSD-3-Clause" }
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python",
+    "Development Status :: 5 - Production/Stable",
+    "Natural Language :: English",
+    "Environment :: Console",
+    "Framework :: Jupyter",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Unix",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.optional-dependencies]
+development = [
+    "flake8",
+    "pylint",
+    "black",
+    "pytest",
+    "pytest-cov",
+    "jupyter",
+    "jupytext",
+    "sphinx",
+    "sphinx-autoapi",
+    "nbsphinx",
+    "flake8-rst",
+    "flake8-rst-docstrings",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]

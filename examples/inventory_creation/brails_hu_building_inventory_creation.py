@@ -3,30 +3,12 @@
 
 # # Import BRAILS Importer
 
-# In[1]:
-
-
-# from brails.utils import Importer
-
-import sys
-sys.path.insert(0, "../../")
 from brails.utils import Importer
-
-
-# # Define Location Specific Parameters
-
-# In[2]:
 
 
 LOCATION_NAME = 'Fort Myers Beach, FL'
 INVENTORY_OUTPUT = 'FortMyersInventory_HU.geojson'
-NO_POSSIBLE_WORLDS = 1
-
-
-# # Create and Importer object to Pull In Required BRAILS Modules
-
-# In[3]:
-
+NO_POSSIBLE_WORLDS = 0
 
 importer = Importer()
 
@@ -41,14 +23,9 @@ region_boundary_class = importer.get_class("RegionBoundary")
 region_boundary_object = region_boundary_class(region_data)
 
 
-# # Get Raw NSI Data for the Defined Region
-
-# In[5]:
-
-
-nsi_class = importer.get_class('NSI_Parser')
-nsi = nsi_class()
-nsi_inventory = nsi.get_raw_data(region_boundary_object)
+# Get Raw NSI Data for the Defined Region
+nsi_class = importer.get_class('NSI_Parser')()
+nsi_inventory = nsi_class.get_raw_data(region_boundary_object)
 
 
 # # Get FEMA USA Footprints Data for the Defined Region
@@ -107,8 +84,8 @@ for key, val in imputed_inventory.inventory.items():
     val.add_features({'DesignWindSpeed': 130,
                       'FloodZone': 'AE',
                       'RoofShape': predictions[key],
-                      'AvgJanTemp':'Above',
-                      'NumberOfUnits':1,
+                      'AvgJanTemp': 'Above',
+                      'NumberOfUnits': 1,
                       'LandCover': 'Open'})
 
 
@@ -138,7 +115,8 @@ invalid_id, error_record = inferer.validate(hazus_inferred_inventory)
 # In[14]:
 
 
-inventory_corrrected = inferer.correct(hazus_inferred_inventory, invalid_id=invalid_id, weights={'StructureType':2})
+inventory_corrrected = inferer.correct(
+    hazus_inferred_inventory, invalid_id=invalid_id, weights={'StructureType': 2})
 
 
 # # Re-run Imputation to Fill Values That Cannot be Inferred by HAZUS Rulesets
@@ -148,7 +126,7 @@ inventory_corrrected = inferer.correct(hazus_inferred_inventory, invalid_id=inva
 # In[15]:
 
 
-# imputer = knn_imputer_class(hazus_inferred_inventory, 
+# imputer = knn_imputer_class(hazus_inferred_inventory,
 #                             n_possible_worlds=NO_POSSIBLE_WORLDS)
 # hazus_inventory_final = imputer.impute()
 
@@ -163,7 +141,3 @@ _ = inventory_corrrected.write_to_geojson(
 
 
 # In[ ]:
-
-
-
-

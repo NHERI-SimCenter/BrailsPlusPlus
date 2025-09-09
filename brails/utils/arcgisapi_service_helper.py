@@ -854,3 +854,55 @@ class ArcgisAPIServiceHelper:
             response.raise_for_status()
 
         return response
+
+    @staticmethod
+    def fetch_api_fields(url: str) -> list[str]:
+        """
+        Fetch the list of attribute names (fields) from an ArcGIS REST layer.
+
+        Args:
+            url (str):
+                The URL of the ArcGIS layer endpoint (can include
+                ``'/query'``).
+
+        Returns:
+            list[str]:
+                A list of field names defined in the layer.
+
+        Raises:
+            KeyError:
+                If the ``'fields'`` key is not present in the response.
+
+            requests.RequestException:
+                If the request fails.
+
+        Example:
+            >>> from brails.utils import ArcgisAPIServiceHelper
+            >>>
+            >>> api_endpoint = (
+            ...     'https://hazards.fema.gov/arcgis/rest/services/FIRMette'
+            ...     '/NFHLREST_FIRMette/MapServer/20/query'
+            ... )
+            >>> field_names = ArcgisAPIServiceHelper.fetch_api_fields(
+            ...     api_endpoint
+            ... )
+            >>> print(field_names)
+            ['OBJECTID', 'DFIRM_ID', 'FLD_AR_ID', 'STUDY_TYP', 'FLD_ZONE',
+            'ZONE_SUBTY', 'SFHA_TF', 'STATIC_BFE', 'V_DATUM', 'DEPTH',
+            'LEN_UNIT', 'VELOCITY', 'VEL_UNIT', 'AR_REVERT', 'AR_SUBTRV',
+            'BFE_REVERT', 'DEP_REVERT', 'DUAL_ZONE', 'SOURCE_CIT', 'SHAPE',
+            'SHAPE.STArea()', 'SHAPE.STLength()', 'GFID', 'GlobalID']
+        """
+        # Convert the URL to request JSON output from the ArcGIS REST API:
+        json_url = url.replace("/query", "?f=pjson")
+
+        # Make the HTTP request with retry logic:
+        response = ArcgisAPIServiceHelper._make_request_with_retry(json_url)
+
+        # Extract the 'fields' array from the JSON response:
+        fields_data = response.json().get("fields")
+        if not fields_data:
+            raise KeyError(f"No 'fields' key found in response from {url}")
+
+        # Return a list of the field names:
+        return [f["name"] for f in fields_data]
