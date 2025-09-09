@@ -30,3 +30,44 @@
 #
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
+#
+# Contributors:
+# Barbaros Cetiner
+#
+# Last updated:
+# 08-26-2025
+
+"""
+Module defining the abstract base class for adding derived features to assets.
+
+.. autosummary::
+
+    InferenceEngine
+"""
+
+from abc import ABC, abstractmethod
+from brails.types.asset_inventory import AssetInventory
+
+
+class InferenceEngine(ABC):
+    """
+    Abstract base class for adding derived features to assets in an inventory.
+
+    Subclasses must implement the ``infer`` method to augment assets with
+    additional features.
+    """
+
+    @abstractmethod
+    def infer(self, input_inventory: AssetInventory) -> AssetInventory:
+        """
+        Infer and add new features for each asset in the inventory.
+
+        Args:
+            input_inventory (AssetInventory):
+                The inventory of assets to process.
+
+        Returns:
+            AssetInventory:
+                A new or updated inventory with additional inferred features.
+        """
+        pass

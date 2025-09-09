@@ -30,3 +30,47 @@
 #
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
+#
+# Contributors:
+# Barbaros Cetiner
+#
+# Last updated:
+# 08-26-2025
+
+"""
+Abstract base class for data-scraping engines that augment inventory assets.
+
+.. autosummary::
+
+    AssetDataAugmenter
+"""
+
+from abc import ABC, abstractmethod
+from brails.types.asset_inventory import AssetInventory
+
+
+class AssetDataAugmenter(ABC):
+    """
+    Abstract base class for augmenting assets with additional scraped features.
+
+    Subclasses must implement the ``populate_feature`` method to define how
+    features are inferred and added to the inventory.
+    """
+
+    @abstractmethod
+    def populate_feature(
+        self,
+        input_inventory: AssetInventory
+    ) -> AssetInventory:
+        """
+        Scrape new features for each asset using its location data.
+
+        Args:
+            input_inventory (AssetInventory):
+                The inventory of assets to augment.
+
+        Returns:
+            AssetInventory:
+                The augmented inventory containing the scraped features.
+        """
+        pass

@@ -45,7 +45,7 @@ import logging
 import pandas as pd
 
 from brails.types.asset_inventory import AssetInventory
-from brails.inferers.inferenceEngine import InferenceEngine
+from brails.inferers.inference_engine import InferenceEngine
 from brails.inferers.hazus_inferer.hazus_rulesets import (
     get_hazus_occ_type_mapping,
     get_hazus_state_region_mapping,
@@ -907,7 +907,7 @@ class HazusInferer(InferenceEngine):
 
                 # garage_df.loc[subset_inventory.index, range(n_pw)] = garage_pick.astype('str')
                 garage_df.loc[subset_inventory.index,
-                              range(max(1,n_pw))] = garage_pick
+                              range(max(1, n_pw))] = garage_pick
 
         #
         # From 'Income Group' to 'Construction Class' (random sampling)
@@ -951,7 +951,8 @@ class HazusInferer(InferenceEngine):
                     const_class_pick = [
                         const_class[np.argmax(weights)]] * nbldg_subset
 
-                    const_class_df.loc[subset_inventory.index, 0] = const_class_pick
+                    const_class_df.loc[subset_inventory.index,
+                                       0] = const_class_pick
 
                 else:
                     # sample nbldg x n_pw
@@ -984,11 +985,11 @@ class HazusInferer(InferenceEngine):
             # occ = row[occupancyClass_key]
             # fparea = row[planArea_key]
             if occ == "RES1":
-                base_cost = np.zeros((max(1,n_pw),))
+                base_cost = np.zeros((max(1, n_pw),))
                 garage_cost = np.zeros(
-                    max(1,n_pw),
+                    max(1, n_pw),
                 )
-                for npp in range(max(1,n_pw)):
+                for npp in range(max(1, n_pw)):
                     # const = row['const_class']
                     # garage = row['garage_type']
                     const = const_class_df.loc[i, npp]
