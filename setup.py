@@ -48,6 +48,7 @@ setup(
         'seaborn',
         'shapely',
         'supervision',
+        'numpy<2.0',
         'timm',
         'tensorboard',
         'tensorboardX',
