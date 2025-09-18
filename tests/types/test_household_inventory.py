@@ -605,3 +605,46 @@ def test_read_from_json_valid_feature_list_values(inventory):
     finally:
         if os.path.exists(tmp_filename):
             os.unlink(tmp_filename)
+
+
+def test_read_from_json_string(inventory):
+    """Test reading from a JSON string."""
+    test_data = {
+        "households": {
+            "1": {"income": 50000, "size": 3},
+            "2": {"income": 75000, "size": 4}
+        }
+    }
+    
+    # Convert test data to JSON string
+    json_string = json.dumps(test_data)
+    
+    # Test reading from JSON string
+    result = inventory.read_from_json(json_string, keep_existing=True)
+    
+    assert result is True
+    assert len(inventory.inventory) == 2
+    assert "1" in inventory.inventory
+    assert "2" in inventory.inventory
+    assert inventory.inventory["1"].features["income"] == 50000
+    assert inventory.inventory["2"].features["size"] == 4
+
+
+def test_read_from_json_dict(inventory):
+    """Test reading directly from a dictionary."""
+    test_data = {
+        "households": {
+            "1": {"income": 50000, "size": 3},
+            "2": {"income": 75000, "size": 4}
+        }
+    }
+    
+    # Test reading directly from dictionary
+    result = inventory.read_from_json(test_data, keep_existing=True)
+    
+    assert result is True
+    assert len(inventory.inventory) == 2
+    assert "1" in inventory.inventory
+    assert "2" in inventory.inventory
+    assert inventory.inventory["1"].features["income"] == 50000
+    assert inventory.inventory["2"].features["size"] == 4

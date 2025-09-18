@@ -46,7 +46,7 @@ This module defines classes associated with household inventories.
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 from pathlib import Path
 
 try:
@@ -475,15 +475,15 @@ class HouseholdInventory:
 
     def read_from_json(
         self,
-        file_path: str,
+        json_data: Union[str, Dict[str, Any]],
         keep_existing: bool
     ) -> bool:
         """
-        Read inventory data from a JSON file and add it to the inventory.
+        Read inventory data from a JSON file, string, or dictionary and add it to the inventory.
 
         Args:
-            file_path (str):
-                  The path to the JSON file
+            json_data (Union[str, Dict[str, Any]]):
+                  Either a path to a JSON file, a JSON string, or a dictionary object
             keep_existing (bool):
                   If False, the inventory will be initialized
 
@@ -494,14 +494,25 @@ class HouseholdInventory:
         if not keep_existing:
             self.inventory = {}
 
-        # Attempt to open the file
-        try:
-            with open(file_path, mode="r", encoding="utf-8") as jsonfile:
-                data = json.load(jsonfile)
-        except FileNotFoundError:
-            raise Exception(f"The file {file_path} does not exist.")
-        except json.JSONDecodeError:
-            raise Exception(f"The file {file_path} is not a valid JSON file.")
+        # Determine input type (dict, file path, or JSON string)
+        data = None
+        if isinstance(json_data, dict):
+            # If json_data is already a dictionary, use it directly
+            data = json_data
+        else:
+            try:
+                # First try to treat it as a file path
+                if os.path.exists(json_data):
+                    with open(json_data, mode="r", encoding="utf-8") as jsonfile:
+                        data = json.load(jsonfile)
+                else:
+                    # If not a file path, treat it as a JSON string
+                    try:
+                        data = json.loads(json_data)
+                    except json.JSONDecodeError:
+                        raise Exception(f"The input is neither a valid file path nor a valid JSON string.")
+            except Exception as e:
+                raise Exception(f"Error processing input: {str(e)}")
 
         # Load and validate against JSON schema
         schema_path = os.path.join(
