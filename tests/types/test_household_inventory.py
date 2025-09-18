@@ -104,7 +104,7 @@ def test_clean_floats_with_primitive_types():
 @pytest.fixture
 def household_data():
     return {
-        'household_id': 123,
+        'household_id': "123",
         'features': {'income': 50000, 'size': 3}
     }
 
@@ -116,20 +116,20 @@ def household(household_data):
 
 # Tests for Household class
 def test_init_with_features():
-    household = Household(1, {'income': 50000})
-    assert household.household_id == 1
+    household = Household("1", {'income': 50000})
+    assert household.household_id == "1"
     assert household.features == {'income': 50000}
 
 
 def test_init_without_features():
-    household = Household(1)
-    assert household.household_id == 1
+    household = Household("1")
+    assert household.household_id == "1"
     assert household.features == {}
 
 
 def test_init_with_none_features():
-    household = Household(1, None)
-    assert household.household_id == 1
+    household = Household("1", None)
+    assert household.household_id == "1"
     assert household.features == {}
 
 
@@ -222,12 +222,12 @@ def inventory():
 
 @pytest.fixture
 def household1():
-    return Household(1, {'income': 50000, 'size': 3})
+    return Household("1", {'income': 50000, 'size': 3})
 
 
 @pytest.fixture
 def household2():
-    return Household(2, {'income': 75000, 'size': 4})
+    return Household("2", {'income': 75000, 'size': 4})
 
 
 # Tests for HouseholdInventory class
@@ -238,18 +238,18 @@ def test_inventory_init():
 
 
 def test_add_household_success(inventory, household1):
-    result = inventory.add_household(1, household1)
+    result = inventory.add_household("1", household1)
     
     assert result is True
-    assert 1 in inventory.inventory
-    assert inventory.inventory[1] == household1
+    assert "1" in inventory.inventory
+    assert inventory.inventory["1"] == household1
 
 
 def test_add_household_duplicate_id(inventory, household1, household2):
-    inventory.add_household(1, household1)
+    inventory.add_household("1", household1)
     
     with patch('builtins.print') as mock_print:
-        result = inventory.add_household(1, household2)
+        result = inventory.add_household("1", household2)
         
         assert result is False
         mock_print.assert_called_once()
@@ -258,24 +258,24 @@ def test_add_household_duplicate_id(inventory, household1, household2):
 
 def test_add_household_invalid_type(inventory):
     with pytest.raises(TypeError) as exc_info:
-        inventory.add_household(1, "not_a_household")
+        inventory.add_household("1", "not_a_household")
     
     assert 'Expected an instance of Household' in str(exc_info.value)
 
 
 def test_add_household_features_success(inventory, household1):
-    inventory.add_household(1, household1)
+    inventory.add_household("1", household1)
     new_features = {'age': 35}
     
-    result = inventory.add_household_features(1, new_features)
+    result = inventory.add_household_features("1", new_features)
     
     assert result is True
-    assert inventory.inventory[1].features['age'] == 35
+    assert inventory.inventory["1"].features['age'] == 35
 
 
 def test_add_household_features_nonexistent_household(inventory):
     with patch('builtins.print') as mock_print:
-        result = inventory.add_household_features(999, {'age': 35})
+        result = inventory.add_household_features("999", {'age': 35})
         
         assert result is False
         mock_print.assert_called_once()
@@ -283,22 +283,22 @@ def test_add_household_features_nonexistent_household(inventory):
 
 
 def test_add_household_features_with_possible_worlds(inventory, household1):
-    inventory.add_household(1, household1)
+    inventory.add_household("1", household1)
     new_features = {'options': [1, 2, 3]}
     
-    result = inventory.add_household_features(1, new_features)
+    result = inventory.add_household_features("1", new_features)
     
     assert result is True
     assert inventory.n_pw == 3
 
 
 def test_change_feature_names_success(inventory, household1):
-    inventory.add_household(1, household1)
+    inventory.add_household("1", household1)
     mapping = {'income': 'annual_income', 'size': 'household_size'}
     
     inventory.change_feature_names(mapping)
     
-    features = inventory.inventory[1].features
+    features = inventory.inventory["1"].features
     assert 'annual_income' in features
     assert 'household_size' in features
     assert 'income' not in features
@@ -405,7 +405,9 @@ def test_to_json_without_file(inventory, household1):
     assert 'generated' in json_data
     assert 'brails_version' in json_data
     assert 'households' in json_data
+    assert isinstance(json_data['households'], dict)
     assert len(json_data['households']) == 1
+    assert '1' in json_data['households']
 
 
 def test_to_json_with_file(inventory, household1):
@@ -424,7 +426,9 @@ def test_to_json_with_file(inventory, household1):
             file_data = json.load(f)
         
         assert file_data['type'] == 'HouseholdInventory'
+        assert isinstance(file_data['households'], dict)
         assert len(file_data['households']) == 1
+        assert '1' in file_data['households']
         
     finally:
         if os.path.exists(tmp_filename):
@@ -435,16 +439,10 @@ def test_read_from_json_success(inventory):
     # Create test JSON data
     test_data = {
         "type": "HouseholdInventory",
-        "households": [
-            {
-                "household_id": 1,
-                "features": {"income": 50000, "size": 3}
-            },
-            {
-                "household_id": 2,
-                "features": {"income": 75000, "size": 4}
-            }
-        ]
+        "households": {
+            "1": {"income": 50000, "size": 3},
+            "2": {"income": 75000, "size": 4}
+        }
     }
     
     with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
@@ -456,8 +454,8 @@ def test_read_from_json_success(inventory):
         
         assert result is True
         assert len(inventory.inventory) == 2
-        assert 1 in inventory.inventory
-        assert 2 in inventory.inventory
+        assert "1" in inventory.inventory
+        assert "2" in inventory.inventory
         
     finally:
         if os.path.exists(tmp_filename):
@@ -469,12 +467,9 @@ def test_read_from_json_clear_existing(inventory, household1):
     inventory.add_household(999, household1)
     
     test_data = {
-        "households": [
-            {
-                "household_id": 1,
-                "features": {"income": 50000}
-            }
-        ]
+        "households": {
+            "1": {"income": 50000}
+        }
     }
     
     with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
@@ -486,7 +481,7 @@ def test_read_from_json_clear_existing(inventory, household1):
         
         assert result is True
         assert len(inventory.inventory) == 1
-        assert 1 in inventory.inventory
+        assert "1" in inventory.inventory
         assert 999 not in inventory.inventory
         
     finally:
@@ -517,164 +512,66 @@ def test_read_from_json_invalid_json(inventory):
             os.unlink(tmp_filename)
 
 
-def test_read_from_json_invalid_schema_not_dict(inventory):
-    test_data = []  # Should be dict, not list
+def test_schema_validation_with_invalid_inputs(inventory):
+    """
+    Tests schema validation with various invalid inputs.
+    
+    This comprehensive test checks validation against the schema for different 
+    types of invalid inputs, ensuring they all fail appropriately.
+    """
+    invalid_test_cases = [
+        # Root-level issues
+        ([], "Invalid JSON data"),  # Not a dict
+        ({"type": "HouseholdInventory"}, "Invalid JSON data"),  # Missing households key
+        
+        # Households type issues
+        ({"households": "not_a_dict"}, "Invalid JSON data"),  # Households not a dict
+        ({"households": []}, "Invalid JSON data"),  # Households not a dict but a list
+        
+        # Household value issues
+        ({"households": {"key": "not_a_dict"}}, "Invalid JSON data"),  # Household value not a dict
+        
+        # Feature value issues
+        ({"households": {"1": {"key": {"nested": "dict"}}}}, "Invalid JSON data"),  # Feature value is a nested dict
+        ({"households": {"1": {"key": True}}}, "Invalid JSON data"),  # Feature value is a boolean
+        ({"households": {"1": {"key": [{"invalid": "object"}]}}}, "Invalid JSON data"),  # List with invalid items
+    ]
+    
+    for test_data, expected_error_text in invalid_test_cases:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
+            json.dump(test_data, tmp_file)
+            tmp_filename = tmp_file.name
+        
+        try:
+            with pytest.raises(ValueError) as exc_info:
+                inventory.read_from_json(tmp_filename, keep_existing=True)
+            
+            error_message = str(exc_info.value)
+            assert expected_error_text in error_message, f"Expected '{expected_error_text}' in error message, got: {error_message}"
+            
+        finally:
+            if os.path.exists(tmp_filename):
+                os.unlink(tmp_filename)
+
+
+def test_read_from_json_valid_feature_values(inventory):
+    """
+    Tests that valid feature values are correctly processed.
+    
+    This test verifies that all valid types of feature values (strings, numbers, and 
+    lists of strings/numbers) are correctly processed by the schema validation.
+    """
+    test_data = {"households": {"1": {"123": "value"}}}
     
     with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
         json.dump(test_data, tmp_file)
         tmp_filename = tmp_file.name
     
     try:
-        with pytest.raises(ValueError) as exc_info:
-            inventory.read_from_json(tmp_filename, keep_existing=True)
-        
-        assert 'Root object must be a dict' in str(exc_info.value)
-        
-    finally:
-        if os.path.exists(tmp_filename):
-            os.unlink(tmp_filename)
-
-
-def test_read_from_json_missing_households_key(inventory):
-    test_data = {"type": "HouseholdInventory"}  # Missing households key
-    
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
-        json.dump(test_data, tmp_file)
-        tmp_filename = tmp_file.name
-    
-    try:
-        with pytest.raises(ValueError) as exc_info:
-            inventory.read_from_json(tmp_filename, keep_existing=True)
-        
-        assert 'must contain a \'households\' key' in str(exc_info.value)
-        
-    finally:
-        if os.path.exists(tmp_filename):
-            os.unlink(tmp_filename)
-
-
-def test_read_from_json_households_not_list(inventory):
-    test_data = {"households": "not_a_list"}
-    
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
-        json.dump(test_data, tmp_file)
-        tmp_filename = tmp_file.name
-    
-    try:
-        with pytest.raises(ValueError) as exc_info:
-            inventory.read_from_json(tmp_filename, keep_existing=True)
-        
-        assert 'must be a list' in str(exc_info.value)
-        
-    finally:
-        if os.path.exists(tmp_filename):
-            os.unlink(tmp_filename)
-
-
-def test_read_from_json_household_not_dict(inventory):
-    test_data = {"households": ["not_a_dict"]}
-    
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
-        json.dump(test_data, tmp_file)
-        tmp_filename = tmp_file.name
-    
-    try:
-        with pytest.raises(ValueError) as exc_info:
-            inventory.read_from_json(tmp_filename, keep_existing=True)
-        
-        assert 'must be a dict' in str(exc_info.value)
-        
-    finally:
-        if os.path.exists(tmp_filename):
-            os.unlink(tmp_filename)
-
-
-def test_read_from_json_missing_household_id(inventory):
-    test_data = {"households": [{"features": {}}]}  # Missing household_id
-    
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
-        json.dump(test_data, tmp_file)
-        tmp_filename = tmp_file.name
-    
-    try:
-        with pytest.raises(ValueError) as exc_info:
-            inventory.read_from_json(tmp_filename, keep_existing=True)
-        
-        assert 'must have a \'household_id\' key' in str(exc_info.value)
-        
-    finally:
-        if os.path.exists(tmp_filename):
-            os.unlink(tmp_filename)
-
-
-def test_read_from_json_invalid_household_id_type(inventory):
-    test_data = {"households": [{"household_id": "not_int", "features": {}}]}
-    
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
-        json.dump(test_data, tmp_file)
-        tmp_filename = tmp_file.name
-    
-    try:
-        with pytest.raises(ValueError) as exc_info:
-            inventory.read_from_json(tmp_filename, keep_existing=True)
-        
-        assert 'must be an int' in str(exc_info.value)
-        
-    finally:
-        if os.path.exists(tmp_filename):
-            os.unlink(tmp_filename)
-
-
-def test_read_from_json_invalid_features_type(inventory):
-    test_data = {"households": [{"household_id": 1, "features": "not_dict"}]}
-    
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
-        json.dump(test_data, tmp_file)
-        tmp_filename = tmp_file.name
-    
-    try:
-        with pytest.raises(ValueError) as exc_info:
-            inventory.read_from_json(tmp_filename, keep_existing=True)
-        
-        assert 'features at index 0 must be a dict' in str(exc_info.value)
-        
-    finally:
-        if os.path.exists(tmp_filename):
-            os.unlink(tmp_filename)
-
-
-def test_read_from_json_invalid_feature_key_type(inventory):
-    # JSON automatically converts integer keys to strings, so this test
-    # needs to be adjusted. Let's test the actual validation logic instead.
-    test_data = {"households": [{"household_id": 1, "features": {"123": "value"}}]}
-    
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
-        json.dump(test_data, tmp_file)
-        tmp_filename = tmp_file.name
-    
-    try:
-        # This should actually succeed since JSON converts keys to strings
+        # This should succeed since these are valid values according to the schema
         result = inventory.read_from_json(tmp_filename, keep_existing=True)
         assert result is True
-        assert "123" in inventory.inventory[1].features
-        
-    finally:
-        if os.path.exists(tmp_filename):
-            os.unlink(tmp_filename)
-
-
-def test_read_from_json_invalid_feature_value_type(inventory):
-    test_data = {"households": [{"household_id": 1, "features": {"key": {"nested": "dict"}}}]}
-    
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
-        json.dump(test_data, tmp_file)
-        tmp_filename = tmp_file.name
-    
-    try:
-        with pytest.raises(ValueError) as exc_info:
-            inventory.read_from_json(tmp_filename, keep_existing=True)
-        
-        assert 'Feature values must be string, number' in str(exc_info.value)
+        assert "123" in inventory.inventory["1"].features
         
     finally:
         if os.path.exists(tmp_filename):
@@ -683,16 +580,13 @@ def test_read_from_json_invalid_feature_value_type(inventory):
 
 def test_read_from_json_valid_feature_list_values(inventory):
     test_data = {
-        "households": [
-            {
-                "household_id": 1,
-                "features": {
-                    "string_list": ["a", "b", "c"],
-                    "number_list": [1, 2, 3.5],
-                    "mixed_list": ["text", 42, 3.14]
-                }
+        "households": {
+            "1": {
+                "string_list": ["a", "b", "c"],
+                "number_list": [1, 2, 3.5],
+                "mixed_list": ["text", 42, 3.14]
             }
-        ]
+        }
     }
     
     with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
@@ -703,7 +597,7 @@ def test_read_from_json_valid_feature_list_values(inventory):
         result = inventory.read_from_json(tmp_filename, keep_existing=True)
         
         assert result is True
-        features = inventory.inventory[1].features
+        features = inventory.inventory["1"].features
         assert features["string_list"] == ["a", "b", "c"]
         assert features["number_list"] == [1, 2, 3.5]
         assert features["mixed_list"] == ["text", 42, 3.14]

@@ -44,8 +44,10 @@ This module defines classes associated with household inventories.
 """
 
 import json
+import os
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
+from pathlib import Path
 
 try:
     # Python 3.8+
@@ -53,6 +55,9 @@ try:
 except ImportError:
     # For Python <3.8, use the backport
     from importlib_metadata import version
+
+import jsonschema
+from jsonschema import validate, ValidationError
 
 # TODO: refactor clean_floats
 # This function is a copy of the function `clean_floats` in
@@ -97,7 +102,7 @@ class Household:
 
 
     Attributes:
-        household_id (int):
+        household_id (str):
             Unique identifier for the household.
         features (dict[str, Any]):
             A dictionary of features (attributes) for the household.
@@ -105,14 +110,14 @@ class Household:
 
     def __init__(
         self,
-        household_id: int,
+        household_id: str,
         features: Dict[str, Any] = None,
     ) -> None:
         """
         Initialize a Household with a household ID and features.
 
         Args:
-            household_id (int): The unique identifier for the household.
+            household_id (str): The unique identifier for the household.
             features (dict[str, Any], optional): A dictionary of features.
                 Defaults to an empty dict.
         """
@@ -222,12 +227,12 @@ class HouseholdInventory:
         self.inventory: Dict = {}
         self.n_pw = 1
 
-    def add_household(self, household_id: int, household: Household) -> bool:
+    def add_household(self, household_id: str, household: Household) -> bool:
         """
         Add a Household to the inventory.
 
         Args:
-            household_id (int):
+            household_id (str):
                 The unique identifier for the household.
             household (Household):
                 The household to be added.
@@ -241,16 +246,16 @@ class HouseholdInventory:
 
         Examples:
             >>> household = Household(
-            ...     household_id=1,
+            ...     household_id="1",
             ...     features={'income': 50000, 'size': 3}
             ... )
             >>> inventory = HouseholdInventory()
-            >>> success = inventory.add_household(1, household)
+            >>> success = inventory.add_household("1", household)
             >>> print(success)
             True
 
             >>> # Adding the same household_id again will fail
-            >>> success = inventory.add_household(1, household)
+            >>> success = inventory.add_household("1", household)
             >>> print(success)
             False
         """
@@ -267,7 +272,7 @@ class HouseholdInventory:
 
     def add_household_features(
         self,
-        household_id: int,
+        household_id: str,
         new_features: Dict[str, Any],
         overwrite: bool = True
     ) -> bool:
@@ -275,7 +280,7 @@ class HouseholdInventory:
         Add new household features to the Household with the specified ID.
 
         Args:
-            household_id (int):
+            household_id (str):
                 The unique identifier for the household.
             new_features (dict):
                 A dictionary of features to add to the household.
@@ -344,13 +349,13 @@ class HouseholdInventory:
 
     def get_household_features(
             self,
-            household_id: int
+            household_id: str
     ) -> tuple[bool, dict[str, Any]]:
         """
         Get features of a particular household.
 
         Args:
-            household_id (int):
+            household_id (str):
                 The unique identifier for the household.
 
         Returns:
@@ -367,12 +372,12 @@ class HouseholdInventory:
 
         return True, household.features
 
-    def get_household_ids(self) -> list[int]:
+    def get_household_ids(self) -> list[str]:
         """
         Retrieve the IDs of all households in the inventory.
 
         Returns:
-            list[int]:
+            list[str]:
                 A list of household IDs.
         """
         return list(self.inventory.keys())
@@ -395,12 +400,12 @@ class HouseholdInventory:
             print("Key: ", key, "Household:")
             household.print_info()
 
-    def remove_household(self, household_id: int) -> bool:
+    def remove_household(self, household_id: str) -> bool:
         """
         Remove a Household from the inventory.
 
         Args:
-            household_id (int):
+            household_id (str):
                 The unique identifier for the household.
 
         Returns:
@@ -455,15 +460,11 @@ class HouseholdInventory:
             "type": "HouseholdInventory",
             "generated": str(datetime.now()),
             "brails_version": brails_version,
-            "households": []
+            "households": {}
         }
 
         for household_id, household in self.inventory.items():
-            household_data = {
-                "household_id": household_id,
-                "features": household.features
-            }
-            json_data["households"].append(household_data)
+            json_data["households"][str(household_id)] = household.features
 
         # Write the created JSON dictionary into a JSON file:
         if output_file:
@@ -502,56 +503,29 @@ class HouseholdInventory:
         except json.JSONDecodeError:
             raise Exception(f"The file {file_path} is not a valid JSON file.")
 
-        # Schema validation
-        if not isinstance(data, dict):
-            raise ValueError("Root object must be a dict.")
+        # Load and validate against JSON schema
+        schema_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 
+            "household_inventory_schema.json"
+        )
+        
+        try:
+            with open(schema_path, 'r', encoding='utf-8') as schema_file:
+                schema = json.load(schema_file)
+            
+            # Validate against schema
+            validate(instance=data, schema=schema)
+            
+        except FileNotFoundError:
+            raise Exception(f"Schema file not found at {schema_path}")
+        except ValidationError as e:
+            raise ValueError(f"Invalid JSON data: {e.message}")
 
-        if "households" not in data:
-            raise ValueError("Root dict must contain a 'households' key.")
+        # Extract households data after validation
+        households_data = data.get("households", {})
 
-        households_data = data["households"]
-        if not isinstance(households_data, list):
-            raise ValueError("The value of 'households' must be a list.")
-
-        for i, household_data in enumerate(households_data):
-            if not isinstance(household_data, dict):
-                raise ValueError(f"Household at index {i} must be a dict.")
-
-            if "household_id" not in household_data:
-                raise ValueError(f"Household at index {i} must have a "
-                               "'household_id' key.")
-
-            if "features" not in household_data:
-                raise ValueError(f"Household at index {i} must have a "
-                               "'features' key.")
-
-            household_id = household_data["household_id"]
-            if not isinstance(household_id, int):
-                raise ValueError(f"household_id at index {i} must be an int.")
-
-            features = household_data["features"]
-            if not isinstance(features, dict):
-                raise ValueError(f"features at index {i} must be a dict.")
-
-            # Validate features content
-            for key, value in features.items():
-                if not isinstance(key, str):
-                    raise ValueError(f"Feature keys must be strings in "
-                                   f"household {household_id}.")
-
-                if not (isinstance(value, (str, int, float)) or 
-                        (isinstance(value, list) and 
-                         all(isinstance(v, (str, int, float)) 
-                             for v in value))):
-                    raise ValueError(f"Feature values must be string, number, "
-                                   f"or list of strings/numbers in household "
-                                   f"{household_id}.")
-
-        # Data loading after successful validation
-        for household_data in households_data:
-            household_id = household_data["household_id"]
-            features = household_data["features"]
-
+        # Load data after successful validation
+        for household_id, features in households_data.items():
             # Create and add household
             household = Household(household_id, features)
             self.add_household(household_id, household)
