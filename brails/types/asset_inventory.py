@@ -1122,11 +1122,14 @@ class AssetInventory:
                             "coordinates": [asset.coordinates]}
 
             if geometry:
+                properties = asset.features | {"id": key}
+
                 geojson["features"].append(
-                    {"type": "Feature",
-                     "properties": asset.features,
-                     "geometry": geometry
-                     }
+                    {
+                        "type": "Feature",
+                        "properties": properties,
+                        "geometry": geometry
+                    }
                 )
 
         return geojson
@@ -1578,6 +1581,7 @@ class AssetInventory:
     def read_from_geojson(
         self,
         file_path: str,
+        id_column: Optional[str] = None,
         keep_existing: bool = False
     ) -> bool:
         """
@@ -1590,6 +1594,9 @@ class AssetInventory:
         Args:
             file_path (str):
                 The path to the GeoJSON file
+            id_column (str, optional):
+                The name of the parameter containing asset IDs. If ``None``,
+                the asset IDs will be assigned automatically.
             keep_existing (bool):
                 If False, the inventory will be cleared before loading.
                 If True, new assets will be added to existing inventory.
@@ -1699,11 +1706,16 @@ class AssetInventory:
             asset_id = None
 
             # First, check if there's an 'id' field at the feature level
-            if "id" in feature:
-                asset_id = feature["id"]
+            if id_column is None:
+                id_key = "id"
+            else:
+                id_key = id_column
+
+            if id_key in feature:
+                asset_id = feature[id_key]
             # Then check if there's an 'id' in properties
-            elif "id" in properties:
-                asset_id = properties.pop("id")  # Remove from properties
+            elif id_key in properties:
+                asset_id = properties[id_key]  # Remove from properties
             else:
                 # Use auto-generated ID
                 asset_id = id_counter
