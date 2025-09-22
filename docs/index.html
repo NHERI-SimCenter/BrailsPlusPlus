@@ -20,6 +20,8 @@
       <script src="_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="_static/copybutton.js?v=f281be69"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -49,6 +51,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples/examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rst-doc/license.html">Copyright and License</a></li>
@@ -87,13 +90,17 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rst-code/brails.html">brails package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst-code/brails.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst-code/brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="examples/examples.html">Examples</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="examples/importer/importer.html">Importer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples/footprint/footprint.html">Building Footprints</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples/nsi_integration/nsi_integration.html">NSI Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples/image_downloads/image_downloads.html">Downloading Images</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples/image_filters/image_filters.html">Image Filters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/image_processor/image_processors.html">Image Processors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples/imputation/imputation.html">Imputation Algorithms</a></li>
 </ul>
 </li>
@@ -121,7 +128,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, fmk.</p>
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
