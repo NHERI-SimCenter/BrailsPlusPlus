@@ -3,22 +3,24 @@
 Importer
 ========
 
-|app| is a modular python framework for creating workflows that create data for SimCenter applications. In order to allow applications to be built **w/o the need to hard code every possible case** within if blocks, there is a class in |app| that will return the class given the class name. This is the **Importer** class. It's has one method, **get_class()**, which will return the python class with that given name from which an object can be instantiated. 
+|app| is a modular Python framework for creating workflows that create data for SimCenter applications. To **avoid hard-coding every possible case**, |app| includes a utility class that can return a class object based on its name — the Importer class.
 
-The following example shows a more typical python example. 
+The **:class:`~brails.types.importer.Importer`** class has a single method, **get_class()**, which takes a class name as input and returns the corresponding Python class, allowing you to instantiate objects dynamically.
+
+The following example demonstrates a typical Python usage scenario:
 
 .. literalinclude:: classic.py
    :language: python
    :linenos:
 
 
-The following example shows it re-written using the **Importer** class.
+The following example shows it re-written using the **:class:`~brails.types.importer.Importer`** class.
 
 .. literalinclude:: importer.py
    :language: python
    :linenos:
 
-To run for example the **importer.py** script for Berkeley, CA the following would be issued frm a terminal window:
+To run, for example, the **importer.py** script for Berkeley, CA, you would enter the following command in a terminal window:
 
 .. code-block::
       
@@ -32,17 +34,19 @@ and the application  would produce:
     
 .. note::
 
-   1. When constructing an **Importer** object, the constructor code automatically searches through all directories within the brails codebase to locate every available class. This setup allows developers to add their code seamlessly, without needing to modify this class.
-   
-   2. The purpose of the **Importer** class is to allow applications to be developed for building workflows. Consider developing an application that would parse the following JSON input file to such an application. By using the **Importer** class, this application can avoid a complex series of if-else statements to handle different types. Instead, it reads the type information and retrieves the appropriate class directly from the Importer. This approach is made possible because |app| is an object-oriented framework that leverages abstract base classes (ABCs), defined using Python’s abc module.
+   #. #. The purpose of the **:class:`~brails.types.importer.Importer`** class is to enable the development of applications for building workflows.  For example, imagine creating an application that parses the following JSON input file. By using the **:class:`~brails.types.importer.Importer`** class, the application can be written without lengthy ``if-else`` statements that switch on the type.  This is possible in |app| because all the classes that perform work inherit from :py:class:`abc.ABC` (*Abstract Base Class*), which is part of Python’s :py:mod:`abc` module.
 
    .. literalinclude:: workflow.json
       :language: json		       
       :linenos:
 
-   3. An additional advantage of this approach is that as developers add new subclasses, they do not have to search through the code to see all the places that need the if-else statements modified for their classes to be used.
+   #. An additional benefit of this approach is that when developers add new subclasses, they do not need to search the codebase to locate and update all the if-else statements required for their classes to function. The process is fully automated.
 
-      
+   #. When constructing a **:class:`~brails.types.importer.Importer`** object, the code automatically scans all directories within the |app| codebase to identify every available class. This means that developers can integrate their new code without making any modifications to the existing **:class:`~brails.types.importer.Importer`** class.
+
+   #. Most of the provided examples will make use of the **:class:`~brails.types.importer.Importer`** class, both to illustrate its functionality and to serve as a means of testing its behavior.
+
+
 	 
    
       

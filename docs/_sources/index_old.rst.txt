@@ -15,7 +15,7 @@ The initial development of BRAILS++ was done by the NHERI-SimCenter, funded by t
 
    rst-doc/about
    rst-doc/install
-   rst-code/brails
+   rst-doc/api_autosummary
    examples/examples   
    rst-doc/acknowledgements
    rst-doc/license
