@@ -10,6 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
@@ -19,11 +20,12 @@
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../../_static/copybutton.js?v=f281be69"></script>
+      <script src="../../_static/design-tabs.js?v=f930bc37"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Image Processors" href="../image_processor/image_processors.html" />
+    <link rel="next" title="Imputation Algorithms" href="../imputation/imputation.html" />
     <link rel="prev" title="Downloading Images" href="../image_downloads/image_downloads.html" /> 
 </head>
 
@@ -50,16 +52,17 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../importer/importer.html">Importer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../footprint/footprint.html">Building Footprints</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../nsi_integration/nsi_integration.html">NSI Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Image Filters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_processor/image_processors.html">Image Processors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html#examples-gallery">Examples Gallery</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
@@ -92,94 +95,90 @@
              
   <section id="image-filters">
 <span id="filter-example"></span><h1>Image Filters<a class="headerlink" href="#image-filters" title="Link to this heading"></a></h1>
-<p>Image filters are modules for cleaning up images prior to processing them for information by a processor. Removing unwanted crap from an image can help the processors work better. The following example demonstrates this. It uses the users chosen footprin scraper to obtain start an assetInventory. It then obtains Google Streev view images for a subset of the inventory and then applies a House flter, which attempts to isolate the house in the center of the downloadded image. It returns a new image.</p>
-<p>The following example shows a more typical python example.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1">#written: fmk</span>
-<span class="linenos"> 2</span><span class="c1">#copyright: BSD-2</span>
-<span class="linenos"> 3</span>
-<span class="linenos"> 4</span>
-<span class="linenos"> 5</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos"> 6</span><span class="sd">brails_filters.py</span>
-<span class="linenos"> 7</span><span class="sd">================</span>
-<span class="linenos"> 8</span><span class="sd">Example showing the use of BRAILS module that crops building images from panos.</span>
-<span class="linenos"> 9</span>
-<span class="linenos">10</span><span class="sd"> Purpose: Testing 1) from Importer get a scraper using arg provided</span>
-<span class="linenos">11</span><span class="sd">                  2) get_footprints using scraper provided</span>
-<span class="linenos">12</span><span class="sd">                  3) get_images using StreetView for subset of footprints</span>
-<span class="linenos">13</span><span class="sd">                  4) filter method of HouseView</span>
-<span class="linenos">14</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos">15</span>
-<span class="linenos">16</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="linenos">17</span><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
-<span class="linenos">18</span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="linenos">19</span><span class="kn">from</span><span class="w"> </span><span class="nn">brails</span><span class="w"> </span><span class="kn">import</span> <span class="n">Importer</span>
-<span class="linenos">20</span>
-<span class="linenos">21</span><span class="c1"># This script needs a Google API Key to run.</span>
-<span class="linenos">22</span><span class="c1"># We suggest placing your API key in file apiKey.txt in the same directory as</span>
-<span class="linenos">23</span><span class="c1"># this script if you plan to commit changes to this example. This way, you do</span>
-<span class="linenos">24</span><span class="c1"># not risk accidentally uploading your API key (apiKey.txt is in .gitignore,</span>
-<span class="linenos">25</span><span class="c1"># so you have work to do to get it uploaded)</span>
-<span class="linenos">26</span>
-<span class="linenos">27</span><span class="n">API_KEY_DIR</span> <span class="o">=</span> <span class="s1">&#39;../api_key.txt&#39;</span>
-<span class="linenos">28</span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">API_KEY_DIR</span><span class="p">):</span>
-<span class="linenos">29</span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">API_KEY_DIR</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-<span class="linenos">30</span>        <span class="n">api_key</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>  <span class="c1"># Read first line &amp; strip whitespace</span>
-<span class="linenos">31</span><span class="k">else</span><span class="p">:</span>
-<span class="linenos">32</span>    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s1">&#39;API key file not found. Please ensure the file&#39;</span>
-<span class="linenos">33</span>                            <span class="sa">f</span><span class="s1">&#39; exists at: </span><span class="si">{</span><span class="n">API_KEY_DIR</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">34</span>
-<span class="linenos">35</span>
-<span class="linenos">36</span><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-<span class="linenos">37</span>    
-<span class="linenos">38</span>    <span class="c1"># Create the argument parser</span>
-<span class="linenos">39</span>    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Demonstrate Importer.&quot;</span><span class="p">)</span>
-<span class="linenos">40</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;scraper&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Footprint Scraper&quot;</span><span class="p">)</span>
-<span class="linenos">41</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Location&quot;</span><span class="p">)</span>    
+<p>Image filters are modules designed to clean images before they are processed for information extraction. Removing unwanted elements from an image can improve the accuracy and efficiency of the processing algorithms.</p>
+<p>The following example demonstrates this process: it uses the user’s chosen footprint scraper to create an <a class="reference internal" href="../../rst-doc/rst-code/brails.types.asset_inventory.AssetInventory.html#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a>. Then, it retrieves Google Street View images for a subset of the inventory and applies a <a class="reference internal" href="../../rst-code/brails.filters.house_view.house_view.html#brails.filters.house_view.house_view.HouseView" title="brails.filters.house_view.house_view.HouseView"><code class="xref py py-class docutils literal notranslate"><span class="pre">HouseView</span></code></a> filter, which attempts to isolate the house located at the center of each downloaded image. The filter returns a new, cleaned image.</p>
+<p>A typical Python example is shown below:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos"> 2</span><span class="sd">brails_filters.py</span>
+<span class="linenos"> 3</span><span class="sd">================</span>
+<span class="linenos"> 4</span><span class="sd">Example showing the use of BRAILS module that crops building images from panos.</span>
+<span class="linenos"> 5</span>
+<span class="linenos"> 6</span><span class="sd"> Purpose: Testing 1) get_class method of Importer</span>
+<span class="linenos"> 7</span><span class="sd">                  2) get_footprints using scraper provided</span>
+<span class="linenos"> 8</span><span class="sd">                  3) get_images using StreetView for subset of footprints</span>
+<span class="linenos"> 9</span><span class="sd">                  4) filter method of HouseView</span>
+<span class="linenos">10</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="linenos">13</span><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="linenos">14</span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="linenos">15</span><span class="kn">from</span><span class="w"> </span><span class="nn">brails</span><span class="w"> </span><span class="kn">import</span> <span class="n">Importer</span>
+<span class="linenos">16</span>
+<span class="linenos">17</span><span class="c1"># This script needs a Google API Key to run.</span>
+<span class="linenos">18</span><span class="c1"># We suggest placing your API key in file apiKey.txt in the same directory as</span>
+<span class="linenos">19</span><span class="c1"># this script if you plan to commit changes to this example. This way, you do</span>
+<span class="linenos">20</span><span class="c1"># not risk accidentally uploading your API key (apiKey.txt is in .gitignore,</span>
+<span class="linenos">21</span><span class="c1"># so you have work to do to get it uploaded)</span>
+<span class="linenos">22</span>
+<span class="linenos">23</span><span class="n">API_KEY_DIR</span> <span class="o">=</span> <span class="s1">&#39;../api_key.txt&#39;</span>
+<span class="linenos">24</span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">API_KEY_DIR</span><span class="p">):</span>
+<span class="linenos">25</span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">API_KEY_DIR</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+<span class="linenos">26</span>        <span class="n">api_key</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>  <span class="c1"># Read first line &amp; strip whitespace</span>
+<span class="linenos">27</span><span class="k">else</span><span class="p">:</span>
+<span class="linenos">28</span>    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s1">&#39;API key file not found. Please ensure the file&#39;</span>
+<span class="linenos">29</span>                            <span class="sa">f</span><span class="s1">&#39; exists at: </span><span class="si">{</span><span class="n">API_KEY_DIR</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">30</span>
+<span class="linenos">31</span>
+<span class="linenos">32</span><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="linenos">33</span>    <span class="c1"># Create the argument parser</span>
+<span class="linenos">34</span>    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Demonstrate Importer.&quot;</span><span class="p">)</span>
+<span class="linenos">35</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;scraper&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Footprint Scraper&quot;</span><span class="p">)</span>
+<span class="linenos">36</span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Location&quot;</span><span class="p">)</span>    
+<span class="linenos">37</span>
+<span class="linenos">38</span>    <span class="c1"># Parse the arguments</span>
+<span class="linenos">39</span>    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+<span class="linenos">40</span>
+<span class="linenos">41</span>    <span class="n">importer</span> <span class="o">=</span> <span class="n">Importer</span><span class="p">()</span>
 <span class="linenos">42</span>
-<span class="linenos">43</span>    <span class="c1"># Parse the arguments</span>
-<span class="linenos">44</span>    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
-<span class="linenos">45</span>
-<span class="linenos">46</span>    <span class="n">importer</span> <span class="o">=</span> <span class="n">Importer</span><span class="p">()</span>
-<span class="linenos">47</span>
-<span class="linenos">48</span>    <span class="n">region_boundary_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s2">&quot;RegionBoundary&quot;</span><span class="p">)</span>
-<span class="linenos">49</span>    <span class="n">region_boundary_object</span> <span class="o">=</span> <span class="n">region_boundary_class</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;locationName&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">location</span><span class="p">})</span>
-<span class="linenos">50</span>    <span class="n">scraper_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="p">)</span>
-<span class="linenos">51</span>    <span class="n">scraper</span> <span class="o">=</span> <span class="n">scraper_class</span><span class="p">({</span><span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="s2">&quot;ft&quot;</span><span class="p">})</span>
-<span class="linenos">52</span>    <span class="n">inventory</span> <span class="o">=</span> <span class="n">scraper</span><span class="o">.</span><span class="n">get_footprints</span><span class="p">(</span><span class="n">region_boundary_object</span><span class="p">)</span>
-<span class="linenos">53</span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;num assets found: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2"> using </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>    
+<span class="linenos">43</span>    <span class="n">region_boundary_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s2">&quot;RegionBoundary&quot;</span><span class="p">)</span>
+<span class="linenos">44</span>    <span class="n">region_boundary_object</span> <span class="o">=</span> <span class="n">region_boundary_class</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;locationName&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">location</span><span class="p">})</span>
+<span class="linenos">45</span>    <span class="n">scraper_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="p">)</span>
+<span class="linenos">46</span>    <span class="n">scraper</span> <span class="o">=</span> <span class="n">scraper_class</span><span class="p">({</span><span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="s2">&quot;ft&quot;</span><span class="p">})</span>
+<span class="linenos">47</span>    <span class="n">inventory</span> <span class="o">=</span> <span class="n">scraper</span><span class="o">.</span><span class="n">get_footprints</span><span class="p">(</span><span class="n">region_boundary_object</span><span class="p">)</span>
+<span class="linenos">48</span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;num assets found: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2"> using </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">scraper</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>    
+<span class="linenos">49</span>
+<span class="linenos">50</span>    <span class="c1"># Subsample from the extracted assets to keep the image downloading step quick.</span>
+<span class="linenos">51</span>    <span class="c1"># Here, we are randomly sampling 10 buildings using a random seed value of 100:</span>
+<span class="linenos">52</span>    <span class="n">small_inventory</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="linenos">53</span>
 <span class="linenos">54</span>
-<span class="linenos">55</span>    <span class="c1"># Subsample from the extracted assets to keep the image downloading step quick.</span>
-<span class="linenos">56</span>    <span class="c1"># Here, we are randomly sampling 10 buildings using a random seed value of 100:</span>
-<span class="linenos">57</span>    <span class="n">small_inventory</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-<span class="linenos">58</span>
+<span class="linenos">55</span>    <span class="c1"># Get street level imagery for the selected subset using GoogleStreetview:</span>
+<span class="linenos">56</span>    <span class="n">google_street_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s1">&#39;GoogleStreetview&#39;</span><span class="p">)</span>
+<span class="linenos">57</span>    <span class="n">google_street</span> <span class="o">=</span> <span class="n">google_street_class</span><span class="p">({</span><span class="s1">&#39;apiKey&#39;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">})</span>
+<span class="linenos">58</span>    <span class="n">images_street</span> <span class="o">=</span> <span class="n">google_street</span><span class="o">.</span><span class="n">get_images</span><span class="p">(</span><span class="n">small_inventory</span><span class="p">,</span> <span class="s1">&#39;tmp/street/&#39;</span><span class="p">)</span>
 <span class="linenos">59</span>
-<span class="linenos">60</span>    <span class="c1"># Get street level imagery for the selected subset using GoogleStreetview:</span>
-<span class="linenos">61</span>    <span class="n">google_street_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s1">&#39;GoogleStreetview&#39;</span><span class="p">)</span>
-<span class="linenos">62</span>    <span class="n">google_street</span> <span class="o">=</span> <span class="n">google_street_class</span><span class="p">({</span><span class="s1">&#39;apiKey&#39;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">})</span>
-<span class="linenos">63</span>    <span class="n">images_street</span> <span class="o">=</span> <span class="n">google_street</span><span class="o">.</span><span class="n">get_images</span><span class="p">(</span><span class="n">small_inventory</span><span class="p">,</span> <span class="s1">&#39;tmp/street/&#39;</span><span class="p">)</span>
-<span class="linenos">64</span>
-<span class="linenos">65</span>    <span class="n">images_street</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
-<span class="linenos">66</span>
-<span class="linenos">67</span>    <span class="c1"># Crop the obtained imagery such that they include just the buildings of</span>
-<span class="linenos">68</span>    <span class="c1"># interest:</span>
-<span class="linenos">69</span>    <span class="n">filter_house</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s1">&#39;HouseView&#39;</span><span class="p">)</span>
-<span class="linenos">70</span>    <span class="n">image_filter</span> <span class="o">=</span> <span class="n">filter_house</span><span class="p">({})</span>
-<span class="linenos">71</span>    <span class="n">filtered_images_street</span> <span class="o">=</span> <span class="n">image_filter</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">images_street</span><span class="p">,</span> <span class="s1">&#39;tmp/filtered_images&#39;</span><span class="p">)</span>
-<span class="linenos">72</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Cropped images are available in &#39;</span><span class="p">,</span>
-<span class="linenos">73</span>          <span class="n">Path</span><span class="p">(</span><span class="n">filtered_images_street</span><span class="o">.</span><span class="n">dir_path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
-<span class="linenos">74</span>
-<span class="linenos">75</span>    <span class="n">filtered_images_street</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>    
-<span class="linenos">76</span>
-<span class="linenos">77</span><span class="c1"># Run the main function if this script is executed directly</span>
-<span class="linenos">78</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-<span class="linenos">79</span>    <span class="n">main</span><span class="p">()</span>    
+<span class="linenos">60</span>    <span class="n">images_street</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="linenos">61</span>
+<span class="linenos">62</span>    <span class="c1"># Crop the obtained imagery such that they include just the buildings of</span>
+<span class="linenos">63</span>    <span class="c1"># interest:</span>
+<span class="linenos">64</span>    <span class="n">filter_house</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s1">&#39;HouseView&#39;</span><span class="p">)</span>
+<span class="linenos">65</span>    <span class="n">image_filter</span> <span class="o">=</span> <span class="n">filter_house</span><span class="p">({})</span>
+<span class="linenos">66</span>    <span class="n">filtered_images_street</span> <span class="o">=</span> <span class="n">image_filter</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">images_street</span><span class="p">,</span> <span class="s1">&#39;tmp/filtered_images&#39;</span><span class="p">)</span>
+<span class="linenos">67</span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Cropped images are available in &#39;</span><span class="p">,</span>
+<span class="linenos">68</span>          <span class="n">Path</span><span class="p">(</span><span class="n">filtered_images_street</span><span class="o">.</span><span class="n">dir_path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
+<span class="linenos">69</span>
+<span class="linenos">70</span>    <span class="n">filtered_images_street</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>    
+<span class="linenos">71</span>
+<span class="linenos">72</span><span class="c1"># Run the main function if this script is executed directly</span>
+<span class="linenos">73</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="linenos">74</span>    <span class="n">main</span><span class="p">()</span>    
 </pre></div>
 </div>
-<p>To run for example the <strong>brails_filters.py</strong> script for Berkeley, CA the following would be issued frm a terminal window:</p>
+<p>To run, for example, the <strong>brails_filters.py</strong> script for Berkeley, CA, execute the following command in a terminal window:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">brails_filter</span><span class="o">.</span><span class="n">py</span> <span class="n">USA_FootprintScraper</span> <span class="s2">&quot;Berkeley, CA&quot;</span>
 </pre></div>
 </div>
-<p>and the application would produce two ImageSets:</p>
+<p>and the application would produce two <a class="reference internal" href="../../rst-doc/rst-code/brails.types.image_set.ImageSet.html#brails.types.image_set.ImageSet" title="brails.types.image_set.ImageSet"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageSet</span></code></a> objects:</p>
 <p>Raw Images</p>
 <table class="docutils align-default">
 <colgroup>
@@ -211,38 +210,37 @@
 </tr>
 </tbody>
 </table>
-<dl>
-<dt>Filtered Images:</dt><dd><ul>
-<li><ul>
-<li><img alt="../../_images/gstrt_37.84910645_-122.274436861.jpg" src="../../_images/gstrt_37.84910645_-122.274436861.jpg" />
-</li>
-<li><img alt="../../_images/gstrt_37.85885402_-122.250804191.jpg" src="../../_images/gstrt_37.85885402_-122.250804191.jpg" />
-</li>
-<li><img alt="../../_images/gstrt_37.86096388_-122.270967621.jpg" src="../../_images/gstrt_37.86096388_-122.270967621.jpg" />
-</li>
-</ul>
-</li>
-<li><ul>
-<li><img alt="../../_images/gstrt_37.86240981_-122.291622181.jpg" src="../../_images/gstrt_37.86240981_-122.291622181.jpg" />
-</li>
-<li><img alt="../../_images/gstrt_37.86325404_-122.274624171.jpg" src="../../_images/gstrt_37.86325404_-122.274624171.jpg" />
-</li>
-<li><img alt="../../_images/gstrt_37.86369654_-122.260243021.jpg" src="../../_images/gstrt_37.86369654_-122.260243021.jpg" />
-</li>
-</ul>
-</li>
-<li><ul>
-<li><img alt="../../_images/gstrt_37.87800845_-122.273877801.jpg" src="../../_images/gstrt_37.87800845_-122.273877801.jpg" />
-</li>
-<li><img alt="../../_images/gstrt_37.87979406_-122.273659891.jpg" src="../../_images/gstrt_37.87979406_-122.273659891.jpg" />
-</li>
-<li><img alt="../../_images/gstrt_37.88182298_-122.264625401.jpg" src="../../_images/gstrt_37.88182298_-122.264625401.jpg" />
-</li>
-</ul>
-</li>
-</ul>
-</dd>
-</dl>
+<p>Filtered Images:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 33.3%" />
+<col style="width: 33.3%" />
+<col style="width: 33.3%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><img alt="../../_images/gstrt_37.84910645_-122.274436861.jpg" src="../../_images/gstrt_37.84910645_-122.274436861.jpg" />
+</td>
+<td><img alt="../../_images/gstrt_37.85885402_-122.250804191.jpg" src="../../_images/gstrt_37.85885402_-122.250804191.jpg" />
+</td>
+<td><img alt="../../_images/gstrt_37.86096388_-122.270967621.jpg" src="../../_images/gstrt_37.86096388_-122.270967621.jpg" />
+</td>
+</tr>
+<tr class="row-even"><td><img alt="../../_images/gstrt_37.86240981_-122.291622181.jpg" src="../../_images/gstrt_37.86240981_-122.291622181.jpg" />
+</td>
+<td><img alt="../../_images/gstrt_37.86325404_-122.274624171.jpg" src="../../_images/gstrt_37.86325404_-122.274624171.jpg" />
+</td>
+<td><img alt="../../_images/gstrt_37.86369654_-122.260243021.jpg" src="../../_images/gstrt_37.86369654_-122.260243021.jpg" />
+</td>
+</tr>
+<tr class="row-odd"><td><img alt="../../_images/gstrt_37.87800845_-122.273877801.jpg" src="../../_images/gstrt_37.87800845_-122.273877801.jpg" />
+</td>
+<td><img alt="../../_images/gstrt_37.87979406_-122.273659891.jpg" src="../../_images/gstrt_37.87979406_-122.273659891.jpg" />
+</td>
+<td><img alt="../../_images/gstrt_37.88182298_-122.264625401.jpg" src="../../_images/gstrt_37.88182298_-122.264625401.jpg" />
+</td>
+</tr>
+</tbody>
+</table>
 </section>
 
 
@@ -250,13 +248,13 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../image_downloads/image_downloads.html" class="btn btn-neutral float-left" title="Downloading Images" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../image_processor/image_processors.html" class="btn btn-neutral float-right" title="Image Processors" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../imputation/imputation.html" class="btn btn-neutral float-right" title="Imputation Algorithms" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, fmk.</p>
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

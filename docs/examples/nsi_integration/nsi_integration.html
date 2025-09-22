@@ -10,6 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
@@ -19,6 +20,7 @@
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../../_static/copybutton.js?v=f281be69"></script>
+      <script src="../../_static/design-tabs.js?v=f930bc37"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -50,6 +52,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../importer/importer.html">Importer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../footprint/footprint.html">Building Footprints</a></li>
@@ -59,10 +62,10 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../image_filters/image_filters.html">Image Filters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_processor/image_processors.html">Image Processors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html#examples-gallery">Examples Gallery</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
@@ -95,7 +98,7 @@
              
   <section id="nsi-integration">
 <span id="nsi-integration-exammple"></span><h1>NSI Integration<a class="headerlink" href="#nsi-integration" title="Link to this heading"></a></h1>
-<p>This is an example to demonstrate how BrailsPlusPlus integrates with the <a class="reference external" href="https://www.hec.usace.army.mil/confluence/nsi">National Structures Inventory</a>. There are two ways to integrate:</p>
+<p>This is an example to demonstrate how BRAILS++ integrates with the <a class="reference external" href="https://www.hec.usace.army.mil/confluence/nsi">National Structures Inventory</a>. There are two ways to integrate:</p>
 <ol class="arabic simple">
 <li><p>Create an inventory that does not include footprint information directly from NSI.</p></li>
 <li><p>Integrate an existing <strong>AssetInventory</strong> with NSI. For each <strong>Asset</strong> in the asset inventory, the features from NSI are obtained and merged with the asset’s existing features. This is done by finding an asset in the NSI located in the footprint.</p></li>
@@ -325,7 +328,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, fmk.</p>
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

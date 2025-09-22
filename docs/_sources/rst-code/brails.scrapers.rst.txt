@@ -12,13 +12,9 @@ Subpackages
 .. toctree::
    :maxdepth: 1
 
-   brails.scrapers.boundary
-   brails.scrapers.google_satellite
-   brails.scrapers.google_streetview
-   brails.scrapers.ms_footprint_scraper
-   brails.scrapers.nsi_parser
-   brails.scrapers.osm_footprint_scraper
-   brails.scrapers.usa_footprint_scraper
+   brails.scrapers.fema_firm_scraper
+   brails.scrapers.overture_maps_scraper
+   brails.scrapers.usgs_data_scrapers
 
 Submodules
 ----------
@@ -26,6 +22,4 @@ Submodules
 .. toctree::
    :maxdepth: 1
 
-   brails.scrapers.footprint_scraper
-   brails.scrapers.image_scraper
-   brails.scrapers.user_footprints
+   brails.scrapers.asset_data_augmenter
