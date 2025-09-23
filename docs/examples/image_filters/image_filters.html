@@ -52,7 +52,6 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../importer/importer.html">Importer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../footprint/footprint.html">Building Footprints</a></li>
@@ -63,6 +62,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../examples.html#examples-gallery">Examples Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
@@ -96,7 +96,7 @@
   <section id="image-filters">
 <span id="filter-example"></span><h1>Image Filters<a class="headerlink" href="#image-filters" title="Link to this heading"></a></h1>
 <p>Image filters are modules designed to clean images before they are processed for information extraction. Removing unwanted elements from an image can improve the accuracy and efficiency of the processing algorithms.</p>
-<p>The following example demonstrates this process: it uses the user’s chosen footprint scraper to create an <a class="reference internal" href="../../rst-doc/rst-code/brails.types.asset_inventory.AssetInventory.html#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a>. Then, it retrieves Google Street View images for a subset of the inventory and applies a <a class="reference internal" href="../../rst-code/brails.filters.house_view.house_view.html#brails.filters.house_view.house_view.HouseView" title="brails.filters.house_view.house_view.HouseView"><code class="xref py py-class docutils literal notranslate"><span class="pre">HouseView</span></code></a> filter, which attempts to isolate the house located at the center of each downloaded image. The filter returns a new, cleaned image.</p>
+<p>The following example demonstrates this process: it uses the user’s chosen footprint scraper to create an <a class="reference internal" href="../../rst-code/brails.types.asset_inventory.html#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a>. Then, it retrieves Google Street View images for a subset of the inventory and applies a <a class="reference internal" href="../../rst-code/brails.filters.house_view.house_view.html#brails.filters.house_view.house_view.HouseView" title="brails.filters.house_view.house_view.HouseView"><code class="xref py py-class docutils literal notranslate"><span class="pre">HouseView</span></code></a> filter, which attempts to isolate the house located at the center of each downloaded image. The filter returns a new, cleaned image.</p>
 <p>A typical Python example is shown below:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="linenos"> 2</span><span class="sd">brails_filters.py</span>
@@ -178,7 +178,7 @@
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">brails_filter</span><span class="o">.</span><span class="n">py</span> <span class="n">USA_FootprintScraper</span> <span class="s2">&quot;Berkeley, CA&quot;</span>
 </pre></div>
 </div>
-<p>and the application would produce two <a class="reference internal" href="../../rst-doc/rst-code/brails.types.image_set.ImageSet.html#brails.types.image_set.ImageSet" title="brails.types.image_set.ImageSet"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageSet</span></code></a> objects:</p>
+<p>and the application would produce two <a class="reference internal" href="../../rst-code/brails.types.image_set.html#brails.types.image_set.ImageSet" title="brails.types.image_set.ImageSet"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageSet</span></code></a> objects:</p>
 <p>Raw Images</p>
 <table class="docutils align-default">
 <colgroup>

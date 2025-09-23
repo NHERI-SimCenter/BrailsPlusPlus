@@ -1,7 +1,9 @@
-brails
-======
+BrailsPlusPlus
+==============
 
 .. toctree::
    :maxdepth: 1
 
    brails
+   conf
+   setup
