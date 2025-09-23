@@ -52,7 +52,6 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../importer/importer.html">Importer</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Building Footprints</a><ul>
@@ -66,6 +65,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../examples.html#examples-gallery">Examples Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
@@ -105,7 +105,7 @@
 <li><p>USA_FootprintScraper using <a class="reference external" href="https://gis-fema.hub.arcgis.com/pages/usa-structures">USA Structures</a></p></li>
 <li><p>Overture Maps using <a class="reference external" href="https://overturemaps.org/">Overture Maps</a></p></li>
 </ol>
-<p>Each of these scraper classes implements a method <strong>get_footprints</strong>, which returns the building footprints for a given <a class="reference internal" href="../../rst-doc/rst-code/brails.types.region_boundary.RegionBoundary.html#brails.types.region_boundary.RegionBoundary" title="brails.types.region_boundary.RegionBoundary"><code class="xref py py-class docutils literal notranslate"><span class="pre">RegionBoundary</span></code></a> instance. The example below demonstrates how three different scraper classes can be used interchangeably to generate building inventories for a specified location when running the script.</p>
+<p>Each of these scraper classes implements a method <strong>get_footprints</strong>, which returns the building footprints for a given <a class="reference internal" href="../../rst-code/brails.types.region_boundary.html#brails.types.region_boundary.RegionBoundary" title="brails.types.region_boundary.RegionBoundary"><code class="xref py py-class docutils literal notranslate"><span class="pre">RegionBoundary</span></code></a> instance. The example below demonstrates how three different scraper classes can be used interchangeably to generate building inventories for a specified location when running the script.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">  1</span><span class="c1"># Written: fmk 4/24</span>
 <span class="linenos">  2</span><span class="c1"># Modified: bacetiner 12/24</span>
 <span class="linenos">  3</span><span class="c1"># License: BSD-2</span>
@@ -277,9 +277,9 @@
 <section id="footprint-notebook">
 <h2>Footprint Notebook<a class="headerlink" href="#footprint-notebook" title="Link to this heading"></a></h2>
 <p>Here is a link to a Jupyter Notebook that runs the basic code, accompanied by graphics to better illustrate the output.</p>
-<a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>
+<a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint_name_input.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>
 
-<a href=https://lightning.ai/new?repo_url=https%3A//github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg></a><div class="admonition note">
+<a href=https://lightning.ai/new?repo_url=https%3A//github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint_name_input.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg></a><div class="admonition note">
 <p class="admonition-title">Note</p>
 <ol class="arabic simple">
 <li><p>The number of buildings varies across datasets due to differences in data sources, processing methods, geographic coverage, and update frequency. Since no dataset is perfect, users are encouraged to compare building inventories for their area of interest by overlaying them with satellite imagery to verify accuracy.</p></li>

@@ -47,9 +47,9 @@ Here is a link to a Jupyter Notebook that runs the basic code, accompanied by gr
 
 .. raw:: html
 	 
-	 <a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>
+	 <a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint_name_input.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>
 
-         <a href=https://lightning.ai/new?repo_url=https%3A//github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg></a>
+         <a href=https://lightning.ai/new?repo_url=https%3A//github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/footprint/brails_footprint_name_input.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg></a>
 
       
 .. note::
