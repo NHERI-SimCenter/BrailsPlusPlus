@@ -1,0 +1,699 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.utils.arcgisapi_service_helper module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.utils.geo_tools module" href="brails.utils.geo_tools.html" />
+    <link rel="prev" title="brails.utils.spatial_join_methods.get_points_near_polygons module" href="brails.utils.spatial_join_methods.get_points_near_polygons.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html#examples-gallery">Examples Gallery</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.processors.html">brails.processors package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.utils.html">brails.utils package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="brails.utils.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="brails.utils.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.utils.html">brails.utils package</a></li>
+      <li class="breadcrumb-item active">brails.utils.arcgisapi_service_helper module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.utils.arcgisapi_service_helper.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.utils.arcgisapi_service_helper">
+<span id="brails-utils-arcgisapi-service-helper-module"></span><h1>brails.utils.arcgisapi_service_helper module<a class="headerlink" href="#module-brails.utils.arcgisapi_service_helper" title="Link to this heading"></a></h1>
+<p>This module defines a class for retrieving data from ArcGIS services APIs.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper" title="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ArcgisAPIServiceHelper</span></code></a>(api_endpoint_url)</p></td>
+<td><p>A helper class for interacting with an ArcGIS API service.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.utils.arcgisapi_service_helper.</span></span><span class="sig-name descname"><span class="pre">ArcgisAPIServiceHelper</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_endpoint_url</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A helper class for interacting with an ArcGIS API service.</p>
+<p>This class provides methods to query the service, fetch element counts,
+split polygons into cells, and categorize cells based on their element
+count.</p>
+<p>This class allows users to interact with an ArcGIS API endpoint to retrieve
+information about elements within specific polygons. It supports
+functionality for:</p>
+<ul class="simple">
+<li><p>Retrieving the maximum number of elements that can be returned per query.</p></li>
+<li><p>Categorizing and splitting polygon cells based on the element count.</p></li>
+<li><p>Dividing polygons into smaller rectangular cells to ensure a balance of
+elements per cell.</p></li>
+<li><p>Fetching specified attribute data for given cells in parallel.</p></li>
+</ul>
+<p>The class includes methods for making API requests with retry logic,
+handling transient network errors, and parsing the responses to determine
+element counts within specific regions.</p>
+<p>To import the <a class="reference internal" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper" title="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper"><code class="xref py py-class docutils literal notranslate"><span class="pre">ArcgisAPIServiceHelper</span></code></a> class, use:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArcgisAPIServiceHelper</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>api_endpoint_url</strong> (<em>str</em>) – The base URL of the ArcGIS API endpoint used for requests.</p></li>
+<li><p><strong>max_elements_per_cell</strong> (<em>int</em>) – The maximum number of elements the API allows per query, fetched
+from the ArcGIS service.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>The class assumes a uniform distribution of elements across polygons
+when splitting.</p></li>
+<li><p>The retry strategy uses exponential backoff to handle transient
+network issues.</p></li>
+<li><p>The method <cite>get_element_counts</cite> provides a count of elements within
+the bounding box of a polygon, which is essential for categorizing
+and splitting polygons.</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ValueError</strong> – If an invalid Polygon or parameter is passed to a method.
+    <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code>: If the requested functionality is not
+    supported by the API.</p></li>
+<li><p><strong>HTTPError</strong> – If the HTTP request fails after retries.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.categorize_and_split_cells">
+<span class="sig-name descname"><span class="pre">categorize_and_split_cells</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">preliminary_cells</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.categorize_and_split_cells" title="Link to this definition"></a></dt>
+<dd><p>Categorize/split a list of polygon cells based on their element count.</p>
+<p>This method processes a list of polygons (<code class="docutils literal notranslate"><span class="pre">preliminary_cells</span></code>) by
+first obtaining the number of elements contained within each polygon.
+If a polygon contains more elements than the specified maximum allowed
+per cell (<code class="docutils literal notranslate"><span class="pre">max_elements_per_cell</span></code>), the polygon is split into smaller
+cells. The method returns two lists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>A list of cells that are kept as is (those that do not exceed the
+element threshold).</p></li>
+<li><p>A list of split cells (those that exceeded the element
+threshold).</p></li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>preliminary_cells</strong> (<em>list</em><em>[</em><em>Polygon</em><em>]</em>) – A list of Shapely Polygon objects representing the preliminary
+cells to be processed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>A tuple containing two lists of Shapely Polygon objects:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>The first list contains the cells to keep (those with number
+of elements &lt;= <code class="docutils literal notranslate"><span class="pre">max_elements_per_cell</span></code>).</p></li>
+<li><p>The second list contains the split cells (those with number
+of elements &gt; <code class="docutils literal notranslate"><span class="pre">max_elements_per_cell</span></code>).</p></li>
+</ul>
+</div></blockquote>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">box</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArcgisAPIServiceHelper</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_endpoint</span> <span class="o">=</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;https://services1.arcgis.com/Hp6G80Pky0om7QvQ&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;/arcgis/rest/services/Transmission_Lines_gdb/&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;FeatureServer/0/query&#39;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_tools</span> <span class="o">=</span> <span class="n">ArcgisAPIServiceHelper</span><span class="p">(</span><span class="n">api_endpoint</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cell</span> <span class="o">=</span> <span class="n">box</span><span class="p">(</span><span class="o">-</span><span class="mf">81.334</span><span class="p">,</span> <span class="mf">37.299</span><span class="p">,</span> <span class="o">-</span><span class="mf">71.908</span><span class="p">,</span> <span class="mf">40.295</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cells_to_keep</span><span class="p">,</span> <span class="n">cells_to_split</span> <span class="o">=</span> <span class="n">api_tools</span><span class="o">.</span><span class="n">categorize_and_split_cells</span><span class="p">([</span><span class="n">cell</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cells to keep: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cells_to_keep</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="go">Cells to keep: 0</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cells to split: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cells_to_split</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="go">Cells to split: 21</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.download_all_attr_for_region">
+<span class="sig-name descname"><span class="pre">download_all_attr_for_region</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_cells</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Obtaining</span> <span class="pre">attributes</span> <span class="pre">for</span> <span class="pre">each</span> <span class="pre">cell'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.download_all_attr_for_region" title="Link to this definition"></a></dt>
+<dd><p>Download all attribute data for the specified region.</p>
+<dl class="simple">
+<dt>This method:</dt><dd><ul class="simple">
+<li><p>Retrieves the boundary polygon of the region.</p></li>
+<li><p>Splits region into smaller cells for manageable data querying.</p></li>
+<li><p>Refines the mesh by recursively splitting oversized cells.</p></li>
+<li><p>Optionally plots the final mesh.</p></li>
+<li><p>Downloads data (e.g., bridge attributes) for each cell using a
+provided data-fetching function.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>region</strong> – A Region object that provides a <code class="docutils literal notranslate"><span class="pre">get_boundary()</span></code> method
+returning a polygon, region name, and optional OSM ID.</p></li>
+<li><p><strong>plot_cells</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, generates and saves a visualization of the final
+meshed cells.</p></li>
+<li><p><strong>task_description</strong> (<em>str</em><em>, </em><em>optional</em>) – A message string that describes the task being performed,
+passed to the data-fetching method for logging or display.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><dl class="simple">
+<dt>downloaded_data (Dict[Polygon, List[Dict[str, Any]]]):</dt><dd><p>Mapping from each final mesh cell polygon to a list of
+attribute dictionaries (e.g., representing bridges or other
+assets).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>final_cells (List[Polygon]):</dt><dd><p>List of polygons representing the final meshed cells used
+for data querying.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArcgisAPIServiceHelper</span><span class="p">,</span> <span class="n">Importer</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">importer</span> <span class="o">=</span> <span class="n">Importer</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">region_boundary_class</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span><span class="s1">&#39;RegionBoundary&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">region_boundary</span> <span class="o">=</span> <span class="n">region_boundary_class</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;locationName&#39;</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="s1">&#39;Los Angeles, CA&#39;</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_endpoint</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;https://services5.arcgis.com/7nsPwEMP38bSkCjy&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;/arcgis/rest/services/Building_Footprints/FeatureServer&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;/0/query&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_tools</span> <span class="o">=</span> <span class="n">ArcgisAPIServiceHelper</span><span class="p">(</span><span class="n">api_endpoint</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">downloaded_data</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">final_cells</span>
+<span class="gp">... </span><span class="p">)</span> <span class="o">=</span> <span class="n">api_tools</span><span class="o">.</span><span class="n">download_all_attr_for_region</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">region_boundary</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">plot_cells</span><span class="o">=</span><span class="kc">False</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">Searching for Los Angeles, CA...</span>
+<span class="go">Found Los Angeles, Los Angeles County, California, United States</span>
+<span class="go">Meshing the defined area...</span>
+<span class="go">Obtaining the number of elements in each cell:</span>
+<span class="go">100%|██████████| 661/661 [00:07&lt;00:00, 89.60it/s]</span>
+<span class="go">Obtaining the number of elements in each cell:</span>
+<span class="go">100%|██████████| 2576/2576 [00:27&lt;00:00, 92.85it/s]</span>
+<span class="go">Obtaining the number of elements in each cell:</span>
+<span class="go">100%|██████████| 1146/1146 [00:11&lt;00:00, 97.85it/s]</span>
+<span class="go">Meshing complete. Split Los Angeles into 3824 cells.</span>
+<span class="go">Obtaining attributes for each cell:  100%|██████████| 3824/3824</span>
+<span class="go">[02:46&lt;00:00, 22.93it/s]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">total_assets</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">len</span><span class="p">,</span> <span class="n">downloaded_data</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Total number of assets: </span><span class="si">{</span><span class="n">total_assets</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="go">Total number of assets: 1282028</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.download_all_attr_from_api">
+<span class="sig-name descname"><span class="pre">download_all_attr_from_api</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cell</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.download_all_attr_from_api" title="Link to this definition"></a></dt>
+<dd><p>Download attribute data for a given cell using the ArcGIS API.</p>
+<p>This method queries the ArcGIS API for all available attributes within
+the specified polygon cell.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cell</strong> (<em>Polygon</em>) – A Shapely Polygon object representing the geographic cell for
+which to retrieve bridge data.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of dictionaries, each representing the attribute data
+for a bridge within the cell. Each dictionary includes
+<code class="docutils literal notranslate"><span class="pre">geometry</span></code> and <code class="docutils literal notranslate"><span class="pre">attributes</span></code> keys as returned by the ArcGIS
+API.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Dict[str, Any]]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">box</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArcgisAPIServiceHelper</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_endpoint</span> <span class="o">=</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;https://services5.arcgis.com/7nsPwEMP38bSkCjy&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;/arcgis/rest/services/Building_Footprints/FeatureServer&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;/0/query&#39;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_tools</span> <span class="o">=</span> <span class="n">ArcgisAPIServiceHelper</span><span class="p">(</span><span class="n">api_endpoint</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cell</span> <span class="o">=</span> <span class="n">box</span><span class="p">(</span><span class="o">-</span><span class="mf">118.244</span><span class="p">,</span> <span class="mf">34.041</span><span class="p">,</span> <span class="o">-</span><span class="mf">118.243</span><span class="p">,</span> <span class="mf">34.041</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">api_tools</span><span class="o">.</span><span class="n">download_all_attr_from_api</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="go">[{&#39;attributes&#39;: {&#39;OBJECTID&#39;: 385248, &#39;CODE&#39;: &#39;Building&#39;, &#39;BLD_ID&#39;:</span>
+<span class="go">&#39;487907837328&#39;, &#39;HEIGHT&#39;: 37.14, &#39;ELEV&#39;: 292.15, &#39;AREA&#39;: 9665,</span>
+<span class="go">&#39;LARIAC_SOURCE&#39;: &#39;LARIAC2&#39;, &#39;LARIAC_DATE&#39;: &#39;2008&#39;,</span>
+<span class="go">&#39;AIN&#39;: &#39;5147028043&#39;, &#39;STATUS&#39;: &#39;Unchanged&#39;, &#39;CODE_NUM&#39;: 1},</span>
+<span class="go">  &#39;geometry&#39;: {&#39;rings&#39;: [[[-118.24332934719, 34.0407349647641],</span>
+<span class="go">     [-118.243413068638, 34.0406417365415],</span>
+<span class="go">     [-118.243415138653, 34.0406430242604],</span>
+<span class="go">     [-118.243416898264, 34.0406440782071],</span>
+<span class="go">     [-118.243682323766, 34.0408091186429],</span>
+<span class="go">     [-118.243541516086, 34.04096427197],</span>
+<span class="go">     [-118.243533076239, 34.0409678617538],</span>
+<span class="go">     [-118.243522111045, 34.0409659050115],</span>
+<span class="go">     [-118.2434982541, 34.0409913987935],</span>
+<span class="go">     [-118.243502997061, 34.0409990828814],</span>
+<span class="go">     [-118.243501803082, 34.0410085657733],</span>
+<span class="go">     [-118.243492197701, 34.0410198786033],</span>
+<span class="go">     [-118.243226233836, 34.0408560099184],</span>
+<span class="go">     [-118.24332934719, 34.0407349647641]]]}}]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.download_attr_from_api">
+<span class="sig-name descname"><span class="pre">download_attr_from_api</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requested_fields</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.download_attr_from_api" title="Link to this definition"></a></dt>
+<dd><p>Download specified fields from the API for a given cell.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cell</strong> (<em>Polygon</em>) – A Shapely Polygon object representing the area of interest.</p></li>
+<li><p><strong>requested_fields</strong> (<em>list</em><em>[</em><em>str</em><em>] or </em><em>str</em>) – A list of attribute names or the string ‘all’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of features (attributes) fetched from the API.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[dict]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the <code class="docutils literal notranslate"><span class="pre">cell</span></code> input is not a valid <code class="docutils literal notranslate"><span class="pre">Polygon</span></code> or
+    <code class="docutils literal notranslate"><span class="pre">requested_fields</span></code> is not valid.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">box</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArcgisAPIServiceHelper</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_endpoint</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;https://services5.arcgis.com/7nsPwEMP38bSkCjy&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;/arcgis/rest/services/Building_Footprints/FeatureServer&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;/0/query&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_tools</span> <span class="o">=</span> <span class="n">ArcgisAPIServiceHelper</span><span class="p">(</span><span class="n">api_endpoint</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cell</span> <span class="o">=</span> <span class="n">box</span><span class="p">(</span><span class="o">-</span><span class="mf">118.244</span><span class="p">,</span> <span class="mf">34.041</span><span class="p">,</span> <span class="o">-</span><span class="mf">118.243</span><span class="p">,</span> <span class="mf">34.041</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">api_tools</span><span class="o">.</span><span class="n">download_attr_from_api</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">cell</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="s1">&#39;HEIGHT&#39;</span><span class="p">,</span> <span class="s1">&#39;ELEV&#39;</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="go">[{&#39;attributes&#39;: {&#39;HEIGHT&#39;: 37.14, &#39;ELEV&#39;: 292.15},</span>
+<span class="go">  &#39;geometry&#39;: {&#39;rings&#39;: [[[-118.24332934719, 34.0407349647641],</span>
+<span class="go">     [-118.243413068638, 34.0406417365415],</span>
+<span class="go">     [-118.243415138653, 34.0406430242604],</span>
+<span class="go">     [-118.243416898264, 34.0406440782071],</span>
+<span class="go">     [-118.243682323766, 34.0408091186429],</span>
+<span class="go">     [-118.243541516086, 34.04096427197],</span>
+<span class="go">     [-118.243533076239, 34.0409678617538],</span>
+<span class="go">     [-118.243522111045, 34.0409659050115],</span>
+<span class="go">     [-118.2434982541, 34.0409913987935],</span>
+<span class="go">     [-118.243502997061, 34.0409990828814],</span>
+<span class="go">     [-118.243501803082, 34.0410085657733],</span>
+<span class="go">     [-118.243492197701, 34.0410198786033],</span>
+<span class="go">     [-118.243226233836, 34.0408560099184],</span>
+<span class="go">     [-118.24332934719, 34.0407349647641]]]}}]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.fetch_api_fields">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fetch_api_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.fetch_api_fields" title="Link to this definition"></a></dt>
+<dd><p>Fetch the list of attribute names (fields) from an ArcGIS REST layer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>url</strong> (<em>str</em>) – The URL of the ArcGIS layer endpoint (can include
+<code class="docutils literal notranslate"><span class="pre">'/query'</span></code>).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of field names defined in the layer.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[str]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>KeyError</strong> – If the <code class="docutils literal notranslate"><span class="pre">'fields'</span></code> key is not present in the response.</p></li>
+<li><p><strong>requests.RequestException</strong> – If the request fails.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArcgisAPIServiceHelper</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_endpoint</span> <span class="o">=</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;https://hazards.fema.gov/arcgis/rest/services/FIRMette&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;/NFHLREST_FIRMette/MapServer/20/query&#39;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">field_names</span> <span class="o">=</span> <span class="n">ArcgisAPIServiceHelper</span><span class="o">.</span><span class="n">fetch_api_fields</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">api_endpoint</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">field_names</span><span class="p">)</span>
+<span class="go">[&#39;OBJECTID&#39;, &#39;DFIRM_ID&#39;, &#39;FLD_AR_ID&#39;, &#39;STUDY_TYP&#39;, &#39;FLD_ZONE&#39;,</span>
+<span class="go">&#39;ZONE_SUBTY&#39;, &#39;SFHA_TF&#39;, &#39;STATIC_BFE&#39;, &#39;V_DATUM&#39;, &#39;DEPTH&#39;,</span>
+<span class="go">&#39;LEN_UNIT&#39;, &#39;VELOCITY&#39;, &#39;VEL_UNIT&#39;, &#39;AR_REVERT&#39;, &#39;AR_SUBTRV&#39;,</span>
+<span class="go">&#39;BFE_REVERT&#39;, &#39;DEP_REVERT&#39;, &#39;DUAL_ZONE&#39;, &#39;SOURCE_CIT&#39;, &#39;SHAPE&#39;,</span>
+<span class="go">&#39;SHAPE.STArea()&#39;, &#39;SHAPE.STLength()&#39;, &#39;GFID&#39;, &#39;GlobalID&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.fetch_data_for_cells">
+<span class="sig-name descname"><span class="pre">fetch_data_for_cells</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">final_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">download_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Obtaining</span> <span class="pre">the</span> <span class="pre">attributes</span> <span class="pre">for</span> <span class="pre">each</span> <span class="pre">cell'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.fetch_data_for_cells" title="Link to this definition"></a></dt>
+<dd><p>Download data for a list of cells using the provided function.</p>
+<p>Each cell in <code class="docutils literal notranslate"><span class="pre">final_cells</span></code> is processed concurrently using a thread
+pool. Results are stored in a dictionary mapping each cell to its
+downloaded data. If a cell’s download fails, the value will be
+<code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>final_cells</strong> (<em>List</em><em>[</em><em>Any</em><em>]</em>) – List of cells to process.</p></li>
+<li><p><strong>download_func</strong> (<em>Callable</em><em>[</em><em>[</em><em>Any</em><em>]</em><em>, </em><em>Any</em><em>]</em>) – Function to download data for a single cell.</p></li>
+<li><p><strong>desc</strong> (<em>str</em>) – Description for the progress bar.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary mapping each cell to its downloaded data
+(or <code class="docutils literal notranslate"><span class="pre">None</span></code> if failed).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[Any, Any]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">box</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArcgisAPIServiceHelper</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_endpoint</span> <span class="o">=</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;https://services1.arcgis.com/Hp6G80Pky0om7QvQ/&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;arcgis/rest/services/Transmission_Lines_gdb/&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;FeatureServer/0/query&#39;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_helper</span> <span class="o">=</span> <span class="n">ArcgisAPIServiceHelper</span><span class="p">(</span><span class="n">api_endpoint</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cells</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="n">box</span><span class="p">(</span><span class="o">-</span><span class="mf">86.940</span><span class="p">,</span> <span class="mf">24.545</span><span class="p">,</span> <span class="o">-</span><span class="mf">77.513</span><span class="p">,</span> <span class="mf">27.992</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">box</span><span class="p">(</span><span class="o">-</span><span class="mf">77.499</span><span class="p">,</span> <span class="mf">38.779</span><span class="p">,</span> <span class="o">-</span><span class="mf">76.910</span><span class="p">,</span> <span class="mf">38.966</span><span class="p">)</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">api_helper</span><span class="o">.</span><span class="n">fetch_data_for_cells</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">cells</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">api_helper</span><span class="o">.</span><span class="n">download_all_attr_from_api</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">Obtaining the attributes for each cell: 100%|██████████| 2/2</span>
+<span class="go">[00:00&lt;00:00,  2.37it/s]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">cell</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="sa">f</span><span class="s1">&#39;Cell bounds: </span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">bounds</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="sa">f</span><span class="s1">&#39;Number of assets: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="go">Cell bounds: (-77.499, 38.779, -76.91, 38.966)</span>
+<span class="go">Number of assets: 152</span>
+<span class="go">Cell bounds: (-86.94, 24.545, -77.513, 27.992)</span>
+<span class="go">Number of assets: 1376</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.fetch_max_records_per_query">
+<span class="sig-name descname"><span class="pre">fetch_max_records_per_query</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.fetch_max_records_per_query" title="Link to this definition"></a></dt>
+<dd><p>Retrieve the maximum number of records returned by the API per query.</p>
+<p>This function sends a request to the specified API endpoint and parses
+the response to determine the maximum number of records that can be
+returned in a single query. If the API does not provide this
+information or returns a value of 0, it raises an error.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The maximum number of elements the API allows per query.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the API returns a value of 0 for the maximum number of
+    elements, indicating an issue with the API or its response.</p></li>
+<li><p><strong>HTTPError</strong> – If the HTTP request fails (e.g., due to connectivity issues or
+    a server error).</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">api_tools</span> <span class="o">=</span> <span class="n">ArcgisAPIServiceHelper</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;https://sampleserver6.arcgisonline.com/arcgis/rest/&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;services/Census/MapServer/3/query&#39;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">max_records</span> <span class="o">=</span> <span class="n">api_tools</span><span class="o">.</span><span class="n">fetch_max_records_per_query</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">max_records</span><span class="p">)</span>
+<span class="go">1000</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>The function expects the API to return a JSON response containing
+a <cite>maxRecordCount</cite> key.</p></li>
+<li><p>A retry strategy is implemented for the HTTPS request to handle
+transient network issues.</p></li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.get_element_counts">
+<span class="sig-name descname"><span class="pre">get_element_counts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bpoly</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.get_element_counts" title="Link to this definition"></a></dt>
+<dd><p>Get the count of elements within the bounding box of the given polygon.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>bpoly</strong> (<em>Polygon</em>) – The polygon marking the boundaries of a region.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The count of elements within the bounding box, or 0 if an
+error occurs.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">box</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArcgisAPIServiceHelper</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_endpoint</span> <span class="o">=</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;https://services1.arcgis.com/Hp6G80Pky0om7QvQ/&#39;</span>
+<span class="gp">... </span>    <span class="s1">&#39;arcgis/rest/services/Public_Schools/FeatureServer/0/query&#39;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">helper</span> <span class="o">=</span> <span class="n">ArcgisAPIServiceHelper</span><span class="p">(</span><span class="n">api_endpoint</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a polygon covering the specified bounding box</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cell</span> <span class="o">=</span> <span class="n">box</span><span class="p">(</span><span class="o">-</span><span class="mf">86.940</span><span class="p">,</span> <span class="mf">24.545</span><span class="p">,</span> <span class="o">-</span><span class="mf">77.513</span><span class="p">,</span> <span class="mf">27.992</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get the element count for that polygon</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">count</span> <span class="o">=</span> <span class="n">helper</span><span class="o">.</span><span class="n">get_element_counts</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+<span class="go">2109</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.split_polygon_into_cells">
+<span class="sig-name descname"><span class="pre">split_polygon_into_cells</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bpoly</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">element_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_mesh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.arcgisapi_service_helper.ArcgisAPIServiceHelper.split_polygon_into_cells" title="Link to this definition"></a></dt>
+<dd><p>Divide a polygon into smaller cells based on its element count.</p>
+<p>If the number of elements exceeds <code class="docutils literal notranslate"><span class="pre">max_elements_per_cell</span></code>, the
+polygon is split into multiple rectangular cells. The grid is generated
+under the assumption that elements are roughly uniformly distributed,
+so the method produces an approximate balance of elements per cell.
+This method does not guarantee that every cell will be under the
+maximum element threshold.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bpoly</strong> (<em>Polygon</em>) – The polygon to split into rectangular cells.</p></li>
+<li><p><strong>element_count</strong> (<em>int</em><em>, </em><em>optional</em>) – Total number of elements in the polygon. If not provided, the
+method will compute this using <code class="docutils literal notranslate"><span class="pre">get_element_counts</span></code> method.</p></li>
+<li><p><strong>plot_mesh</strong> (<em>str</em><em>, </em><em>optional</em>) – If provided, the generated mesh will be plotted using
+<code class="docutils literal notranslate"><span class="pre">GeoTools.plot_polygon_cells</span></code> and saved to this file path.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of polygons representing the rectangular grid cells
+covering the input polygon.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Polygon]</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>If the element count is below or equal to
+<code class="docutils literal notranslate"><span class="pre">max_elements_per_cell</span></code>, the polygon’s envelope is returned as
+a single cell.</p></li>
+<li><p>If the element count exceeds <code class="docutils literal notranslate"><span class="pre">max_elements_per_cell</span></code>, the
+polygon is split into smaller cells based on the bounding box
+aspect ratio.</p></li>
+</ul>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">box</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArcgisAPIServiceHelper</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">api_endpoint</span> <span class="o">=</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="s2">&quot;https://services1.arcgis.com/Hp6G80Pky0om7QvQ/&quot;</span>
+<span class="gp">... </span>    <span class="s2">&quot;arcgis/rest/services/Public_Schools/FeatureServer/0/query&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">helper</span> <span class="o">=</span> <span class="n">ArcgisAPIServiceHelper</span><span class="p">(</span><span class="n">api_endpoint</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create polygon for bounding box</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cell</span> <span class="o">=</span> <span class="n">box</span><span class="p">(</span><span class="o">-</span><span class="mf">105.638</span><span class="p">,</span> <span class="mf">24.966</span><span class="p">,</span> <span class="o">-</span><span class="mf">67.933</span><span class="p">,</span> <span class="mf">38.031</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Split polygon into smaller cells</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rectangles</span> <span class="o">=</span> <span class="n">helper</span><span class="o">.</span><span class="n">split_polygon_into_cells</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">rect</span> <span class="ow">in</span> <span class="n">rectangles</span><span class="p">[:</span><span class="mi">2</span><span class="p">]:</span>
+<span class="gp">... </span>     <span class="nb">print</span><span class="p">(</span><span class="n">rect</span><span class="o">.</span><span class="n">wkt</span><span class="p">)</span>
+<span class="go">POLYGON ((-105.638 24.966, -67.933 24.966,</span>
+<span class="go">-67.933 26.153727272727274, -105.638 26.153727272727274,</span>
+<span class="go">-105.638 24.966))</span>
+<span class="go">POLYGON ((-105.638 26.153727272727274, -67.933 26.153727272727274,</span>
+<span class="go">-67.933 27.341454545454546, -105.638 27.341454545454546,</span>
+<span class="go">-105.638 26.153727272727274))</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.utils.spatial_join_methods.get_points_near_polygons.html" class="btn btn-neutral float-left" title="brails.utils.spatial_join_methods.get_points_near_polygons module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.utils.geo_tools.html" class="btn btn-neutral float-right" title="brails.utils.geo_tools module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

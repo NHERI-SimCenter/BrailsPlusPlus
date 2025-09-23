@@ -1,0 +1,196 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.processors.garage_detector.lib.utils.sync_batchnorm.unittest module" href="brails.processors.garage_detector.lib.utils.sync_batchnorm.unittest.html" />
+    <link rel="prev" title="brails.processors.garage_detector.lib.utils.sync_batchnorm.comm module" href="brails.processors.garage_detector.lib.utils.sync_batchnorm.comm.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html#examples-gallery">Examples Gallery</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.processors.html">brails.processors package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="brails.processors.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="brails.processors.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.utils.html">brails.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.html">brails.processors package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.garage_detector.html">brails.processors.garage_detector package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.garage_detector.lib.html">brails.processors.garage_detector.lib package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.garage_detector.lib.utils.html">brails.processors.garage_detector.lib.utils package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.garage_detector.lib.utils.sync_batchnorm.html">brails.processors.garage_detector.lib.utils.sync_batchnorm package</a></li>
+      <li class="breadcrumb-item active">brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate">
+<span id="brails-processors-garage-detector-lib-utils-sync-batchnorm-replicate-module"></span><h1>brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate module<a class="headerlink" href="#module-brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.CallbackContext">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.</span></span><span class="sig-name descname"><span class="pre">CallbackContext</span></span><a class="headerlink" href="#brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.CallbackContext" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.DataParallelWithCallback">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.</span></span><span class="sig-name descname"><span class="pre">DataParallelWithCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.DataParallelWithCallback" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">DataParallel</span></code></p>
+<p>Data Parallel with a replication callback.</p>
+<p>An replication callback <cite>__data_parallel_replicate__</cite> of each module will be invoked after being created by
+original <cite>replicate</cite> function.
+The callback will be invoked with arguments <cite>__data_parallel_replicate__(ctx, copy_id)</cite></p>
+<p class="rubric">Examples</p>
+<p>&gt; sync_bn = SynchronizedBatchNorm1d(10, eps=1e-5, affine=False)
+&gt; sync_bn = DataParallelWithCallback(sync_bn, device_ids=[0, 1])
+# sync_bn.__data_parallel_replicate__ will be invoked.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.DataParallelWithCallback.replicate">
+<span class="sig-name descname"><span class="pre">replicate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device_ids</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.DataParallelWithCallback.replicate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.execute_replication_callbacks">
+<span class="sig-prename descclassname"><span class="pre">brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.</span></span><span class="sig-name descname"><span class="pre">execute_replication_callbacks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">modules</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.execute_replication_callbacks" title="Link to this definition"></a></dt>
+<dd><p>Execute an replication callback <cite>__data_parallel_replicate__</cite> on each module created by original replication.</p>
+<p>The callback will be invoked with arguments <cite>__data_parallel_replicate__(ctx, copy_id)</cite></p>
+<p>Note that, as all modules are isomorphism, we assign each sub-module with a context
+(shared among multiple copies of this module on different devices).
+Through this context, different copies can share some information.</p>
+<p>We guarantee that the callback on the master copy (the first copy) will be called ahead of calling the callback
+of any slave copies.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.patch_replication_callback">
+<span class="sig-prename descclassname"><span class="pre">brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.</span></span><span class="sig-name descname"><span class="pre">patch_replication_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_parallel</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.garage_detector.lib.utils.sync_batchnorm.replicate.patch_replication_callback" title="Link to this definition"></a></dt>
+<dd><p>Monkey-patch an existing <cite>DataParallel</cite> object. Add the replication callback.
+Useful when you have customized <cite>DataParallel</cite> implementation.</p>
+<p class="rubric">Examples</p>
+<p>&gt; sync_bn = SynchronizedBatchNorm1d(10, eps=1e-5, affine=False)
+&gt; sync_bn = DataParallel(sync_bn, device_ids=[0, 1])
+&gt; patch_replication_callback(sync_bn)
+# this is equivalent to
+&gt; sync_bn = SynchronizedBatchNorm1d(10, eps=1e-5, affine=False)
+&gt; sync_bn = DataParallelWithCallback(sync_bn, device_ids=[0, 1])</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.processors.garage_detector.lib.utils.sync_batchnorm.comm.html" class="btn btn-neutral float-left" title="brails.processors.garage_detector.lib.utils.sync_batchnorm.comm module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.processors.garage_detector.lib.utils.sync_batchnorm.unittest.html" class="btn btn-neutral float-right" title="brails.processors.garage_detector.lib.utils.sync_batchnorm.unittest module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

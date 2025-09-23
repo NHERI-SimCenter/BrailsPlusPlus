@@ -1,0 +1,316 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.processors.vlm_segmenter.segment_anything.modeling.mask_decoder module" href="brails.processors.vlm_segmenter.segment_anything.modeling.mask_decoder.html" />
+    <link rel="prev" title="brails.processors.vlm_segmenter.segment_anything.modeling.common module" href="brails.processors.vlm_segmenter.segment_anything.modeling.common.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html#examples-gallery">Examples Gallery</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.processors.html">brails.processors package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="brails.processors.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="brails.processors.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.utils.html">brails.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.html">brails.processors package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.vlm_segmenter.html">brails.processors.vlm_segmenter package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.vlm_segmenter.segment_anything.html">brails.processors.vlm_segmenter.segment_anything package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.vlm_segmenter.segment_anything.modeling.html">brails.processors.vlm_segmenter.segment_anything.modeling package</a></li>
+      <li class="breadcrumb-item active">brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder">
+<span id="brails-processors-vlm-segmenter-segment-anything-modeling-image-encoder-module"></span><h1>brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder module<a class="headerlink" href="#module-brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.Attention">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.</span></span><span class="sig-name descname"><span class="pre">Attention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_heads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qkv_bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_rel_pos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_pos_zero_init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.Attention" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Multi-head Attention block with relative position embeddings.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.Attention.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.Attention.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.Block">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.</span></span><span class="sig-name descname"><span class="pre">Block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_heads</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp_ratio=4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qkv_bias=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm_layer=&lt;class</span> <span class="pre">'torch.nn.modules.normalization.LayerNorm'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">act_layer=&lt;class</span> <span class="pre">'torch.nn.modules.activation.GELU'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_rel_pos=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_pos_zero_init=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size=0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_size=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.Block" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Transformer blocks with support of window attention and residual propagation blocks</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.Block.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.Block.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.ImageEncoderViT">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.</span></span><span class="sig-name descname"><span class="pre">ImageEncoderViT</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_size=1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch_size=16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_chans=3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">embed_dim=768</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth=12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_heads=12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp_ratio=4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_chans=256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qkv_bias=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm_layer=&lt;class</span> <span class="pre">'torch.nn.modules.normalization.LayerNorm'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">act_layer=&lt;class</span> <span class="pre">'torch.nn.modules.activation.GELU'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_abs_pos=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_rel_pos=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_pos_zero_init=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size=0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_attn_indexes=()</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.ImageEncoderViT" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.ImageEncoderViT.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.ImageEncoderViT.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.PatchEmbed">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.</span></span><span class="sig-name descname"><span class="pre">PatchEmbed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(16,</span> <span class="pre">16)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(16,</span> <span class="pre">16)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_chans</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">embed_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">768</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.PatchEmbed" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Image to Patch Embedding.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.PatchEmbed.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.PatchEmbed.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.add_decomposed_rel_pos">
+<span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.</span></span><span class="sig-name descname"><span class="pre">add_decomposed_rel_pos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_pos_h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_pos_w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.add_decomposed_rel_pos" title="Link to this definition"></a></dt>
+<dd><p>Calculate decomposed Relative Positional Embeddings from <a href="#id1"><span class="problematic" id="id2">:paper:`mvitv2`</span></a>.
+<a class="reference external" href="https://github.com/facebookresearch/mvit/blob/19786631e330df9f3622e5402b4a419a263a2c80/mvit/models/attention.py">https://github.com/facebookresearch/mvit/blob/19786631e330df9f3622e5402b4a419a263a2c80/mvit/models/attention.py</a>   # noqa B950
+:param attn: attention map.
+:type attn: Tensor
+:param q: query q in the attention layer with shape (B, q_h * q_w, C).
+:type q: Tensor
+:param rel_pos_h: relative position embeddings (Lh, C) for height axis.
+:type rel_pos_h: Tensor
+:param rel_pos_w: relative position embeddings (Lw, C) for width axis.
+:type rel_pos_w: Tensor
+:param q_size: spatial sequence size of query q with (q_h, q_w).
+:type q_size: Tuple
+:param k_size: spatial sequence size of key k with (k_h, k_w).
+:type k_size: Tuple</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>attention map with added relative positional embeddings.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>attn (Tensor)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.get_rel_pos">
+<span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.</span></span><span class="sig-name descname"><span class="pre">get_rel_pos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_pos</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.get_rel_pos" title="Link to this definition"></a></dt>
+<dd><dl class="simple">
+<dt>Get relative positional embeddings according to the relative positions of</dt><dd><p>query and key sizes.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q_size</strong> (<em>int</em>) – size of query q.</p></li>
+<li><p><strong>k_size</strong> (<em>int</em>) – size of key k.</p></li>
+<li><p><strong>rel_pos</strong> (<em>Tensor</em>) – relative position embeddings (L, C).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Extracted positional embeddings according to relative positions.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.window_partition">
+<span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.</span></span><span class="sig-name descname"><span class="pre">window_partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.window_partition" title="Link to this definition"></a></dt>
+<dd><p>Partition into non-overlapping windows with padding if needed.
+:param x: input tokens with [B, H, W, C].
+:type x: tensor
+:param window_size: window size.
+:type window_size: int</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>windows after partition with [B * num_windows, window_size, window_size, C].
+(Hp, Wp): padded height and width before partition</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>windows</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.window_unpartition">
+<span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.</span></span><span class="sig-name descname"><span class="pre">window_unpartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">windows</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pad_hw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hw</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_segmenter.segment_anything.modeling.image_encoder.window_unpartition" title="Link to this definition"></a></dt>
+<dd><p>Window unpartition into original sequences and removing padding.
+:param windows: input tokens with [B * num_windows, window_size, window_size, C].
+:type windows: tensor
+:param window_size: window size.
+:type window_size: int
+:param pad_hw: padded height and width (Hp, Wp).
+:type pad_hw: Tuple
+:param hw: original height and width (H, W) before padding.
+:type hw: Tuple</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>unpartitioned sequences with [B, H, W, C].</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>x</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.processors.vlm_segmenter.segment_anything.modeling.common.html" class="btn btn-neutral float-left" title="brails.processors.vlm_segmenter.segment_anything.modeling.common module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.processors.vlm_segmenter.segment_anything.modeling.mask_decoder.html" class="btn btn-neutral float-right" title="brails.processors.vlm_segmenter.segment_anything.modeling.mask_decoder module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
