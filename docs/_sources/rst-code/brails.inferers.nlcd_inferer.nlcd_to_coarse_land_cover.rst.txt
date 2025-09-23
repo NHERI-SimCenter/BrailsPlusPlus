@@ -1,0 +1,7 @@
+brails.inferers.nlcd\_inferer.nlcd\_to\_coarse\_land\_cover module
+==================================================================
+
+.. automodule:: brails.inferers.nlcd_inferer.nlcd_to_coarse_land_cover
+   :members:
+   :undoc-members:
+   :show-inheritance:

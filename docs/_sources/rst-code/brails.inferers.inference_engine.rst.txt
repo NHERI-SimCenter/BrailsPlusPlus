@@ -1,0 +1,7 @@
+brails.inferers.inference\_engine module
+========================================
+
+.. automodule:: brails.inferers.inference_engine
+   :members:
+   :undoc-members:
+   :show-inheritance:

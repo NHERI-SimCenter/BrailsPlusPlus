@@ -1,0 +1,7 @@
+brails.constants module
+=======================
+
+.. automodule:: brails.constants
+   :members:
+   :undoc-members:
+   :show-inheritance:

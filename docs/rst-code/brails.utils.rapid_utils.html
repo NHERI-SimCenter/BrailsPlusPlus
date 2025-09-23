@@ -1,0 +1,267 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.utils.rapid_utils module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.utils.segmentation_utils module" href="brails.utils.segmentation_utils.html" />
+    <link rel="prev" title="brails.utils.plot_tools module" href="brails.utils.plot_tools.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html#examples-gallery">Examples Gallery</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.processors.html">brails.processors package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.utils.html">brails.utils package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="brails.utils.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="brails.utils.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.utils.html">brails.utils package</a></li>
+      <li class="breadcrumb-item active">brails.utils.rapid_utils module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.utils.rapid_utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.utils.rapid_utils">
+<span id="brails-utils-rapid-utils-module"></span><h1>brails.utils.rapid_utils module<a class="headerlink" href="#module-brails.utils.rapid_utils" title="Link to this heading"></a></h1>
+<p>This is a utility class for datasets created by the RAPID facility at UW.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#brails.utils.rapid_utils.RAPIDUtils" title="brails.utils.rapid_utils.RAPIDUtils"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RAPIDUtils</span></code></a>(dataset_path)</p></td>
+<td><p>Utility class for datasets created by the RAPID facility at UW.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.utils.rapid_utils.RAPIDUtils">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.utils.rapid_utils.</span></span><span class="sig-name descname"><span class="pre">RAPIDUtils</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.rapid_utils.RAPIDUtils" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Utility class for datasets created by the RAPID facility at UW.</p>
+<p>This class provides methods to extract asset-specific imagery from
+datasets collected by the RAPID facility at UW.</p>
+<p>Please use the following statement to import the <a class="reference internal" href="#brails.utils.rapid_utils.RAPIDUtils" title="brails.utils.rapid_utils.RAPIDUtils"><code class="xref py py-class docutils literal notranslate"><span class="pre">RAPIDUtils</span></code></a> class.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">RAPIDUtils</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.rapid_utils.RAPIDUtils.extract_aerial_imagery">
+<span class="sig-name descname"><span class="pre">extract_aerial_imagery</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">asset_inventory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_missing_data_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlay_asset_outline</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.rapid_utils.RAPIDUtils.extract_aerial_imagery" title="Link to this definition"></a></dt>
+<dd><p>Extract aerial imagery patches for each asset from a raster dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>asset_inventory</strong> (<a class="reference internal" href="brails.types.asset_inventory.html#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><em>AssetInventory</em></a>) – Inventory object containing asset geometries and metadata.</p></li>
+<li><p><strong>save_directory</strong> (<em>str</em>) – Directory where extracted images will be saved.</p></li>
+<li><p><strong>max_missing_data_ratio</strong> (<em>float</em><em>, </em><em>optional</em>) – Maximum allowed proportion of missing data (0-1). Default is
+<code class="docutils literal notranslate"><span class="pre">0.2</span></code>.</p></li>
+<li><p><strong>overlay_asset_outline</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, overlay the asset polygon on the saved image.
+Default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Object containing metadata and paths of saved images.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="brails.types.image_set.html#brails.types.image_set.ImageSet" title="brails.types.image_set.ImageSet">ImageSet</a></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>The following example assumes that a valid orthomosaic raster file
+exists at <code class="docutils literal notranslate"><span class="pre">raster_test_data.tif</span></code>. Actual outputs may vary
+depending on the specific contents of the raster file.</p>
+<p>Step 1: Import required packages and load the raster dataset.
+Note that <a class="reference internal" href="#brails.utils.rapid_utils.RAPIDUtils" title="brails.utils.rapid_utils.RAPIDUtils"><code class="xref py py-class docutils literal notranslate"><span class="pre">RAPIDUtils</span></code></a> automatically identifies the methods
+applicable for the loaded dataset:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">RAPIDUtils</span><span class="p">,</span> <span class="n">Importer</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rapid_utils</span> <span class="o">=</span> <span class="n">RAPIDUtils</span><span class="p">(</span><span class="s1">&#39;raster_test_data.tif&#39;</span><span class="p">)</span>
+<span class="go">Detected orthomosaic data.</span>
+<span class="go">Applicable methods for this data type are:</span>
+<span class="go">&#39;extract_aerial_imagery&#39;, &#39;get_mosaic_bbox_wgs84&#39;.</span>
+</pre></div>
+</div>
+<p>Step 2: Retrieve building footprints covering the extent of the
+dataset:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">importer</span> <span class="o">=</span> <span class="n">Importer</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">region_data</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;locationPolygon&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">rapid_utils</span><span class="o">.</span><span class="n">dataset_extent</span>
+<span class="gp">... </span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">region_boundary_object</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;RegionBoundary&#39;</span>
+<span class="gp">... </span><span class="p">)(</span><span class="n">region_data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">osm_footprint_scraper</span> <span class="o">=</span> <span class="n">importer</span><span class="o">.</span><span class="n">get_class</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;OSM_FootprintScraper&#39;</span>
+<span class="gp">... </span><span class="p">)({</span><span class="s1">&#39;length&#39;</span><span class="p">:</span> <span class="s1">&#39;ft&#39;</span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">scraper_inventory</span> <span class="o">=</span> <span class="n">osm_footprint_scraper</span><span class="o">.</span><span class="n">get_footprints</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">region_boundary_object</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">Found a total of 503 building footprints in the bounding box:</span>
+<span class="go">(-122.1421632630, 47.69423131358, -122.12908634292, 47.70804716657)</span>
+</pre></div>
+</div>
+<p>Step 3: Extract building-level imagery from the orthomosaic
+dataset. Optionally overlay the building footprints to aid computer
+vision applications:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">image_set</span> <span class="o">=</span> <span class="n">rapid_utils</span><span class="o">.</span><span class="n">extract_aerial_imagery</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">scraper_inventory</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s1">&#39;images_raster_test/overlaid_imagery&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">overlay_asset_outline</span><span class="o">=</span><span class="kc">True</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">Images will be saved to: /home/bacetiner/Documents/SoftwareTesting/</span>
+<span class="go">images_raster_test/overlaid_imagery</span>
+<span class="go">Extracting aerial imagery...: 100%|██████████| 503/503</span>
+<span class="go">[01:04&lt;00:00,  7.79it/s]</span>
+<span class="go">Extracted aerial imagery for a total of 397 assets.</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.rapid_utils.RAPIDUtils.get_mosaic_bbox_wgs84">
+<span class="sig-name descname"><span class="pre">get_mosaic_bbox_wgs84</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.rapid_utils.RAPIDUtils.get_mosaic_bbox_wgs84" title="Link to this definition"></a></dt>
+<dd><p>Get the bounding box of the raster dataset in WGS84 coordinates.</p>
+<p>This method opens the raster dataset, reads its bounding box, and
+transforms it from the dataset’s native CRS to EPSG:4326 (WGS84
+latitude-longitude).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The bounding box coordinates in WGS84, returned as
+<code class="docutils literal notranslate"><span class="pre">(min_longitude,</span> <span class="pre">min_latitude,</span> <span class="pre">max_longitude,</span> <span class="pre">max_latitude)</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple[float, float, float, float]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>The following example assumes that a valid orthomosaic raster file
+exists at <code class="docutils literal notranslate"><span class="pre">raster_test_data.tif</span></code>. Actual outputs may vary
+depending on the specific contents of the raster file.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">RAPIDUtils</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rapid_utils</span> <span class="o">=</span> <span class="n">RAPIDUtils</span><span class="p">(</span><span class="s1">&#39;raster_test_data.tif&#39;</span><span class="p">)</span>
+<span class="go">Detected orthomosaic data.</span>
+<span class="go">Applicable methods for this data type are:</span>
+<span class="go">&#39;extract_aerial_imagery&#39;, &#39;get_mosaic_bbox_wgs84&#39;.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bbox_wgs84</span> <span class="o">=</span> <span class="n">rapid_utils</span><span class="o">.</span><span class="n">get_mosaic_bbox_wgs84</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bbox_wgs84</span><span class="p">)</span>
+<span class="go">(-122.1421632630, 47.69423131358, -122.12908634292, 47.70804716657)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.utils.plot_tools.html" class="btn btn-neutral float-left" title="brails.utils.plot_tools module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.utils.segmentation_utils.html" class="btn btn-neutral float-right" title="brails.utils.segmentation_utils module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

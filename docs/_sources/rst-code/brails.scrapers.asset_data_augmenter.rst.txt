@@ -1,0 +1,7 @@
+brails.scrapers.asset\_data\_augmenter module
+=============================================
+
+.. automodule:: brails.scrapers.asset_data_augmenter
+   :members:
+   :undoc-members:
+   :show-inheritance:

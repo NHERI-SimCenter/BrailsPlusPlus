@@ -1,0 +1,15 @@
+brails.inferers.nlcd\_inferer package
+=====================================
+
+.. automodule:: brails.inferers.nlcd_inferer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   brails.inferers.nlcd_inferer.nlcd_to_coarse_land_cover
