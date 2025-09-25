@@ -4,6 +4,6 @@
 Copyright and License
 *********************
 
-BRAILS++ is copyright "The Regents of the University of California" and is licensed under the following BSD license:
+BRAILS++ is copyrighted by “The Regents of the University of California” and is made available under the BSD license:
 
-.. literalinclude:: LICENSE
+.. literalinclude:: ../LICENSE.txt
