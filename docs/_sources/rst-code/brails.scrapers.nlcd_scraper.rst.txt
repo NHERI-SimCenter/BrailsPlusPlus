@@ -1,0 +1,15 @@
+brails.scrapers.nlcd\_scraper package
+=====================================
+
+.. automodule:: brails.scrapers.nlcd_scraper
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   brails.scrapers.nlcd_scraper.nlcd_scraper

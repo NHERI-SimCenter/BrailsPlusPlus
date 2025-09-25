@@ -16,7 +16,7 @@
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../../_static/copybutton.js?v=f281be69"></script>
@@ -24,9 +24,7 @@
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Building Footprints" href="../footprint/footprint.html" />
-    <link rel="prev" title="Examples" href="../examples.html" /> 
+    <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -49,19 +47,10 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Importer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../footprint/footprint.html">Building Footprints</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../nsi_integration/nsi_integration.html">NSI Integration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_filters/image_filters.html">Image Filters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../examples.html#examples-gallery">Examples Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
@@ -82,7 +71,6 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
-          <li class="breadcrumb-item"><a href="../examples.html">Examples</a></li>
       <li class="breadcrumb-item active">Importer</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/examples/importer/importer.rst.txt" rel="nofollow"> View page source</a>
@@ -96,7 +84,7 @@
   <section id="importer">
 <span id="importer-example"></span><h1>Importer<a class="headerlink" href="#importer" title="Link to this heading"></a></h1>
 <p>BRAILS++ is a modular Python framework for creating workflows that create data for SimCenter applications. To <strong>avoid hard-coding every possible case</strong>, BRAILS++ includes a utility class that can return a class object based on its name — the Importer class.</p>
-<p>The <strong>:class:`~brails.types.importer.Importer`</strong> class has a single method, <strong>get_class()</strong>, which takes a class name as input and returns the corresponding Python class, allowing you to instantiate objects dynamically.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class has a single method, <code class="docutils literal notranslate"><span class="pre">get_class()</span></code>, which takes a class name as input and returns the corresponding Python class, allowing you to instantiate objects dynamically.</p>
 <p>The following example demonstrates a typical Python usage scenario:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1"># Written: fmk 4/23</span>
 <span class="linenos"> 2</span><span class="c1"># License: BSD-2</span>
@@ -144,7 +132,7 @@
 <span class="linenos">44</span>    <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>The following example shows it re-written using the <strong>:class:`~brails.types.importer.Importer`</strong> class.</p>
+<p>The following example shows it re-written using the <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1"># Written: fmk 09/24</span>
 <span class="linenos"> 2</span><span class="c1"># License: BSD-2</span>
 <span class="linenos"> 3</span>
@@ -227,7 +215,7 @@
 <p class="admonition-title">Note</p>
 <ol class="arabic simple">
 <li><ol class="arabic simple">
-<li><p>The purpose of the <strong>:class:`~brails.types.importer.Importer`</strong> class is to enable the development of applications for building workflows.  For example, imagine creating an application that parses the following JSON input file. By using the <strong>:class:`~brails.types.importer.Importer`</strong> class, the application can be written without lengthy <code class="docutils literal notranslate"><span class="pre">if-else</span></code> statements that switch on the type.  This is possible in BRAILS++ because all the classes that perform work inherit from <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code> (<em>Abstract Base Class</em>), which is part of Python’s <code class="xref py py-mod docutils literal notranslate"><span class="pre">abc</span></code> module.</p></li>
+<li><p>The purpose of the <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class is to enable the development of applications for building workflows.  For example, imagine creating an application that parses the following JSON input file. By using the <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class, the application can be written without lengthy <code class="docutils literal notranslate"><span class="pre">if-else</span></code> statements that switch on the type.  This is possible in BRAILS++ because all the classes that perform work inherit from <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code> (<em>Abstract Base Class</em>), which is part of Python’s <code class="xref py py-mod docutils literal notranslate"><span class="pre">abc</span></code> module.</p></li>
 </ol>
 </li>
 </ol>
@@ -289,8 +277,8 @@
 </div>
 <ol class="arabic simple">
 <li><p>An additional benefit of this approach is that when developers add new subclasses, they do not need to search the codebase to locate and update all the if-else statements required for their classes to function. The process is fully automated.</p></li>
-<li><p>When constructing a <strong>:class:`~brails.types.importer.Importer`</strong> object, the code automatically scans all directories within the BRAILS++ codebase to identify every available class. This means that developers can integrate their new code without making any modifications to the existing <strong>:class:`~brails.types.importer.Importer`</strong> class.</p></li>
-<li><p>Most of the provided examples will make use of the <strong>:class:`~brails.types.importer.Importer`</strong> class, both to illustrate its functionality and to serve as a means of testing its behavior.</p></li>
+<li><p>When constructing a <code class="docutils literal notranslate"><span class="pre">Importer</span></code> object, the code automatically scans all directories within the BRAILS++ codebase to identify every available class. This means that developers can integrate their new code without making any modifications to the existing <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class.</p></li>
+<li><p>Most of the provided examples will make use of the <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class, both to illustrate its functionality and to serve as a means of testing its behavior.</p></li>
 </ol>
 </div>
 </section>
@@ -298,10 +286,7 @@
 
            </div>
           </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../examples.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../footprint/footprint.html" class="btn btn-neutral float-right" title="Building Footprints" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+          <footer>
 
   <hr/>
 

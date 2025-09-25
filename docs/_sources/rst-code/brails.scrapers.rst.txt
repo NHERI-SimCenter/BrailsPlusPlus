@@ -18,6 +18,7 @@ Subpackages
    brails.scrapers.google_streetview
    brails.scrapers.ms_footprint_scraper
    brails.scrapers.nbi_scraper
+   brails.scrapers.nlcd_scraper
    brails.scrapers.nsi_parser
    brails.scrapers.nti_scraper
    brails.scrapers.osm_footprint_scraper
