@@ -12,11 +12,14 @@ Subpackages
 .. toctree::
    :maxdepth: 1
 
-   brails.processors.FoundationClassifier
    brails.processors.building_material_llm
+   brails.processors.chimney_detector
    brails.processors.cons_type_classifier
    brails.processors.facade_parser
+   brails.processors.ffh_predictor_klepac
+   brails.processors.foundation_classifier
    brails.processors.garage_detector
+   brails.processors.gpt_base_model
    brails.processors.image_classifier
    brails.processors.image_segmenter
    brails.processors.nFloor_gpt
@@ -27,6 +30,7 @@ Subpackages
    brails.processors.roof_shape_classifier
    brails.processors.roof_shape_gpt
    brails.processors.roof_shape_vlm
+   brails.processors.street_level_damage_detection
    brails.processors.vlm_image_classifier
    brails.processors.vlm_segmenter
    brails.processors.year_built_classifier

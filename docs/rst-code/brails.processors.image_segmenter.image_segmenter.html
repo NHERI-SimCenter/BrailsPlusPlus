@@ -1,0 +1,388 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.processors.image_segmenter.image_segmenter module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.processors.nFloor_gpt package" href="brails.processors.nFloor_gpt.html" />
+    <link rel="prev" title="brails.processors.image_segmenter package" href="brails.processors.image_segmenter.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html#examples-gallery">Examples Gallery</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.processors.html">brails.processors package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="brails.processors.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="brails.processors.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.utils.html">brails.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.html">brails.processors package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.image_segmenter.html">brails.processors.image_segmenter package</a></li>
+      <li class="breadcrumb-item active">brails.processors.image_segmenter.image_segmenter module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.processors.image_segmenter.image_segmenter.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.processors.image_segmenter.image_segmenter">
+<span id="brails-processors-image-segmenter-image-segmenter-module"></span><h1>brails.processors.image_segmenter.image_segmenter module<a class="headerlink" href="#module-brails.processors.image_segmenter.image_segmenter" title="Link to this heading"></a></h1>
+<p>Class objects to train and use image segmentation models.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.DatasetBinary">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.image_segmenter.image_segmenter.</span></span><span class="sig-name descname"><span class="pre">DatasetBinary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">imageFolder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maskFolder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transforms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.DatasetBinary" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">VisionDataset</span></code></p>
+<p>A PyTorch dataset class for loading binary masks paired with images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root</strong> (<em>str</em>) – The root directory containing the dataset.</p></li>
+<li><p><strong>imageFolder</strong> (<em>str</em>) – The name of the folder containing the images.</p></li>
+<li><p><strong>maskFolder</strong> (<em>str</em>) – The name of the folder containing the binary masks.</p></li>
+<li><p><strong>transforms</strong> (<em>transforms.Compose</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – A composition of transforms to apply to both the images and masks.
+If None, no transform will be applied. Default is None.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.DatasetBinary.image_names">
+<span class="sig-name descname"><span class="pre">image_names</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.DatasetBinary.image_names" title="Link to this definition"></a></dt>
+<dd><p>A sorted list of file paths to the images in the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[Path]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.DatasetBinary.mask_names">
+<span class="sig-name descname"><span class="pre">mask_names</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.DatasetBinary.mask_names" title="Link to this definition"></a></dt>
+<dd><p>A sorted list of file paths to the binary masks in the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[Path]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.DatasetBinary.__len__">
+<span class="sig-name descname"><span class="pre">__len__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.DatasetBinary.__len__" title="Link to this definition"></a></dt>
+<dd><p>Returns the number of samples in the dataset.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__getitem__(index</span></span></dt>
+<dd><p>int):
+Retrieves a sample (image and corresponding binary mask) at the
+specified index.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.DatasetRGB">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.image_segmenter.image_segmenter.</span></span><span class="sig-name descname"><span class="pre">DatasetRGB</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">imageFolder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maskFolder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transforms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.DatasetRGB" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">VisionDataset</span></code></p>
+<p>A PyTorch dataset class for loading binary masks paired with images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root</strong> (<em>str</em>) – The root directory containing the dataset.</p></li>
+<li><p><strong>imageFolder</strong> (<em>str</em>) – The name of the folder containing the images.</p></li>
+<li><p><strong>maskFolder</strong> (<em>str</em>) – The name of the folder containing the binary masks.</p></li>
+<li><p><strong>transforms</strong> (<em>transforms.Compose</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – A function or transform to apply to both the images and masks.
+If None, no transformation will be applied. Default is None.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.DatasetRGB.image_names">
+<span class="sig-name descname"><span class="pre">image_names</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.DatasetRGB.image_names" title="Link to this definition"></a></dt>
+<dd><p>A sorted list of file paths to the images in the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[Path]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.DatasetRGB.mask_names">
+<span class="sig-name descname"><span class="pre">mask_names</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.DatasetRGB.mask_names" title="Link to this definition"></a></dt>
+<dd><p>A sorted list of file paths to the binary masks in the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[Path]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.ImageSegmenter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.image_segmenter.image_segmenter.</span></span><span class="sig-name descname"><span class="pre">ImageSegmenter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_arch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'deeplabv3_resnet101'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.ImageSegmenter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class to manage and train an image segmentation model.</p>
+<p>This class provides methods to download train models using transfer
+learning, retrain existing models, and make predictions using these models.
+The class supports using different model architectures and performs
+operations on GPU if available.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.ImageSegmenter.model_arch">
+<span class="sig-name descname"><span class="pre">model_arch</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.ImageSegmenter.model_arch" title="Link to this definition"></a></dt>
+<dd><p>The model architecture (e.g., “deeplabv3_resnet101”).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.ImageSegmenter.device">
+<span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.ImageSegmenter.device" title="Link to this definition"></a></dt>
+<dd><p>The device for computation, either “cuda:0” for GPU or “cpu”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.device</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.ImageSegmenter.batch_size">
+<span class="sig-name descname"><span class="pre">batch_size</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.ImageSegmenter.batch_size" title="Link to this definition"></a></dt>
+<dd><p>The batch size for training, initialized to None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.ImageSegmenter.nepochs">
+<span class="sig-name descname"><span class="pre">nepochs</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.ImageSegmenter.nepochs" title="Link to this definition"></a></dt>
+<dd><p>The number of epochs for training, initialized to None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.ImageSegmenter.train_data_dir">
+<span class="sig-name descname"><span class="pre">train_data_dir</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.ImageSegmenter.train_data_dir" title="Link to this definition"></a></dt>
+<dd><p>The directory containing training data, initialized to None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.ImageSegmenter.classes">
+<span class="sig-name descname"><span class="pre">classes</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.ImageSegmenter.classes" title="Link to this definition"></a></dt>
+<dd><p>List of class names for classification, initialized to None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[str], optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.ImageSegmenter.loss_history">
+<span class="sig-name descname"><span class="pre">loss_history</span></span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.ImageSegmenter.loss_history" title="Link to this definition"></a></dt>
+<dd><p>History of loss values during training, initialized to None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[float], optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.ImageSegmenter.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imdir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tmp/models/trained_seg_model.pth'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.ImageSegmenter.predict" title="Link to this definition"></a></dt>
+<dd><p>Segment images in the specified directory using a pre-trained model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>imdir</strong> (<em>str</em>) – The directory containing the images to be predicted.</p></li>
+<li><p><strong>classes</strong> (<em>list</em><em>[</em><em>str</em><em>]</em>) – List of class names corresponding to the model’s output
+classes.</p></li>
+<li><p><strong>model_path</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to the trained model file. Defaults to
+‘tmp/models/trained_seg_model.pth’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary where keys are image filenames and values are
+predicted class labels.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, str]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If the specified model file does not exist.</p></li>
+<li><p><strong>NotADirectoryError</strong> – If the specified image directory is not a
+    directory.</p></li>
+<li><p><strong>ValueError</strong> – If the image directory is empty or no valid images are
+    found.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.image_segmenter.image_segmenter.ImageSegmenter.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_data_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nepochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">es_tolerance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_loss</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.image_segmenter.image_segmenter.ImageSegmenter.train" title="Link to this definition"></a></dt>
+<dd><p>Train a segmentation model using the specified training input.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_data_dir</strong> (<em>str</em>) – Directory containing the training data. It should have
+subdirectories for each class.</p></li>
+<li><p><strong>classes</strong> (<em>list</em><em>[</em><em>str</em><em>]</em>) – List of class names. The classes should correspond to the
+subdirectories in <cite>train_data_dir</cite>.</p></li>
+<li><p><strong>batch_size</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of samples per batch. Defaults to 2.</p></li>
+<li><p><strong>nepochs</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of epochs for training. Defaults to 100.</p></li>
+<li><p><strong>es_tolerance</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of epochs to wait for improvement before early stopping.
+Defaults to 10.</p></li>
+<li><p><strong>plot_loss</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to plot the training loss curve. Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If the <cite>train_data_dir</cite> is not found.</p></li>
+<li><p><strong>ValueError</strong> – If <cite>classes</cite> is empty or if the number of epochs is invalid.</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.processors.image_segmenter.html" class="btn btn-neutral float-left" title="brails.processors.image_segmenter package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.processors.nFloor_gpt.html" class="btn btn-neutral float-right" title="brails.processors.nFloor_gpt package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

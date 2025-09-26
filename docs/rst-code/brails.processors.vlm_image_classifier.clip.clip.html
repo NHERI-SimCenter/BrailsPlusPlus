@@ -1,0 +1,194 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.processors.vlm_image_classifier.clip.clip module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.processors.vlm_image_classifier.clip.model module" href="brails.processors.vlm_image_classifier.clip.model.html" />
+    <link rel="prev" title="brails.processors.vlm_image_classifier.clip package" href="brails.processors.vlm_image_classifier.clip.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html#examples-gallery">Examples Gallery</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.processors.html">brails.processors package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="brails.processors.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="brails.processors.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.utils.html">brails.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.html">brails.processors package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.vlm_image_classifier.html">brails.processors.vlm_image_classifier package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.vlm_image_classifier.clip.html">brails.processors.vlm_image_classifier.clip package</a></li>
+      <li class="breadcrumb-item active">brails.processors.vlm_image_classifier.clip.clip module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.processors.vlm_image_classifier.clip.clip.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.processors.vlm_image_classifier.clip.clip">
+<span id="brails-processors-vlm-image-classifier-clip-clip-module"></span><h1>brails.processors.vlm_image_classifier.clip.clip module<a class="headerlink" href="#module-brails.processors.vlm_image_classifier.clip.clip" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="brails.processors.vlm_image_classifier.clip.clip.available_models">
+<span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_image_classifier.clip.clip.</span></span><span class="sig-name descname"><span class="pre">available_models</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_image_classifier.clip.clip.available_models" title="Link to this definition"></a></dt>
+<dd><p>Returns the names of available CLIP models</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="brails.processors.vlm_image_classifier.clip.clip.load">
+<span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_image_classifier.clip.clip.</span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">download_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_image_classifier.clip.clip.load" title="Link to this definition"></a></dt>
+<dd><p>Load a CLIP model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – A model name listed by <cite>clip.available_models()</cite>, or the path to a model checkpoint containing the state_dict</p></li>
+<li><p><strong>device</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>torch.device</em><em>]</em>) – The device to put the loaded model</p></li>
+<li><p><strong>jit</strong> (<em>bool</em>) – Whether to load the optimized JIT model or more hackable non-JIT model (default).</p></li>
+<li><p><strong>download_root</strong> (<em>str</em>) – path to download the model files; by default, it uses “~/.cache/clip”</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>model</strong> (<em>torch.nn.Module</em>) – The CLIP model</p></li>
+<li><p><strong>preprocess</strong> (<em>Callable[[PIL.Image], torch.Tensor]</em>) – A torchvision transform that converts a PIL image into a tensor that the returned model can take as its input</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="brails.processors.vlm_image_classifier.clip.clip.tokenize">
+<span class="sig-prename descclassname"><span class="pre">brails.processors.vlm_image_classifier.clip.clip.</span></span><span class="sig-name descname"><span class="pre">tokenize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">texts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">77</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">truncate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.vlm_image_classifier.clip.clip.tokenize" title="Link to this definition"></a></dt>
+<dd><p>Returns the tokenized representation of given input string(s)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>texts</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em>) – An input string or a list of input strings to tokenize</p></li>
+<li><p><strong>context_length</strong> (<em>int</em>) – The context length to use; all CLIP models use 77 as the context length</p></li>
+<li><p><strong>truncate</strong> (<em>bool</em>) – Whether to truncate the text in case its encoding is longer than the context length</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>A two-dimensional tensor containing the resulting tokens, shape = [number of input strings, context_length].</em></p></li>
+<li><p><em>We return LongTensor when torch version is &lt;1.8.0, since older index_select requires indices to be long.</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.processors.vlm_image_classifier.clip.html" class="btn btn-neutral float-left" title="brails.processors.vlm_image_classifier.clip package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.processors.vlm_image_classifier.clip.model.html" class="btn btn-neutral float-right" title="brails.processors.vlm_image_classifier.clip.model module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

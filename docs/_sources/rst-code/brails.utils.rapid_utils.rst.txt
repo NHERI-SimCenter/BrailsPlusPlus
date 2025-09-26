@@ -1,0 +1,7 @@
+brails.utils.rapid\_utils module
+================================
+
+.. automodule:: brails.utils.rapid_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:

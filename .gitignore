@@ -54,7 +54,7 @@ docs/source/notebooks/.ipynb_checkpoints/
 build
 /brails.egg-info/
 dist
-rst-code
+/rst-code
 
 # Coverage reports
 /.coverage

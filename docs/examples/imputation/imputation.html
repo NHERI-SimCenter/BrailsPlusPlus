@@ -10,6 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
       <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-gallery.css?v=26227f6e" />
 
   
@@ -20,12 +21,13 @@
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../../_static/copybutton.js?v=f281be69"></script>
+      <script src="../../_static/design-tabs.js?v=f930bc37"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Acknowledgements" href="../../rst-doc/acknowledgements.html" />
-    <link rel="prev" title="Image Processors" href="../image_processor/image_processors.html" /> 
+    <link rel="next" title="brails package" href="../../rst-code/brails.html" />
+    <link rel="prev" title="Image Filters" href="../image_filters/image_filters.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -57,7 +59,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../nsi_integration/nsi_integration.html">NSI Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../image_filters/image_filters.html">Image Filters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_processor/image_processors.html">Image Processors</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Imputation Algorithms</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#imputation-notebook">Imputation Notebook</a><ul class="simple">
 </ul>
@@ -66,6 +67,8 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html#examples-gallery">Examples Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
@@ -98,8 +101,7 @@
              
   <section id="imputation-algorithms">
 <span id="imputation-exammple"></span><h1>Imputation Algorithms<a class="headerlink" href="#imputation-algorithms" title="Link to this heading"></a></h1>
-<p>This is an example of how to use the BRAILS imputation algorithms to fill in missing data
-in an inventory. In this example, the user has a csv file that they will use to create the asset inventory. That csv file contains rows, some of which are complete and some of which have missing column values. For example, for some rows the roof shape attribute may be missing.</p>
+<p>This is an example of how to use the BRAILS++ imputation algorithms to fill in missing data in an inventory. In this example, the user has a CSV file that they will use to create the asset inventory. That CSV file contains rows, some of which are complete and some of which have missing column values. For example, for some rows the roof shape attribute may be missing.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">index</span><span class="p">,</span><span class="n">erabuilt</span><span class="p">,</span><span class="n">numstories</span><span class="p">,</span><span class="n">roofshape</span><span class="p">,</span><span class="n">fpAreas</span><span class="p">,</span><span class="n">occupancy2</span><span class="p">,</span><span class="n">fparea</span><span class="p">,</span><span class="n">repaircost</span><span class="p">,</span><span class="n">constype</span><span class="p">,</span><span class="n">occupancy</span><span class="p">,</span><span class="n">Lat</span><span class="p">,</span><span class="n">Lon</span>
 <span class="mi">0</span><span class="p">,</span><span class="n">NA</span><span class="p">,</span><span class="n">NA</span><span class="p">,</span><span class="n">Gable</span><span class="p">,</span><span class="mi">998</span><span class="p">,</span><span class="n">Other</span><span class="p">,,,,,</span><span class="mf">37.86730380000001</span><span class="p">,</span><span class="o">-</span><span class="mf">122.42452141999999</span>
 <span class="mi">1</span><span class="p">,</span><span class="n">NA</span><span class="p">,</span><span class="n">NA</span><span class="p">,</span><span class="n">Hip</span><span class="p">,</span><span class="mi">4411</span><span class="p">,</span><span class="n">Residential</span><span class="p">,,,,,</span><span class="mf">37.870170718181825</span><span class="p">,</span><span class="o">-</span><span class="mf">122.42705018181817</span>
@@ -110,7 +112,7 @@ in an inventory. In this example, the user has a csv file that they will use to 
 <span class="o">......</span>
 </pre></div>
 </div>
-<p>In the python script, shown below, the inventory is first created with this csv file, a <strong>KNN</strong> imputer is then created, and this imputer when the <strong>impute()</strong> method is invoked returns a second inventory, which for the missing fields will contain a number of possible values.</p>
+<p>In the Python script, shown below, the inventory is first created with this CSV file, a <strong>KNN</strong> imputer is then created, and this imputer when the <strong>impute()</strong> method is invoked returns a second inventory, which for the missing fields will contain a number of possible values.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1"># Written: sy Aug 2024</span>
 <span class="linenos"> 2</span><span class="c1"># License: BSD-2</span>
 <span class="linenos"> 3</span>
@@ -198,19 +200,22 @@ in an inventory. In this example, the user has a csv file that they will use to 
 </div>
 <section id="imputation-notebook">
 <h2>Imputation Notebook<a class="headerlink" href="#imputation-notebook" title="Link to this heading"></a></h2>
-<p>Below is a link to a Jupyter notebook that runs this basic code, with graphics to better understand the
-output.</p>
-<a href=https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/imputation/imputation_example.ipynb target=_blank> <img src=https://colab.research.google.com/assets/colab-badge.svg/></a>"
+<p>Below is a link to a Jupyter notebook that runs this basic code, with graphics to better understand the output.</p>
+<a href="https://colab.research.google.com/github/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/imputation/imputation_example.ipynb" target="_blank">
+    <img src="https://colab.research.google.com/assets/colab-badge.svg" />
+</a>
 
-<a href=https://lightning.ai/new?repo_url=https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/imputation/imputation_example.ipynb target=_blank> <img src=https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg></a><div class="toctree-wrapper compound">
+<a href="https://lightning.ai/new?repo_url=https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/imputation/imputation_example.ipynb" target="_blank">
+    <img src="https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg" />
+</a><div class="toctree-wrapper compound">
 <div class="nbsphinx-gallery">
 </div>
 </div>
 <hr><div class="admonition note">
 <p class="admonition-title">Note</p>
 <ol class="arabic simple">
-<li><p>Imputation is a statistical technique used to handle missing data by replacing it with substituted values. In BrailsPlusPlus the goal is to fill in the gaps in an inventory dataset to ensure that analyses can proceed without having to throw away assets from the inventory due to missing values. Imputation is used in many other fields like data science, machine learning, and statistics.</p></li>
-<li><p>There are a number of algorithms outlined in the literature. These algorithms produce either a single values for each missing data-point, e.g. <strong>mean</strong>, <strong>modal</strong>, <strong>median</strong>, or they produce a number of possible values for each missing data-point, e.g. <strong>K-NearestNeighbour</strong>. BrailsPlusPlus algorithms produce the latter.</p></li>
+<li><p>Imputation is a statistical technique used to handle missing data by replacing it with substituted values. In BRAILS++ the goal is to fill in the gaps in an inventory dataset to ensure that analyses can proceed without having to throw away assets from the inventory due to missing values. Imputation is used in many other fields like data science, machine learning, and statistics.</p></li>
+<li><p>There are a number of algorithms outlined in the literature. These algorithms produce either a single values for each missing data-point, e.g. <strong>mean</strong>, <strong>modal</strong>, <strong>median</strong>, or they produce a number of possible values for each missing data-point, e.g. <strong>K-NearestNeighbour</strong>. BRAILS++ algorithms produce the latter.</p></li>
 <li><p>When multiple possible values are generated or exist for any feature of an <strong>Asset</strong> in the inventory that feature has a list of possible options, e.g. <strong>constype</strong> in above example.</p></li>
 <li><p>For the imputation algorithms specifically, if the list of possible options all result in the same value for a certain feature, a single value is provided, e.g. <strong>eraBuilt</strong> in the above example.</p></li>
 <li><p>These possible values represented by a list are not only generated by imputation. They represent unknown quatntaties in the inventory, they can come from Processors, Inferers or user supplied datasets.</p></li>
@@ -224,14 +229,14 @@ output.</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../image_processor/image_processors.html" class="btn btn-neutral float-left" title="Image Processors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../../rst-doc/acknowledgements.html" class="btn btn-neutral float-right" title="Acknowledgements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../image_filters/image_filters.html" class="btn btn-neutral float-left" title="Image Filters" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../rst-code/brails.html" class="btn btn-neutral float-right" title="brails package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, fmk.</p>
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

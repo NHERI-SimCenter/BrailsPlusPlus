@@ -12,7 +12,7 @@ BRAILS++ is available on `PyPI <https://pypi.org/project/brails/>`_:
 
 .. note::
 
-   BRAILS++ is under continuous development. You can obtain the latest bleeding-edge version directly from GitHub using:
+   BRAILS++ is under active development. To install the latest development version directly from GitHub, run:
 
    .. code-block:: bash
 
