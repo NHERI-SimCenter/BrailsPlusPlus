@@ -5,12 +5,12 @@ Building Footprints
 
 Building footprints serve as the foundational data for generating any building inventory with |app|. Users may supply their own footprint datasets or leverage |app|’s capabilities to create an inventory from scratch. |app| includes four footprint scraper classes that enable automatic retrieval of footprint data from online sources:
 
-#. MS_FootprintScraper using `Microsoft Footprint Database <https://github.com/microsoft/USBuildingFootprints>`_
-#. OSM_FootprintScraper using `Open Street Maps (OSM) <https://www.openstreetmap.org/about>`_
-#. USA_FootprintScraper using `USA Structures <https://gis-fema.hub.arcgis.com/pages/usa-structures>`_
-#. Overture Maps using `Overture Maps <https://overturemaps.org/>`_
+#. ``MS_FootprintScraper`` using `Microsoft Footprint Database <https://github.com/microsoft/USBuildingFootprints>`_
+#. ``OSM_FootprintScraper`` using `Open Street Maps (OSM) <https://www.openstreetmap.org/about>`_
+#. ``USA_FootprintScraper`` using `USA Structures <https://gis-fema.hub.arcgis.com/pages/usa-structures>`_
+#. ``OvertureMapsFootprintScraper`` using `Overture Maps <https://overturemaps.org/>`_
 
-Each of these scraper classes implements a method **get_footprints**, which returns the building footprints for a given :class:`~brails.types.region_boundary.RegionBoundary` instance. The example below demonstrates how three different scraper classes can be used interchangeably to generate building inventories for a specified location when running the script.
+Each of these scraper classes implements a method ``get_footprints``, which returns the building footprints for a given ``RegionBoundary`` instance. The example below demonstrates how three different scraper classes can be used interchangeably to generate building inventories for a specified location when running the script.
 
 
 .. literalinclude:: brails_footprint.py

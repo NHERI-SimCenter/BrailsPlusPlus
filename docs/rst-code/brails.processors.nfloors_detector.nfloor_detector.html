@@ -16,7 +16,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../_static/copybutton.js?v=f281be69"></script>
@@ -53,7 +53,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html#examples-gallery">Examples Gallery</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
@@ -104,109 +103,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="module-brails.processors.nfloors_detector.nfloor_detector">
-<span id="brails-processors-nfloors-detector-nfloor-detector-module"></span><h1>brails.processors.nfloors_detector.nfloor_detector module<a class="headerlink" href="#module-brails.processors.nfloors_detector.nfloor_detector" title="Link to this heading"></a></h1>
-<p>Class object to use and retrain the floor detector model.</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="brails.processors.nfloors_detector.nfloor_detector.NFloorDetector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.nfloors_detector.nfloor_detector.</span></span><span class="sig-name descname"><span class="pre">NFloorDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.nfloors_detector.nfloor_detector.NFloorDetector" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>A class to manage and configure the system for detecting floors.</p>
-<p>This class provides an organized structure to store system parameters and
-configurations required for training and inference tasks in a floor
-detection system. It initializes a nested dictionary to hold various
-configurations and parameters for different stages of processing.</p>
-<dl>
-<dt><a href="#id7"><span class="problematic" id="id8">Attributes_</span></a></dt><dd><p>system_dict (Dict[str, Dict[str, Any]]): A dictionary to store system
-configurations and parameters, initialized with nested dictionaries for
-training and inference settings.</p>
-</dd>
-<dt><a href="#id9"><span class="problematic" id="id10">Methods_</span></a></dt><dd><dl>
-<dt>__init__(self, input_data: Optional[Dict[str, Any]] = None):</dt><dd><p>Initializes the NFloorDetector instance with default configurations
-and optionally with provided input data.</p>
-</dd>
-<dt>set_fixed_params(self):</dt><dd><p>Configures fixed parameters required for the floor detection
-system.</p>
-</dd>
-<dt>train(self, comp_coeff: int = 3, top_only: bool = False,</dt><dd><blockquote>
-<div><p>optim: str = “adamw”, lr: float = 1e-4, nepochs: int = 25,
-ngpu: int = 1) -&gt; None:</p>
-</div></blockquote>
-<p>Sets up parameters for training the floor detection model.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.nfloors_detector.nfloor_detector.NFloorDetector.predict">
-<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tmp/models/efficientdet-d4_nfloorDetector.pth'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.nfloors_detector.nfloor_detector.NFloorDetector.predict" title="Link to this definition"></a></dt>
-<dd><p>Predict the number of floors in buildings from the given images.</p>
-<dl class="simple">
-<dt><a href="#id1"><span class="problematic" id="id2">Args__</span></a></dt><dd><dl class="simple">
-<dt>images (ImageSet): ImageSet object containing the collection of</dt><dd><p>images to be analyzed.</p>
-</dd>
-<dt>modelPath (str): The file path to the pre-trained model. If the</dt><dd><p>default path is used, the model will be downloaded (default is
-‘tmp/models/efficientdet-d4_nfloorDetector.pth’).</p>
-</dd>
-</dl>
-</dd>
-<dt><a href="#id1"><span class="problematic" id="id3">Returns__</span></a></dt><dd><dl class="simple">
-<dt>predictions (dict): Number of floors predictions with the keys</dt><dd><p>being the same keys used in ImageSet.images.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-<p>This method processes the images provided, loads the specified model,
-and performs inference to determine the number of floors in each
-building. It handles the setup of the inference environment, manages
-model loading, and provides a report on the execution time.</p>
-<p>It also includes functions for polygon creation, intersection checks,
-and managing thresholds during inference to ensure accurate
-predictions.</p>
-<p>The results of the predictions are also stored in the instance’s system
-dictionary under the key ‘predictions’.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.nfloors_detector.nfloor_detector.NFloorDetector.retrain">
-<span class="sig-name descname"><span class="pre">retrain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'adamw'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nepochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ngpu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.nfloors_detector.nfloor_detector.NFloorDetector.retrain" title="Link to this definition"></a></dt>
-<dd><p>Retrain the object detection model with specified parameters.</p>
-<dl class="simple">
-<dt><a href="#id1"><span class="problematic" id="id4">Args__</span></a></dt><dd><p>optim (str): Optimizer to use for training (default is “adamw”).
-lr (float): The learning rate for the optimizer (default is 1e-4).
-nepochs (int): Number of epochs to train the model (default is 25).
-ngpu (int): The number of GPUs to use for training (default is 1).</p>
-</dd>
-</dl>
-<p>This method configures the training parameters, sets the training and
-validation datasets, initializes the model architecture, and starts
-the re-training process for the default number of floors predictor in
-BRAILS++.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.nfloors_detector.nfloor_detector.NFloorDetector.train">
-<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comp_coeff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'adamw'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nepochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ngpu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.nfloors_detector.nfloor_detector.NFloorDetector.train" title="Link to this definition"></a></dt>
-<dd><p>Train a floor detection model.</p>
-<dl>
-<dt><a href="#id1"><span class="problematic" id="id5">Args__</span></a></dt><dd><p>comp_coeff (int): Coefficient for comparison, default is 3.
-top_only (bool): If True, only the top layers are trained, default</p>
-<blockquote>
-<div><p>is False.</p>
-</div></blockquote>
-<p>optim (str): Optimizer type, default is “adamw”.
-lr (float): Learning rate, default is 1e-4.
-nepochs (int): Number of epochs for training, default is 25.
-ngpu (int): Number of GPUs to use, default is 1.</p>
-</dd>
-<dt><a href="#id1"><span class="problematic" id="id6">Updates__</span></a></dt><dd><p>self.system_dict (Dict[str, Dict[str, Any]]): Updates the model
-configuration parameters for training in the system dictionary.</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
+  <section id="brails-processors-nfloors-detector-nfloor-detector-module">
+<h1>brails.processors.nfloors_detector.nfloor_detector module<a class="headerlink" href="#brails-processors-nfloors-detector-nfloor-detector-module" title="Link to this heading"></a></h1>
 </section>
 
 

@@ -16,7 +16,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../_static/copybutton.js?v=f281be69"></script>
@@ -53,7 +53,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html#examples-gallery">Examples Gallery</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
@@ -105,79 +104,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="module-brails.processors.chimney_detector.lib.train_detector">
-<span id="brails-processors-chimney-detector-lib-train-detector-module"></span><h1>brails.processors.chimney_detector.lib.train_detector module<a class="headerlink" href="#module-brails.processors.chimney_detector.lib.train_detector" title="Link to this heading"></a></h1>
-<dl class="py class">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.Detector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.chimney_detector.lib.train_detector.</span></span><span class="sig-name descname"><span class="pre">Detector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.Detector" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.Detector.save_checkpoint">
-<span class="sig-name descname"><span class="pre">save_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.Detector.save_checkpoint" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.Detector.set_fixed_params">
-<span class="sig-name descname"><span class="pre">set_fixed_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.Detector.set_fixed_params" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.Detector.set_hyperparams">
-<span class="sig-name descname"><span class="pre">set_hyperparams</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'adamw'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">es_min_delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">es_patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.Detector.set_hyperparams" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.Detector.set_model">
-<span class="sig-name descname"><span class="pre">set_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'efficientdet-d0.pth'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_gpus</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freeze_head</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.Detector.set_model" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.Detector.set_train_dataset">
-<span class="sig-name descname"><span class="pre">set_train_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coco_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.Detector.set_train_dataset" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.Detector.set_val_dataset">
-<span class="sig-name descname"><span class="pre">set_val_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coco_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_dir</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.Detector.set_val_dataset" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.Detector.start_training">
-<span class="sig-name descname"><span class="pre">start_training</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.Detector.start_training" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.Detector.train">
-<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.Detector.train" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.ModelWithLoss">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.chimney_detector.lib.train_detector.</span></span><span class="sig-name descname"><span class="pre">ModelWithLoss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.ModelWithLoss" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.ModelWithLoss.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imgs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.ModelWithLoss.forward" title="Link to this definition"></a></dt>
-<dd><p>Define the computation performed at every call.</p>
-<p>Should be overridden by all subclasses.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Although the recipe for forward pass needs to be defined within
-this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
-instead of this since the former takes care of running the
-registered hooks while the latter silently ignores them.</p>
-</div>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="brails.processors.chimney_detector.lib.train_detector.boolean_string">
-<span class="sig-prename descclassname"><span class="pre">brails.processors.chimney_detector.lib.train_detector.</span></span><span class="sig-name descname"><span class="pre">boolean_string</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.chimney_detector.lib.train_detector.boolean_string" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
+  <section id="brails-processors-chimney-detector-lib-train-detector-module">
+<h1>brails.processors.chimney_detector.lib.train_detector module<a class="headerlink" href="#brails-processors-chimney-detector-lib-train-detector-module" title="Link to this heading"></a></h1>
 </section>
 
 
