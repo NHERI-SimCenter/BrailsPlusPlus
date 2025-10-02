@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 08-11-2025
+# 10-02-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -1435,7 +1435,7 @@ class AssetInventory:
             named  ``output.geojson``.
 
             >>> geojson_written = inventory.write_to_geojson('output.geojson')
-            Wrote 1 assets to {../output.geojson}
+            Wrote 1 asset to {../output.geojson}
         """
         geojson = self.get_geojson()
 
@@ -1450,8 +1450,10 @@ class AssetInventory:
         if output_file:
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(clean_floats(geojson), f, indent=2)
+                num_elements = len(geojson['features'])
+                element = 'asset' if num_elements == 1 else 'assets'
                 print(
-                    f"Wrote {len(geojson['features'])} assets to "
+                    f"Wrote {num_elements} {element} to "
                     f'{os.path.abspath(output_file)}'
                 )
         return geojson
