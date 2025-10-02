@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-06-2025
+# 10-01-2025
 
 """
 This module defines a class for retrieving bridge data from NBI.
@@ -87,27 +87,36 @@ DIMENSIONAL_ATTR = {'MIN_VERT_CLR_010': 'm',
 
 class NBIScraper:
     """
-    A class for scraping and processing National Bridge Inventory (NBI) data.
+        A scraper for retrieving and processing National Bridge Inventory data.
+    
+        This class automates getting bridge data for a region from the NBI, 
+        subdividing a region into smaller cells for efficient API calls, 
+        filtering the results to include only bridges inside the specified
+        region boundary, converting dimensional attributes into preferred 
+        units, and organizing the data into an ``AssetInventory``.
 
-    The class handles tasks such as fetching and processing bridge data,
-    meshing the region into smaller cells for efficient data retrieval, and
-    organizing the results into an AssetInventory.
+        To import the :class:`NBIScraper`, use:
+    
+        .. code-block:: python
+    
+            from brails import Importer
 
-    Attributes:
-        length_unit (str):
-            The unit of length (default is 'ft').
-        inventory (AssetInventory):
-            An inventory object that holds the assets for this instance.
-
-    Methods:
-        get_assets(region: RegionBoundary) -> AssetInventory:
-            Retrieves bridge inventory data within a given region boundary,
-            processes the data, and returns the inventory of assets.
+            importer = Importer()
+            nbi_scraper_class = importer.get_class('NBIScraper')
+    
+        Parameters:
+            units (Dict[str, str]):
+                A dictionary mapping measurement types (e.g., length, weight)
+                to their preferred output units. Parsed from the optional
+                ``input_dict`` argument or defaulted to predefined units.
+            inventory (AssetInventory):
+                An inventory object that stores all processed bridge assets for
+                this scraper instance.
     """
 
     def __init__(self, input_dict: Dict[str, Any] = None):
         """
-        Initialize an instance of the class with a specified length unit.
+        Initialize an instance of the class with specified units.
 
         This constructor allows you to specify the length unit through the
         optional `input_dict`. If `input_dict` is not provided, the length
@@ -116,12 +125,13 @@ class NBIScraper:
 
         Args:
             input_dict (dict, optional):
-                A dictionary that may contain a key 'length' specifying the
-                length unit to be used. If 'length' is provided in the
-                dictionary, it will be used to set the length unit (the value
-                will be converted to lowercase). If the dictionary is not
-                provided or if 'length' is not specified, 'ft' (feet) will be
-                used as the default length unit.
+                A dictionary that may contain keys 'length' and/or 'weight' 
+                specifying the units to be in creating an ``AssetInventory`` 
+                from NBI data. If provided, the values will be converted
+                to lowercase and applied to the corresponding unit types. If 
+                the dictionary is not provided or if a key is missing, default 
+                units will be used: 'ft' (feet) for length and 'lb' (pounds) 
+                for weight.
         """
         # Parse units from input_dict or fall back to default units:
         self.units = UnitConverter.parse_units(input_dict or {}, DEFAULT_UNITS)
@@ -137,20 +147,44 @@ class NBIScraper:
 
         Args:
             region (RegionBoundary):
-                A `RegionBoundary` object representing the geographic region
+                A region boundary object representing the geographic region
                 for which to retrieve bridge inventory data.
 
         Returns:
             AssetInventory:
-                An `AssetInventory` object containing the bridge assets within
-                the specified region.
+                An inventory containing the bridge assets within the specified
+                region.
 
         Raises:
             TypeError:
-                If the `region` argument is not an instance of the
-                `RegionBoundary` class. The error message will indicate that
-                the 'region' argument must be an instance of the
-                `RegionBoundary` class.
+                If the ``region`` argument is not an instance of the
+                ``RegionBoundary`` class. The error message will indicate that
+                the ``region`` argument must be an instance of the
+                ``RegionBoundary`` class.
+        
+        Example:
+            >>> from brails.utils import Importer
+            >>> importer = Importer()
+            >>> # Define a small bounding box around Los Angeles area
+            >>> region_data = {
+            ...     'type': 'locationPolygon',
+            ...     'data': (-118.278, 34.041, -118.271, 34.036)
+            ... }
+            >>> RegionBoundary = importer.get_class('RegionBoundary')
+            >>> region = RegionBoundary(region_data)
+            >>> NBIScraper = importer.get_class('NBIScraper')
+            >>> scraper = NBIScraper()
+            No length unit specified. Using default: 'ft'.
+            No weight unit specified. Using default: 'lb'.
+            >>> inventory = scraper.get_assets(region)
+            Meshing the defined area...
+            Meshing complete. Covered the bounding box: (-118.278, 34.041, 
+            -118.271, 34.036) with a single rectangular cell.
+            Obtaining the bridge attributes for each cell: 100%|██████████| 1/1
+            [00:00<00:00,  4.89it/s]
+            Found a total of 4 bridges.
+            >>> _ = inventory.write_to_geojson('nbi_scraper_test.geojson')
+            Wrote 4 assets to /home/bacetiner/nbi_scraper_test.geojson
         """
         if not isinstance(region, RegionBoundary):
             raise TypeError("The 'region' argument must be an instance of the "
@@ -218,13 +252,27 @@ class NBIScraper:
         for index, item in enumerate(data):
             geometry = [[item['geometry']['x'], item['geometry']['y']]]
             asset_features = {**item['attributes'], 'type': ASSET_TYPE}
+            
             for feature, feature_unit in DIMENSIONAL_ATTR.items():
-                feature_Value = asset_features.get(feature)
-                if feature_Value is not None:
+                feature_value = asset_features.get(feature)
+                
+                # Attempt to convert the feature value to float; set to None if 
+                # conversion fails:
+                try:
+                    feature_value = float(feature_value)
+                except (ValueError, TypeError):
+                    feature_value = None
+                
+                if feature_value is not None:
+                    # Determine the type of unit and set the target conversion
+                    # unit: 
                     unit_type = UnitConverter.get_unit_type(feature_unit)
                     target_unit = self.units[unit_type]
+                    
+                    # Convert the feature value to the target unit and store 
+                    # the converted value back in the asset:
                     asset_features[feature] = UnitConverter.convert_unit(
-                        feature_Value,
+                        feature_value,
                         feature_unit,
                         target_unit
                     )
