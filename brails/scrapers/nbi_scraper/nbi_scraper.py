@@ -170,13 +170,13 @@ class NBIScraper:
             ...     'type': 'locationPolygon',
             ...     'data': (-118.278, 34.041, -118.271, 34.036)
             ... }
-            >>> RegionBoundary = importer.get_class('RegionBoundary')
-            >>> region = RegionBoundary(region_data)
-            >>> NBIScraper = importer.get_class('NBIScraper')
-            >>> scraper = NBIScraper()
+            >>> region_boundary = importer.get_class('RegionBoundary')
+            >>> region = region_boundary(region_data)
+            >>> nbi_scraper_class = importer.get_class('NBIScraper')
+            >>> nbi_scraper = nbi_scraper_class()
             No length unit specified. Using default: 'ft'.
             No weight unit specified. Using default: 'lb'.
-            >>> inventory = scraper.get_assets(region)
+            >>> inventory = nbi_scraper.get_assets(region)
             Meshing the defined area...
             Meshing complete. Covered the bounding box: (-118.278, 34.041, 
             -118.271, 34.036) with a single rectangular cell.
@@ -226,7 +226,7 @@ class NBIScraper:
                 each representing a bridge and its associated attributes.
         """
         # Obtain the boundary polygon for the region:
-        boundary_polygon, _, _ = region.get_boundary()
+        boundary_polygon, _, _ = region.get_boundary(print_progress=False)
 
         # Identify the cells that are inside the bounding polygon and record
         # their data:
@@ -246,7 +246,10 @@ class NBIScraper:
                 data.append(item)
 
         # Display the number of elements detected:
-        print(f'\nFound a total of {len(data)} bridges.')
+        element_number = len(data)
+        element = 'bridge' if element_number==1 else 'bridges'
+        print(f'\nFound a total of {element_number} {element}.')
+
 
         # Save the results in the inventory:
         for index, item in enumerate(data):
