@@ -42,6 +42,23 @@ Despite their value, these datasets often contain incomplete or inconsistent inf
 pip install brails
 ```
 
+::note:
+
+	For the latest cutting edge code, install souce code at github using:
+
+	```shell
+	pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
+	```
+
+        or, if already installed:
+
+	```shell
+	pip install --upgrade git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
+	```
+
+
+
+
 ## Acknowledgments
 
 This work is based on material supported by the National Science Foundation under grants CMMI 1612843 and CMMI 2131111.
