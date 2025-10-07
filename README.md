@@ -36,28 +36,27 @@ Despite their value, these datasets often contain incomplete or inconsistent inf
 
 - [Documentation & Guides](https://nheri-simcenter.github.io/BrailsPlusPlus/)
 
-## Installation instructions
+Installation
+============
 
-```shell
-pip install brails
-```
+.. code-block:: shell
 
-::note:
+   pip install brails
 
-	For the latest cutting edge code, install souce code at github using:
+.. note::
 
-	```shell
-	pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
-	```
+   For the latest cutting-edge code, install directly from GitHub:
 
-        or, if already installed:
+   .. code-block:: shell
 
-	```shell
-	pip install --upgrade git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
-	```
+      pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
 
+   If it's already installed and you want to update:
 
+   .. code-block:: shell
 
+      pip install --upgrade git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
+      
 
 ## Acknowledgments
 
