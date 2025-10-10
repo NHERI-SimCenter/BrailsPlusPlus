@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 10-02-2025
+# 10-10-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -49,6 +49,7 @@ This module defines classes associated with asset inventories.
 
 import os
 import csv
+import hashlib
 import json
 import random
 from copy import deepcopy
@@ -287,6 +288,41 @@ class Asset:
 
         except Exception:
             return [[None, None]]
+
+    def hash_asset(self):
+        """
+        Generate a unique hash for this asset based on its coordinates and features.
+    
+        This hash can be used to quickly identify duplicate assets by comparing
+        geometry and attribute data. Both the coordinates and features are 
+        serialized as strings and then hashed using MD5.
+    
+        Returns:
+            str: A hexadecimal string representing the MD5 hash of the asset.
+            
+        Example:
+            >>> asset1 = Asset(
+            ...     asset_id='123',
+            ...     coordinates=[[-122.4194, 37.7749], [-122.4180, 37.7755]],
+            ...     features={'roof_type': 'gable'}
+            ... )
+            >>> asset2 = Asset(
+            ...     asset_id='124',
+            ...     coordinates=[[-122.4194, 37.7749], [-122.4180, 37.7755]],
+            ...     features={'roof_type': 'flat'}
+            ... )
+            >>> hash1 = asset1.hash_asset()
+            >>> print(hash1)
+            1e629fc184329ea688c648e7663b439d
+            >>> hash2 = asset2.hash_asset()
+            >>> print(hash2)
+            ac0d104a411f92bffff8cc1398257dd8
+            >>> hash1 != hash2
+            True
+        """
+        coord_str = str(self.coordinates)
+        feat_str = str(self.features)
+        return hashlib.md5((coord_str + feat_str).encode()).hexdigest()
 
     def remove_features(self, features_to_remove: Iterable[str]) -> bool:
         """
@@ -666,6 +702,79 @@ class AssetInventory:
                     # under the new key:
                     asset.features[new_name] = asset.features.pop(
                         original_name)
+
+    def combine(
+            self, 
+            inventory_to_combine: 'AssetInventory', 
+            key_map: dict = None
+        ) -> dict:
+        """
+        Combine with another AssetInventory, avoiding duplicate assets.
+    
+        Assets are compared using their hashed coordinate and feature data.
+        Duplicate assets (identical geometry and properties) are skipped.
+        Optionally, keys from the inventory to combine can be remapped using 
+        ``key_map``. Any resulting key conflicts are automatically resolved by
+        assigning new unique numeric IDs.
+    
+        Args:
+            inventory_to_combine(AssetInventory):
+                The secondary inventory whose assets will be merged into this
+                one.
+            key_map(dict, optional):
+                A mapping of original keys in ``inventory_to_combine`` to new
+                keys in this inventory. For example: {"old_key1": "new_keyA", 
+                "old_key2": "new_keyB"}. If not provided, original keys are 
+                used as-is unless they already exist in the current inventory.
+    
+        Returns:
+            dict:
+                A dictionary mapping each original key from 
+                ``inventory_to_combine`` to its final key in this inventory
+                (after applying ``key_map`` and resolving conflicts).
+    
+        Modifies:
+            self.inventory(dict):
+                Updates the inventory in-place by adding new, non-duplicate 
+                assets from ``inventory_to_combine``.
+        """
+
+        # Build hash lookup for existing assets
+        existing_hashes = {
+            self.hash_asset(asset): key for key, asset in self.inventory.items()
+        }
+    
+        # Determine next available numeric ID
+        next_id = max(
+            [int(k) for k in self.inventory.keys() if str(k).isdigit()] or [0]
+        ) + 1
+    
+        # Track key mapping from inventory2 → combined
+        merged_key_map = {}
+    
+        for orig_key, asset in inventory_to_combine.inventory.items():
+            asset_hash = self.hash_asset(asset)
+    
+            # Skip duplicates based on geometry and feature data
+            if asset_hash in existing_hashes:
+                continue
+    
+            # Apply key mapping if provided
+            # Apply user-provided key mapping if available
+            mapped_key = key_map.get(orig_key, orig_key) if key_map else orig_key
+            new_key = mapped_key
+            
+            # Ensure uniqueness of the key:
+            while new_key in self.inventory:
+                new_key = next_id
+                next_id += 1
+    
+            # Add asset and record mapping
+            self.add_asset(new_key, asset)
+            merged_key_map[orig_key] = new_key
+            existing_hashes[asset_hash] = new_key
+    
+        return merged_key_map
 
     def convert_polygons_to_centroids(self) -> None:
         """
@@ -1386,6 +1495,83 @@ class AssetInventory:
         results = [asset.remove_features(features_to_remove)
                    for asset in self.inventory.values()]
         return any(results)
+    
+    def remove_nonmatching_assets(self, image_set, verbose=False) -> None:
+        """
+        Remove assets that do not have corresponding entries in image set.
+    
+        This method compares asset keys in the inventory with those in the
+        provided ImageSet and removes any asset whose key does not exist in
+        the ImageSet.
+    
+        Args:
+            image_set(ImageSet):
+                The image set containing valid image keys.
+            verbose(bool, optional):
+                If ``True``, prints a summary of removed keys. Default is 
+                ``False``.
+    
+        Modifies:
+            self.inventory(dict):
+                Removes nonmatching asset entries directly from the inventory.
+                The object is updated in-place.
+
+        Example:
+            >>> inventory = AssetInventory()
+            >>> _ = inventory.add_asset(
+            ...     asset_id='house_A',
+            ...     asset=Asset(
+            ...         'house_A',
+            ...         [[-118.5123, 34.0451], [-118.5120, 34.0454],
+            ...          [-118.5117, 34.0452], [-118.5121, 34.0449],
+            ...          [-118.5123, 34.0451]],
+            ...         features={'type': 'residential', 'floors': 2}
+            ...     )
+            ... )
+            >>> _ = inventory.add_asset(
+            ...     asset_id='warehouse_B',
+            ...     asset=Asset(
+            ...         'warehouse_B',
+            ...         [[-118.5105, 34.0467], [-118.5102, 34.0471],
+            ...          [-118.5099, 34.0468], [-118.5103, 34.0464],
+            ...          [-118.5105, 34.0467]],
+            ...         features={'type': 'commercial', 'floors': 1}
+            ...     )
+            ... )
+            >>> inventory.print_info()
+            AssetInventory
+            Inventory stored in:  dict
+            Key:  house_A Asset:
+            	 Coordinates:  [[-118.5123, 34.0451], [-118.512, 34.0454], 
+            [-118.5117, 34.0452], [-118.5121, 34.0449], [-118.5123, 34.0451]]
+            	 Features:  {'type': 'residential', 'floors': 2}
+            Key:  warehouse_B Asset:
+            	 Coordinates:  [[-118.5105, 34.0467], [-118.5102, 34.0471], 
+            [-118.5099, 34.0468], [-118.5103, 34.0464], [-118.5105, 34.0467]]
+            	 Features:  {'type': 'commercial', 'floors': 1}
+            >>> img_set = ImageSet()
+            >>> _ = img_set.add_image('house_A', 'bldg1.jpg')
+            >>> _ = img_set.add_image('house_B', 'bldg2.jpg')
+            >>> inventory.remove_nonmatching_assets(img_set, verbose=True)
+            Removed 1 nonmatching assets: ['warehouse_B']
+        """
+        # Collect keys from both sets
+        footprint_keys = set(self.inventory.keys())
+        imageset_keys = set(image_set.images.keys())
+    
+        # Identify keys missing in image set
+        missing_keys = footprint_keys - imageset_keys
+    
+        # Remove unmatched assets (in-place modification)
+        for key in missing_keys:
+            self.remove_asset(key)
+    
+        # Optionally, print a summary of removed assets
+        if verbose:
+            print(
+                f'Removed {len(missing_keys)} nonmatching assets: '
+                f'{sorted(missing_keys)}'
+            )
 
     def write_to_geojson(self, output_file: str = "") -> Dict:
         """
