@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 10-10-2025
+# 10-14-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -741,7 +741,7 @@ class AssetInventory:
 
         # Build hash lookup for existing assets
         existing_hashes = {
-            self.hash_asset(asset): key for key, asset in self.inventory.items()
+            asset.hash_asset(): key for key, asset in self.inventory.items()
         }
     
         # Determine next available numeric ID
@@ -753,7 +753,7 @@ class AssetInventory:
         merged_key_map = {}
     
         for orig_key, asset in inventory_to_combine.inventory.items():
-            asset_hash = self.hash_asset(asset)
+            asset_hash = asset.hash_asset()
     
             # Skip duplicates based on geometry and feature data
             if asset_hash in existing_hashes:
