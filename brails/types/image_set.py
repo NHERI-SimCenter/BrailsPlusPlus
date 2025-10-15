@@ -37,7 +37,7 @@
 
 #
 # Last updated:
-# 08-15-2025
+# 10-14-2025
 
 """
 This module contains classes for managing and manipulating sets of image.
@@ -191,7 +191,8 @@ class ImageSet:
             >>> len(img_set)
             0
 
-            >>> img_set.add_image(1, "facade.jpg")
+            >>> img = Image('facade.jpg')
+            >>> img_set.add_image(1, img)
             True
             >>> len(img_set)
             1
@@ -207,8 +208,10 @@ class ImageSet:
 
         Examples:
             >>> img_set = ImageSet()
-            >>> img_set.add_image(1, "roof.jpg")
-            >>> img_set.add_image(2, "facade.jpg")
+            >>> img1 = Image('roof.jpg')
+            >>> img2 = Image('facade.jpg')
+            >>> img_set.add_image(1, img1)
+            >>> img_set.add_image(2, img2)
             True
             >>> for img in img_set:
             ...     print(img.filename)
@@ -217,49 +220,49 @@ class ImageSet:
         """
         return iter(self.images.values())
 
-    def add_image(
-        self,
-        key: Union[str, int],
-        filename: str,
-        properties: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    def add_image(self, image_id: Union[str, int], image: Image) -> bool:
         """
-        Create and add a new Image to the ImageSet.
+        Add an image to the image set.
 
         Args:
-            key (Union[str, int]):
-                Identifier for the image.
-            filename (str):
-                Name of the image file.
-            properties (Optional[Dict[str, Any]]):
-                Optional metadata for the image.
-
+            image_id (Union[str, int]):
+                Unique key to identify the image in the set.
+            image (Image):
+                The image instance to be added.
+    
         Returns:
             bool:
-                ``True`` if image was added; ``False`` if the key already
-                exists.
+                ``True`` if the image was successfully added.
+                ``False`` if the ``image_id`` already exists in the image set.
+    
+        Raises:
+            TypeError:
+                If ``image`` is not an instance of the :class:`Image` class.
 
         Examples:
             >>> img_set = ImageSet()
-            >>> img_set.add_image(
-            ...     1,
+            >>> img1 = Image(
             ...     'building_front.jpg',
             ...     {'width': 1920, 'height': 1080}
             ... )
+            >>> img_set.add_image(1, img1)
             True
 
-            >>> img_set.add_image(1, 'street_view.png')  # Duplicate key
+            >>> img2 = Image('street_view.png')
+            >>> img_set.add_image(1, img2)  # Duplicate key
+            Image with id 1 already exists. Image was not added.
             False
         """
-        if properties is None:
-            properties = {}
+        if not isinstance(image, Image):
+            raise TypeError("Expected an instance of Image.")
 
-        if key not in self.images:
-            image = Image(filename, properties)
-            self.images[key] = image
-            return True
+        if image_id in self.images:
+            print(f'Image with id {image_id} already exists. Image was not '
+                  'added.')
+            return False
 
-        return False
+        self.images[image_id] = image
+        return True
 
     def get_image(self, key: Union[str, int]) -> Optional[Image]:
         """
@@ -275,11 +278,12 @@ class ImageSet:
 
         Examples:
             >>> img_set = ImageSet()
-            >>> img_set.add_image('main', 'roof_detail.jpg')
+            >>> img_in = Image('roof_detail.jpg')
+            >>> img_set.add_image('main', img_in)
             True
 
-            >>> img = img_set.get_image('main')
-            >>> img.filename
+            >>> img_out = img_set.get_image('main')
+            >>> img_out.filename
             'roof_detail.jpg'
         """
         return self.images.get(key)
@@ -295,12 +299,13 @@ class ImageSet:
 
         Examples:
             >>> img_set = ImageSet()
-            >>> img_set.add_image('north_view', 'north_building.jpg')
-            >>> img_set.add_image(
-            ...     'east_view',
-            ...     'east_building.jpg',
+            >>> img1 = Image('north_building.jpg')
+            >>> img2 = Image(
+            ...     'east_building.jpg',    
             ...     {'location': (36.0142, -75.6679)}
             ... )
+            >>> img_set.add_image('north_view', img1)
+            >>> img_set.add_image('east_view', img2)
             True
             >>> img_set.print_info()
             Directory:
@@ -322,6 +327,36 @@ class ImageSet:
                     print(f'- key: {key}, filename: {image.filename}, ',
                           f'properties: {image.properties}')
         print('\n')
+
+    def remove_image(self, image_id: Union[str, int]) -> bool:
+        """
+        Remove an image from the image set.
+
+        Args:
+            image_id (Union[str, int]):
+                Unique key to identify the image in the set.
+
+        Returns:
+            bool: ``True`` if image was removed, ``False`` otherwise.
+
+        Example:
+            >>> img_set = ImageSet()
+            >>> img1 = Image(
+            ...     'east_building.jpg',    
+            ...     {'width': 1920, 'height': 1080}
+            ... )
+            >>> img_set.add_image('img1', img1)
+            True
+            >>> img_set.remove_image('img1')
+            True
+            >>> len(img_set)
+            0
+        """
+        if image_id in self.images:
+            del self.images[image_id]
+            return True
+        else:
+            return False
 
     def set_directory(
         self,
