@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-06-2025
+# 10-14-2025
 
 """
 This module defines GoogleStreetview class downloading Google street imagery.
@@ -64,7 +64,7 @@ import matplotlib as mpl
 import PIL
 from PIL import Image
 
-from brails.types.image_set import ImageSet
+import brails.types.image_set as brails_image_set
 from brails.types.asset_inventory import AssetInventory
 from brails.scrapers.image_scraper import ImageScraper
 
@@ -194,7 +194,7 @@ class GoogleStreetview(ImageScraper):
 
     def get_images(self,
                    inventory: AssetInventory,
-                   save_directory: str) -> ImageSet:
+                   save_directory: str) -> brails_image_set.ImageSet:
         """
         Get street-level images of buildings from footprints in AssetInventory.
 
@@ -223,7 +223,7 @@ class GoogleStreetview(ImageScraper):
 
         # Create the footprints from the items in AssetInventory
         # Keep the asset keys in a list for later use:
-        image_set = ImageSet()
+        image_set = brails_image_set.ImageSet()
         image_set.dir_path = str(base_dir_path)
 
         asset_footprints = []
@@ -246,9 +246,11 @@ class GoogleStreetview(ImageScraper):
         # extracted metadata to the image_set:
         for index, image_path in enumerate(street_images):
             if image_path.exists():
-                image_set.add_image(asset_keys[index],
-                                    image_path.name,
-                                    metadata[image_path])
+                img = brails_image_set.Image(
+                    image_path.name,
+                    metadata[image_path]
+                )
+                image_set.add_image(asset_keys[index], img)
 
         return image_set
 
