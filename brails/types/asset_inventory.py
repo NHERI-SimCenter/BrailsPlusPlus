@@ -1550,8 +1550,10 @@ class AssetInventory:
             [-118.5099, 34.0468], [-118.5103, 34.0464], [-118.5105, 34.0467]]
             	 Features:  {'type': 'commercial', 'floors': 1}
             >>> img_set = ImageSet()
-            >>> _ = img_set.add_image('house_A', 'bldg1.jpg')
-            >>> _ = img_set.add_image('house_B', 'bldg2.jpg')
+            >>> img1 = Image('bldg1.jpg')
+            >>> img2 = Image('bldg2.jpg')
+            >>> _ = img_set.add_image('house_A', img1)
+            >>> _ = img_set.add_image('house_B', img2)
             >>> inventory.remove_nonmatching_assets(img_set, verbose=True)
             Removed 1 nonmatching assets: ['warehouse_B']
         """
