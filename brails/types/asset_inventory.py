@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 10-14-2025
+# 10-15-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -54,6 +54,7 @@ import json
 import random
 from copy import deepcopy
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from collections.abc import Iterable
@@ -1396,6 +1397,46 @@ class AssetInventory:
             print("Key: ", key, "Asset:")
             asset.print_info()
 
+    def read_from_geojson(
+            self,
+            file_path: str,
+            asset_type: str = "building"
+        ) -> bool:
+
+        # Path checks:
+        path = Path(file_path)
+        if not path.exists() or not path.is_file():
+            raise FileNotFoundError(f'File not found: {file_path}')
+    
+        # JSON parsing:
+        try:
+            with path.open('r', encoding='utf-8') as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(f'Invalid JSON format in {file_path}: {e}')
+    
+        # GeoJSON structure validation:
+        if not isinstance(data, dict) or \
+            data.get('type') != 'FeatureCollection':
+            raise ValueError(
+                'Input file is not a valid GeoJSON FeatureCollection.'
+                )
+    
+        features = data.get('features', [])
+        if not isinstance(features, list) or not features:
+            raise ValueError(
+                'GeoJSON FeatureCollection contains no valid features.'
+                )
+
+        # Determine next available numeric ID
+        next_id = self._get_next_numeric_id()
+
+        for index, item in enumerate(data):
+            geometry = [[item['geometry']['x'], item['geometry']['y']]]
+            asset_features = {**item['attributes'], 'type': asset_type}
+            asset = Asset(index, geometry, asset_features)
+            self.inventory.add_asset(next_id + index, asset)
+
     def remove_asset(self, asset_id: Union[str, int]) -> bool:
         """
         Remove an asset from the inventory.
@@ -2105,3 +2146,27 @@ class AssetInventory:
                     all_keys.append(key)
 
         return multi_keys, all_keys
+    
+    def _get_next_numeric_id(self) -> int:
+        """
+        Compute the next available numeric asset ID in the inventory.
+    
+        Returns:
+            int
+                The next available numeric ID (max numeric key + 1).
+                Returns 0 if the inventory is empty, contains no numeric keys,
+                or cannot be accessed.
+    
+        Notes:
+            - Non-numeric keys are ignored.
+            - If inventory access or key conversion fails, the function
+              safely falls back to returning 0.
+            - This function is typically used to generate sequential
+              numeric identifiers for new assets.
+        """
+        try:
+            keys = getattr(self.inventory, 'keys', lambda: [])()
+            numeric_ids = [int(k) for k in keys if str(k).isdigit()]
+            return (max(numeric_ids) + 1) if numeric_ids else 0
+        except Exception:
+            return 0
