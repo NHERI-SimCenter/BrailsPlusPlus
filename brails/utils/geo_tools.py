@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-19-2025
+# 10-18-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -47,7 +47,7 @@ This module defines a class for geospatial analysis and operations.
 
 import json
 from math import radians, sin, cos, atan2, sqrt
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 from shapely import to_geojson
@@ -76,6 +76,148 @@ class GeoTools:
 
         from brails.utils import GeoTools
     """
+
+    @staticmethod
+    def bbox2poly(
+        query_area: Tuple[float, ...],
+        output_file: str = ''
+    ) -> Tuple[Polygon, str]:
+        """
+        Get the boundary polygon for a region based on its coordinates.
+
+        This method parses the provided bounding polygon coordinates into a
+        polygon object. The polygon  must be defined by at least two pairs of
+        longitude/latitude values (i.e., at least 4 elements) and must have an
+        even number of elements.  If a file name is provided in the `outfile`
+        argument, the resulting polygon is saved to a GeoJSON file.
+
+        Args:
+            query_area (tuple):
+                A tuple containing longitude/latitude pairs that define a
+                bounding box. The tuple should contain at least two pairs of
+                coordinates (i.e., 4 values), and the number of elements must
+                be an even number.
+            output_file (str, optional):
+                If a file name is provided, the resulting polygon will be
+                written to the specified file in GeoJSON format.
+
+        Raises:
+            TypeError:
+                If ``query_area`` is not a tuple.
+            ValueError:
+                If the tuple has an odd number of elements or fewer than two
+                pairs.
+
+        Returns:
+            Tuple[Polygon, str]:
+
+                - The bounding polygon as a Shapely Polygon.
+                - A human-readable string representation of the bounding
+                  polygon.
+
+        Example:
+            Simple bounding box (two coordinate pairs):
+
+            >>> from brails.utils import GeoTools
+            >>> coords = (-122.3, 37.85, -122.25, 37.9)
+            >>> bpoly, description = GeoTools.bbox2poly(coords)
+            >>> print(bpoly)
+            POLYGON ((-122.3 37.85, -122.3 37.9, -122.25 37.9, -122.25 37.85,
+                      -122.3 37.85))
+            >>> print(description)
+            the bounding box: (-122.3, 37.85, -122.25, 37.9)
+
+            A triangular polygon:
+
+            >>> long_coords = (
+            ...     -122.3, 37.85, -122.28, 37.86, -122.26, 37.87, -122.25,
+            ...     37.9
+            ... )
+            >>> bpoly_long, desc_long = GeoTools.bbox2poly(long_coords)
+            >>> print(bpoly_long)
+            POLYGON ((-122.3 37.85, -122.28 37.86, -122.26 37.87, -122.25 37.9,
+            -122.3 37.85))
+            >>> print(desc_long)
+            the bounding polygon: [(-122.3, 37.85), (-122.28, 37.86),
+            (-122.26, 37.87), (-122.25, 37.9)]
+        """
+        if not isinstance(query_area, tuple):
+            raise TypeError(
+                'Query area must be a tuple of longitude/latitude values.'
+            )
+
+        n_coords = len(query_area)
+
+        if n_coords < 4 or n_coords % 2 != 0:
+            raise ValueError(
+                'Bounding polygon must be defined as tuple consisting of at'
+                'least two longitude/latitude pairs and an even number of '
+                'elements.'
+            )
+
+        # Convert tuple into list of coordinate pairs
+        coords = [(query_area[i], query_area[i + 1])
+                  for i in range(0, n_coords, 2)]
+
+        # Create Shapely polygon
+        bpoly = box(*query_area) if n_coords == 4 else Polygon(coords)
+
+        # Build human-readable description
+        if n_coords == 4:
+            queryarea_printname = f'the bounding box: {query_area}'
+        else:
+            queryarea_printname = f'the bounding polygon: {coords}'
+
+        # Write to file if requested
+        if output_file:
+            GeoTools.write_polygon_to_geojson(bpoly, output_file)
+
+        return bpoly, queryarea_printname
+
+    @staticmethod
+    def geometry_to_list_of_lists(geom: BaseGeometry) -> List[List[float]]:
+        """
+        Convert a Shapely geometry into a list of coordinate lists.
+
+        Args:
+            geom (BaseGeometry):
+                A Shapely geometry (such as Point, Polygon)
+
+        Returns:
+            List[List[float]] or List[List[List[float]]]:
+                A list of ``[lon, lat]`` values or nested list objects
+                for complex geometries.
+
+        Examples:
+            >>> from shapely.geometry import Point, Polygon
+            >>> GeoTools.geometry_to_list_of_lists(Point(1.0, 2.0))
+            [[1.0, 2.0]]
+            >>> square = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+            >>> GeoTools.geometry_to_list_of_lists(square)
+            [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]
+        """
+        if isinstance(geom, Point):
+            return [[geom.x, geom.y]]
+
+        elif isinstance(geom, LineString):
+            return [list(coord) for coord in geom.coords]
+
+        elif isinstance(geom, MultiLineString):
+            return [
+                [list(coord) for coord in line.coords] for line in geom.geoms
+            ]
+
+        elif isinstance(geom, Polygon):
+            return [list(coord) for coord in geom.exterior.coords]
+
+        elif isinstance(geom, MultiPolygon):
+            return [
+                [list(coord) for coord in polygon.exterior.coords]
+                for polygon in geom.geoms
+            ]
+
+        else:
+            raise TypeError(f"Unsupported geometry type: {type(geom)}")
 
     @staticmethod
     def haversine_dist(
@@ -123,6 +265,81 @@ class GeoTools:
 
         # Return distance between the two points in feet:
         return UnitConverter.convert_length(R_EARTH_KM * c, 'km', 'ft')
+
+    @staticmethod
+    def match_points_to_polygons(
+        points: List[Point],
+        polygons: List[Polygon]
+    ) -> Tuple[List[Point], Dict[str, Point], List[int]]:
+        """
+        Match points to polygons and return the correspondence data.
+
+        This function finds Shapely points that fall within given polygons.
+        If multiple points exist within a polygon, it selects the point closest
+        to the polygon's centroid.
+
+        Args:
+            points (list[Point]):
+                A list of Shapely points
+            polygons (list[Polygon]):
+                A list of Shapely Polygons defined in EPSG 4326
+                (longitude, latitude).
+
+        Returns:
+            tuple[list, dict, list]:
+
+                - A list of matched Shapely points.
+                - A dictionary mapping each polygon (represented as a string)
+                  to the corresponding matched point.
+                - A list of the indices of polygons matched to points, with
+                  each index listed in the same order as the list of points.
+        """
+        # Create an STR tree for the input points:
+        pttree = STRtree(points)
+
+        # Initialize the list to keep indices of matched points and the mapping
+        # dictionary:
+        ptkeepind = []
+        fp2ptmap = {}
+        ind_fp_matched = []
+
+        for ind, poly in enumerate(polygons):
+            polygon = Polygon(poly)
+
+            # Query points that are within the polygon:
+            res = pttree.query(polygon)
+
+            if res.size > 0:  # Check if any points were found:
+                # If multiple points exist in polygon, find the closest to the
+                # centroid:
+                if res.size > 1:
+                    source_points = pttree.geometries.take(res)
+                    poly_centroid = polygon.centroid
+                    nearest_point = min(source_points,
+                                        key=poly_centroid.distance)
+                    nearest_index = next((index for index, point in
+                                          enumerate(source_points) if
+                                          point.equals(nearest_point)), None)
+                    res = [nearest_index]
+
+                # Add the found point(s) to the keep index list:
+                ptkeepind.extend(res)
+
+                # Map polygon to the first matched point:
+                fp2ptmap[str(poly)] = points[res[0]]
+
+                # Store the index of the matched polygon:
+                ind_fp_matched.append(ind)
+
+        # Convert the list of matched points to a set for uniqueness and back
+        # to a list:
+        ptkeepind = list(set(ptkeepind))
+
+        # Create a list of points that includes just the points that have a
+        # polygon match:
+        ptskeep = [points[ind] for ind in ptkeepind]
+
+        return ptskeep, fp2ptmap, ind_fp_matched
 
     @staticmethod
     def mesh_polygon(polygon: Polygon, rows: int, cols: int) -> List[Polygon]:
@@ -188,6 +405,106 @@ class GeoTools:
                     rectangles.append(intersection.envelope)
 
         return rectangles
+
+    @staticmethod
+    def parse_geojson_geometry(
+            geometry: Dict[str, Any]
+            ) -> Union[List[List[float]], List[List[List[float]]]]:
+        """
+        Convert a GeoJSON geometry object into BRAILS asset coordinates.
+
+        This function standardizes coordinates of different GeoJSON geometry
+        types, such as ``Point``, ``MultiPoint``, ``LineString``, 
+        ``MultiLineString``, ``Polygon``, and ``MultiPolygon`` into BRAILS
+        representation: a nested list of ``[x, y]`` coordinate pairs.
+        
+        Depending on the geometry type, the return value may represent either
+        a single sequence of coordinate pairs (``list[list[float]]``) or a
+        collection of multiple coordinate sequences
+        (``list[list[list[float]]]``).
+
+        Args:
+            geometry (dict):  
+                A GeoJSON geometry dictionary containing at least the keys
+                ``"type"`` and ``"coordinates"``, e.g., ``{"type": "Polygon",
+                "coordinates": [[[x1, y1], [x2, y2], ...]]}``
+
+        Returns:
+            list[list[float]] or list[list[list[float]]]:  
+                - ``list[list[float]]`` for geometries with a single coordinate
+                  list (e.g., Point, LineString, Polygon).
+                - ``list[list[list[float]]]`` for geometries composed of 
+                  multiple coordinate sequences (e.g., MultiLineString, 
+                  MultiPolygon).
+
+        Raises:
+            TypeError: If ``geometry`` is not a dictionary.  
+            ValueError: If the geometry is missing required keys.  
+            NotImplementedError: If the geometry type is unsupported.
+        
+        Examples:
+            >>> GeoTools.parse_geojson_geometry(
+            ...     {"type": "Point", "coordinates": [10.0, 20.0]}
+            ... )
+            [[10.0, 20.0]]
+    
+            >>> GeoTools.parse_geojson_geometry(
+            ...     {"type": "LineString", 
+                     "coordinates": [[0.0, 0.0], [1.0, 1.0]]
+                     }
+            ... )
+            [[0.0, 0.0], [1.0, 1.0]]
+    
+            >>> GeoTools.parse_geojson_geometry(
+            ...     {"type": "MultiLineString",
+            ...      "coordinates": [[[0, 0], [1, 1]], [[2, 2], [3, 3]]]}
+            ... )
+            [[[0, 0], [1, 1]], [[2, 2], [3, 3]]]
+    
+            >>> GeoTools.parse_geojson_geometry(
+            ...     {"type": "Polygon",
+            ...      "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+            ... )
+            [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]
+    
+            >>> GeoTools.parse_geojson_geometry(
+            ...     {"type": "MultiPolygon",
+            ...      "coordinates": [
+            ...          [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+            ...          [[[2, 2], [3, 2], [3, 3], [2, 3], [2, 2]]]
+            ...      ]}
+            ... )
+            [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]],
+             [[2, 2], [3, 2], [3, 3], [2, 3], [2, 2]]]
+        """
+        if not isinstance(geometry, dict):
+            raise TypeError('Geometry must be a dictionary')
+        if 'type' not in geometry or 'coordinates' not in geometry:
+            raise ValueError(
+                "Invalid geometry: missing 'type' or 'coordinates' keys"
+                )
+       
+        gtype = geometry['type']
+        coords = geometry['coordinates']
+       
+        if gtype == 'Point':
+            return [coords]
+       
+        elif gtype in ['LineString', 'MultiLineString']:
+            return coords
+              
+        elif gtype == 'Polygon':
+            # Exterior ring only
+            return coords[0]
+       
+        elif gtype == 'MultiPolygon':
+            # Flatten all exterior rings
+            return [poly[0] for poly in coords]
+       
+        else:
+            raise NotImplementedError(
+                f'Unsupported GeoJSON geometry type: {gtype}'
+                )
 
     @staticmethod
     def plot_polygon_cells(
@@ -318,220 +635,3 @@ class GeoTools:
         # Write the GeoJSON to the specified file:
         with open(output_file, 'w', encoding='utf8') as outfile:
             json.dump(geojson, outfile, indent=2)
-
-    @staticmethod
-    def match_points_to_polygons(
-        points: List[Point],
-        polygons: List[Polygon]
-    ) -> Tuple[List[Point], Dict[str, Point], List[int]]:
-        """
-        Match points to polygons and return the correspondence data.
-
-        This function finds Shapely points that fall within given polygons.
-        If multiple points exist within a polygon, it selects the point closest
-        to the polygon's centroid.
-
-        Args:
-            points (list[Point]):
-                A list of Shapely points
-            polygons (list[Polygon]):
-                A list of Shapely Polygons defined in EPSG 4326
-                (longitude, latitude).
-
-        Returns:
-            tuple[list, dict, list]:
-
-                - A list of matched Shapely points.
-                - A dictionary mapping each polygon (represented as a string)
-                  to the corresponding matched point.
-                - A list of the indices of polygons matched to points, with
-                  each index listed in the same order as the list of points.
-        """
-        # Create an STR tree for the input points:
-        pttree = STRtree(points)
-
-        # Initialize the list to keep indices of matched points and the mapping
-        # dictionary:
-        ptkeepind = []
-        fp2ptmap = {}
-        ind_fp_matched = []
-
-        for ind, poly in enumerate(polygons):
-            polygon = Polygon(poly)
-
-            # Query points that are within the polygon:
-            res = pttree.query(polygon)
-
-            if res.size > 0:  # Check if any points were found:
-                # If multiple points exist in polygon, find the closest to the
-                # centroid:
-                if res.size > 1:
-                    source_points = pttree.geometries.take(res)
-                    poly_centroid = polygon.centroid
-                    nearest_point = min(source_points,
-                                        key=poly_centroid.distance)
-                    nearest_index = next((index for index, point in
-                                          enumerate(source_points) if
-                                          point.equals(nearest_point)), None)
-                    res = [nearest_index]
-
-                # Add the found point(s) to the keep index list:
-                ptkeepind.extend(res)
-
-                # Map polygon to the first matched point:
-                fp2ptmap[str(poly)] = points[res[0]]
-
-                # Store the index of the matched polygon:
-                ind_fp_matched.append(ind)
-
-        # Convert the list of matched points to a set for uniqueness and back
-        # to a list:
-        ptkeepind = list(set(ptkeepind))
-
-        # Create a list of points that includes just the points that have a
-        # polygon match:
-        ptskeep = [points[ind] for ind in ptkeepind]
-
-        return ptskeep, fp2ptmap, ind_fp_matched
-
-    @staticmethod
-    def geometry_to_list_of_lists(geom: BaseGeometry) -> List[List[float]]:
-        """
-        Convert a Shapely geometry into a list of coordinate lists.
-
-        Args:
-            geom (BaseGeometry):
-                A Shapely geometry (such as Point, Polygon)
-
-        Returns:
-            List[List[float]] or List[List[List[float]]]:
-                A list of ``[lon, lat]`` values or nested list objects
-                for complex geometries.
-
-        Examples:
-            >>> from shapely.geometry import Point, Polygon
-            >>> GeoTools.geometry_to_list_of_lists(Point(1.0, 2.0))
-            [[1.0, 2.0]]
-            >>> square = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
-            >>> GeoTools.geometry_to_list_of_lists(square)
-            [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]
-        """
-        if isinstance(geom, Point):
-            return [[geom.x, geom.y]]
-
-        elif isinstance(geom, LineString):
-            return [list(coord) for coord in geom.coords]
-
-        elif isinstance(geom, MultiLineString):
-            return [
-                [list(coord) for coord in line.coords] for line in geom.geoms
-            ]
-
-        elif isinstance(geom, Polygon):
-            return [list(coord) for coord in geom.exterior.coords]
-
-        elif isinstance(geom, MultiPolygon):
-            return [
-                [list(coord) for coord in polygon.exterior.coords]
-                for polygon in geom.geoms
-            ]
-
-        else:
-            raise TypeError(f"Unsupported geometry type: {type(geom)}")
-
-    @staticmethod
-    def bbox2poly(
-        query_area: Tuple[float, ...],
-        output_file: str = ''
-    ) -> Tuple[Polygon, str]:
-        """
-        Get the boundary polygon for a region based on its coordinates.
-
-        This method parses the provided bounding polygon coordinates into a
-        polygon object. The polygon  must be defined by at least two pairs of
-        longitude/latitude values (i.e., at least 4 elements) and must have an
-        even number of elements.  If a file name is provided in the `outfile`
-        argument, the resulting polygon is saved to a GeoJSON file.
-
-        Args:
-            query_area (tuple):
-                A tuple containing longitude/latitude pairs that define a
-                bounding box. The tuple should contain at least two pairs of
-                coordinates (i.e., 4 values), and the number of elements must
-                be an even number.
-            output_file (str, optional):
-                If a file name is provided, the resulting polygon will be
-                written to the specified file in GeoJSON format.
-
-        Raises:
-            TypeError:
-                If ``query_area`` is not a tuple.
-            ValueError:
-                If the tuple has an odd number of elements or fewer than two
-                pairs.
-
-        Returns:
-            Tuple[Polygon, str]:
-
-                - The bounding polygon as a Shapely Polygon.
-                - A human-readable string representation of the bounding
-                  polygon.
-
-        Example:
-            Simple bounding box (two coordinate pairs):
-
-            >>> from brails.utils import GeoTools
-            >>> coords = (-122.3, 37.85, -122.25, 37.9)
-            >>> bpoly, description = GeoTools.bbox2poly(coords)
-            >>> print(bpoly)
-            POLYGON ((-122.3 37.85, -122.3 37.9, -122.25 37.9, -122.25 37.85,
-                      -122.3 37.85))
-            >>> print(description)
-            the bounding box: (-122.3, 37.85, -122.25, 37.9)
-
-            A triangular polygon:
-
-            >>> long_coords = (
-            ...     -122.3, 37.85, -122.28, 37.86, -122.26, 37.87, -122.25,
-            ...     37.9
-            ... )
-            >>> bpoly_long, desc_long = GeoTools.bbox2poly(long_coords)
-            >>> print(bpoly_long)
-            POLYGON ((-122.3 37.85, -122.28 37.86, -122.26 37.87, -122.25 37.9,
-            -122.3 37.85))
-            >>> print(desc_long)
-            the bounding polygon: [(-122.3, 37.85), (-122.28, 37.86),
-            (-122.26, 37.87), (-122.25, 37.9)]
-        """
-        if not isinstance(query_area, tuple):
-            raise TypeError(
-                'Query area must be a tuple of longitude/latitude values.'
-            )
-
-        n_coords = len(query_area)
-
-        if n_coords < 4 or n_coords % 2 != 0:
-            raise ValueError(
-                'Bounding polygon must be defined as tuple consisting of at'
-                'least two longitude/latitude pairs and an even number of '
-                'elements.'
-            )
-
-        # Convert tuple into list of coordinate pairs
-        coords = [(query_area[i], query_area[i + 1])
-                  for i in range(0, n_coords, 2)]
-
-        # Create Shapely polygon
-        bpoly = box(*query_area) if n_coords == 4 else Polygon(coords)
-
-        # Build human-readable description
-        if n_coords == 4:
-            queryarea_printname = f'the bounding box: {query_area}'
-        else:
-            queryarea_printname = f'the bounding polygon: {coords}'
-
-        # Write to file if requested
-        if output_file:
-            GeoTools.write_polygon_to_geojson(bpoly, output_file)
-
-        return bpoly, queryarea_printname
