@@ -16,7 +16,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../_static/copybutton.js?v=f281be69"></script>
@@ -318,6 +318,87 @@ rectangular cells that mesh the <code class="docutils literal notranslate"><span
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Access coordinates of first cell</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cells</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">bounds</span>
 <span class="go">(0.0, 0.0, 2.0, 1.5)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.parse_geojson_geometry">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parse_geojson_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.parse_geojson_geometry" title="Link to this definition"></a></dt>
+<dd><p>Convert a GeoJSON geometry object into BRAILS asset coordinates.</p>
+<p>This function standardizes coordinates of different GeoJSON geometry
+types, such as <code class="docutils literal notranslate"><span class="pre">Point</span></code>, <code class="docutils literal notranslate"><span class="pre">MultiPoint</span></code>, <code class="docutils literal notranslate"><span class="pre">LineString</span></code>,
+<code class="docutils literal notranslate"><span class="pre">MultiLineString</span></code>, <code class="docutils literal notranslate"><span class="pre">Polygon</span></code>, and <code class="docutils literal notranslate"><span class="pre">MultiPolygon</span></code> into BRAILS
+representation: a nested list of <code class="docutils literal notranslate"><span class="pre">[x,</span> <span class="pre">y]</span></code> coordinate pairs.</p>
+<p>Depending on the geometry type, the return value may represent either
+a single sequence of coordinate pairs (<code class="docutils literal notranslate"><span class="pre">list[list[float]]</span></code>) or a
+collection of multiple coordinate sequences
+(<code class="docutils literal notranslate"><span class="pre">list[list[list[float]]]</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>geometry</strong> (<em>dict</em>) – A GeoJSON geometry dictionary containing at least the keys
+<code class="docutils literal notranslate"><span class="pre">&quot;type&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;coordinates&quot;</span></code>, e.g., <code class="docutils literal notranslate"><span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;Polygon&quot;,</span>
+<span class="pre">&quot;coordinates&quot;:</span> <span class="pre">[[[x1,</span> <span class="pre">y1],</span> <span class="pre">[x2,</span> <span class="pre">y2],</span> <span class="pre">...]]}</span></code></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">list[list[float]]</span></code> for geometries with a single coordinate
+list (e.g., Point, LineString, Polygon).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list[list[list[float]]]</span></code> for geometries composed of
+multiple coordinate sequences (e.g., MultiLineString,
+MultiPolygon).</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[list[float]] or list[list[list[float]]]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">geometry</span></code> is not a dictionary.</p></li>
+<li><p><strong>ValueError</strong> – If the geometry is missing required keys.</p></li>
+<li><p><strong>NotImplementedError</strong> – If the geometry type is unsupported.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">parse_geojson_geometry</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Point&quot;</span><span class="p">,</span> <span class="s2">&quot;coordinates&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">]}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">[[10.0, 20.0]]</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">parse_geojson_geometry</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;LineString&quot;</span><span class="p">,</span>
+<span class="go">         &quot;coordinates&quot;: [[0.0, 0.0], [1.0, 1.0]]</span>
+<span class="go">         }</span>
+<span class="go">... )</span>
+<span class="go">[[0.0, 0.0], [1.0, 1.0]]</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">parse_geojson_geometry</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;MultiLineString&quot;</span><span class="p">,</span>
+<span class="gp">... </span>     <span class="s2">&quot;coordinates&quot;</span><span class="p">:</span> <span class="p">[[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]]]}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">[[[0, 0], [1, 1]], [[2, 2], [3, 3]]]</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">parse_geojson_geometry</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Polygon&quot;</span><span class="p">,</span>
+<span class="gp">... </span>     <span class="s2">&quot;coordinates&quot;</span><span class="p">:</span> <span class="p">[[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]]}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">parse_geojson_geometry</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;MultiPolygon&quot;</span><span class="p">,</span>
+<span class="gp">... </span>     <span class="s2">&quot;coordinates&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="gp">... </span>         <span class="p">[[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]],</span>
+<span class="gp">... </span>         <span class="p">[[[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]]</span>
+<span class="gp">... </span>     <span class="p">]}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]],</span>
+<span class="go"> [[2, 2], [3, 2], [3, 3], [2, 3], [2, 2]]]</span>
 </pre></div>
 </div>
 </dd></dl>

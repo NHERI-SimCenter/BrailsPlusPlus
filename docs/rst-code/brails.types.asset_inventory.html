@@ -16,7 +16,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../_static/copybutton.js?v=f281be69"></script>
@@ -123,16 +123,40 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.types.asset_inventory</span><span class="w"> </span><span class="kn">import</span> <span class="n">Asset</span>
 </pre></div>
 </div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.asset_id">
+<span class="sig-name descname"><span class="pre">asset_id</span></span><a class="headerlink" href="#brails.types.asset_inventory.Asset.asset_id" title="Link to this definition"></a></dt>
+<dd><p>Unique identifier for the asset.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>asset_id</strong> (<em>str</em><em> or </em><em>int</em>) – Unique identifier for the asset.</p></li>
-<li><p><strong>coordinates</strong> (<em>list</em><em>[</em><em>list</em><em>[</em><em>float</em><em>]</em><em>]</em>) – Geometry coordinates of the asset, typically as a list of [x, y]
-pairs.</p></li>
-<li><p><strong>features</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>, </em><em>optional</em>) – Additional attributes/features of the asset. Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
-</ul>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str or int</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.coordinates">
+<span class="sig-name descname"><span class="pre">coordinates</span></span><a class="headerlink" href="#brails.types.asset_inventory.Asset.coordinates" title="Link to this definition"></a></dt>
+<dd><p>Geometry coordinates of the asset, typically as a list of [x, y]
+pairs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[list[float]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.features">
+<span class="sig-name descname"><span class="pre">features</span></span><a class="headerlink" href="#brails.types.asset_inventory.Asset.features" title="Link to this definition"></a></dt>
+<dd><p>Additional attributes/features of the asset. Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, Any], optional</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.add_features">
 <span class="sig-name descname"><span class="pre">add_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">additional_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.Asset.add_features" title="Link to this definition"></a></dt>
@@ -220,6 +244,44 @@ otherwise.</p>
 <span class="go">Coordinates input is empty for empty; defaulting to an empty list.</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">empty_asset</span><span class="o">.</span><span class="n">get_centroid</span><span class="p">()</span>
 <span class="go">[[None, None]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.hash_asset">
+<span class="sig-name descname"><span class="pre">hash_asset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.Asset.hash_asset" title="Link to this definition"></a></dt>
+<dd><p>Generate a unique hash for this asset based on its coordinates and features.</p>
+<p>This hash can be used to quickly identify duplicate assets by comparing
+geometry and attribute data. Both the coordinates and features are
+serialized as strings and then hashed using MD5.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A hexadecimal string representing the MD5 hash of the asset.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">asset1</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;123&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4180</span><span class="p">,</span> <span class="mf">37.7755</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;roof_type&#39;</span><span class="p">:</span> <span class="s1">&#39;gable&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset2</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;124&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4180</span><span class="p">,</span> <span class="mf">37.7755</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;roof_type&#39;</span><span class="p">:</span> <span class="s1">&#39;flat&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hash1</span> <span class="o">=</span> <span class="n">asset1</span><span class="o">.</span><span class="n">hash_asset</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">hash1</span><span class="p">)</span>
+<span class="go">1e629fc184329ea688c648e7663b439d</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hash2</span> <span class="o">=</span> <span class="n">asset2</span><span class="o">.</span><span class="n">hash_asset</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">hash2</span><span class="p">)</span>
+<span class="go">ac0d104a411f92bffff8cc1398257dd8</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hash1</span> <span class="o">!=</span> <span class="n">hash2</span>
+<span class="go">True</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -534,6 +596,45 @@ values are the new feature names.</p>
 <span class="go">{&#39;new_name&#39;: 200}</span>
 </pre></div>
 </div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.combine">
+<span class="sig-name descname"><span class="pre">combine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inventory_to_combine</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.combine" title="Link to this definition"></a></dt>
+<dd><p>Combine with another AssetInventory, avoiding duplicate assets.</p>
+<p>Assets are compared using their hashed coordinate and feature data.
+Duplicate assets (identical geometry and properties) are skipped.
+Optionally, keys from the inventory to combine can be remapped using
+<code class="docutils literal notranslate"><span class="pre">key_map</span></code>. Any resulting key conflicts are automatically resolved by
+assigning new unique numeric IDs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>inventory_to_combine</strong> (<a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><em>AssetInventory</em></a>) – The secondary inventory whose assets will be merged into this
+one.</p></li>
+<li><p><strong>key_map</strong> (<em>dict</em><em>, </em><em>optional</em>) – A mapping of original keys in <code class="docutils literal notranslate"><span class="pre">inventory_to_combine</span></code> to new
+keys in this inventory. For example: {“old_key1”: “new_keyA”,
+“old_key2”: “new_keyB”}. If not provided, original keys are
+used as-is unless they already exist in the current inventory.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary mapping each original key from
+<code class="docutils literal notranslate"><span class="pre">inventory_to_combine</span></code> to its final key in this inventory
+(after applying <code class="docutils literal notranslate"><span class="pre">key_map</span></code> and resolving conflicts).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Modifies:</dt><dd><dl class="simple">
+<dt>self.inventory(dict):</dt><dd><p>Updates the inventory in-place by adding new, non-duplicate
+assets from <code class="docutils literal notranslate"><span class="pre">inventory_to_combine</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -1193,6 +1294,109 @@ indices will be assigned</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.read_from_geojson">
+<span class="sig-name descname"><span class="pre">read_from_geojson</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">asset_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'building'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.read_from_geojson" title="Link to this definition"></a></dt>
+<dd><p>Reads a GeoJSON file and imports assets into a BRAILS asset inventory.</p>
+<p>This method loads a GeoJSON file, validates its structure, checks that
+geometries contain valid <cite>[longitude, latitude]</cite> coordinates, and
+converts each feature into a BRAILS <cite>Asset</cite> object. Each asset is
+assigned a unique numeric identifier and stored in the class inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_path</strong> (<em>str</em>) – Path to the GeoJSON file to be read. Must represent a valid
+GeoJSON FeatureCollection.</p></li>
+<li><p><strong>asset_type</strong> (<em>str</em><em>, </em><em>optional</em>) – The type assigned to all imported assets. Defaults to
+<cite>‘building’</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the GeoJSON file is successfully read and assets
+are added to the inventory.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If the specified file path does not exist or is not a file.</p></li>
+<li><p><strong>ValueError</strong> – If the file is invalid JSON, not a valid GeoJSON
+    FeatureCollection, contains no features, or has out-of-range
+    coordinates.</p></li>
+<li><p><strong>NotImplementedError</strong> – If one or more geometries include unsupported types.</p></li>
+<li><p><strong>KeyError</strong> – If a feature is missing required keys
+    (<cite>geometry</cite> or <cite>attributes</cite>).</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>Example GeoJSON file (<cite>seattle_buildings.geojson</cite>):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FeatureCollection&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;features&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Feature&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;geometry&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Polygon&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;coordinates&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">[</span>
+<span class="w">            </span><span class="p">[</span><span class="mf">-122.3355</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6080</span><span class="p">],</span>
+<span class="w">            </span><span class="p">[</span><span class="mf">-122.3350</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6080</span><span class="p">],</span>
+<span class="w">            </span><span class="p">[</span><span class="mf">-122.3350</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6085</span><span class="p">],</span>
+<span class="w">            </span><span class="p">[</span><span class="mf">-122.3355</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6085</span><span class="p">],</span>
+<span class="w">            </span><span class="p">[</span><span class="mf">-122.3355</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6080</span><span class="p">]</span>
+<span class="w">          </span><span class="p">]</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;attributes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Building A&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;height_m&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">18.7</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Feature&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;geometry&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Point&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;coordinates&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">-122.3321</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6062</span><span class="p">]</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;attributes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Building B&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;height_m&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">12.4</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Example usage:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inv</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inv</span><span class="o">.</span><span class="n">read_from_geojson</span><span class="p">(</span><span class="s1">&#39;seattle_buildings.geojson&#39;</span><span class="p">,</span>
+<span class="gp">... </span><span class="n">asset_type</span><span class="o">=</span><span class="s1">&#39;building&#39;</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inv</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">AssetInventory</span>
+<span class="go">Inventory stored in:  dict</span>
+<span class="go">Key:  0 Asset:</span>
+<span class="go">         Coordinates:  [[-122.3355, 47.608], [-122.335, 47.608],</span>
+<span class="go"> [-122.335, 47.6085], [-122.3355, 47.6085],</span>
+<span class="go"> [-122.3355, 47.608]]</span>
+<span class="go">         Features:  {&#39;name&#39;: &#39;Building A&#39;, &#39;height_m&#39;: 18.7,</span>
+<span class="go"> &#39;type&#39;: &#39;building&#39;}</span>
+<span class="go">Key:  1 Asset:</span>
+<span class="go">         Coordinates:  [[-122.3321, 47.6062]]</span>
+<span class="go">         Features:  {&#39;name&#39;: &#39;Building B&#39;, &#39;height_m&#39;: 12.4,</span>
+<span class="go"> &#39;type&#39;: &#39;building&#39;}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>All coordinates are expected to follow the GeoJSON standard
+<code class="docutils literal notranslate"><span class="pre">[longitude,</span> <span class="pre">latitude]</span></code> order and use the WGS-84 geographic
+coordinate reference system (EPSG:4326).</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.remove_asset">
 <span class="sig-name descname"><span class="pre">remove_asset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">asset_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.remove_asset" title="Link to this definition"></a></dt>
 <dd><p>Remove an asset from the inventory.</p>
@@ -1290,6 +1494,74 @@ Accepts types such as <code class="docutils literal notranslate"><span class="pr
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.remove_nonmatching_assets">
+<span class="sig-name descname"><span class="pre">remove_nonmatching_assets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_set</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.remove_nonmatching_assets" title="Link to this definition"></a></dt>
+<dd><p>Remove assets that do not have corresponding entries in image set.</p>
+<p>This method compares asset keys in the inventory with those in the
+provided ImageSet and removes any asset whose key does not exist in
+the ImageSet.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_set</strong> (<a class="reference internal" href="brails.types.image_set.html#brails.types.image_set.ImageSet" title="brails.types.image_set.ImageSet"><em>ImageSet</em></a>) – The image set containing valid image keys.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, prints a summary of removed keys. Default is
+<code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Modifies:</dt><dd><dl class="simple">
+<dt>self.inventory(dict):</dt><dd><p>Removes nonmatching asset entries directly from the inventory.
+The object is updated in-place.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;house_A&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;house_A&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[[</span><span class="o">-</span><span class="mf">118.5123</span><span class="p">,</span> <span class="mf">34.0451</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">118.5120</span><span class="p">,</span> <span class="mf">34.0454</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">118.5117</span><span class="p">,</span> <span class="mf">34.0452</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">118.5121</span><span class="p">,</span> <span class="mf">34.0449</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">118.5123</span><span class="p">,</span> <span class="mf">34.0451</span><span class="p">]],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;residential&#39;</span><span class="p">,</span> <span class="s1">&#39;floors&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;warehouse_B&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;warehouse_B&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[[</span><span class="o">-</span><span class="mf">118.5105</span><span class="p">,</span> <span class="mf">34.0467</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">118.5102</span><span class="p">,</span> <span class="mf">34.0471</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">118.5099</span><span class="p">,</span> <span class="mf">34.0468</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">118.5103</span><span class="p">,</span> <span class="mf">34.0464</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">118.5105</span><span class="p">,</span> <span class="mf">34.0467</span><span class="p">]],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;commercial&#39;</span><span class="p">,</span> <span class="s1">&#39;floors&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">AssetInventory</span>
+<span class="go">Inventory stored in:  dict</span>
+<span class="go">Key:  house_A Asset:</span>
+<span class="go">     Coordinates:  [[-118.5123, 34.0451], [-118.512, 34.0454],</span>
+<span class="go">[-118.5117, 34.0452], [-118.5121, 34.0449], [-118.5123, 34.0451]]</span>
+<span class="go">     Features:  {&#39;type&#39;: &#39;residential&#39;, &#39;floors&#39;: 2}</span>
+<span class="go">Key:  warehouse_B Asset:</span>
+<span class="go">     Coordinates:  [[-118.5105, 34.0467], [-118.5102, 34.0471],</span>
+<span class="go">[-118.5099, 34.0468], [-118.5103, 34.0464], [-118.5105, 34.0467]]</span>
+<span class="go">     Features:  {&#39;type&#39;: &#39;commercial&#39;, &#39;floors&#39;: 1}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span> <span class="o">=</span> <span class="n">ImageSet</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img1</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;bldg1.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img2</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;bldg2.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;house_A&#39;</span><span class="p">,</span> <span class="n">img1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;house_B&#39;</span><span class="p">,</span> <span class="n">img2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">remove_nonmatching_assets</span><span class="p">(</span><span class="n">img_set</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">Removed 1 nonmatching assets: [&#39;warehouse_B&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.update_world_realization">
 <span class="sig-name descname"><span class="pre">update_world_realization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">world_realization</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.update_world_realization" title="Link to this definition"></a></dt>
 <dd><p>Update the current AssetInventory with a specific world realization.</p>
@@ -1367,7 +1639,7 @@ GeoJSON object.</p>
 <p>Write the AssetInventory data in a GeoJSON dictionary and a file
 named  <code class="docutils literal notranslate"><span class="pre">output.geojson</span></code>.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">geojson_written</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">write_to_geojson</span><span class="p">(</span><span class="s1">&#39;output.geojson&#39;</span><span class="p">)</span>
-<span class="go">Wrote 1 assets to {../output.geojson}</span>
+<span class="go">Wrote 1 asset to {../output.geojson}</span>
 </pre></div>
 </div>
 </dd></dl>
