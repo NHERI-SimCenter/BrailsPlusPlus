@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 10-15-2025
+# 10-18-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -70,6 +70,7 @@ import pandas as pd
 from shapely import box
 from shapely.geometry import shape, LineString, Polygon
 
+from brails.utils.geo_tools import GeoTools
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 
@@ -746,9 +747,7 @@ class AssetInventory:
         }
     
         # Determine next available numeric ID
-        next_id = max(
-            [int(k) for k in self.inventory.keys() if str(k).isdigit()] or [0]
-        ) + 1
+        next_id = self._get_next_numeric_id()
     
         # Track key mapping from inventory2 → combined
         merged_key_map = {}
@@ -1402,40 +1401,140 @@ class AssetInventory:
             file_path: str,
             asset_type: str = "building"
         ) -> bool:
-
+        """
+        Reads a GeoJSON file and imports assets into a BRAILS asset inventory.
+        
+        This method loads a GeoJSON file, validates its structure, checks that
+        geometries contain valid `[longitude, latitude]` coordinates, and 
+        converts each feature into a BRAILS `Asset` object. Each asset is 
+        assigned a unique numeric identifier and stored in the class inventory.
+        
+        Args:
+            file_path (str): 
+                Path to the GeoJSON file to be read. Must represent a valid 
+                GeoJSON FeatureCollection.
+            asset_type (str, optional): 
+                The type assigned to all imported assets. Defaults to 
+                `'building'`.
+        
+        Returns:
+            bool: 
+                ``True`` if the GeoJSON file is successfully read and assets 
+                are added to the inventory.
+        
+        Raises:
+            FileNotFoundError: 
+                If the specified file path does not exist or is not a file.
+            ValueError: 
+                If the file is invalid JSON, not a valid GeoJSON 
+                FeatureCollection, contains no features, or has out-of-range
+                coordinates.
+            NotImplementedError: 
+                If one or more geometries include unsupported types.
+            KeyError: 
+                If a feature is missing required keys 
+                (`geometry` or `attributes`).
+        
+        Example:
+            Example GeoJSON file (`seattle_buildings.geojson`):
+        
+            .. code-block:: json
+    
+                {
+                  "type": "FeatureCollection",
+                  "features": [
+                    {
+                      "type": "Feature",
+                      "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [
+                          [
+                            [-122.3355, 47.6080],
+                            [-122.3350, 47.6080],
+                            [-122.3350, 47.6085],
+                            [-122.3355, 47.6085],
+                            [-122.3355, 47.6080]
+                          ]
+                        ]
+                      },
+                      "attributes": {
+                        "name": "Building A",
+                        "height_m": 18.7
+                      }
+                    },
+                    {
+                      "type": "Feature",
+                      "geometry": {
+                        "type": "Point",
+                        "coordinates": [-122.3321, 47.6062]
+                      },
+                      "attributes": {
+                        "name": "Building B",
+                        "height_m": 12.4
+                      }
+                    }
+                  ]
+                }
+        
+            Example usage:
+        
+                >>> inv = AssetInventory()
+                >>> inv.read_from_geojson('seattle_buildings.geojson',
+                ... asset_type='building')
+                True
+                >>> inv.print_info()
+                AssetInventory
+                Inventory stored in:  dict
+                Key:  0 Asset:
+                	 Coordinates:  [[-122.3355, 47.608], [-122.335, 47.608], 
+                 [-122.335, 47.6085], [-122.3355, 47.6085], 
+                 [-122.3355, 47.608]]
+                	 Features:  {'name': 'Building A', 'height_m': 18.7, 
+                 'type': 'building'}
+                Key:  1 Asset:
+                	 Coordinates:  [[-122.3321, 47.6062]]
+                	 Features:  {'name': 'Building B', 'height_m': 12.4, 
+                 'type': 'building'}
+        
+        Note:
+            All coordinates are expected to follow the GeoJSON standard 
+            ``[longitude, latitude]`` order and use the WGS-84 geographic 
+            coordinate reference system (EPSG:4326).
+        """
+    
         # Path checks:
         path = Path(file_path)
         if not path.exists() or not path.is_file():
             raise FileNotFoundError(f'File not found: {file_path}')
-    
+        
         # JSON parsing:
         try:
             with path.open('r', encoding='utf-8') as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
             raise ValueError(f'Invalid JSON format in {file_path}: {e}')
-    
+        
         # GeoJSON structure validation:
         if not isinstance(data, dict) or \
             data.get('type') != 'FeatureCollection':
             raise ValueError(
                 'Input file is not a valid GeoJSON FeatureCollection.'
                 )
-    
+        
         features = data.get('features', [])
         if not isinstance(features, list) or not features:
             raise ValueError(
                 'GeoJSON FeatureCollection contains no valid features.'
                 )
-
+        
         # Determine next available numeric ID
         next_id = self._get_next_numeric_id()
-
-        for index, item in enumerate(data):
-            geometry = [[item['geometry']['x'], item['geometry']['y']]]
+        
+        for index, item in enumerate(features):
+            geometry = GeoTools.parse_geojson_geometry(item['geometry'])
             asset_features = {**item['attributes'], 'type': asset_type}
             asset = Asset(index, geometry, asset_features)
-            self.inventory.add_asset(next_id + index, asset)
+            self.add_asset(next_id + index, asset)
 
     def remove_asset(self, asset_id: Union[str, int]) -> bool:
         """
@@ -2152,7 +2251,7 @@ class AssetInventory:
         Compute the next available numeric asset ID in the inventory.
     
         Returns:
-            int
+            int:
                 The next available numeric ID (max numeric key + 1).
                 Returns 0 if the inventory is empty, contains no numeric keys,
                 or cannot be accessed.
