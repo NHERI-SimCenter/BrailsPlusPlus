@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-18-2025
+# 10-20-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -56,9 +56,9 @@ from shapely.geometry import box, LineString, MultiLineString, MultiPolygon, \
 from shapely.geometry.base import BaseGeometry
 from shapely.strtree import STRtree
 
-from brails.utils.unit_converter import UnitConverter
 from brails.constants import R_EARTH_KM
-
+from brails.utils.unit_converter import UnitConverter
+from brails.utils.input_validator import InputValidator
 
 class GeoTools:
     """
@@ -175,7 +175,9 @@ class GeoTools:
         return bpoly, queryarea_printname
 
     @staticmethod
-    def geometry_to_list_of_lists(geom: BaseGeometry) -> List[List[float]]:
+    def geometry_to_list_of_lists(
+            geom: BaseGeometry
+            ) -> Union[List[List[float]], List[List[List[float]]]]:
         """
         Convert a Shapely geometry into a list of coordinate lists.
 
@@ -265,6 +267,115 @@ class GeoTools:
 
         # Return distance between the two points in feet:
         return UnitConverter.convert_length(R_EARTH_KM * c, 'km', 'ft')
+    
+    @staticmethod
+    def list_of_lists_to_geometry(
+            coordinates: Union[List[List[float]], List[List[List[float]]]]
+            ) -> BaseGeometry:
+        """
+        Convert BRAILS nested coordinate lists into a Shapely geometry.
+
+        Uses the existing ``InputValidator`` helpers to decide which geometry
+        to build. Assumes coordinates are in WGS-84 order 
+        ``[longitude, latitude]``.
+
+        Args:
+            coordinates (list[list[float]] | list[list[list[float]]]):
+                - Point: ``[[lon, lat]]``
+                - LineString: ``[[lon, lat], [lon, lat], ...]``
+                - Polygon (single exterior ring): ``[[lon, lat], ..., [lon, lat]]`` (closed)
+                - MultiLineString: ``[[[lon, lat], ...], [[lon, lat], ...], ...]``
+                - MultiPolygon (exterior rings only): ``[[[lon, lat], ...], ...]``
+                  where each inner list is a **closed** polygon ring.
+
+        Returns:
+            shapely.geometry.BaseGeometry: 
+                One of ``Point``, ``LineString``, ``Polygon``,
+                ``MultiLineString``, or ``MultiPolygon``.
+
+        Raises:
+            ValueError: 
+                If the coordinates do not match any permitted geometry type per
+                ``InputValidator``.
+
+        Examples:
+            >>> GeoTools.list_of_lists_to_geometry([[-122.3321, 47.6062]])
+            <POINT (-122.332 47.606)>
+            
+            >>> GeoTools.list_of_lists_to_geometry([
+            ...     [-122.335, 47.606],
+            ...     [-122.334, 47.607],
+            ...     [-122.333, 47.606]
+            ... ])
+            <LINESTRING (-122.335 47.606, -122.334 47.607, -122.333 47.606)>
+            
+            >>> polygon = [
+            ...     [-122.336, 47.606],
+            ...     [-122.334, 47.606],
+            ...     [-122.334, 47.608],
+            ...     [-122.336, 47.608],
+            ...     [-122.336, 47.606]
+            ... ]
+            >>> GeoTools.list_of_lists_to_geometry(polygon)
+            <POLYGON ((-122.336 47.606, -122.334 47.606, -122.334 47.608,
+            -122.336 47.608, -122.336 47.606))>
+            
+            >>> multiline = [
+            ...     [[-122.337, 47.606], [-122.335, 47.607]],
+            ...     [[-122.334, 47.607], [-122.333, 47.608], [-122.332, 47.607]]
+            ... ]
+            >>> GeoTools.list_of_lists_to_geometry(multiline)
+            <MULTILINESTRING ((-122.337 47.606, -122.335 47.607), 
+            (-122.334 47.607, -122.333 47.608, -122.332 47.607))>
+            
+            >>> multipolygon = [
+            ...     [
+            ...         [-122.337, 47.606],
+            ...         [-122.335, 47.606],
+            ...         [-122.335, 47.608],
+            ...         [-122.337, 47.608],
+            ...         [-122.337, 47.606]
+            ...     ],
+            ...     [
+            ...         [-122.334, 47.607],
+            ...         [-122.332, 47.607],
+            ...         [-122.332, 47.609],
+            ...         [-122.334, 47.609],
+            ...         [-122.334, 47.607]
+            ...     ]
+            ... ]
+            >>> GeoTools.list_of_lists_to_geometry(multipolygon)
+            <MULTIPOLYGON (((-122.337 47.606, -122.335 47.606, -122.335 47.608,
+            -122.337 47.608, -122.337 47.606)), ((-122.334 47.607, 
+            -122.332 47.607, -122.332 47.609, -122.334 47.609, 
+            -122.334 47.607)))>
+        """        
+    
+        if InputValidator.is_point(coordinates):
+            return Point(*coordinates[0])
+        
+        if InputValidator.is_linestring(coordinates):
+            return LineString(coordinates)
+        
+        if InputValidator.is_polygon(coordinates):
+            return Polygon(coordinates)
+
+        if InputValidator.is_multilinestring(coordinates):
+            return MultiLineString(coordinates)
+
+        if InputValidator.is_multipolygon(coordinates):        
+            polygons = [Polygon(ring) for ring in coordinates]
+            return MultiPolygon(polygons)
+
+        raise ValueError(
+            'Unsupported coordinate structure: expected a nested list '
+            'conforming to BRAILS geometry specifications for one of the '
+            'following types: Point, LineString, MultiLineString, Polygon, '
+            'or MultiPolygon.'
+        )
+
+        
+
 
     @staticmethod
     def match_points_to_polygons(
