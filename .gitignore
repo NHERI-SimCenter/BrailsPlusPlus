@@ -64,13 +64,12 @@ dist
 /docs/source/_autosummary/
 /docs/source/notebooks/*.ipynb
 
-# Example data
-examples/**/*tif
-examples/image_filters/filtered_images/
-examples/inventory_creation/*geojson
-examples/nsi_integration/*geojson
+docs/source/notebooks/.ipynb_checkpoints/
+*key.txt
+*Key.txt
+*#
+build
+rst-code
+.ipynb_checkpoints
 
-# Scripts and config
-apiKey.txt
-api_key.txt
-userID.sh
+

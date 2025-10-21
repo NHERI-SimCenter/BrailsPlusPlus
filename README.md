@@ -9,6 +9,16 @@
 
 ```BRAILS++``` is an object-oriented framework for building applications that focus on generating asset inventories for large geographic regions.
 
+
+ BRAILS++ provides modular workflows for generating inventories by integrating diverse data sources, including public datasets, features extracted from imagery, and ruleset-based inference models.
+
+![Brails Workflow](docs/brailsPlusPlus.png)
+
+In BRAILS++, an asset inventory consists of geographically referenced points, line-strings, or polygons, each annotated with key attributes. To build these inventories, the data scrapers in BRAILS++ interact with web servers to create an inventory blueprint suitable as a starting point for regional-scale analysis. Example datasets accessed through BRAILS++ include FEMA’s USA Structures (FEMA, 2022), Microsoft Footprints (Microsoft, 2022), Overture Maps (Overture Maps Foundation, 2023), OpenStreetMap (OpenStreetMap contributors, 2017), the U.S. Army Corps of Engineer’s NSI, TIGER/Line roadway data (U.S. Census Bureau, 2024), FHWA’s National Bridge and Tunnel Inventories (FHWA, 2023; FHWA, 2024), ASCE REST services for design loads (ASCE, 2025), and HIFLD infrastructure data (U.S. Department of Homeland Security, 2024).
+
+Despite their value, these datasets often contain incomplete or inconsistent information, requiring further enhancement to address the corresponding uncertainties. BRAILS++ incorporates methods for handling missing data and enhancing the available datasets through modules that enable: 1) feature extraction from publicly available images, e.g. Google Street View; 2) inventory merging to integrate metadata from various sources and resolve inconsisties, such as differening metadata values or spatial issues e.g. misaligned footprints ; 3) statistical imputation to generate pluasable inventories with all features defined for all assets given some assets will have missing features and finally 4) data inference to add asset attributes for which no information exists in the inventory, e.g. building codes applicable at the time of construction can be used to infer typical connection details (Kijewski-Correa et al., 2022) such as roof-to-wall connections for wind vulnerability assessments.
+
+
 ## How is the repo laid out?
 
 + ```brails```: A directory containing the classes
@@ -26,11 +36,24 @@
 
 - [Documentation & Guides](https://nheri-simcenter.github.io/BrailsPlusPlus/)
 
-## Installation instructions
+## Installation
 
-```shell
-pip install brails
-```
+   ```
+   pip install brails
+   ```
+
+> **Note**  
+> To install the package from GitHub, run:
+>
+> ```shell
+> pip install git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
+> ```
+>  If it's already installed and you want to update:
+>
+> ```shell
+> pip install --upgrade git+https://github.com/NHERI-SimCenter/BrailsPlusPlus
+> ```      
+
 
 ## Acknowledgments
 
