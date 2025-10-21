@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-13-2025
+# 10-18-2025
 
 """
 This module provides a utility class for validating input data in BRAILS.
@@ -398,9 +398,7 @@ class InputValidator:
             >>> InputValidator.is_multipolygon([
             ...     [
             ...         [-122.4, 37.75],
-            ...         [-122.4, 37.76[
-                list(coord) for line in geom.geoms for coord in line.coords
-            ]],
+            ...         [-122.4, 37.76],
             ...         [-122.39, 37.76],
             ...         [-122.39, 37.75],
             ...         [-122.4, 37.75]

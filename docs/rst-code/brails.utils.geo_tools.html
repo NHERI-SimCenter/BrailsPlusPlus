@@ -16,7 +16,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../_static/copybutton.js?v=f281be69"></script>
@@ -194,6 +194,125 @@ polygon.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.compare_geometries">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compare_geometries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bpoly</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometries</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predicate</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.compare_geometries" title="Link to this definition"></a></dt>
+<dd><p>Return keys for geometries that <strong>do not</strong> satisfy given predicate.</p>
+<p>This function uses the STRtree fast path when available, and falls back
+to a prepared-geometry filter in environments where <cite>predicate=</cite> is not
+supported.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bpoly</strong> (<em>Polygon</em><em> or </em><em>MultiPolygon</em>) – Reference geometry. Must be a (valid, non-empty) polygon or
+multipolygon.</p></li>
+<li><p><strong>geometries</strong> (<em>Dict</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>int</em><em>]</em><em>, </em><em>BaseGeometry</em><em>]</em>) – Mapping of keys to Shapely geometries to be compared.</p></li>
+<li><p><strong>predicate</strong> (<em>str</em>) – Spatial predicate name. One of: <code class="docutils literal notranslate"><span class="pre">'intersects'</span></code>, <code class="docutils literal notranslate"><span class="pre">'within'</span></code>,
+<code class="docutils literal notranslate"><span class="pre">'contains'</span></code>, <code class="docutils literal notranslate"><span class="pre">'overlaps'</span></code>, <code class="docutils literal notranslate"><span class="pre">'crosses'</span></code>, <code class="docutils literal notranslate"><span class="pre">'touches'</span></code>,
+<code class="docutils literal notranslate"><span class="pre">'covers'</span></code>, <code class="docutils literal notranslate"><span class="pre">'covered_by'</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of keys whose geometries do not satisfy
+<code class="docutils literal notranslate"><span class="pre">predicate(bpoly,</span> <span class="pre">geom)</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Union[str, int]]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">bpoly</span></code> is not a <code class="docutils literal notranslate"><span class="pre">Polygon</span></code>/<code class="docutils literal notranslate"><span class="pre">MultiPolygon</span></code>, or
+    <code class="docutils literal notranslate"><span class="pre">geometries</span></code> is not a non-empty dict of Shapely geometries.</p></li>
+<li><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">bpoly</span></code> is empty, or if <code class="docutils literal notranslate"><span class="pre">predicate</span></code> is not supported.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Coordinates are interpreted as (x, y) = (longitude, latitude).</p></li>
+<li><p>For invalid geometries, a light repair via <code class="docutils literal notranslate"><span class="pre">buffer(0)</span></code> is
+attempted.</p></li>
+</ul>
+<p class="rubric">Example</p>
+<p>Define a rectangular bounding polygon near Outer Banks, NC</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bpoly</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">75.70</span><span class="p">,</span> <span class="mf">36.00</span><span class="p">),</span>  <span class="c1"># (lon, lat)</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">75.70</span><span class="p">,</span> <span class="mf">35.90</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">75.50</span><span class="p">,</span> <span class="mf">35.90</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">75.50</span><span class="p">,</span> <span class="mf">36.00</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">75.70</span><span class="p">,</span> <span class="mf">36.00</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Specify a collection of geometries, some of which may intersect the
+defined rectangular polygon.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">geometries</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="c1"># --- Intersecting ---</span>
+<span class="gp">... </span>    <span class="s1">&#39;in_point&#39;</span><span class="p">:</span> <span class="n">Point</span><span class="p">(</span><span class="o">-</span><span class="mf">75.62</span><span class="p">,</span> <span class="mf">35.96</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s1">&#39;intersecting_polygon&#39;</span><span class="p">:</span> <span class="n">Polygon</span><span class="p">([</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.68</span><span class="p">,</span> <span class="mf">36.00</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.68</span><span class="p">,</span> <span class="mf">35.92</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.62</span><span class="p">,</span> <span class="mf">35.92</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.62</span><span class="p">,</span> <span class="mf">36.00</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.68</span><span class="p">,</span> <span class="mf">36.00</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">]),</span>
+<span class="gp">... </span>    <span class="s1">&#39;intersecting_multipolygon&#39;</span><span class="p">:</span> <span class="n">MultiPolygon</span><span class="p">([</span>
+<span class="gp">... </span>        <span class="n">Polygon</span><span class="p">([</span>
+<span class="gp">... </span>            <span class="p">(</span><span class="o">-</span><span class="mf">75.58</span><span class="p">,</span> <span class="mf">36.02</span><span class="p">),</span>
+<span class="gp">... </span>            <span class="p">(</span><span class="o">-</span><span class="mf">75.58</span><span class="p">,</span> <span class="mf">35.98</span><span class="p">),</span>
+<span class="gp">... </span>            <span class="p">(</span><span class="o">-</span><span class="mf">75.52</span><span class="p">,</span> <span class="mf">35.98</span><span class="p">),</span>
+<span class="gp">... </span>            <span class="p">(</span><span class="o">-</span><span class="mf">75.52</span><span class="p">,</span> <span class="mf">36.02</span><span class="p">),</span>
+<span class="gp">... </span>            <span class="p">(</span><span class="o">-</span><span class="mf">75.58</span><span class="p">,</span> <span class="mf">36.02</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">]),</span>
+<span class="gp">... </span>        <span class="n">Polygon</span><span class="p">([</span>
+<span class="gp">... </span>            <span class="p">(</span><span class="o">-</span><span class="mf">75.80</span><span class="p">,</span> <span class="mf">36.10</span><span class="p">),</span>
+<span class="gp">... </span>            <span class="p">(</span><span class="o">-</span><span class="mf">75.80</span><span class="p">,</span> <span class="mf">36.06</span><span class="p">),</span>
+<span class="gp">... </span>            <span class="p">(</span><span class="o">-</span><span class="mf">75.76</span><span class="p">,</span> <span class="mf">36.06</span><span class="p">),</span>
+<span class="gp">... </span>            <span class="p">(</span><span class="o">-</span><span class="mf">75.76</span><span class="p">,</span> <span class="mf">36.10</span><span class="p">),</span>
+<span class="gp">... </span>            <span class="p">(</span><span class="o">-</span><span class="mf">75.80</span><span class="p">,</span> <span class="mf">36.10</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">]),</span>
+<span class="gp">... </span>    <span class="p">]),</span>
+<span class="gp">... </span>    <span class="s1">&#39;crossing_linestring&#39;</span><span class="p">:</span> <span class="n">LineString</span><span class="p">([</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.75</span><span class="p">,</span> <span class="mf">35.95</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.45</span><span class="p">,</span> <span class="mf">35.95</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">]),</span>
+<span class="gp">... </span>    <span class="s1">&#39;intersecting_multilinestring&#39;</span><span class="p">:</span> <span class="n">MultiLineString</span><span class="p">([</span>
+<span class="gp">... </span>        <span class="p">[(</span><span class="o">-</span><span class="mf">75.66</span><span class="p">,</span> <span class="mf">35.91</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mf">75.66</span><span class="p">,</span> <span class="mf">36.01</span><span class="p">)],</span>
+<span class="gp">... </span>        <span class="p">[(</span><span class="o">-</span><span class="mf">75.80</span><span class="p">,</span> <span class="mf">36.05</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mf">75.78</span><span class="p">,</span> <span class="mf">36.06</span><span class="p">)],</span>
+<span class="gp">... </span>    <span class="p">]),</span>
+<span class="gp">... </span>    <span class="c1"># --- Outside (do NOT intersect) ---</span>
+<span class="gp">... </span>    <span class="s1">&#39;far_point&#39;</span><span class="p">:</span> <span class="n">Point</span><span class="p">(</span><span class="o">-</span><span class="mf">76.20</span><span class="p">,</span> <span class="mf">36.20</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s1">&#39;south_point&#39;</span><span class="p">:</span> <span class="n">Point</span><span class="p">(</span><span class="o">-</span><span class="mf">75.60</span><span class="p">,</span> <span class="mf">35.85</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s1">&#39;east_point&#39;</span><span class="p">:</span> <span class="n">Point</span><span class="p">(</span><span class="o">-</span><span class="mf">75.45</span><span class="p">,</span> <span class="mf">35.95</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s1">&#39;west_poly&#39;</span><span class="p">:</span> <span class="n">Polygon</span><span class="p">([</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.80</span><span class="p">,</span> <span class="mf">35.97</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.80</span><span class="p">,</span> <span class="mf">35.93</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.74</span><span class="p">,</span> <span class="mf">35.93</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.74</span><span class="p">,</span> <span class="mf">35.97</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="p">(</span><span class="o">-</span><span class="mf">75.80</span><span class="p">,</span> <span class="mf">35.97</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">]),</span>
+<span class="gp">... </span>    <span class="s1">&#39;offshore_line&#39;</span><span class="p">:</span> <span class="n">LineString</span><span class="p">([(</span><span class="o">-</span><span class="mf">75.40</span><span class="p">,</span> <span class="mf">35.92</span><span class="p">),</span>
+<span class="go">                                     (-75.40, 35.99)]),</span>
+<span class="go">...     &#39;north_mls&#39;: MultiLineString([</span>
+<span class="go">...         [(-75.66, 36.05), (-75.60, 36.06)],</span>
+<span class="go">...         [(-75.59, 36.07), (-75.55, 36.08)],</span>
+<span class="go">...     ]),</span>
+<span class="go">... }</span>
+</pre></div>
+</div>
+<p>Determine the keys for the geometries that intersect the given
+rectangular polygon.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">compare_geometries</span><span class="p">(</span><span class="n">bpoly</span><span class="p">,</span> <span class="n">geometries</span><span class="p">,</span> <span class="s1">&#39;intersects&#39;</span><span class="p">)</span>
+<span class="go">[&#39;far_point&#39;,</span>
+<span class="go"> &#39;south_point&#39;,</span>
+<span class="go"> &#39;east_point&#39;,</span>
+<span class="go"> &#39;west_poly&#39;,</span>
+<span class="go"> &#39;offshore_line&#39;,</span>
+<span class="go"> &#39;north_mls&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.geometry_to_list_of_lists">
 <em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">geometry_to_list_of_lists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geom</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.geometry_to_list_of_lists" title="Link to this definition"></a></dt>
 <dd><p>Convert a Shapely geometry into a list of coordinate lists.</p>
@@ -250,6 +369,96 @@ is the longitude of the point in degrees.</p></li>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">distance</span> <span class="o">=</span> <span class="n">GeoTools</span><span class="o">.</span><span class="n">haversine_dist</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">round</span><span class="p">(</span><span class="n">distance</span> <span class="o">/</span> <span class="mi">5280</span><span class="p">)</span>  <span class="c1"># convert feet to miles</span>
 <span class="go">347</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.list_of_lists_to_geometry">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">list_of_lists_to_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coordinates</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.list_of_lists_to_geometry" title="Link to this definition"></a></dt>
+<dd><p>Convert BRAILS nested coordinate lists into a Shapely geometry.</p>
+<p>Uses the existing <code class="docutils literal notranslate"><span class="pre">InputValidator</span></code> helpers to decide which geometry
+to build. Assumes coordinates are in WGS-84 order
+<code class="docutils literal notranslate"><span class="pre">[longitude,</span> <span class="pre">latitude]</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>coordinates</strong> (<em>list</em><em>[</em><em>list</em><em>[</em><em>float</em><em>]</em><em>] </em><em>| </em><em>list</em><em>[</em><em>list</em><em>[</em><em>list</em><em>[</em><em>float</em><em>]</em><em>]</em><em>]</em>) – <ul class="simple">
+<li><p>Point: <code class="docutils literal notranslate"><span class="pre">[[lon,</span> <span class="pre">lat]]</span></code></p></li>
+<li><p>LineString: <code class="docutils literal notranslate"><span class="pre">[[lon,</span> <span class="pre">lat],</span> <span class="pre">[lon,</span> <span class="pre">lat],</span> <span class="pre">...]</span></code></p></li>
+<li><p>Polygon (single exterior ring): <code class="docutils literal notranslate"><span class="pre">[[lon,</span> <span class="pre">lat],</span> <span class="pre">...,</span> <span class="pre">[lon,</span> <span class="pre">lat]]</span></code> (closed)</p></li>
+<li><p>MultiLineString: <code class="docutils literal notranslate"><span class="pre">[[[lon,</span> <span class="pre">lat],</span> <span class="pre">...],</span> <span class="pre">[[lon,</span> <span class="pre">lat],</span> <span class="pre">...],</span> <span class="pre">...]</span></code></p></li>
+<li><p>MultiPolygon (exterior rings only): <code class="docutils literal notranslate"><span class="pre">[[[lon,</span> <span class="pre">lat],</span> <span class="pre">...],</span> <span class="pre">...]</span></code>
+where each inner list is a <strong>closed</strong> polygon ring.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One of <code class="docutils literal notranslate"><span class="pre">Point</span></code>, <code class="docutils literal notranslate"><span class="pre">LineString</span></code>, <code class="docutils literal notranslate"><span class="pre">Polygon</span></code>,
+<code class="docutils literal notranslate"><span class="pre">MultiLineString</span></code>, or <code class="docutils literal notranslate"><span class="pre">MultiPolygon</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>shapely.geometry.BaseGeometry</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the coordinates do not match any permitted geometry type per
+    <code class="docutils literal notranslate"><span class="pre">InputValidator</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">list_of_lists_to_geometry</span><span class="p">([[</span><span class="o">-</span><span class="mf">122.3321</span><span class="p">,</span> <span class="mf">47.6062</span><span class="p">]])</span>
+<span class="go">&lt;POINT (-122.332 47.606)&gt;</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">list_of_lists_to_geometry</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.335</span><span class="p">,</span> <span class="mf">47.606</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.334</span><span class="p">,</span> <span class="mf">47.607</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.333</span><span class="p">,</span> <span class="mf">47.606</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="go">&lt;LINESTRING (-122.335 47.606, -122.334 47.607, -122.333 47.606)&gt;</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">polygon</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.336</span><span class="p">,</span> <span class="mf">47.606</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.334</span><span class="p">,</span> <span class="mf">47.606</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.334</span><span class="p">,</span> <span class="mf">47.608</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.336</span><span class="p">,</span> <span class="mf">47.608</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.336</span><span class="p">,</span> <span class="mf">47.606</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">list_of_lists_to_geometry</span><span class="p">(</span><span class="n">polygon</span><span class="p">)</span>
+<span class="go">&lt;POLYGON ((-122.336 47.606, -122.334 47.606, -122.334 47.608,</span>
+<span class="go">-122.336 47.608, -122.336 47.606))&gt;</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">multiline</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="o">-</span><span class="mf">122.337</span><span class="p">,</span> <span class="mf">47.606</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.335</span><span class="p">,</span> <span class="mf">47.607</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="o">-</span><span class="mf">122.334</span><span class="p">,</span> <span class="mf">47.607</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.333</span><span class="p">,</span> <span class="mf">47.608</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.332</span><span class="p">,</span> <span class="mf">47.607</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">list_of_lists_to_geometry</span><span class="p">(</span><span class="n">multiline</span><span class="p">)</span>
+<span class="go">&lt;MULTILINESTRING ((-122.337 47.606, -122.335 47.607),</span>
+<span class="go">(-122.334 47.607, -122.333 47.608, -122.332 47.607))&gt;</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">multipolygon</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.337</span><span class="p">,</span> <span class="mf">47.606</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.335</span><span class="p">,</span> <span class="mf">47.606</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.335</span><span class="p">,</span> <span class="mf">47.608</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.337</span><span class="p">,</span> <span class="mf">47.608</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.337</span><span class="p">,</span> <span class="mf">47.606</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.334</span><span class="p">,</span> <span class="mf">47.607</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.332</span><span class="p">,</span> <span class="mf">47.607</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.332</span><span class="p">,</span> <span class="mf">47.609</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.334</span><span class="p">,</span> <span class="mf">47.609</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.334</span><span class="p">,</span> <span class="mf">47.607</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">]</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">list_of_lists_to_geometry</span><span class="p">(</span><span class="n">multipolygon</span><span class="p">)</span>
+<span class="go">&lt;MULTIPOLYGON (((-122.337 47.606, -122.335 47.606, -122.335 47.608,</span>
+<span class="go">-122.337 47.608, -122.337 47.606)), ((-122.334 47.607,</span>
+<span class="go">-122.332 47.607, -122.332 47.609, -122.334 47.609,</span>
+<span class="go">-122.334 47.607)))&gt;</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -318,6 +527,87 @@ rectangular cells that mesh the <code class="docutils literal notranslate"><span
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Access coordinates of first cell</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cells</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">bounds</span>
 <span class="go">(0.0, 0.0, 2.0, 1.5)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.geo_tools.GeoTools.parse_geojson_geometry">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parse_geojson_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.geo_tools.GeoTools.parse_geojson_geometry" title="Link to this definition"></a></dt>
+<dd><p>Convert a GeoJSON geometry object into BRAILS asset coordinates.</p>
+<p>This function standardizes coordinates of different GeoJSON geometry
+types, such as <code class="docutils literal notranslate"><span class="pre">Point</span></code>, <code class="docutils literal notranslate"><span class="pre">MultiPoint</span></code>, <code class="docutils literal notranslate"><span class="pre">LineString</span></code>,
+<code class="docutils literal notranslate"><span class="pre">MultiLineString</span></code>, <code class="docutils literal notranslate"><span class="pre">Polygon</span></code>, and <code class="docutils literal notranslate"><span class="pre">MultiPolygon</span></code> into BRAILS
+representation: a nested list of <code class="docutils literal notranslate"><span class="pre">[x,</span> <span class="pre">y]</span></code> coordinate pairs.</p>
+<p>Depending on the geometry type, the return value may represent either
+a single sequence of coordinate pairs (<code class="docutils literal notranslate"><span class="pre">list[list[float]]</span></code>) or a
+collection of multiple coordinate sequences
+(<code class="docutils literal notranslate"><span class="pre">list[list[list[float]]]</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>geometry</strong> (<em>dict</em>) – A GeoJSON geometry dictionary containing at least the keys
+<code class="docutils literal notranslate"><span class="pre">&quot;type&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;coordinates&quot;</span></code>, e.g., <code class="docutils literal notranslate"><span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;Polygon&quot;,</span>
+<span class="pre">&quot;coordinates&quot;:</span> <span class="pre">[[[x1,</span> <span class="pre">y1],</span> <span class="pre">[x2,</span> <span class="pre">y2],</span> <span class="pre">...]]}</span></code></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">list[list[float]]</span></code> for geometries with a single coordinate
+list (e.g., Point, LineString, Polygon).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list[list[list[float]]]</span></code> for geometries composed of
+multiple coordinate sequences (e.g., MultiLineString,
+MultiPolygon).</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[list[float]] or list[list[list[float]]]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">geometry</span></code> is not a dictionary.</p></li>
+<li><p><strong>ValueError</strong> – If the geometry is missing required keys.</p></li>
+<li><p><strong>NotImplementedError</strong> – If the geometry type is unsupported.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">parse_geojson_geometry</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Point&quot;</span><span class="p">,</span> <span class="s2">&quot;coordinates&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">]}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">[[10.0, 20.0]]</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">parse_geojson_geometry</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;LineString&quot;</span><span class="p">,</span>
+<span class="go">         &quot;coordinates&quot;: [[0.0, 0.0], [1.0, 1.0]]</span>
+<span class="go">         }</span>
+<span class="go">... )</span>
+<span class="go">[[0.0, 0.0], [1.0, 1.0]]</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">parse_geojson_geometry</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;MultiLineString&quot;</span><span class="p">,</span>
+<span class="gp">... </span>     <span class="s2">&quot;coordinates&quot;</span><span class="p">:</span> <span class="p">[[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]]]}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">[[[0, 0], [1, 1]], [[2, 2], [3, 3]]]</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">parse_geojson_geometry</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Polygon&quot;</span><span class="p">,</span>
+<span class="gp">... </span>     <span class="s2">&quot;coordinates&quot;</span><span class="p">:</span> <span class="p">[[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]]}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">GeoTools</span><span class="o">.</span><span class="n">parse_geojson_geometry</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;MultiPolygon&quot;</span><span class="p">,</span>
+<span class="gp">... </span>     <span class="s2">&quot;coordinates&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="gp">... </span>         <span class="p">[[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]],</span>
+<span class="gp">... </span>         <span class="p">[[[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]]</span>
+<span class="gp">... </span>     <span class="p">]}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]],</span>
+<span class="go"> [[2, 2], [3, 2], [3, 3], [2, 3], [2, 2]]]</span>
 </pre></div>
 </div>
 </dd></dl>

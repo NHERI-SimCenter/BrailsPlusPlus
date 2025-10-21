@@ -37,7 +37,7 @@
 
 #
 # Last updated:
-# 08-15-2025
+# 10-21-2025
 
 """
 This module contains classes for managing and manipulating sets of image.
@@ -51,9 +51,9 @@ Classes:
     ImageSet
 """
 
-import os
+import hashlib
 from typing import Any, Dict, Iterator, List, Optional, Union
-
+import os
 
 class Image:
     """
@@ -103,24 +103,40 @@ class Image:
         self.filename = filename
         self.properties = properties if properties is not None else {}
 
-    def update_properties(self, additional_properties: Dict[str, Any]) -> None:
+    def hash_image(self):
         """
-        Update image properties.
-
-        Args:
-            additional_properties (Dict[str, Any]):
-                Key-value pairs to update image properties.
-
+        Generate a unique hash for image based on its filename and properties.
+        
+        This method concatenates the image's filename and its associated 
+        properties, converts them to strings, and computes an MD5 hash. The
+        resulting hexadecimal string can be used for efficient duplicate 
+        detection, for example, to identify identical images with the same 
+        filenames and attributes.
+        
+        Returns:
+            str: Hexadecimal string representing the MD5 hash of the image.
+        
         Example:
-            >>> img = Image(
-            ...     'gstrt_4769427063_-12213443753.jpg',
-            ...     {'width': 640}
+            >>> image1 = Image(
+            ...     filename='roof_001.jpg',
+            ...     properties={'resolution': '1024x768', 'format': 'JPEG'}
             ... )
-            >>> img.update_properties({'height': 480, 'cam_elevation': 12.1})
-            >>> img.properties
-            {'width': 640, 'height': 480, 'cam_elevation': 12.1}
+            >>> image2 = Image(
+            ...     filename='roof_002.jpg',
+            ...     properties={'resolution': '1024x768', 'format': 'JPEG'}
+            ... )
+            >>> hash1 = image1.hash_image()
+            >>> print(hash1)
+            30e317bf41042c6f1d20d66599234139
+            >>> hash2 = image2.hash_image()
+            >>> print(hash2)
+            b03f805070d9fbcc9fc82fa217f16b90
+            >>> hash1 == hash2
+            False
         """
-        self.properties.update(additional_properties)
+        filename_str = str(self.filename)
+        feat_str = str(self.properties)
+        return hashlib.md5((filename_str + feat_str).encode()).hexdigest()
 
     def print_info(self) -> None:
         """
@@ -158,6 +174,25 @@ class Image:
         """
         self.filename = filename
 
+    def update_properties(self, additional_properties: Dict[str, Any]) -> None:
+        """
+        Update image properties.
+
+        Args:
+            additional_properties (Dict[str, Any]):
+                Key-value pairs to update image properties.
+
+        Example:
+            >>> img = Image(
+            ...     'gstrt_4769427063_-12213443753.jpg',
+            ...     {'width': 640}
+            ... )
+            >>> img.update_properties({'height': 480, 'cam_elevation': 12.1})
+            >>> img.properties
+            {'width': 640, 'height': 480, 'cam_elevation': 12.1}
+        """
+        self.properties.update(additional_properties)
+
 
 class ImageSet:
     """
@@ -191,7 +226,8 @@ class ImageSet:
             >>> len(img_set)
             0
 
-            >>> img_set.add_image(1, "facade.jpg")
+            >>> img = Image('facade.jpg')
+            >>> img_set.add_image(1, img)
             True
             >>> len(img_set)
             1
@@ -207,8 +243,10 @@ class ImageSet:
 
         Examples:
             >>> img_set = ImageSet()
-            >>> img_set.add_image(1, "roof.jpg")
-            >>> img_set.add_image(2, "facade.jpg")
+            >>> img1 = Image('roof.jpg')
+            >>> img2 = Image('facade.jpg')
+            >>> img_set.add_image(1, img1)
+            >>> img_set.add_image(2, img2)
             True
             >>> for img in img_set:
             ...     print(img.filename)
@@ -217,49 +255,144 @@ class ImageSet:
         """
         return iter(self.images.values())
 
-    def add_image(
-        self,
-        key: Union[str, int],
-        filename: str,
-        properties: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    def add_image(self, image_id: Union[str, int], image: Image) -> bool:
         """
-        Create and add a new Image to the ImageSet.
+        Add an image to the image set.
 
         Args:
-            key (Union[str, int]):
-                Identifier for the image.
-            filename (str):
-                Name of the image file.
-            properties (Optional[Dict[str, Any]]):
-                Optional metadata for the image.
-
+            image_id (Union[str, int]):
+                Unique key to identify the image in the set.
+            image (Image):
+                The image instance to be added.
+    
         Returns:
             bool:
-                ``True`` if image was added; ``False`` if the key already
-                exists.
+                ``True`` if the image was successfully added.
+                ``False`` if the ``image_id`` already exists in the image set.
+    
+        Raises:
+            TypeError:
+                If ``image`` is not an instance of the :class:`Image` class.
 
         Examples:
             >>> img_set = ImageSet()
-            >>> img_set.add_image(
-            ...     1,
+            >>> img1 = Image(
             ...     'building_front.jpg',
             ...     {'width': 1920, 'height': 1080}
             ... )
+            >>> img_set.add_image(1, img1)
             True
 
-            >>> img_set.add_image(1, 'street_view.png')  # Duplicate key
+            >>> img2 = Image('street_view.png')
+            >>> img_set.add_image(1, img2)  # Duplicate key
+            Image with id 1 already exists. Image was not added.
             False
         """
-        if properties is None:
-            properties = {}
+        if not isinstance(image, Image):
+            raise TypeError("Expected an instance of Image.")
 
-        if key not in self.images:
-            image = Image(filename, properties)
-            self.images[key] = image
-            return True
+        if image_id in self.images:
+            print(f'Image with id {image_id} already exists. Image was not '
+                  'added.')
+            return False
 
-        return False
+        self.images[image_id] = image
+        return True
+
+    def combine(
+            self, 
+            imageset_to_combine: 'ImageSet', 
+            key_map: dict = None
+        ) -> dict:
+        """
+        Combine two ImageSet objects into a new merged ImageSet, avoiding duplicate images.
+    
+        Images are compared using their hashed pixel or metadata representation.
+        Duplicate images (identical data) are skipped.
+        Images from imageset2 can have their keys remapped using key_map, and
+        any resulting key conflicts are automatically resolved by assigning new unique IDs.
+    
+ 
+        Args:
+            imageset_to_combine (ImageSet):  
+                The ImageSet whose images will be merged into this ImageSet.  
+            key_map (dict, optional):  
+                A dictionary mapping original keys from ``imageset_to_combine``
+                to new keys in the merged ImageSet. Example: ``{"img_01": 
+                "new_img_A", "img_02": "new_img_B"}``.  If not provided, keys
+                are used as-is.
+    
+        Returns:
+            dict:  
+                A mapping from each original key in ``imageset_to_combine`` to
+                its final key in the combined image set (after applying 
+                ``key_map`` and resolving duplicates or key conflicts).
+    
+        Example:
+
+            The following example demonstrates how two ``ImageSet`` objects
+            are merged. The base image set initially contains one image 
+            (``'img_01'``). The secondary set has two images: one unique 
+            (``'fileB.jpg'``) and one duplicate of the existing file 
+            (``'fileA.jpg'``). A key mapping is provided so ``'img_02'`` in the
+            secondary set becomes ``'img_04'`` in the merged set. 
+            
+            Please note that, after combining the two sets, only the unique
+            image (``'fileB.jpg'``) is added with the new key ``'img_04'``. The 
+            final inventory contains two images, ``'img_01'`` and ``'img_04'``, 
+            confirming that 1) the merge successfully preserved unique entries,
+            and 2) resolved key conflicts automatically.
+    
+            >>> base_set = ImageSet()
+            >>> _ = base_set.add_image('img_01', Image('fileA.jpg'))
+            >>> other_set = ImageSet()
+            >>> _ = other_set.add_image('img_02', Image('fileB.jpg'))
+            >>> _ = other_set.add_image('img_03', Image('fileA.jpg'))
+            >>> key_map = {'img_02': 'img_04', 'img_03': 1}
+            >>> merged_keys = base_set.combine(other_set, key_map)
+            >>> print(merged_keys)
+            {'img_02': 'img_04'}
+            >>> base_set.print_info()
+            Directory: 
+            Total number of images: 2
+            List of Images
+            ----------------
+            - key: img_01, filename: fileA.jpg
+            - key: img_04, filename: fileB.jpg
+        """
+        # Build hash lookup for existing images:
+        existing_hashes = {
+            image.hash_image(): key for key, image in self.images.items()
+        }
+    
+        # Determine next available numeric ID:
+        next_id = self._get_next_numeric_id()
+    
+        # Track key mapping from imageset_to_combine → self.images:
+        merged_key_map = {}
+    
+        for orig_key, image in imageset_to_combine.images.items():
+            image_hash = image.hash_image()
+    
+            # Skip duplicates based on hash:
+            if image_hash in existing_hashes:
+                continue
+    
+            # Apply key mapping if provided:
+            mapped_key = key_map.get(orig_key, orig_key) if key_map else orig_key
+            new_key = mapped_key
+    
+            # Ensure key uniqueness:
+            while new_key in self.images:
+                new_key = next_id
+                next_id += 1
+    
+            # Add image and record mapping:
+            self.add_image(new_key, image)
+            merged_key_map[orig_key] = new_key
+            existing_hashes[image_hash] = new_key
+    
+        return merged_key_map
 
     def get_image(self, key: Union[str, int]) -> Optional[Image]:
         """
@@ -275,11 +408,12 @@ class ImageSet:
 
         Examples:
             >>> img_set = ImageSet()
-            >>> img_set.add_image('main', 'roof_detail.jpg')
+            >>> img_in = Image('roof_detail.jpg')
+            >>> img_set.add_image('main', img_in)
             True
 
-            >>> img = img_set.get_image('main')
-            >>> img.filename
+            >>> img_out = img_set.get_image('main')
+            >>> img_out.filename
             'roof_detail.jpg'
         """
         return self.images.get(key)
@@ -295,12 +429,13 @@ class ImageSet:
 
         Examples:
             >>> img_set = ImageSet()
-            >>> img_set.add_image('north_view', 'north_building.jpg')
-            >>> img_set.add_image(
-            ...     'east_view',
-            ...     'east_building.jpg',
+            >>> img1 = Image('north_building.jpg')
+            >>> img2 = Image(
+            ...     'east_building.jpg',    
             ...     {'location': (36.0142, -75.6679)}
             ... )
+            >>> img_set.add_image('north_view', img1)
+            >>> img_set.add_image('east_view', img2)
             True
             >>> img_set.print_info()
             Directory:
@@ -322,6 +457,36 @@ class ImageSet:
                     print(f'- key: {key}, filename: {image.filename}, ',
                           f'properties: {image.properties}')
         print('\n')
+
+    def remove_image(self, image_id: Union[str, int]) -> bool:
+        """
+        Remove an image from the image set.
+
+        Args:
+            image_id (Union[str, int]):
+                Unique key to identify the image in the set.
+
+        Returns:
+            bool: ``True`` if image was removed, ``False`` otherwise.
+
+        Example:
+            >>> img_set = ImageSet()
+            >>> img1 = Image(
+            ...     'east_building.jpg',    
+            ...     {'width': 1920, 'height': 1080}
+            ... )
+            >>> img_set.add_image('img1', img1)
+            True
+            >>> img_set.remove_image('img1')
+            True
+            >>> len(img_set)
+            0
+        """
+        if image_id in self.images:
+            del self.images[image_id]
+            return True
+        else:
+            return False
 
     def set_directory(
         self,
@@ -410,3 +575,27 @@ class ImageSet:
                         self.images[index] = Image(entry)
                         index += 1
         return True
+
+    def _get_next_numeric_id(self) -> int:
+        """
+        Compute the next available numeric image ID in the image set.
+    
+        Returns:
+            int:
+                The next available numeric ID (max numeric key + 1).
+                Returns 0 if the image set is empty, contains no numeric keys,
+                or cannot be accessed.
+    
+        Notes:
+            - Non-numeric keys are ignored.
+            - If image set access or key conversion fails, the function
+              safely falls back to returning 0.
+            - This function is typically used to generate sequential
+              numeric identifiers for new images.
+        """
+        try:
+            keys = getattr(self.images, 'keys', lambda: [])()
+            numeric_ids = [int(k) for k in keys if str(k).isdigit()]
+            return (max(numeric_ids) + 1) if numeric_ids else 0
+        except Exception:
+            return 0

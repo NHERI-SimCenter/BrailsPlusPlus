@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 08-11-2025
+# 10-21-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -49,10 +49,12 @@ This module defines classes associated with asset inventories.
 
 import os
 import csv
+import hashlib
 import json
 import random
 from copy import deepcopy
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from collections.abc import Iterable
@@ -67,7 +69,9 @@ except ImportError:
 import pandas as pd
 from shapely import box
 from shapely.geometry import shape, LineString, Polygon
+from shapely.geometry.base import BaseGeometry
 
+from brails.utils.geo_tools import GeoTools
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 
@@ -287,6 +291,41 @@ class Asset:
 
         except Exception:
             return [[None, None]]
+
+    def hash_asset(self):
+        """
+        Generate a unique hash for this asset based on its coordinates and features.
+    
+        This hash can be used to quickly identify duplicate assets by comparing
+        geometry and attribute data. Both the coordinates and features are 
+        serialized as strings and then hashed using MD5.
+    
+        Returns:
+            str: A hexadecimal string representing the MD5 hash of the asset.
+            
+        Example:
+            >>> asset1 = Asset(
+            ...     asset_id='123',
+            ...     coordinates=[[-122.4194, 37.7749], [-122.4180, 37.7755]],
+            ...     features={'roof_type': 'gable'}
+            ... )
+            >>> asset2 = Asset(
+            ...     asset_id='124',
+            ...     coordinates=[[-122.4194, 37.7749], [-122.4180, 37.7755]],
+            ...     features={'roof_type': 'flat'}
+            ... )
+            >>> hash1 = asset1.hash_asset()
+            >>> print(hash1)
+            1e629fc184329ea688c648e7663b439d
+            >>> hash2 = asset2.hash_asset()
+            >>> print(hash2)
+            ac0d104a411f92bffff8cc1398257dd8
+            >>> hash1 != hash2
+            True
+        """
+        coord_str = str(self.coordinates)
+        feat_str = str(self.features)
+        return hashlib.md5((coord_str + feat_str).encode()).hexdigest()
 
     def remove_features(self, features_to_remove: Iterable[str]) -> bool:
         """
@@ -599,7 +638,7 @@ class AssetInventory:
         Rename feature names in ``AssetInventory`` via user-specified mapping.
 
         Args:
-            feature_name_mapping(dict):
+            feature_name_mapping (dict):
                 A dictionary where keys are the original feature names and
                 values are the new feature names.
 
@@ -666,6 +705,76 @@ class AssetInventory:
                     # under the new key:
                     asset.features[new_name] = asset.features.pop(
                         original_name)
+
+    def combine(
+            self, 
+            inventory_to_combine: 'AssetInventory', 
+            key_map: dict = None
+        ) -> dict:
+        """
+        Combine with another AssetInventory, avoiding duplicate assets.
+    
+        Assets are compared using their hashed coordinate and feature data.
+        Duplicate assets (identical geometry and properties) are skipped.
+        Optionally, keys from the inventory to combine can be remapped using 
+        ``key_map``. Any resulting key conflicts are automatically resolved by
+        assigning new unique numeric IDs.
+    
+        Args:
+            inventory_to_combine (AssetInventory):
+                The secondary inventory whose assets will be merged into this
+                one.
+            key_map (dict, optional):
+                A mapping of original keys in ``inventory_to_combine`` to new
+                keys in this inventory. For example: {"old_key1": "new_keyA", 
+                "old_key2": "new_keyB"}. If not provided, original keys are 
+                used as-is unless they already exist in the current inventory.
+    
+        Returns:
+            dict:
+                A dictionary mapping each original key from 
+                ``inventory_to_combine`` to its final key in this inventory
+                (after applying ``key_map`` and resolving conflicts).
+    
+        Modifies:
+            self.inventory (dict):
+                Updates the inventory in-place by adding new, non-duplicate 
+                assets from ``inventory_to_combine``.
+        """
+
+        # Build hash lookup for existing assets:
+        existing_hashes = {
+            asset.hash_asset(): key for key, asset in self.inventory.items()
+        }
+    
+        # Determine next available numeric ID:
+        next_id = self._get_next_numeric_id()
+    
+        # Track key mapping from inventory_to_combine → self.inventory:
+        merged_key_map = {}
+    
+        for orig_key, asset in inventory_to_combine.inventory.items():
+            asset_hash = asset.hash_asset()
+    
+            # Skip duplicates based on geometry and feature data:
+            if asset_hash in existing_hashes:
+                continue
+    
+            # Apply user-provided key mapping if available:
+            mapped_key = key_map.get(orig_key, orig_key) if key_map else orig_key
+            new_key = mapped_key
+            
+            # Ensure uniqueness of the key:
+            while new_key in self.inventory:
+                new_key = next_id
+                next_id += 1
+    
+            # Add asset and record mapping:
+            self.add_asset(new_key, asset)
+            merged_key_map[orig_key] = new_key
+            existing_hashes[asset_hash] = new_key
+    
+        return merged_key_map
 
     def convert_polygons_to_centroids(self) -> None:
         """
@@ -741,7 +850,7 @@ class AssetInventory:
         Get the coordinates of a particular asset.
 
         Args:
-            asset_id(str or int):
+            asset_id (str or int):
                 The unique identifier for the asset.
 
         Returns:
@@ -778,7 +887,7 @@ class AssetInventory:
         Get features of a particular asset.
 
         Args:
-            asset_id(str or int):
+            asset_id (str or int):
                 The unique identifier for the asset.
 
         Returns:
@@ -839,6 +948,85 @@ class AssetInventory:
         """
         return list(self.inventory.keys())
 
+    def get_assets_intersecting_polygon(self, bpoly: BaseGeometry):
+        """
+        Get assets with geometries intersecting a bounding polygon.
+    
+        This method performs a spatial intersection check between each asset's
+        geometry in the inventory and a provided bounding polygon (or 
+        multipolygon). Assets that intersect the polygon are identified and
+        retained. All non-intersecting assets are removed from the inventory.
+    
+        Args:
+            bpoly (shapely.geometry.base.BaseGeometry):
+                The bounding polygon or multipolygon used to determine spatial
+                intersections.
+    
+        Raises:
+            TypeError:
+                If ``bpoly`` is not a ``Polygon`` or ``MultiPolygon``.
+                
+        Example:
+            >>> from shapely.geometry import Polygon
+            >>> inventory = AssetInventory()
+            >>> # A LineString in Dallas, TX (will intersect the Dallas bpoly):
+            >>> _ = inventory.add_asset_coordinates(
+            ...     'bridge_A',
+            ...     [[-96.8003, 32.7767], [-96.7998, 32.7770]]
+            ... )
+            >>> # A Polygon in Los Angeles, CA (will NOT intersect the bpoly):
+            >>> _ = inventory.add_asset_coordinates(
+            ...     'tower_B',
+            ...     [
+            ...         [-118.2450, 34.0537],
+            ...         [-118.2450, 34.0540],
+            ...         [-118.2445, 34.0540],
+            ...         [-118.2445, 34.0537],
+            ...         [-118.2450, 34.0537],
+            ...     ]
+            ... )
+            >>> # A bounding polygon roughly around downtown Dallas:
+            >>> bpoly = Polygon([
+            ...     (-96.81, 32.77),
+            ...     (-96.81, 32.78),
+            ...     (-96.79, 32.78),
+            ...     (-96.79, 32.77),
+            ...     (-96.81, 32.77)
+            ... ])
+            >>>
+            >>> inventory.get_assets_intersecting_polygon(bpoly)
+            >>> 'bridge_A' in inventory.inventory
+            True
+            >>> 'tower_B' in inventory.inventory
+            False
+        """
+        
+        # Validate bounding polygon type:
+        if bpoly.geom_type not in ['Polygon', 'MultiPolygon']:
+            raise TypeError(
+                f'Invalid bounding polygon type: {bpoly.geom_type}. '
+                "Expected 'Polygon' or 'MultiPolygon'."
+            )
+            
+        # Fix the bounding polygon if it is not well-formed:
+        if not bpoly.is_valid:
+            bpoly = bpoly.buffer(0)
+        
+        # Build asset geometries:
+        geometries = {
+            key: GeoTools.list_of_lists_to_geometry(asset.coordinates)
+            for key, asset in self.inventory.items()
+        }
+        
+        keys_remove = GeoTools.compare_geometries(
+            bpoly, 
+            geometries, 
+            'intersects'
+        )
+
+        for key in keys_remove:
+            self.remove_asset(key)    
+        
     def get_coordinates(
             self
     ) -> Tuple[List[List[List[float]]], List[Union[str, int]]]:
@@ -889,11 +1077,11 @@ class AssetInventory:
         optional ``seed`` for reproducibility.
 
         Args:
-            nsamples(int):
+            nsamples (int):
                 The number of assets to randomly sample from the inventory.
                 Must be a positive integer not exceeding the total number of
                 assets.
-            seed(int or float or str or bytes or bytearray or None, optional):
+            seed (int or float or str or bytes or bytearray or None, optional):
                 A seed value for the random generator to ensure
                 reproducibility. If None, the system default (current system
                 time) is used.
@@ -955,7 +1143,7 @@ class AssetInventory:
         Calculate the geographical extent of the inventory.
 
         Args:
-            buffer(str or list[float]): A string or a list of 4 floats.
+            buffer (str or list[float]): A string or a list of 4 floats.
 
                 - ``'default'`` applies preset buffer values.
                 - ``'none'`` applies zero buffer values.
@@ -1139,9 +1327,9 @@ class AssetInventory:
         Merge with another AssetInventory using specified spatial join method.
 
         Args:
-            inventory_to_join(AssetInventory):
+            inventory_to_join (AssetInventory):
                 The inventory to be joined with the current one.
-            method(str):
+            method (str):
                 The spatial join method to use. Defaults to
                 ``GetPointsInPolygons``. The ``method`` defines how the join
                 operation is executed between inventories.
@@ -1287,6 +1475,146 @@ class AssetInventory:
             print("Key: ", key, "Asset:")
             asset.print_info()
 
+    def read_from_geojson(
+            self,
+            file_path: str,
+            asset_type: str = "building"
+        ) -> bool:
+        """
+        Reads a GeoJSON file and imports assets into a BRAILS asset inventory.
+        
+        This method loads a GeoJSON file, validates its structure, checks that
+        geometries contain valid `[longitude, latitude]` coordinates, and 
+        converts each feature into a BRAILS `Asset` object. Each asset is 
+        assigned a unique numeric identifier and stored in the class inventory.
+        
+        Args:
+            file_path (str): 
+                Path to the GeoJSON file to be read. Must represent a valid 
+                GeoJSON FeatureCollection.
+            asset_type (str, optional): 
+                The type assigned to all imported assets. Defaults to 
+                `'building'`.
+        
+        Returns:
+            bool: 
+                ``True`` if the GeoJSON file is successfully read and assets 
+                are added to the inventory.
+        
+        Raises:
+            FileNotFoundError: 
+                If the specified file path does not exist or is not a file.
+            ValueError: 
+                If the file is invalid JSON, not a valid GeoJSON 
+                FeatureCollection, contains no features, or has out-of-range
+                coordinates.
+            NotImplementedError: 
+                If one or more geometries include unsupported types.
+            KeyError: 
+                If a feature is missing required keys 
+                (`geometry` or `attributes`).
+        
+        Example:
+            Example GeoJSON file (`seattle_buildings.geojson`):
+        
+            .. code-block:: json
+    
+                {
+                  "type": "FeatureCollection",
+                  "features": [
+                    {
+                      "type": "Feature",
+                      "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [
+                          [
+                            [-122.3355, 47.6080],
+                            [-122.3350, 47.6080],
+                            [-122.3350, 47.6085],
+                            [-122.3355, 47.6085],
+                            [-122.3355, 47.6080]
+                          ]
+                        ]
+                      },
+                      "attributes": {
+                        "name": "Building A",
+                        "height_m": 18.7
+                      }
+                    },
+                    {
+                      "type": "Feature",
+                      "geometry": {
+                        "type": "Point",
+                        "coordinates": [-122.3321, 47.6062]
+                      },
+                      "attributes": {
+                        "name": "Building B",
+                        "height_m": 12.4
+                      }
+                    }
+                  ]
+                }
+        
+            Example usage:
+        
+                >>> inv = AssetInventory()
+                >>> inv.read_from_geojson('seattle_buildings.geojson',
+                ... asset_type='building')
+                True
+                >>> inv.print_info()
+                AssetInventory
+                Inventory stored in:  dict
+                Key:  0 Asset:
+                	 Coordinates:  [[-122.3355, 47.608], [-122.335, 47.608], 
+                 [-122.335, 47.6085], [-122.3355, 47.6085], 
+                 [-122.3355, 47.608]]
+                	 Features:  {'name': 'Building A', 'height_m': 18.7, 
+                 'type': 'building'}
+                Key:  1 Asset:
+                	 Coordinates:  [[-122.3321, 47.6062]]
+                	 Features:  {'name': 'Building B', 'height_m': 12.4, 
+                 'type': 'building'}
+        
+        Note:
+            All coordinates are expected to follow the GeoJSON standard 
+            ``[longitude, latitude]`` order and use the WGS-84 geographic 
+            coordinate reference system (EPSG:4326).
+        """
+    
+        # Path checks:
+        path = Path(file_path)
+        if not path.exists() or not path.is_file():
+            raise FileNotFoundError(f'File not found: {file_path}')
+        
+        # JSON parsing:
+        try:
+            with path.open('r', encoding='utf-8') as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(f'Invalid JSON format in {file_path}: {e}')
+        
+        # GeoJSON structure validation:
+        if not isinstance(data, dict) or \
+            data.get('type') != 'FeatureCollection':
+            raise ValueError(
+                'Input file is not a valid GeoJSON FeatureCollection.'
+                )
+        
+        features = data.get('features', [])
+        if not isinstance(features, list) or not features:
+            raise ValueError(
+                'GeoJSON FeatureCollection contains no valid features.'
+                )
+        
+        # Determine next available numeric ID
+        next_id = self._get_next_numeric_id()
+        
+        for index, item in enumerate(features):
+            geometry = GeoTools.parse_geojson_geometry(item['geometry'])
+            asset_features = {**item['attributes'], 'type': asset_type}
+            asset = Asset(index, geometry, asset_features)
+            self.add_asset(next_id + index, asset)
+
     def remove_asset(self, asset_id: Union[str, int]) -> bool:
         """
         Remove an asset from the inventory.
@@ -1386,6 +1714,85 @@ class AssetInventory:
         results = [asset.remove_features(features_to_remove)
                    for asset in self.inventory.values()]
         return any(results)
+    
+    def remove_nonmatching_assets(self, image_set, verbose=False) -> None:
+        """
+        Remove assets that do not have corresponding entries in image set.
+    
+        This method compares asset keys in the inventory with those in the
+        provided ImageSet and removes any asset whose key does not exist in
+        the ImageSet.
+    
+        Args:
+            image_set(ImageSet):
+                The image set containing valid image keys.
+            verbose(bool, optional):
+                If ``True``, prints a summary of removed keys. Default is 
+                ``False``.
+    
+        Modifies:
+            self.inventory(dict):
+                Removes nonmatching asset entries directly from the inventory.
+                The object is updated in-place.
+
+        Example:
+            >>> inventory = AssetInventory()
+            >>> _ = inventory.add_asset(
+            ...     asset_id='house_A',
+            ...     asset=Asset(
+            ...         'house_A',
+            ...         [[-118.5123, 34.0451], [-118.5120, 34.0454],
+            ...          [-118.5117, 34.0452], [-118.5121, 34.0449],
+            ...          [-118.5123, 34.0451]],
+            ...         features={'type': 'residential', 'floors': 2}
+            ...     )
+            ... )
+            >>> _ = inventory.add_asset(
+            ...     asset_id='warehouse_B',
+            ...     asset=Asset(
+            ...         'warehouse_B',
+            ...         [[-118.5105, 34.0467], [-118.5102, 34.0471],
+            ...          [-118.5099, 34.0468], [-118.5103, 34.0464],
+            ...          [-118.5105, 34.0467]],
+            ...         features={'type': 'commercial', 'floors': 1}
+            ...     )
+            ... )
+            >>> inventory.print_info()
+            AssetInventory
+            Inventory stored in:  dict
+            Key:  house_A Asset:
+            	 Coordinates:  [[-118.5123, 34.0451], [-118.512, 34.0454], 
+            [-118.5117, 34.0452], [-118.5121, 34.0449], [-118.5123, 34.0451]]
+            	 Features:  {'type': 'residential', 'floors': 2}
+            Key:  warehouse_B Asset:
+            	 Coordinates:  [[-118.5105, 34.0467], [-118.5102, 34.0471], 
+            [-118.5099, 34.0468], [-118.5103, 34.0464], [-118.5105, 34.0467]]
+            	 Features:  {'type': 'commercial', 'floors': 1}
+            >>> img_set = ImageSet()
+            >>> img1 = Image('bldg1.jpg')
+            >>> img2 = Image('bldg2.jpg')
+            >>> _ = img_set.add_image('house_A', img1)
+            >>> _ = img_set.add_image('house_B', img2)
+            >>> inventory.remove_nonmatching_assets(img_set, verbose=True)
+            Removed 1 nonmatching assets: ['warehouse_B']
+        """
+        # Collect keys from both sets
+        footprint_keys = set(self.inventory.keys())
+        imageset_keys = set(image_set.images.keys())
+    
+        # Identify keys missing in image set
+        missing_keys = footprint_keys - imageset_keys
+    
+        # Remove unmatched assets (in-place modification)
+        for key in missing_keys:
+            self.remove_asset(key)
+    
+        # Optionally, print a summary of removed assets
+        if verbose:
+            print(
+                f'Removed {len(missing_keys)} nonmatching assets: '
+                f'{sorted(missing_keys)}'
+            )
 
     def write_to_geojson(self, output_file: str = "") -> Dict:
         """
@@ -1435,7 +1842,7 @@ class AssetInventory:
             named  ``output.geojson``.
 
             >>> geojson_written = inventory.write_to_geojson('output.geojson')
-            Wrote 1 assets to {../output.geojson}
+            Wrote 1 asset to {../output.geojson}
         """
         geojson = self.get_geojson()
 
@@ -1450,8 +1857,10 @@ class AssetInventory:
         if output_file:
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(clean_floats(geojson), f, indent=2)
+                num_elements = len(geojson['features'])
+                element = 'asset' if num_elements == 1 else 'assets'
                 print(
-                    f"Wrote {len(geojson['features'])} assets to "
+                    f"Wrote {num_elements} {element} to "
                     f'{os.path.abspath(output_file)}'
                 )
         return geojson
@@ -1915,3 +2324,27 @@ class AssetInventory:
                     all_keys.append(key)
 
         return multi_keys, all_keys
+    
+    def _get_next_numeric_id(self) -> int:
+        """
+        Compute the next available numeric asset ID in the inventory.
+    
+        Returns:
+            int:
+                The next available numeric ID (max numeric key + 1).
+                Returns 0 if the inventory is empty, contains no numeric keys,
+                or cannot be accessed.
+    
+        Notes:
+            - Non-numeric keys are ignored.
+            - If inventory access or key conversion fails, the function
+              safely falls back to returning 0.
+            - This function is typically used to generate sequential
+              numeric identifiers for new assets.
+        """
+        try:
+            keys = getattr(self.inventory, 'keys', lambda: [])()
+            numeric_ids = [int(k) for k in keys if str(k).isdigit()]
+            return (max(numeric_ids) + 1) if numeric_ids else 0
+        except Exception:
+            return 0

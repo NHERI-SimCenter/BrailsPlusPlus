@@ -16,7 +16,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../_static/copybutton.js?v=f281be69"></script>
@@ -140,6 +140,44 @@ image, such as camera settings, location, or depth maps.</p></li>
 </dd>
 </dl>
 <dl class="py method">
+<dt class="sig sig-object py" id="brails.types.image_set.Image.hash_image">
+<span class="sig-name descname"><span class="pre">hash_image</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.image_set.Image.hash_image" title="Link to this definition"></a></dt>
+<dd><p>Generate a unique hash for image based on its filename and properties.</p>
+<p>This method concatenates the image’s filename and its associated
+properties, converts them to strings, and computes an MD5 hash. The
+resulting hexadecimal string can be used for efficient duplicate
+detection, for example, to identify identical images with the same
+filenames and attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Hexadecimal string representing the MD5 hash of the image.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">image1</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;roof_001.jpg&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;resolution&#39;</span><span class="p">:</span> <span class="s1">&#39;1024x768&#39;</span><span class="p">,</span> <span class="s1">&#39;format&#39;</span><span class="p">:</span> <span class="s1">&#39;JPEG&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">image2</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;roof_002.jpg&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;resolution&#39;</span><span class="p">:</span> <span class="s1">&#39;1024x768&#39;</span><span class="p">,</span> <span class="s1">&#39;format&#39;</span><span class="p">:</span> <span class="s1">&#39;JPEG&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hash1</span> <span class="o">=</span> <span class="n">image1</span><span class="o">.</span><span class="n">hash_image</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">hash1</span><span class="p">)</span>
+<span class="go">30e317bf41042c6f1d20d66599234139</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hash2</span> <span class="o">=</span> <span class="n">image2</span><span class="o">.</span><span class="n">hash_image</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">hash2</span><span class="p">)</span>
+<span class="go">b03f805070d9fbcc9fc82fa217f16b90</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hash1</span> <span class="o">==</span> <span class="n">hash2</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="brails.types.image_set.Image.print_info">
 <span class="sig-name descname"><span class="pre">print_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.image_set.Image.print_info" title="Link to this definition"></a></dt>
 <dd><p>Print the image filename and properties.</p>
@@ -219,36 +257,99 @@ identifiers.</p></li>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="brails.types.image_set.ImageSet.add_image">
-<span class="sig-name descname"><span class="pre">add_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.image_set.ImageSet.add_image" title="Link to this definition"></a></dt>
-<dd><p>Create and add a new Image to the ImageSet.</p>
+<span class="sig-name descname"><span class="pre">add_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.image_set.ImageSet.add_image" title="Link to this definition"></a></dt>
+<dd><p>Add an image to the image set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>key</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>int</em><em>]</em>) – Identifier for the image.</p></li>
-<li><p><strong>filename</strong> (<em>str</em>) – Name of the image file.</p></li>
-<li><p><strong>properties</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>) – Optional metadata for the image.</p></li>
+<li><p><strong>image_id</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>int</em><em>]</em>) – Unique key to identify the image in the set.</p></li>
+<li><p><strong>image</strong> (<a class="reference internal" href="#brails.types.image_set.Image" title="brails.types.image_set.Image"><em>Image</em></a>) – The image instance to be added.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if image was added; <code class="docutils literal notranslate"><span class="pre">False</span></code> if the key already
-exists.</p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the image was successfully added.
+<code class="docutils literal notranslate"><span class="pre">False</span></code> if the <code class="docutils literal notranslate"><span class="pre">image_id</span></code> already exists in the image set.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>bool</p>
 </dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">image</span></code> is not an instance of the <a class="reference internal" href="#brails.types.image_set.Image" title="brails.types.image_set.Image"><code class="xref py py-class docutils literal notranslate"><span class="pre">Image</span></code></a> class.</p>
+</dd>
 </dl>
 <p class="rubric">Examples</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span> <span class="o">=</span> <span class="n">ImageSet</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span>
-<span class="gp">... </span>    <span class="mi">1</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img1</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="s1">&#39;building_front.jpg&#39;</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="p">{</span><span class="s1">&#39;width&#39;</span><span class="p">:</span> <span class="mi">1920</span><span class="p">,</span> <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mi">1080</span><span class="p">}</span>
 <span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">img1</span><span class="p">)</span>
 <span class="go">True</span>
 </pre></div>
 </div>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;street_view.png&#39;</span><span class="p">)</span>  <span class="c1"># Duplicate key</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img2</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;street_view.png&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">img2</span><span class="p">)</span>  <span class="c1"># Duplicate key</span>
+<span class="go">Image with id 1 already exists. Image was not added.</span>
 <span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.image_set.ImageSet.combine">
+<span class="sig-name descname"><span class="pre">combine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imageset_to_combine</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.image_set.ImageSet.combine" title="Link to this definition"></a></dt>
+<dd><p>Combine two ImageSet objects into a new merged ImageSet, avoiding duplicate images.</p>
+<p>Images are compared using their hashed pixel or metadata representation.
+Duplicate images (identical data) are skipped.
+Images from imageset2 can have their keys remapped using key_map, and
+any resulting key conflicts are automatically resolved by assigning new unique IDs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>imageset_to_combine</strong> (<a class="reference internal" href="#brails.types.image_set.ImageSet" title="brails.types.image_set.ImageSet"><em>ImageSet</em></a>) – The ImageSet whose images will be merged into this ImageSet.</p></li>
+<li><p><strong>key_map</strong> (<em>dict</em><em>, </em><em>optional</em>) – A dictionary mapping original keys from <code class="docutils literal notranslate"><span class="pre">imageset_to_combine</span></code>
+to new keys in the merged ImageSet. Example: <code class="docutils literal notranslate"><span class="pre">{&quot;img_01&quot;:</span>
+<span class="pre">&quot;new_img_A&quot;,</span> <span class="pre">&quot;img_02&quot;:</span> <span class="pre">&quot;new_img_B&quot;}</span></code>.  If not provided, keys
+are used as-is.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A mapping from each original key in <code class="docutils literal notranslate"><span class="pre">imageset_to_combine</span></code> to
+its final key in the combined image set (after applying
+<code class="docutils literal notranslate"><span class="pre">key_map</span></code> and resolving duplicates or key conflicts).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>The following example demonstrates how two <code class="docutils literal notranslate"><span class="pre">ImageSet</span></code> objects
+are merged. The base image set initially contains one image
+(<code class="docutils literal notranslate"><span class="pre">'img_01'</span></code>). The secondary set has two images: one unique
+(<code class="docutils literal notranslate"><span class="pre">'fileB.jpg'</span></code>) and one duplicate of the existing file
+(<code class="docutils literal notranslate"><span class="pre">'fileA.jpg'</span></code>). A key mapping is provided so <code class="docutils literal notranslate"><span class="pre">'img_02'</span></code> in the
+secondary set becomes <code class="docutils literal notranslate"><span class="pre">'img_04'</span></code> in the merged set.</p>
+<p>Please note that, after combining the two sets, only the unique
+image (<code class="docutils literal notranslate"><span class="pre">'fileB.jpg'</span></code>) is added with the new key <code class="docutils literal notranslate"><span class="pre">'img_04'</span></code>. The
+final inventory contains two images, <code class="docutils literal notranslate"><span class="pre">'img_01'</span></code> and <code class="docutils literal notranslate"><span class="pre">'img_04'</span></code>,
+confirming that 1) the merge successfully preserved unique entries,
+and 2) resolved key conflicts automatically.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">base_set</span> <span class="o">=</span> <span class="n">ImageSet</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">base_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;img_01&#39;</span><span class="p">,</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;fileA.jpg&#39;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">other_set</span> <span class="o">=</span> <span class="n">ImageSet</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">other_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;img_02&#39;</span><span class="p">,</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;fileB.jpg&#39;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">other_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;img_03&#39;</span><span class="p">,</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;fileA.jpg&#39;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">key_map</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;img_02&#39;</span><span class="p">:</span> <span class="s1">&#39;img_04&#39;</span><span class="p">,</span> <span class="s1">&#39;img_03&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">merged_keys</span> <span class="o">=</span> <span class="n">base_set</span><span class="o">.</span><span class="n">combine</span><span class="p">(</span><span class="n">other_set</span><span class="p">,</span> <span class="n">key_map</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">merged_keys</span><span class="p">)</span>
+<span class="go">{&#39;img_02&#39;: &#39;img_04&#39;}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">base_set</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">Directory:</span>
+<span class="go">Total number of images: 2</span>
+<span class="go">List of Images</span>
+<span class="go">----------------</span>
+<span class="go">- key: img_01, filename: fileA.jpg</span>
+<span class="go">- key: img_04, filename: fileB.jpg</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -270,12 +371,13 @@ exists.</p>
 </dl>
 <p class="rubric">Examples</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span> <span class="o">=</span> <span class="n">ImageSet</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="s1">&#39;roof_detail.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_in</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;roof_detail.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="n">img_in</span><span class="p">)</span>
 <span class="go">True</span>
 </pre></div>
 </div>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">img_set</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span><span class="s1">&#39;main&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">img</span><span class="o">.</span><span class="n">filename</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img_out</span> <span class="o">=</span> <span class="n">img_set</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span><span class="s1">&#39;main&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_out</span><span class="o">.</span><span class="n">filename</span>
 <span class="go">&#39;roof_detail.jpg&#39;</span>
 </pre></div>
 </div>
@@ -295,12 +397,13 @@ exists.</p>
 </dl>
 <p class="rubric">Examples</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span> <span class="o">=</span> <span class="n">ImageSet</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;north_view&#39;</span><span class="p">,</span> <span class="s1">&#39;north_building.jpg&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span>
-<span class="gp">... </span>    <span class="s1">&#39;east_view&#39;</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img1</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;north_building.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img2</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="s1">&#39;east_building.jpg&#39;</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="p">{</span><span class="s1">&#39;location&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">36.0142</span><span class="p">,</span> <span class="o">-</span><span class="mf">75.6679</span><span class="p">)}</span>
 <span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;north_view&#39;</span><span class="p">,</span> <span class="n">img1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;east_view&#39;</span><span class="p">,</span> <span class="n">img2</span><span class="p">)</span>
 <span class="go">True</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
 <span class="go">Directory:</span>
@@ -310,6 +413,37 @@ exists.</p>
 <span class="go">- key: north_view, filename: north_building.jpg</span>
 <span class="go">- key: east_view, filename: east_building.jpg,</span>
 <span class="go">properties: {&#39;location&#39;: (36.0142, -75.6679)}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.image_set.ImageSet.remove_image">
+<span class="sig-name descname"><span class="pre">remove_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.image_set.ImageSet.remove_image" title="Link to this definition"></a></dt>
+<dd><p>Remove an image from the image set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>image_id</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>int</em><em>]</em>) – Unique key to identify the image in the set.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if image was removed, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span> <span class="o">=</span> <span class="n">ImageSet</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img1</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;east_building.jpg&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s1">&#39;width&#39;</span><span class="p">:</span> <span class="mi">1920</span><span class="p">,</span> <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mi">1080</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;img1&#39;</span><span class="p">,</span> <span class="n">img1</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span><span class="o">.</span><span class="n">remove_image</span><span class="p">(</span><span class="s1">&#39;img1&#39;</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">img_set</span><span class="p">)</span>
+<span class="go">0</span>
 </pre></div>
 </div>
 </dd></dl>

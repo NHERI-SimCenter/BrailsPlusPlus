@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 06-06-2025
+# 10-14-2025
 
 """
 This module defines GoogleSatellite class downloading Google satellite imagery.
@@ -58,7 +58,7 @@ from shapely.geometry import Polygon
 from tqdm import tqdm
 
 from brails.types.asset_inventory import AssetInventory
-from brails.types.image_set import ImageSet
+import brails.types.image_set as brails_image_set
 from brails.scrapers.image_scraper import ImageScraper
 
 
@@ -96,7 +96,7 @@ class GoogleSatellite(ImageScraper):
         self,
         inventory: AssetInventory,
         save_directory: str
-    ) -> ImageSet:
+    ) -> brails_image_set.ImageSet:
         """
         Get satellite images of buildings given footprints in AssetInventory.
 
@@ -125,7 +125,7 @@ class GoogleSatellite(ImageScraper):
 
         # Create the footprints from the items in AssetInventory
         # Keep the asset keys in a list for later use:
-        image_set = ImageSet()
+        image_set = brails_image_set.ImageSet()
         image_set.dir_path = str(dir_path)
 
         asset_footprints = []
@@ -140,7 +140,8 @@ class GoogleSatellite(ImageScraper):
 
         for index, image_path in enumerate(satellite_images):
             if image_path.exists():
-                image_set.add_image(asset_keys[index], image_path.name)
+                img = brails_image_set.Image(image_path.name)
+                image_set.add_image(asset_keys[index], img)
             else:
                 print(f'Image for asset {asset_keys[index]} could not be'
                       'downloaded.')

@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-19-2025
+# 09-30-2025
 
 """
 This module defines a class for performing unit parsing and conversions.
@@ -112,43 +112,11 @@ class UnitConverter:
     conversions are performed via standardized base units to ensure consistency
     and accuracy.
 
-    Base units:
-        - Length: meters (m)
-        - Area: square meters (m²)
-        - Weight: kilograms (kg)
+    The following line is suggested to import the :class:`UnitConverter`.
 
-    Supported Units:
-        Length:
-            m, meter, metre
-            km, kilometer, kilometre
-            cm, centimeter, centimetre
-            mm, millimeter, millimetre
-            in, inch
-            ft, foot, feet
-            yd, yard
-            mi, mile
+    .. code-block:: python
 
-        Area (derived from squared length units):
-            m2, square_meter
-            km2, square_kilometer
-            cm2, square_centimeter
-            mm2, square_millimeter
-            in2, square_inch
-            ft2, square_foot
-            yd2, square_yard
-            mi2, square_mile
-
-        Weight:
-            Metric:
-                mg, milligram
-                g, gram
-                kg, kilogram
-                ton, metric_ton (1000 kg)
-            Imperial:
-                oz, ounce
-                lb, pound
-                ton_us, short_ton (2000 lb)
-                ton_uk, long_ton (2240 lb)
+        from brails.utils import UnitConverter
 
     Key Features:
         - Supports standard and alias unit names.
@@ -159,19 +127,62 @@ class UnitConverter:
         - Optional rounding precision for conversion results.
         - Raises errors for mismatched or unsupported units.
 
+    Base units:
+        - Length: meters (m)
+        - Area: square meters (m²)
+        - Weight: kilograms (kg)
+
+    Supported Units:
+        **Length**:
+            
+        ======  ===========
+        Unit    Description
+        ======  ===========
+        ``m``   meter
+        ``km``  kilometer
+        ``cm``  centimeter
+        ``mm``  millimeter
+        ``in``  inch
+        ``ft``  foot
+        ``yd``  yard
+        ``mi``  mile
+        ======  ===========
+        
+        **Area** (derived from squared length units):
+            
+        =======  ==================
+        Unit     Description
+        =======  ==================
+        ``m2``   square meter
+        ``km2``  square kilometer
+        ``cm2``  square centimeter
+        ``mm2``  square millimeter
+        ``in2``  square inch
+        ``ft2``  square foot
+        ``yd2``  square yard
+        ``mi2``  square mile
+        =======  ==================
+        
+        **Weight**:
+            
+        ==========   ============
+        Unit         Description
+        ==========   ============
+        ``mg``       milligram
+        ``g``        gram
+        ``kg``       kilogram
+        ``ton``      metric ton
+        ``oz``       ounce
+        ``lb``       pound
+        ``ton_us``   short ton
+        ``ton_uk``   long ton
+        ==========   ============
+
     Note:
         - All conversions are first mapped to the category’s base unit, then
           converted to the target unit.
-        - Passing None or NaN values returns them unchanged.
+        - Passing ``None`` or ``NaN`` values returns them unchanged.
         - Unit names are case-insensitive.
-
-    **Importing instructions:**
-
-        The following line is suggested to import the :class:`UnitConverter`.
-
-        .. code-block:: python
-
-            from brails.utils import UnitConverter
     """
 
     def get_supported_units(unit_type: str = 'all') -> str:
@@ -180,7 +191,7 @@ class UnitConverter:
 
         Args:
             unit_type(str):
-                The type of unit to retrieve(``'length'``, ``'area'``,
+                The type of unit to retrieve (``'length'``, ``'area'``,
                 ``'weight'``, or ``'all'``). Defaults to ``'all'``.
 
         Returns:
@@ -282,9 +293,9 @@ class UnitConverter:
 
         Args:
             unit(str):
-                The unit to check(e.g., ``'m'``, ``'kg'``, ``'ft2'``).
+                The unit to check (e.g., ``'m'``, ``'kg'``, ``'ft2'``).
             expected_unit_type(str):
-                The expected type(``'length'``, ``'area'``, or ``'weight'``).
+                The expected type (``'length'``, ``'area'``, or ``'weight'``).
 
         Returns:
             bool:
@@ -316,7 +327,7 @@ class UnitConverter:
 
         Returns:
             dict:
-                Validated units per type(e.g.,
+                Validated units per type (e.g.,
                 ``{'length': 'ft', 'weight': 'lb'}``).
         Raises:
             ValueError:
@@ -358,7 +369,9 @@ class UnitConverter:
         """
         Convert a length value from one unit to another.
 
-        Supported units: 'm', 'km', 'cm', 'mm', 'in', 'ft', 'yd', 'mi'
+        Supported units: ``m``, ``km``, ``cm``, ``mm``, ``in``, ``ft``, ``yd``,
+        ``mi``
+
 
         Args:
             value(float):
@@ -408,15 +421,17 @@ class UnitConverter:
         """
         Convert an area value from one unit to another.
 
-        Supported units: 'm2', 'km2', 'cm2', 'mm2', 'in2', 'ft2', 'yd2', 'mi2'
+        Supported units: ``m2``, ``km2``, ``cm2``, ``mm2``, ``in2``, ``ft2``, 
+        ``yd2``, ``mi2``
+
 
         Args:
             value(float):
                 The numeric area value to convert.
             from_unit(str):
-                The current area unit(e.g., 'm2').
+                The current area unit (e.g., ``'m2'``).
             to_unit(str):
-                The desired area unit(e.g., 'ft2').
+                The desired area unit (e.g., ``'ft2'``).
             precision(int, optional):
                 Number of decimal places to round the result to. Defaults to 2.
 
@@ -463,8 +478,8 @@ class UnitConverter:
         """
         Convert a weight value from one unit to another.
 
-        Supported units: 'mg', 'g', 'kg', 'ton' (metric ton), 'oz', 'lb',
-        'ton_us', 'ton_uk'
+        Supported units: ``mg``, ``g``, ``kg``, ``ton`` (metric ton), ``oz``,
+        ``lb``, ``ton_us``, ``ton_uk``
 
         Args:
             value(float):

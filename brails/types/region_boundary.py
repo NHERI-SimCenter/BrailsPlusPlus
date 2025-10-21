@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 08-18-2025
+# 10-02-2025
 
 """
 This module defines RegionBoundary class to store region boundary polygons.
@@ -220,7 +220,8 @@ class RegionBoundary:
                 f"{SUPPORTED_INPUTS[input_type].errorMessage}")
 
     def get_boundary(
-        self
+        self,
+        print_progress: bool = True
     ) -> Tuple[BaseGeometry, str, Optional[Union[int, str]]]:
         """
         Return the boundary of the region based on the provided input type.
@@ -230,6 +231,13 @@ class RegionBoundary:
         the region boundary from an external data source. If the type is
         'locationPolygon', it converts the provided coordinates (bounding box)
         into a Shapely polygon.
+
+        Args:
+            print_progress (bool, optional):
+                If set to ``True``, progress messages are printed to the 
+                console while retrieving the boundary for the region. If set 
+                to ``False``, no messages are displayed. The default is 
+                ``True``.
 
         Returns:
             Tuple[BaseGeometry, str, Optional[Union[int, str]]]:
@@ -273,7 +281,10 @@ class RegionBoundary:
             the bounding box: (-122.3, 37.85, -122.25, 37.9)
         """
         if self.input_type == "locationName":
-            return self._fetch_roi(self.query_area)
+            return self._fetch_roi(
+                self.query_area, 
+                print_progress=print_progress
+            )
 
         if self.input_type == "locationPolygon":
             bpoly_tuple = GeoTools.bbox2poly(self.query_area)
@@ -285,7 +296,8 @@ class RegionBoundary:
     @staticmethod
     def _fetch_roi(
         queryarea: str,
-        outfile: Union[bool, str] = False
+        outfile: Union[bool, str] = False,
+        print_progress: bool = True
     ) -> Tuple[BaseGeometry, str, str]:
         """
         Get the boundary polygon for a region based on its specified name.
@@ -303,6 +315,10 @@ class RegionBoundary:
                 If a file name is given, the resulting polygon will be saved to
                 the specified file in GeoJSON format. The default value is
                 ``False``.
+            print_progress (bool, optional):
+                If set to ``True``, progress messages are printed to the 
+                console while retrieving the region of interest. If set to 
+                ``False``, no messages are displayed. The default is ``True``.
 
         Returns:
             tuple:
@@ -326,7 +342,8 @@ class RegionBoundary:
             # result[2] is the OSM ID for Berkeley.
         """
         # Search for the query area using Nominatim API:
-        print(f"\nSearching for {queryarea}...")
+        if print_progress:
+            print(f"\nSearching for {queryarea}...")
 
         # Format query string for Nominatim:
         queryarea = queryarea.replace(" ", "+").replace(",", "+")
@@ -362,20 +379,21 @@ class RegionBoundary:
                 areafound = True
                 break
 
-        if areafound:
-            try:
-                print(f"Found {queryarea_name}")
-            except UnicodeEncodeError:
-                queryareaNameUTF = unicodedata.normalize(
-                    "NFKD", queryarea_name).encode("ascii", "ignore")
-                queryareaNameUTF = queryareaNameUTF.decode("utf-8")
-                print(f"Found {queryareaNameUTF}")
-        else:
-            raise ValueError(
-                f"Could not locate an area named {queryarea}. "
-                + "Please check your location query to make sure "
-                + "it was entered correctly."
-            )
+        if print_progress:
+            if areafound:
+                try:
+                    print(f"Found {queryarea_name}")
+                except UnicodeEncodeError:
+                    queryareaNameUTF = unicodedata.normalize(
+                        "NFKD", queryarea_name).encode("ascii", "ignore")
+                    queryareaNameUTF = queryareaNameUTF.decode("utf-8")
+                    print(f"Found {queryareaNameUTF}")
+            else:
+                raise ValueError(
+                    f"Could not locate an area named '{queryarea}'. "
+                    'Please check your location query to make sure '
+                    'it was entered correctly.'
+                )
 
         queryarea_printname = queryarea_name.split(",")[0]
 

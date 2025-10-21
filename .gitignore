@@ -42,13 +42,11 @@ moc*
 # Logs
 debug.log
 
-# Temporary files and folders
+# Temporary and system files
 tmp
 tmp.SimCenter
-*#
 .DS_Store
-.ipynb_checkpoints
-docs/source/notebooks/.ipynb_checkpoints/
+*#
 
 # Build and distribution artifacts
 build
@@ -62,14 +60,19 @@ dist
 
 # Documentation
 /docs/source/_autosummary/
+/docs/source/notebooks/.ipynb_checkpoints/
 /docs/source/notebooks/*.ipynb
-
-docs/source/notebooks/.ipynb_checkpoints/
-*key.txt
-*Key.txt
-*#
-build
-rst-code
 .ipynb_checkpoints
 
+# Example data
+examples/**/*tif
+examples/image_filters/filtered_images/
+examples/inventory_creation/*geojson
+examples/nsi_integration/*geojson
 
+# Scripts and config
+apiKey.txt
+api_key.txt
+*key.txt
+*Key.txt
+userID.sh
