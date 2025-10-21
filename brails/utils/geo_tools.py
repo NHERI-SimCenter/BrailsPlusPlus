@@ -189,19 +189,20 @@ class GeoTools:
         supported.
 
         Args:
-            bpoly: 
-                Reference geometry. Must be a (valid, non-empty) ``Polygon`` or
-                ``MultiPolygon``.
-            geometries: 
+            bpoly (Polygon or MultiPolygon): 
+                Reference geometry. Must be a (valid, non-empty) polygon or
+                multipolygon.
+            geometries (Dict[Union[str, int], BaseGeometry]): 
                 Mapping of keys to Shapely geometries to be compared.
-            predicate: 
+            predicate (str): 
                 Spatial predicate name. One of: ``'intersects'``, ``'within'``,
                 ``'contains'``, ``'overlaps'``, ``'crosses'``, ``'touches'``,
                 ``'covers'``, ``'covered_by'``.
 
         Returns:
-            A list of keys whose geometries do not satisfy 
-            ``predicate(bpoly, geom)``.
+            List[Union[str, int]]:
+                A list of keys whose geometries do not satisfy 
+                ``predicate(bpoly, geom)``.
 
         Raises:
             TypeError: 
@@ -217,6 +218,7 @@ class GeoTools:
 
         Example:
             Define a rectangular bounding polygon near Outer Banks, NC
+            
             >>> bpoly = Polygon([
             ...     (-75.70, 36.00),  # (lon, lat)
             ...     (-75.70, 35.90),
@@ -225,9 +227,9 @@ class GeoTools:
             ...     (-75.70, 36.00),
             ... ])
             
-            
             Specify a collection of geometries, some of which may intersect the
             defined rectangular polygon.
+            
             >>> geometries = {
             ...     # --- Intersecting ---
             ...     'in_point': Point(-75.62, 35.96), 
@@ -283,6 +285,7 @@ class GeoTools:
 
             Determine the keys for the geometries that intersect the given 
             rectangular polygon.
+            
             >>> GeoTools.compare_geometries(bpoly, geometries, 'intersects')
             ['far_point',
              'south_point',
