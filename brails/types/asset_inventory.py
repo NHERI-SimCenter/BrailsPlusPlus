@@ -742,26 +742,25 @@ class AssetInventory:
                 assets from ``inventory_to_combine``.
         """
 
-        # Build hash lookup for existing assets
+        # Build hash lookup for existing assets:
         existing_hashes = {
             asset.hash_asset(): key for key, asset in self.inventory.items()
         }
     
-        # Determine next available numeric ID
+        # Determine next available numeric ID:
         next_id = self._get_next_numeric_id()
     
-        # Track key mapping from inventory2 → combined
+        # Track key mapping from inventory_to_combine → self.inventory:
         merged_key_map = {}
     
         for orig_key, asset in inventory_to_combine.inventory.items():
             asset_hash = asset.hash_asset()
     
-            # Skip duplicates based on geometry and feature data
+            # Skip duplicates based on geometry and feature data:
             if asset_hash in existing_hashes:
                 continue
     
-            # Apply key mapping if provided
-            # Apply user-provided key mapping if available
+            # Apply user-provided key mapping if available:
             mapped_key = key_map.get(orig_key, orig_key) if key_map else orig_key
             new_key = mapped_key
             
@@ -770,7 +769,7 @@ class AssetInventory:
                 new_key = next_id
                 next_id += 1
     
-            # Add asset and record mapping
+            # Add asset and record mapping:
             self.add_asset(new_key, asset)
             merged_key_map[orig_key] = new_key
             existing_hashes[asset_hash] = new_key
