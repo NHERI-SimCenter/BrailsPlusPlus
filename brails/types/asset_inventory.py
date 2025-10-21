@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 10-18-2025
+# 10-21-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -69,6 +69,7 @@ except ImportError:
 import pandas as pd
 from shapely import box
 from shapely.geometry import shape, LineString, Polygon
+from shapely.geometry.base import BaseGeometry
 
 from brails.utils.geo_tools import GeoTools
 from brails.utils.input_validator import InputValidator
@@ -948,6 +949,85 @@ class AssetInventory:
         """
         return list(self.inventory.keys())
 
+    def get_assets_intersecting_polygon(self, bpoly: BaseGeometry):
+        """
+        Get assets with geometries intersecting a bounding polygon.
+    
+        This method performs a spatial intersection check between each asset's
+        geometry in the inventory and a provided bounding polygon (
+        or multipolygon). Assets that intersect the polygon are identified and
+        retained. All non-intersecting assets are removed from the inventory.
+    
+        Args:
+            bpoly: shapely.geometry.base.BaseGeometry
+                The bounding polygon or multipolygon used to determine spatial
+                intersections.
+    
+        Raises:
+            TypeError:
+                If ``bpoly`` is not a Polygon or MultiPolygon.
+                
+        Example:
+            >>> from shapely.geometry import Polygon
+            >>> inventory = AssetInventory()
+            >>> # A LineString in Dallas, TX (will intersect the Dallas bpoly):
+            >>> _ = inventory.add_asset_coordinates(
+            ...     'bridge_A',
+            ...     [[-96.8003, 32.7767], [-96.7998, 32.7770]]
+            ... )
+            >>> # A Polygon in Los Angeles, CA (will NOT intersect the bpoly):
+            >>> _ = inventory.add_asset_coordinates(
+            ...     'tower_B',
+            ...     [
+            ...         [-118.2450, 34.0537],
+            ...         [-118.2450, 34.0540],
+            ...         [-118.2445, 34.0540],
+            ...         [-118.2445, 34.0537],
+            ...         [-118.2450, 34.0537],
+            ...     ]
+            ... )
+            >>> # A bounding polygon roughly around downtown Dallas:
+            >>> bpoly = Polygon([
+            ...     (-96.81, 32.77),
+            ...     (-96.81, 32.78),
+            ...     (-96.79, 32.78),
+            ...     (-96.79, 32.77),
+            ...     (-96.81, 32.77)
+            ... ])
+            >>>
+            >>> inventory.get_assets_intersecting_polygon(bpoly)
+            >>> 'bridge_A' in inventory.inventory
+            True
+            >>> 'tower_B' in inventory.inventory
+            False
+        """
+        
+        # Validate bounding polygon type:
+        if bpoly.geom_type not in ['Polygon', 'MultiPolygon']:
+            raise TypeError(
+                f'Invalid bounding polygon type: {bpoly.geom_type}. '
+                "Expected 'Polygon' or 'MultiPolygon'."
+            )
+            
+        # Fix the bounding polygon if it is not well-formed:
+        if not bpoly.is_valid:
+            bpoly = bpoly.buffer(0)
+        
+        # Build asset geometries:
+        geometries = {
+            key: GeoTools.list_of_lists_to_geometry(asset.coordinates)
+            for key, asset in self.inventory.items()
+        }
+        
+        keys_remove = GeoTools.compare_geometries(
+            bpoly, 
+            geometries, 
+            'intersects'
+        )
+
+        for key in keys_remove:
+            self.remove_asset(key)    
+        
     def get_coordinates(
             self
     ) -> Tuple[List[List[List[float]]], List[Union[str, int]]]:
