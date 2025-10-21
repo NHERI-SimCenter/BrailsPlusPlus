@@ -638,7 +638,7 @@ class AssetInventory:
         Rename feature names in ``AssetInventory`` via user-specified mapping.
 
         Args:
-            feature_name_mapping(dict):
+            feature_name_mapping (dict):
                 A dictionary where keys are the original feature names and
                 values are the new feature names.
 
@@ -721,10 +721,10 @@ class AssetInventory:
         assigning new unique numeric IDs.
     
         Args:
-            inventory_to_combine(AssetInventory):
+            inventory_to_combine (AssetInventory):
                 The secondary inventory whose assets will be merged into this
                 one.
-            key_map(dict, optional):
+            key_map (dict, optional):
                 A mapping of original keys in ``inventory_to_combine`` to new
                 keys in this inventory. For example: {"old_key1": "new_keyA", 
                 "old_key2": "new_keyB"}. If not provided, original keys are 
@@ -737,7 +737,7 @@ class AssetInventory:
                 (after applying ``key_map`` and resolving conflicts).
     
         Modifies:
-            self.inventory(dict):
+            self.inventory (dict):
                 Updates the inventory in-place by adding new, non-duplicate 
                 assets from ``inventory_to_combine``.
         """
@@ -851,7 +851,7 @@ class AssetInventory:
         Get the coordinates of a particular asset.
 
         Args:
-            asset_id(str or int):
+            asset_id (str or int):
                 The unique identifier for the asset.
 
         Returns:
@@ -888,7 +888,7 @@ class AssetInventory:
         Get features of a particular asset.
 
         Args:
-            asset_id(str or int):
+            asset_id (str or int):
                 The unique identifier for the asset.
 
         Returns:
@@ -954,18 +954,18 @@ class AssetInventory:
         Get assets with geometries intersecting a bounding polygon.
     
         This method performs a spatial intersection check between each asset's
-        geometry in the inventory and a provided bounding polygon (
-        or multipolygon). Assets that intersect the polygon are identified and
+        geometry in the inventory and a provided bounding polygon (or 
+        multipolygon). Assets that intersect the polygon are identified and
         retained. All non-intersecting assets are removed from the inventory.
     
         Args:
-            bpoly: shapely.geometry.base.BaseGeometry
+            bpoly (shapely.geometry.base.BaseGeometry):
                 The bounding polygon or multipolygon used to determine spatial
                 intersections.
     
         Raises:
             TypeError:
-                If ``bpoly`` is not a Polygon or MultiPolygon.
+                If ``bpoly`` is not a ``Polygon`` or ``MultiPolygon``.
                 
         Example:
             >>> from shapely.geometry import Polygon
@@ -1078,11 +1078,11 @@ class AssetInventory:
         optional ``seed`` for reproducibility.
 
         Args:
-            nsamples(int):
+            nsamples (int):
                 The number of assets to randomly sample from the inventory.
                 Must be a positive integer not exceeding the total number of
                 assets.
-            seed(int or float or str or bytes or bytearray or None, optional):
+            seed (int or float or str or bytes or bytearray or None, optional):
                 A seed value for the random generator to ensure
                 reproducibility. If None, the system default (current system
                 time) is used.
@@ -1144,7 +1144,7 @@ class AssetInventory:
         Calculate the geographical extent of the inventory.
 
         Args:
-            buffer(str or list[float]): A string or a list of 4 floats.
+            buffer (str or list[float]): A string or a list of 4 floats.
 
                 - ``'default'`` applies preset buffer values.
                 - ``'none'`` applies zero buffer values.
@@ -1328,9 +1328,9 @@ class AssetInventory:
         Merge with another AssetInventory using specified spatial join method.
 
         Args:
-            inventory_to_join(AssetInventory):
+            inventory_to_join (AssetInventory):
                 The inventory to be joined with the current one.
-            method(str):
+            method (str):
                 The spatial join method to use. Defaults to
                 ``GetPointsInPolygons``. The ``method`` defines how the join
                 operation is executed between inventories.
