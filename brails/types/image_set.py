@@ -332,14 +332,14 @@ class ImageSet:
 
             The following example demonstrates how two ``ImageSet`` objects
             are merged. The base image set initially contains one image 
-            ('img_01'). The secondary set has two images: one unique 
-            ('fileB.jpg') and one duplicate of the existing file ('fileA.jpg').
-            A key mapping is provided so 'img_02' in the secondary set becomes
-            'img_04' in the merged set. 
+            (``'img_01'``). The secondary set has two images: one unique 
+            (``'fileB.jpg'``) and one duplicate of the existing file 
+            (``'fileA.jpg'``). A key mapping is provided so ``'img_02'`` in the
+            secondary set becomes ``'img_04'`` in the merged set. 
             
             Please note that, after combining the two sets, only the unique
-            image ('fileB.jpg') is added with the new key 'img_04'. The 
-            final inventory contains two images, 'img_01' and 'img_04', 
+            image (``'fileB.jpg'``) is added with the new key ``'img_04'``. The 
+            final inventory contains two images, ``'img_01'`` and ``'img_04'``, 
             confirming that 1) the merge successfully preserved unique entries,
             and 2) resolved key conflicts automatically.
     
