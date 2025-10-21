@@ -629,7 +629,7 @@ used as-is unless they already exist in the current inventory.</p></li>
 </dl>
 <dl class="simple">
 <dt>Modifies:</dt><dd><dl class="simple">
-<dt>self.inventory(dict):</dt><dd><p>Updates the inventory in-place by adding new, non-duplicate
+<dt>self.inventory (dict):</dt><dd><p>Updates the inventory in-place by adding new, non-duplicate
 assets from <code class="docutils literal notranslate"><span class="pre">inventory_to_combine</span></code>.</p>
 </dd>
 </dl>
@@ -798,6 +798,60 @@ integers.</p>
 <span class="gp">... </span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">get_asset_ids</span><span class="p">()</span>
 <span class="go">[&#39;asset1&#39;, 2]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_assets_intersecting_polygon">
+<span class="sig-name descname"><span class="pre">get_assets_intersecting_polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bpoly</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_assets_intersecting_polygon" title="Link to this definition"></a></dt>
+<dd><p>Get assets with geometries intersecting a bounding polygon.</p>
+<p>This method performs a spatial intersection check between each asset’s
+geometry in the inventory and a provided bounding polygon (or
+multipolygon). Assets that intersect the polygon are identified and
+retained. All non-intersecting assets are removed from the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>bpoly</strong> (<em>shapely.geometry.base.BaseGeometry</em>) – The bounding polygon or multipolygon used to determine spatial
+intersections.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">bpoly</span></code> is not a <code class="docutils literal notranslate"><span class="pre">Polygon</span></code> or <code class="docutils literal notranslate"><span class="pre">MultiPolygon</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Polygon</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># A LineString in Dallas, TX (will intersect the Dallas bpoly):</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;bridge_A&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="o">-</span><span class="mf">96.8003</span><span class="p">,</span> <span class="mf">32.7767</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">96.7998</span><span class="p">,</span> <span class="mf">32.7770</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># A Polygon in Los Angeles, CA (will NOT intersect the bpoly):</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;tower_B&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">118.2450</span><span class="p">,</span> <span class="mf">34.0537</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">118.2450</span><span class="p">,</span> <span class="mf">34.0540</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">118.2445</span><span class="p">,</span> <span class="mf">34.0540</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">118.2445</span><span class="p">,</span> <span class="mf">34.0537</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">118.2450</span><span class="p">,</span> <span class="mf">34.0537</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># A bounding polygon roughly around downtown Dallas:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bpoly</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">96.81</span><span class="p">,</span> <span class="mf">32.77</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">96.81</span><span class="p">,</span> <span class="mf">32.78</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">96.79</span><span class="p">,</span> <span class="mf">32.78</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">96.79</span><span class="p">,</span> <span class="mf">32.77</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">96.81</span><span class="p">,</span> <span class="mf">32.77</span><span class="p">)</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">get_assets_intersecting_polygon</span><span class="p">(</span><span class="n">bpoly</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="s1">&#39;bridge_A&#39;</span> <span class="ow">in</span> <span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="s1">&#39;tower_B&#39;</span> <span class="ow">in</span> <span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span>
+<span class="go">False</span>
 </pre></div>
 </div>
 </dd></dl>
