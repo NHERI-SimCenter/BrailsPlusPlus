@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-20-2025
+# 10-21-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -55,6 +55,7 @@ from shapely.geometry import box, LineString, MultiLineString, MultiPolygon, \
     Point, Polygon
 from shapely.geometry.base import BaseGeometry
 from shapely.strtree import STRtree
+from shapely.prepared import prep
 
 from brails.constants import R_EARTH_KM
 from brails.utils.unit_converter import UnitConverter
@@ -173,6 +174,195 @@ class GeoTools:
             GeoTools.write_polygon_to_geojson(bpoly, output_file)
 
         return bpoly, queryarea_printname
+
+    @staticmethod
+    def compare_geometries(
+        bpoly: Union[Polygon, MultiPolygon],
+        geometries: Dict[Union[str, int], BaseGeometry],
+        predicate: str
+    ) -> List[Union[str, int]]:
+        """
+        Return keys for geometries that **do not** satisfy given predicate.
+
+        This function uses the STRtree fast path when available, and falls back
+        to a prepared-geometry filter in environments where `predicate=` is not
+        supported.
+
+        Args:
+            bpoly: 
+                Reference geometry. Must be a (valid, non-empty) ``Polygon`` or
+                ``MultiPolygon``.
+            geometries: 
+                Mapping of keys to Shapely geometries to be compared.
+            predicate: 
+                Spatial predicate name. One of: ``'intersects'``, ``'within'``,
+                ``'contains'``, ``'overlaps'``, ``'crosses'``, ``'touches'``,
+                ``'covers'``, ``'covered_by'``.
+
+        Returns:
+            A list of keys whose geometries do not satisfy 
+            ``predicate(bpoly, geom)``.
+
+        Raises:
+            TypeError: 
+                If ``bpoly`` is not a ``Polygon``/``MultiPolygon``, or 
+                ``geometries`` is not a non-empty dict of Shapely geometries.
+            ValueError: 
+                If ``bpoly`` is empty, or if ``predicate`` is not supported.
+
+        Notes:
+            - Coordinates are interpreted as (x, y) = (longitude, latitude).
+            - For invalid geometries, a light repair via ``buffer(0)`` is 
+              attempted.
+
+        Example:
+            Define a rectangular bounding polygon near Outer Banks, NC
+            >>> bpoly = Polygon([
+            ...     (-75.70, 36.00),  # (lon, lat)
+            ...     (-75.70, 35.90),
+            ...     (-75.50, 35.90),
+            ...     (-75.50, 36.00),
+            ...     (-75.70, 36.00),
+            ... ])
+            
+            
+            Specify a collection of geometries, some of which may intersect the
+            defined rectangular polygon.
+            >>> geometries = {
+            ...     # --- Intersecting ---
+            ...     'in_point': Point(-75.62, 35.96), 
+            ...     'intersecting_polygon': Polygon([  
+            ...         (-75.68, 36.00),
+            ...         (-75.68, 35.92),
+            ...         (-75.62, 35.92),
+            ...         (-75.62, 36.00),
+            ...         (-75.68, 36.00),
+            ...     ]),
+            ...     'intersecting_multipolygon': MultiPolygon([
+            ...         Polygon([  
+            ...             (-75.58, 36.02),
+            ...             (-75.58, 35.98),
+            ...             (-75.52, 35.98),
+            ...             (-75.52, 36.02),
+            ...             (-75.58, 36.02),
+            ...         ]),
+            ...         Polygon([  
+            ...             (-75.80, 36.10),
+            ...             (-75.80, 36.06),
+            ...             (-75.76, 36.06),
+            ...             (-75.76, 36.10),
+            ...             (-75.80, 36.10),
+            ...         ]),
+            ...     ]),
+            ...     'crossing_linestring': LineString([  
+            ...         (-75.75, 35.95),
+            ...         (-75.45, 35.95),
+            ...     ]),
+            ...     'intersecting_multilinestring': MultiLineString([
+            ...         [(-75.66, 35.91), (-75.66, 36.01)],  
+            ...         [(-75.80, 36.05), (-75.78, 36.06)],  
+            ...     ]),
+            ...     # --- Outside (do NOT intersect) ---
+            ...     'far_point': Point(-76.20, 36.20),               
+            ...     'south_point': Point(-75.60, 35.85),             
+            ...     'east_point': Point(-75.45, 35.95),              
+            ...     'west_poly': Polygon([                           
+            ...         (-75.80, 35.97),
+            ...         (-75.80, 35.93),
+            ...         (-75.74, 35.93),
+            ...         (-75.74, 35.97),
+            ...         (-75.80, 35.97),
+            ...     ]),
+            ...     'offshore_line': LineString([(-75.40, 35.92), 
+                                                 (-75.40, 35.99)]), 
+            ...     'north_mls': MultiLineString([                  
+            ...         [(-75.66, 36.05), (-75.60, 36.06)],
+            ...         [(-75.59, 36.07), (-75.55, 36.08)],
+            ...     ]),
+            ... }
+
+            Determine the keys for the geometries that intersect the given 
+            rectangular polygon.
+            >>> GeoTools.compare_geometries(bpoly, geometries, 'intersects')
+            ['far_point',
+             'south_point',
+             'east_point',
+             'west_poly',
+             'offshore_line',
+             'north_mls']
+        """
+
+        # Validation for the reference polygon:
+        if not isinstance(bpoly, (Polygon, MultiPolygon)):
+            raise TypeError(
+                f'Invalid reference polygon of type: {type(bpoly).__name__}. '
+                "Expected a Polygon or MultiPolygon."
+            )
+        if bpoly.is_empty:
+            raise ValueError('Reference polygon (bpoly) is empty.')
+        if not bpoly.is_valid:
+            bpoly = bpoly.buffer(0)
+
+        # Validate geometries to be compared:
+        if not isinstance(geometries, dict) or not geometries:
+            raise TypeError(
+                "`geometries` must be a non-empty dictionary of Shapely "
+                'geometries.'
+                )
+
+        # Ensure all provided geometries are valid:
+        for key, geom in geometries.items():
+            if not isinstance(geom, BaseGeometry):
+                raise TypeError(
+                    f"Geometry for key '{key}' is not a valid Shapely "
+                    'geometry.'
+                    )
+            if geom.is_empty:
+                raise ValueError(f"Geometry for key '{key}' is empty.")
+            if not geom.is_valid:
+                geometries[key] = geom.buffer(0)
+        
+        # Check if the provided predicate is valid:
+        supported = {
+            'intersects', 'within', 'contains', 'overlaps',
+            'crosses', 'touches', 'covers', 'covered_by'
+        }
+        if predicate not in supported:
+            raise ValueError(
+                f"Provided predicate '{predicate}' is unsupprted. "
+                'Allowed predicates are: {sorted(supported)}'
+                )
+        
+        # Build STRtree and an identity map back to keys (no O(n) lookups):
+        keys = list(geometries.keys())
+        geoms = [geometries[k] for k in keys]
+        tree = STRtree(geoms)
+        
+        # Query the tree. If this fails fallback to the prep or bpoly comparison:
+        try:
+            hits_raw = tree.query(bpoly, predicate=predicate)
+            hits_idx = hits_raw.tolist()
+        
+        except TypeError:
+            candidates_raw = tree.query(bpoly)
+            
+            id_to_idx = {id(g): i for i, g in enumerate(geoms)}
+            candidates_idx = [id_to_idx[id(g)] for g in candidates_raw]
+            
+            prepared_supported = {'contains', 'intersects', 'covers', 'within'}
+            if predicate in prepared_supported:
+                bpoly_prepared = prep(bpoly)
+                method = getattr(bpoly_prepared, predicate)
+            else:
+                method = getattr(bpoly, predicate)
+            
+            # Filter candidates against the true predicate using the original geoms:
+            hits_idx = [i for i in candidates_idx if method(geoms[i])]
+        
+        # Identify the keys to remove, i.e. those that did not satisfy the
+        # predicate:
+        keys_keep = {keys[i] for i in hits_idx}
+        return [k for k in keys if k not in keys_keep]
 
     @staticmethod
     def geometry_to_list_of_lists(
