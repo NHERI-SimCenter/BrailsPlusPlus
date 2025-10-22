@@ -36,7 +36,7 @@
 # Frank McKenna
 #
 # Last updated:
-# 10-21-2025
+# 10-22-2025
 
 """
 This module defines classes associated with asset inventories.
@@ -1611,7 +1611,7 @@ class AssetInventory:
         
         for index, item in enumerate(features):
             geometry = GeoTools.parse_geojson_geometry(item['geometry'])
-            asset_features = {**item['attributes'], 'type': asset_type}
+            asset_features = {**item['properties'], 'type': asset_type}
             asset = Asset(index, geometry, asset_features)
             self.add_asset(next_id + index, asset)
 

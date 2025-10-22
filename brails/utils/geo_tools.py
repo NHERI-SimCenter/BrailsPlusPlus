@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-21-2025
+# 10-22-2025
 
 """
 This module defines a class for geospatial analysis and operations.
@@ -802,8 +802,12 @@ class GeoTools:
             return coords[0]
        
         elif gtype == 'MultiPolygon':
-            # Flatten all exterior rings
-            return [poly[0] for poly in coords]
+            # Flatten all exterior rings:
+            multipolygons = [poly[0] for poly in coords if poly]
+            
+            # Return a single polygon if only one exists, otherwise return the
+            # full list:
+            return multipolygons[0] if len(multipolygons) == 1 else multipolygons
        
         else:
             raise NotImplementedError(

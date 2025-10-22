@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 10-14-2025
+# 10-22-2025
 
 """
 This is a utility class for datasets created by the RAPID facility at UW.
@@ -62,6 +62,7 @@ from rasterio.warp import transform_bounds, transform_geom
 import brails.types.image_set as brails_image_set
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
+from brails.utils.input_validator import InputValidator
 
 
 class RAPIDUtils:
@@ -199,6 +200,15 @@ class RAPIDUtils:
                 desc='Extracting aerial imagery...'
             ):
                 asset_geometry = asset.coordinates
+                
+                # Handle MultiPolygon geometries by keeping the exterior ring:
+                if InputValidator.is_multipolygon(asset_geometry):
+                    asset_geometry = asset_geometry[0]
+                
+                # Skip assets that are not valid polygon geometries:
+                if not InputValidator.is_polygon(asset_geometry):
+                    continue
+                
                 centroid = Polygon(asset_geometry).centroid
                 image_name = f'{centroid.y:.8f}_{centroid.x:.8f}'.replace(
                     '.', '')
