@@ -166,13 +166,18 @@ def assign_households_to_buildings(
     )
     asset_gdf.set_index('id', inplace=True)
 
-    print(f"Initial number of assets loaded: {len(asset_gdf)}")
+    print(f"Initial number of buildings loaded: {len(asset_gdf)}")
     print("-" * 30)
 
     # Pyncoda expects ids in a building_id column
     asset_gdf = asset_gdf.rename(columns={'id': 'building_id'})
 
-    # Report and drop assets with missing required columns
+    # Keep only the residential buildings
+    asset_gdf = asset_gdf.loc[asset_gdf[occupancy_col].str.startswith('RES')]
+
+    print(f"Number of residential buildings in the inventory: {len(asset_gdf)}")
+
+    # Report and drop buildings with missing required columns
     required_cols = [occupancy_col, plan_area_col, 'geometry']
     missing_cols_mask = asset_gdf[required_cols].isnull().any(axis=1)
     dropped_for_cols = asset_gdf[missing_cols_mask]['building_id'].tolist()
@@ -185,7 +190,7 @@ def assign_households_to_buildings(
     asset_gdf = asset_gdf[~missing_cols_mask]
 
     print("-" * 30)
-    print(f"Number of assets remaining after filtering: {len(asset_gdf)}")
+    print(f"Number of buildings remaining after filtering: {len(asset_gdf)}")
 
     # Ensure columns have the correct data type for calculations
     asset_gdf['building_id'] = asset_gdf['building_id'].astype(int)
@@ -211,13 +216,13 @@ def assign_households_to_buildings(
 
     # Step 2: Prepare the Census tract, State, and County information
 
-    # Create a lean inventory that only has the assets that were kept
+    # Create a lean inventory that only has the buildings that were kept
     filtered_inventory = AssetInventory()
     filtered_inventory.inventory = {
         k: v for k,v in inventory.inventory.items() if k in lean_asset_gdf.index
     }
 
-    # Run scraper to identify the census tracts covered by the assets
+    # Run scraper to identify the census tracts covered by the buildings
     importer = Importer()
     census_scraper = importer.get_class('CensusScraper')()
     census_tract_dict = census_scraper.get_census_tracts(filtered_inventory)
@@ -262,6 +267,7 @@ def assign_households_to_buildings(
         outputfolder=output_folder,
         census_tracts=census_tracts,
         #import_hui_path='housing_unit_inventory_filtered.csv',
+        export_hui_path=os.path.join(output_folder, 'housing_unit_inventory_filtered.csv'),
         force_hua_rerun=True
     )
 

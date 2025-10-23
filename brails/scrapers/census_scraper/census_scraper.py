@@ -239,7 +239,7 @@ class CensusScraper:
                     asset_gdf_with_census_tracts = gpd.pd.concat([
                         asset_gdf_with_census_tracts,
                         points_within_this_tract
-                    ], ignore_index=True)
+                    ])
 
                     asset_gdf_to_do = asset_gdf_to_do.drop(points_within_this_tract.index)
                 else:

@@ -64,6 +64,7 @@ setup(
             'flake8',
             'pylint',
             'black',
+            'ruff==0.12.10',
             'pytest',
             'pytest-cov',
             'jupyter',

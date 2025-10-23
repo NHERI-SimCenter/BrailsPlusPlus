@@ -70,6 +70,14 @@ examples/image_filters/filtered_images/
 examples/inventory_creation/*geojson
 examples/nsi_integration/*geojson
 
+# External tools
+external_tools/
+
+# PyCharm folders
+/.idea
+/.cache
+/.junie
+
 # Scripts and config
 apiKey.txt
 api_key.txt
