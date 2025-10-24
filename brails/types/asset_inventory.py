@@ -203,23 +203,27 @@ class Asset:
             'possible_heights': [10, 15, 20],
             'color': 'red'}
         """
+
+        def update_possible_worlds(n_pw, val):
+
+            if isinstance(val, list) and key != 'Households': # Households are currently deterministic
+                if (n_pw != 1) and (n_pw != len(val)):
+                    print(
+                        f'WARNING: # possible worlds was {n_pw} but now '
+                        f'is {len(val)}. Something went wrong.'
+                    )
+                return len(val)
+            else:
+                return n_pw
+
         n_pw = 1
 
         if overwrite:
             # Overwrite existing features with new ones:
             self.features.update(additional_features)
 
-            # count # possible worlds
             for key, val in additional_features.items():
-                if isinstance(val, list):
-                    if (n_pw == 1) or (n_pw == len(val)):
-                        n_pw = len(val)
-                    else:
-                        print(
-                            f'WARNING: # possible worlds was {n_pw} but now '
-                            f'is {len(val)}. Something went wrong.'
-                        )
-                        n_pw = len(val)
+                n_pw = update_possible_worlds(n_pw, val)
 
             updated = True
 
@@ -231,16 +235,7 @@ class Asset:
                     # write
                     self.features[key] = val
 
-                    # count # possible worlds
-                    if isinstance(val, list):
-                        if (n_pw == 1) or (n_pw == len(val)):
-                            n_pw = len(val)
-                        else:
-                            print(
-                                f'WARNING: # possible worlds was {n_pw} but '
-                                f'now is {len(val)}. Something went wrong.'
-                            )
-                            n_pw = len(val)
+                    n_pw = update_possible_worlds(n_pw, val)
 
                     updated = True
 

@@ -102,33 +102,28 @@ class Household:
 
 
     Attributes:
-        household_id (str):
-            Unique identifier for the household.
         features (dict[str, Any]):
             A dictionary of features (attributes) for the household.
     """
 
     def __init__(
         self,
-        household_id: str,
         features: Dict[str, Any] = None,
     ) -> None:
         """
         Initialize a Household with a household ID and features.
 
         Args:
-            household_id (str): The unique identifier for the household.
             features (dict[str, Any], optional): A dictionary of features.
                 Defaults to an empty dict.
         """
-        self.household_id = household_id
         self.features = features if features is not None else {}
 
     def add_features(
             self,
             additional_features: Dict[str, Any],
             overwrite: bool = True
-    ) -> Tuple[bool, int]:
+    ) -> bool:
         """
         Update the existing features in the household.
 
@@ -139,73 +134,36 @@ class Household:
                 Defaults to True.
 
         Returns:
-            tuple[bool, int]: A tuple containing:
-                - bool: True if features were updated, False otherwise.
-                - int: Number of possible worlds (for compatibility).
+            bool: True if features were updated, False otherwise.
         """
-        n_pw = 1
 
         if overwrite:
-            # Overwrite existing features with new ones:
             self.features.update(additional_features)
+            return True
 
-            # count # possible worlds
-            for key, val in additional_features.items():
-                if isinstance(val, list):
-                    if (n_pw == 1) or (n_pw == len(val)):
-                        n_pw = len(val)
-                    else:
-                        print(
-                            f'WARNING: # possible worlds was {n_pw} but now '
-                            f'is {len(val)}. Something went wrong.'
-                        )
-                        n_pw = len(val)
+        updated = False
+        for key, value in additional_features.items():
+            if key not in self.features:
+                self.features[key] = value
+                updated = True
 
-            updated = True
+        return updated
 
-        else:
-            # Only update with new keys, do not overwrite existing keys:
-            updated = False
-            for key, val in additional_features.items():
-                if key not in self.features:
-                    # write
-                    self.features[key] = val
-
-                    # count # possible worlds
-                    if isinstance(val, list):
-                        if (n_pw == 1) or (n_pw == len(val)):
-                            n_pw = len(val)
-                        else:
-                            print(
-                                f'WARNING: # possible worlds was {n_pw} but '
-                                f'now is {len(val)}. Something went wrong.'
-                            )
-                            n_pw = len(val)
-
-                    updated = True
-
-        return updated, n_pw
-
-    def remove_features(self, feature_list: List[str]) -> bool:
+    def remove_features(self, feature_list: List[str]):
         """
         Remove specified features from the household.
 
         Args:
             feature_list (List[str]): List of features to be removed
-
-        Return:
-            bool: True if features are removed
         """
-        for key in list(feature_list):
-            self.features.pop(key, None)
 
-        return True
+        for key in feature_list:
+            if key in self.features:
+                del self.features[key]
 
     def print_info(self) -> None:
         """Print the features of the household."""
-        print(f"\t Household ID: {self.household_id}")
-        features_json = json.dumps(self.features, indent=2)
-        print(f"\t Features: {features_json}")
+        print(f"\t Features: {json.dumps(self.features, indent=2)}")
 
 
 class HouseholdInventory:
@@ -225,9 +183,9 @@ class HouseholdInventory:
     def __init__(self) -> None:
         """Initialize HouseholdInventory with an empty inventory dictionary."""
         self.inventory: Dict = {}
-        self.n_pw = 1
 
-    def add_household(self, household_id: str, household: Household) -> bool:
+    def add_household(self, household_id: str, household: Household,
+                      overwrite: bool = False):
         """
         Add a Household to the inventory.
 
@@ -236,78 +194,29 @@ class HouseholdInventory:
                 The unique identifier for the household.
             household (Household):
                 The household to be added.
-
-        Returns:
-            bool: ``True`` if the household was added successfully, ``False``
-            otherwise.
+            overwrite (bool):
+                Replace existing household if it exists. Defaults to False.
 
         Raises:
             TypeError: If ``household`` is not an instance of :class:`Household`.
 
         Examples:
             >>> household = Household(
-            ...     household_id="1",
             ...     features={'income': 50000, 'size': 3}
             ... )
             >>> inventory = HouseholdInventory()
-            >>> success = inventory.add_household("1", household)
-            >>> print(success)
-            True
-
-            >>> # Adding the same household_id again will fail
-            >>> success = inventory.add_household("1", household)
-            >>> print(success)
-            False
+            >>> inventory.add_household("1", household)
         """
         if not isinstance(household, Household):
-            raise TypeError("Expected an instance of Household.")
+            msg = "Expected an instance of Household."
+            raise TypeError(msg)
 
-        if household_id in self.inventory:
-            print(f'Household with id {household_id} already exists. '
-                  f'Household was not added')
-            return False
+        if ~overwrite and household_id in self.inventory:
+            print(f'The inventory already has a household with id {household_id}.')
+            return
 
         self.inventory[household_id] = household
-        return True
 
-    def add_household_features(
-        self,
-        household_id: str,
-        new_features: Dict[str, Any],
-        overwrite: bool = True
-    ) -> bool:
-        """
-        Add new household features to the Household with the specified ID.
-
-        Args:
-            household_id (str):
-                The unique identifier for the household.
-            new_features (dict):
-                A dictionary of features to add to the household.
-            overwrite (bool):
-                Whether to overwrite existing features with the
-                same keys. Defaults to True.
-
-        Returns:
-            bool: True if features were successfully added, False if the 
-                household does not exist or the operation fails.
-        """
-        household = self.inventory.get(household_id, None)
-        if household is None:
-            print(f'No existing Household with id {household_id} found. '
-                  f'Household features not added.')
-            return False
-
-        status, n_pw = household.add_features(new_features, overwrite)
-        if n_pw == 1:
-            pass
-        elif (n_pw == self.n_pw) or (self.n_pw == 1):
-            self.n_pw = n_pw
-        else:
-            print(f'WARNING: # possible worlds was {self.n_pw} but is now '
-                  f'{n_pw}. Something went wrong.')
-            self.n_pw = n_pw
-        return status
 
     def change_feature_names(
             self,
@@ -344,33 +253,12 @@ class HouseholdInventory:
         for household in self.inventory.values():
             for old_name, new_name in feature_name_mapping.items():
                 if old_name in household.features:
+                    if new_name in household.features:
+                        raise NameError(f"New feature name {new_name} already exists.")
+
                     # Move the feature to the new name and remove the old one:
                     household.features[new_name] = household.features.pop(old_name)
 
-    def get_household_features(
-            self,
-            household_id: str
-    ) -> tuple[bool, dict[str, Any]]:
-        """
-        Get features of a particular household.
-
-        Args:
-            household_id (str):
-                The unique identifier for the household.
-
-        Returns:
-            tuple[bool, dict]:
-                A tuple where the first element is a boolean
-                indicating whether the household was found, and the second 
-                element is a dictionary containing the household's features if 
-                the household is present. Returns an empty dictionary if the 
-                household is not found.
-        """
-        household = self.inventory.get(household_id, None)
-        if household is None:
-            return False, {}
-
-        return True, household.features
 
     def get_household_ids(self) -> list[str]:
         """
@@ -383,16 +271,13 @@ class HouseholdInventory:
         return list(self.inventory.keys())
 
 
-    def print_info(self) -> None:
+    def print_info(self):
         """
         Print summary information about the HouseholdInventory.
 
         This method outputs the name of the class, the type of data structure
         used to store the inventory, and basic information about each household
         in the inventory, including its key and features.
-
-        Returns:
-            None
         """
         print(self.__class__.__name__)
         print("Inventory stored in: ", self.inventory.__class__.__name__)
@@ -400,7 +285,8 @@ class HouseholdInventory:
             print("Key: ", key, "Household:")
             household.print_info()
 
-    def remove_household(self, household_id: str) -> bool:
+
+    def remove_household(self, household_id: str):
         """
         Remove a Household from the inventory.
 
@@ -408,16 +294,12 @@ class HouseholdInventory:
             household_id (str):
                 The unique identifier for the household.
 
-        Returns:
-            bool:
-                True if household was removed, False otherwise.
         """
         if household_id in self.inventory:
             del self.inventory[household_id]
-            return True
-        return False
 
-    def remove_features(self, feature_list: List[str]) -> bool:
+
+    def remove_features(self, feature_list: List[str]):
         """
         Remove specified features from all households in the inventory.
 
@@ -425,14 +307,10 @@ class HouseholdInventory:
             feature_list (list[str]):
                 List of feature names to remove from all households.
 
-        Returns:
-            bool:
-                True if features were removed, False otherwise.
         """
         for _, household in self.inventory.items():
             household.remove_features(feature_list)
 
-        return True
 
     def to_json(self, output_file: str = "") -> dict[str, Any]:
         """
@@ -476,8 +354,8 @@ class HouseholdInventory:
     def read_from_json(
         self,
         json_data: Union[str, Dict[str, Any]],
-        keep_existing: bool
-    ) -> bool:
+        keep_existing: bool = False
+    ):
         """
         Read inventory data from a JSON file, string, or dictionary and add it to the inventory.
 
@@ -486,10 +364,6 @@ class HouseholdInventory:
                   Either a path to a JSON file, a JSON string, or a dictionary object
             keep_existing (bool):
                   If False, the inventory will be initialized
-
-        Returns:
-            bool:
-                  True if households were added, False otherwise.
         """
         if not keep_existing:
             self.inventory = {}
@@ -510,9 +384,11 @@ class HouseholdInventory:
                     try:
                         data = json.loads(json_data)
                     except json.JSONDecodeError:
-                        raise Exception(f"The input is neither a valid file path nor a valid JSON string.")
+                        msg = f"The input is neither a valid file path nor a valid JSON string."
+                        raise Exception(msg)
             except Exception as e:
-                raise Exception(f"Error processing input: {str(e)}")
+                msg = f"Error processing input: {str(e)}"
+                raise Exception(msg)
 
         # Load and validate against JSON schema
         schema_path = os.path.join(
@@ -528,17 +404,16 @@ class HouseholdInventory:
             validate(instance=data, schema=schema)
             
         except FileNotFoundError:
-            raise Exception(f"Schema file not found at {schema_path}")
+            msg = f"Schema file not found at {schema_path}"
+            raise Exception(msg)
         except ValidationError as e:
-            raise ValueError(f"Invalid JSON data: {e.message}")
+            msg = f"Invalid JSON data: {e.message}"
+            raise ValueError(msg)
 
         # Extract households data after validation
         households_data = data.get("households", {})
 
         # Load data after successful validation
         for household_id, features in households_data.items():
-            # Create and add household
-            household = Household(household_id, features)
-            self.add_household(household_id, household)
-
-        return True
+            # Create and add each household
+            self.add_household(household_id, Household(features))

@@ -40,14 +40,16 @@ This module assigns households to housing units using the pyncoda package
 """
 
 import os
-from typing import Dict, List, Any
+from typing import Dict, List, Tuple, Any
 
+import numpy as np
 import pandas as pd
 import geopandas as gpd
 import json
 from pathlib import Path
 
 from brails.types.asset_inventory import AssetInventory
+from brails.types.household_inventory import Household, HouseholdInventory
 from brails.utils import Importer
 from pyncoda.ncoda_07i_process_communities import process_community_workflow
 from pyncoda import ncoda_00h_bldg_archetype_structure as bldg_arch
@@ -57,7 +59,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 FIPS_LOOKUP_PATH = SCRIPT_DIR / 'supporting_data' / 'fips_lookup.json'
 STATE_ABBREV_PATH = SCRIPT_DIR / 'supporting_data' / 'state_abbreviations.json'
 
-def get_county_and_state_names(census_tracts: list):
+def get_county_and_state_names(census_tracts: list)-> Tuple[Dict[str, Any], str]:
     """
     Identify the counties and state covered by an asset inventory.
 
@@ -66,18 +68,14 @@ def get_county_and_state_names(census_tracts: list):
     asset in it. It then maps these FIPS codes to human-readable names using
     the fips_lookup.json and state_abbreviations.json files.
 
-    Parameters
-    ----------
-    census_tracts : list
-        A list of 11-digit FIPS codes identifying the census tracts covered by
-        the asset inventory.
+    Args:
+        census_tracts(list): A list of 11-digit FIPS codes identifying the
+            census tracts covered by the asset inventory.
 
-    Returns
-    -------
-    counties : dict
-        A dictionary providing the FIPS code and the name of each county.
-    state_name: str
-        The full name of the state that contains the counties.
+    Returns:
+        counties(dict): A dictionary providing the FIPS code and the name of
+            each county.
+        state_name(str): The full name of the state that contains the counties.
     """
 
     # --- Load the lookup tables from the JSON files ---
@@ -115,14 +113,279 @@ def get_county_and_state_names(census_tracts: list):
 
     return counties_dict, state_name
 
+def validate_key_features_dict(key_features: Dict[str, Any]):
+    """
+    Validate the key_features dictionary.
+
+    Check that the required keys are present and have the correct data type.
+
+    Args:
+        key_features(dict): This dictionary helps keep inventory feature naming
+            flexible by allowing users to specify the labels they use for
+            important features and their length unit. We expect the following
+            keys in the dictionary: occupancy_col, plan_area_col,
+            story_count_col, length_unit. For each key, we expect a string
+            value. Currently, only 'ft' and 'm' are supported as length units.
+
+    Raises:
+        ValueError: If any of the required keys are missing, have an incorrect
+            data type, or the provided length unit is not supported.
+    """
+    required_keys = {
+        'occupancy_col': str,
+        'plan_area_col': str,
+        'story_count_col': str,
+        'length_unit': str
+    }
+
+    missing_keys = []
+    type_errors = []
+
+    for key, expected_type in required_keys.items():
+        if key not in key_features:
+            missing_keys.append(key)
+            continue  # No need to check type if key is missing
+
+        value = key_features[key]
+        if not isinstance(value, expected_type):
+            type_errors.append(
+                f"Key '{key}': expected {expected_type.__name__}, "
+                f"got {type(value).__name__}"
+            )
+
+        if key == 'length_unit' and value not in ['ft', 'm']:
+            type_errors.append(
+                f"Key '{key}': expected 'ft' or 'm', got '{value}'"
+            )
+
+    # Consolidate errors and raise a single, informative message
+    if missing_keys or type_errors:
+        error_msg = "Invalid 'key_features' argument:\n"
+        if missing_keys:
+            error_msg += f"- Missing required keys: {', '.join(missing_keys)}\n"
+        if type_errors:
+            error_msg += f"- Type errors: \n  " + "\n  ".join(type_errors)
+        raise ValueError(error_msg)
+
+def prepare_building_inventory(
+        inventory: AssetInventory,
+        key_features: Dict[str, Any]
+)-> gpd.GeoDataFrame:
+    """
+    Prepare building inventory data for pyncoda.
+
+    Load the building inventory data from an AssetInventory object and filter
+    the data to include only residential buildings. Then, check for and remove
+    buildings with missing required columns. Finally, convert the plan area
+    to square feet if necessary and return a GeoDataFrame with the desired
+    columns.
+
+    Args:
+        inventory(AssetInventory): The AssetInventory object containing
+            building data.
+        key_features(dict): A dictionary containing the names of the columns
+            containing important attributes of each building. The expected keys
+            are documented in the validate_key_features_dict function.
+
+    Returns:
+        lean_buildings_gdf(GeoDataFrame): Building inventory data with only
+            residential buildings and the desired columns for pyncoda.
+    """
+    validate_key_features_dict(key_features)
+
+    buildings_geojson = inventory.get_geojson()
+    buildings_gdf = gpd.GeoDataFrame.from_features(
+        buildings_geojson["features"],
+        crs="EPSG:4326"
+    )
+    buildings_gdf.set_index('id', inplace=True)
+
+    print(f"Initial number of buildings loaded: {len(buildings_gdf)}")
+    print("-" * 30)
+
+    # Pyncoda expects ids in a building_id column
+    buildings_gdf = buildings_gdf.rename(columns={'id': 'building_id'})
+
+    occupancy_col = key_features['occupancy_col']
+    plan_area_col = key_features['plan_area_col']
+    story_count_col = key_features['story_count_col']
+    length_unit = key_features['length_unit']
+
+    # Keep only the residential buildings
+    buildings_gdf = buildings_gdf.loc[buildings_gdf[occupancy_col].str.startswith('RES')]
+
+    print(f"Number of residential buildings in the inventory: {len(buildings_gdf)}")
+
+    # Report and drop buildings with missing required columns
+    required_cols = [occupancy_col, plan_area_col, story_count_col, 'geometry']
+    missing_cols_mask = buildings_gdf[required_cols].isnull().any(axis=1)
+    dropped_for_cols = buildings_gdf[missing_cols_mask]['building_id'].tolist()
+
+    if dropped_for_cols:
+        print(f"\nAssets dropped due to missing required columns ('{occupancy_col}', '{plan_area_col}', '{story_count_col}', 'geometry'): {len(dropped_for_cols)}")
+        print(f"  IDs: {dropped_for_cols[:5]}{'...' if len(dropped_for_cols) > 5 else ''}")
+
+    # Keep only the rows that are NOT in the missing_cols_mask
+    buildings_gdf = buildings_gdf[~missing_cols_mask]
+
+    print("-" * 30)
+    print(f"Number of buildings remaining after filtering: {len(buildings_gdf)}")
+
+    # Ensure columns have the correct data type for calculations
+    buildings_gdf['building_id'] = buildings_gdf['building_id'].astype(int)
+    buildings_gdf[plan_area_col] = buildings_gdf[plan_area_col].astype(float)
+    buildings_gdf[story_count_col] = buildings_gdf[story_count_col].astype(float)
+
+    # Perform the unit conversion on the plan area column
+    if length_unit == "m":
+        buildings_gdf[plan_area_col] *= 10.7639
+
+    # Select and rename the columns to match the desired output properties.
+    lean_buildings_gdf = buildings_gdf[[
+        'building_id',
+        'geometry'
+    ]].copy()
+
+    lean_buildings_gdf['occtype'] = buildings_gdf[occupancy_col]
+    lean_buildings_gdf['gross_area_in_sqft'] = (
+        buildings_gdf[plan_area_col] * buildings_gdf[story_count_col])
+
+    lean_buildings_gdf.set_index('building_id', inplace=True)
+
+    return lean_buildings_gdf
+
+
+def create_household_inventory(
+        assigned_households: pd.DataFrame
+)->HouseholdInventory:
+    """
+    Create a HouseholdInventory object from a DataFrame of household assignments.
+
+    Process the raw pyncoda output into a HouseholdInventory object by filtering
+    the columns we need and converting the labels to SimCenter standard and
+    mapping the concise digits to human-readable values.
+
+    Args:
+        assigned_households(DataFrame): A DataFrame containing the raw pyncoda
+            output of the household assignment.
+
+    Returns:
+        household_inventory(HouseholdInventory): A HouseholdInventory object
+            containing the household assignments.
+    """
+    # keep only the columns we need from the raw pyncoda output
+    cols_to_keep = [
+        'blockid',
+        'numprec',
+        'ownershp',
+        'race',
+        'hispan',
+        'family',
+        'vacancy',
+        'gqtype',
+        'incomegroup',
+        'randincome',
+        'poverty',
+        'building_id'
+    ]
+    households = assigned_households[cols_to_keep].copy()
+
+    # we don't need to save building id to households
+    del households['building_id']
+
+    # rename columns to use standard SimCenter names
+    households.rename(columns={
+        'blockid': 'BLOCK_GEOID',
+        'numprec': 'NumberOfPersons',
+        'ownershp': 'Ownership',
+        'race': 'Race',
+        'hispan': 'Hispanic',
+        'family': 'Family',
+        'vacancy': 'VacancyStatus',
+        'gqtype': 'GroupQuartersType',
+        'incomegroup': 'IncomeGroup',
+        'randincome': 'IncomeSample',
+        'poverty': 'Poverty'
+    }, inplace=True)
+
+    # Map digits to actual values for clarity
+
+    # No need to map Hispanic, Family, and Poverty, just use the raw boolean values
+    # No need to map IncomeSample, just use the raw float value
+
+    households['Ownership'] = households['Ownership'].map({
+        1: 'Owner occupied',
+        2: 'Renter occupied'
+    })
+
+    households['Race'] = households['Race'].map({
+        1: 'White',
+        2: 'Black',
+        3: 'American Indian',
+        4: 'Asian',
+        5: 'Pacific Islander',
+        6: 'Some Other Race',
+        7: 'Two or More Races'
+    })
+
+    households['VacancyStatus'] = households['VacancyStatus'].map({
+        0: 'Occupied',
+        1: 'For Rent',
+        2: 'Rented, not occupied',
+        3: 'For sale only',
+        4: 'Sold, not occupied',
+        5: 'For seasonal, recreational, or occasional use',
+        6: 'For migrant workers',
+        7: 'Other vacant'
+    })
+
+    households['GroupQuartersType'] = households['GroupQuartersType'].map({
+        0: 'Not a group quarters building',
+        1: 'Correctional facilities for adults',
+        2: 'Juvenile facilities',
+        3: 'Nursing facilities/Skilled-nursing facilities',
+        4: 'Other institutional facilities',
+        5: 'College/University student housing',
+        6: 'Military quarters',
+        7: 'Other noninstitutional facilities'
+    })
+
+    households['IncomeGroup'] = households['IncomeGroup'].map({
+        0: np.nan,
+        1: 'Less than $10,000',
+        2: '$10,000 to $14,999',
+        3: '$15,000 to $19,999',
+        4: '$20,000 to $24,999',
+        5: '$25,000 to $29,999',
+        6: '$30,000 to $34,999',
+        7: '$35,000 to $39,999',
+        8: '$40,000 to $44,999',
+        9: '$45,000 to $49,999',
+        10: '$50,000 to $59,999',
+        11: '$60,000 to $74,999',
+        12: '$75,000 to $99,999',
+        13: '$100,000 to $124,999',
+        14: '$125,000 to $149,999',
+        15: '$150,000 to $199,999',
+        16: '$200,000 or more',
+    })
+
+    # create the household inventory and add the households
+    household_inventory = HouseholdInventory()
+
+    for household_id, household_features in households.iterrows():
+        household_inventory.add_household(
+            household_id,
+            Household(household_features.dropna().to_dict()))
+
+    return household_inventory
+
 def assign_households_to_buildings(
-    inventory: AssetInventory,
-    occupancy_col: str,
-    plan_area_col: str,
-    length_unit: str,
+    building_inventory: AssetInventory,
+    key_features: Dict[str, Any],
     vintage: str,
     output_folder: str
-) -> Dict[str, Any]:
+):
     """
     Assign synthetic households to buildings in an AssetInventory.
 
@@ -130,96 +393,40 @@ def assign_households_to_buildings(
     assignment process using the pyncoda workflow.
 
     Args:
-        inventory (AssetInventory): The AssetInventory object containing 
+        building_inventory (AssetInventory): The AssetInventory object containing
             building data.
-        occupancy_col (str): The name of the feature containing occupancy type 
-            (e.g., "OccupancyClass").
-        plan_area_col (str): The name of the feature for the building's plan area
-            (e.g., "PlanArea").
-        length_unit (str): The length unit for plan area. Must be "ft" or "m".
+        key_features (dict): A dictionary containing the names of the columns
+            containing important attributes of each building. The expected keys
+            are documented in the validate_key_features_dict function.
         vintage (str): The reference vintage for the household information.
         output_folder (str): Path to directory where temporary and output files 
             will be stored.
 
-    Returns:
-        Dict[str, Any]: Result from the pyncoda workflow process.
-
     Raises:
-        ValueError: If length_unit is not "ft" or "m".
         FileNotFoundError: If required files are not found.
     """
-    # Validate length_unit parameter
-    if length_unit not in ["ft", "m"]:
-        raise ValueError("length_unit must be either 'ft' or 'm'")
-
-    # Create output folder if it doesn't exist
+    # Create the output folder if it doesn't exist
     os.makedirs(output_folder, exist_ok=True)
 
     # Step 1: Prepare Building Inventory Input
-    # Create temporary GeoJSON file with filtered properties
-    temp_geojson_path = os.path.join(output_folder, "temp_building_inventory.geojson")
-
-    geojson_data = inventory.get_geojson()
-    asset_gdf = gpd.GeoDataFrame.from_features(
-        geojson_data["features"],
-        crs="EPSG:4326"
+    # Create a temporary GeoJSON file for the pyncoda-optimized inventory
+    temp_geojson_path = os.path.join(
+        output_folder,
+        "temp_building_inventory.geojson"
     )
-    asset_gdf.set_index('id', inplace=True)
 
-    print(f"Initial number of buildings loaded: {len(asset_gdf)}")
-    print("-" * 30)
-
-    # Pyncoda expects ids in a building_id column
-    asset_gdf = asset_gdf.rename(columns={'id': 'building_id'})
-
-    # Keep only the residential buildings
-    asset_gdf = asset_gdf.loc[asset_gdf[occupancy_col].str.startswith('RES')]
-
-    print(f"Number of residential buildings in the inventory: {len(asset_gdf)}")
-
-    # Report and drop buildings with missing required columns
-    required_cols = [occupancy_col, plan_area_col, 'geometry']
-    missing_cols_mask = asset_gdf[required_cols].isnull().any(axis=1)
-    dropped_for_cols = asset_gdf[missing_cols_mask]['building_id'].tolist()
-
-    if dropped_for_cols:
-        print(f"\nAssets dropped due to missing required columns ('{occupancy_col}', '{plan_area_col}', etc.): {len(dropped_for_cols)}")
-        print(f"  IDs: {dropped_for_cols[:5]}{'...' if len(dropped_for_cols) > 5 else ''}")
-
-    # Keep only the rows that are NOT in the missing_cols_mask
-    asset_gdf = asset_gdf[~missing_cols_mask]
-
-    print("-" * 30)
-    print(f"Number of buildings remaining after filtering: {len(asset_gdf)}")
-
-    # Ensure columns have the correct data type for calculations
-    asset_gdf['building_id'] = asset_gdf['building_id'].astype(int)
-    asset_gdf[plan_area_col] = asset_gdf[plan_area_col].astype(float)
-
-    # Perform the unit conversion on the plan area column
-    if length_unit == "m":
-        asset_gdf['plan_area_in_sqft'] = asset_gdf[plan_area_col] * 10.7639
-    else:
-        asset_gdf['plan_area_in_sqft'] = asset_gdf[plan_area_col]
-
-    # Select and rename the columns to match the desired output properties.
-    lean_asset_gdf = asset_gdf[[
-        'building_id',
-        'geometry'
-    ]].copy() # Use .copy() to avoid SettingWithCopyWarning
-
-    lean_asset_gdf['occtype'] = asset_gdf[occupancy_col]
-    lean_asset_gdf['plan_area_in_sqft'] = asset_gdf['plan_area_in_sqft']
-
-    lean_asset_gdf.set_index('building_id', inplace=True)
-    lean_asset_gdf.to_file(temp_geojson_path, driver='GeoJSON')
+    lean_building_gdf = prepare_building_inventory(
+        building_inventory,
+        key_features
+    )
+    lean_building_gdf.to_file(temp_geojson_path, driver='GeoJSON')
 
     # Step 2: Prepare the Census tract, State, and County information
 
     # Create a lean inventory that only has the buildings that were kept
     filtered_inventory = AssetInventory()
     filtered_inventory.inventory = {
-        k: v for k,v in inventory.inventory.items() if k in lean_asset_gdf.index
+        k: v for k,v in building_inventory.inventory.items() if k in lean_building_gdf.index
     }
 
     # Run scraper to identify the census tracts covered by the buildings
@@ -248,7 +455,7 @@ def assign_households_to_buildings(
                 'note': 'Community for BRAILS Building Inventory',
                 'archetype_var': 'occtype',
                 'bldg_uniqueid': 'building_id',
-                'building_area_var': 'plan_area_in_sqft',
+                'building_area_var': 'gross_area_in_sqft',
                 'building_area_cutoff': 300,
                 'use_incore': False,
                 'id': 'filtered NSI',
@@ -272,6 +479,23 @@ def assign_households_to_buildings(
     )
 
     # Process communities and return results
-    hua_hui_gdf_dict = workflow.process_communities()
+    assigned_households = workflow.process_communities()
 
-    return hua_hui_gdf_dict
+    # remove unassigned households and convert data types
+    assigned_households = assigned_households.loc[assigned_households['building_id'] != 'missing building id'].copy()
+    assigned_households['building_id'] = assigned_households['building_id'].astype(float).astype(int)
+    assigned_households['gqtype'] = assigned_households['gqtype'].astype(int)
+
+    household_inventory = create_household_inventory(assigned_households)
+
+    assigned_households['household_id'] = assigned_households.index.copy()
+    households_by_bldg_id = assigned_households.groupby('building_id').agg(
+        household_ids = ('household_id', lambda x: x.tolist())
+    )
+    for building_id, household_ids in households_by_bldg_id.iterrows():
+        building_inventory.add_asset_features(
+            asset_id = building_id,
+            new_features = dict(Households = household_ids['household_ids'])
+        )
+
+    building_inventory.household_inventory = household_inventory
