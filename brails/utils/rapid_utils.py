@@ -35,7 +35,7 @@
 # Barbaros Cetiner
 #
 # Last updated:
-# 08-19-2025
+# 10-22-2025
 
 """
 This is a utility class for datasets created by the RAPID facility at UW.
@@ -59,9 +59,10 @@ from rasterio.io import DatasetReader
 from rasterio.windows import Window, from_bounds
 from rasterio.warp import transform_bounds, transform_geom
 
-from brails.types.image_set import ImageSet
+import brails.types.image_set as brails_image_set
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
+from brails.utils.input_validator import InputValidator
 
 
 class RAPIDUtils:
@@ -112,7 +113,7 @@ class RAPIDUtils:
         save_directory: str,
         max_missing_data_ratio: float = 0.2,
         overlay_asset_outline: bool = False
-    ) -> ImageSet:
+    ) -> brails_image_set.ImageSet:
         """
         Extract aerial imagery patches for each asset from a raster dataset.
 
@@ -186,7 +187,7 @@ class RAPIDUtils:
         base_dir_path.mkdir(parents=True, exist_ok=True)
         print(f'\nImages will be saved to: {base_dir_path}\n')
 
-        image_set = ImageSet()
+        image_set = brails_image_set.ImageSet()
         image_set.dir_path = str(base_dir_path)
 
         with rasterio_open(
@@ -199,6 +200,15 @@ class RAPIDUtils:
                 desc='Extracting aerial imagery...'
             ):
                 asset_geometry = asset.coordinates
+                
+                # Handle MultiPolygon geometries by keeping the exterior ring:
+                if InputValidator.is_multipolygon(asset_geometry):
+                    asset_geometry = asset_geometry[0]
+                
+                # Skip assets that are not valid polygon geometries:
+                if not InputValidator.is_polygon(asset_geometry):
+                    continue
+                
                 centroid = Polygon(asset_geometry).centroid
                 image_name = f'{centroid.y:.8f}_{centroid.x:.8f}'.replace(
                     '.', '')
@@ -229,7 +239,8 @@ class RAPIDUtils:
                               [pixel_coords[0]], fill='red', width=6)
 
                 pil_image.save(image_path)
-                image_set.add_image(asset_key, image_path.name)
+                img = brails_image_set.Image(image_path.name)
+                image_set.add_image(asset_key, img)
 
         print(
             '\nExtracted aerial imagery for a total of '

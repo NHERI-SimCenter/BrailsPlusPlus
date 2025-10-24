@@ -22,7 +22,7 @@ Submodules
    :maxdepth: 1
 
    brails.processors.year_built_classifier.Resnet
-   brails.processors.year_built_classifier.YearBuiltClassifier
    brails.processors.year_built_classifier.detect
    brails.processors.year_built_classifier.model
    brails.processors.year_built_classifier.train
+   brails.processors.year_built_classifier.year_built_classifier

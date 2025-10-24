@@ -1,0 +1,192 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.inferers.hazus_inferer_wind.hazus_inferer_wind module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.inferers.nlcd_inferer package" href="brails.inferers.nlcd_inferer.html" />
+    <link rel="prev" title="brails.inferers.hazus_inferer_wind.auto_HU_NJ module" href="brails.inferers.hazus_inferer_wind.auto_HU_NJ.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="brails.inferers.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="brails.inferers.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="brails.processors.html">brails.processors package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.utils.html">brails.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.inferers.html">brails.inferers package</a></li>
+          <li class="breadcrumb-item"><a href="brails.inferers.hazus_inferer_wind.html">brails.inferers.hazus_inferer_wind package</a></li>
+      <li class="breadcrumb-item active">brails.inferers.hazus_inferer_wind.hazus_inferer_wind module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.inferers.hazus_inferer_wind.hazus_inferer_wind.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.inferers.hazus_inferer_wind.hazus_inferer_wind">
+<span id="brails-inferers-hazus-inferer-wind-hazus-inferer-wind-module"></span><h1>brails.inferers.hazus_inferer_wind.hazus_inferer_wind module<a class="headerlink" href="#module-brails.inferers.hazus_inferer_wind.hazus_inferer_wind" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.inferers.hazus_inferer_wind.hazus_inferer_wind.</span></span><span class="sig-name descname"><span class="pre">HazusInfererWind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_inventory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_possible_worlds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['ReplacementCost',</span> <span class="pre">'StructureType']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwirte_existing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean_features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">planArea_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'PlanArea'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numberOfStories_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NumberOfStories'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">occupancyClass_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'OccupancyClass'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">BuildingType_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'BuildingType'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">designLevel_H_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'DesignLevel_H'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yearBuilt_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'YearBuilt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roofSystem_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RoofSystem'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roofShape_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RoofShape'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roofSlope_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RoofSlope'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">avgJanTemp_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'AvgJanTemp'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Height_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Height'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">windowArea_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'WindowArea'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numberOfUnits_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NumberOfUnits'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hasGarage_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'HasGarage'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">floodZone_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'FloodZone'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">windZone_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'WindZone'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">designWindSpeed_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'DesignWindSpeed'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">LULC_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LULC'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z0_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Z0'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sheathingThickness_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'SheathingThickness'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="brails.inferers.inference_engine.html#brails.inferers.inference_engine.InferenceEngine" title="brails.inferers.inference_engine.InferenceEngine"><code class="xref py py-class docutils literal notranslate"><span class="pre">InferenceEngine</span></code></a></p>
+<p>Make inference based on Hazus 6 rulesets</p>
+<p>Attributes:</p>
+<p>Methods:</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.correct">
+<span class="sig-name descname"><span class="pre">correct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_inventory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">invalid_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.correct" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.infer">
+<span class="sig-name descname"><span class="pre">infer</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.infer" title="Link to this definition"></a></dt>
+<dd><p>Infer and add new features for each asset in the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>input_inventory</strong> (<a class="reference internal" href="brails.types.asset_inventory.html#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><em>AssetInventory</em></a>) – The inventory of assets to process.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A new or updated inventory with additional inferred features.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="brails.types.asset_inventory.html#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory">AssetInventory</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.infer_building_one_by_one">
+<span class="sig-name descname"><span class="pre">infer_building_one_by_one</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inventory_json</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_pw</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.infer_building_one_by_one" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.merge_two_json">
+<span class="sig-name descname"><span class="pre">merge_two_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">B</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shrink</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.merge_two_json" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">this_inventory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.to_json" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.validate">
+<span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_inventory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">silence</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.inferers.hazus_inferer_wind.hazus_inferer_wind.HazusInfererWind.validate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.inferers.hazus_inferer_wind.auto_HU_NJ.html" class="btn btn-neutral float-left" title="brails.inferers.hazus_inferer_wind.auto_HU_NJ module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.inferers.nlcd_inferer.html" class="btn btn-neutral float-right" title="brails.inferers.nlcd_inferer package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

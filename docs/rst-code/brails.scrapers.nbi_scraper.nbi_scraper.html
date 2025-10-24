@@ -1,0 +1,217 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.scrapers.nbi_scraper.nbi_scraper module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.scrapers.nlcd_scraper package" href="brails.scrapers.nlcd_scraper.html" />
+    <link rel="prev" title="brails.scrapers.nbi_scraper package" href="brails.scrapers.nbi_scraper.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.processors.html">brails.processors package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="brails.scrapers.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="brails.scrapers.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.utils.html">brails.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.scrapers.html">brails.scrapers package</a></li>
+          <li class="breadcrumb-item"><a href="brails.scrapers.nbi_scraper.html">brails.scrapers.nbi_scraper package</a></li>
+      <li class="breadcrumb-item active">brails.scrapers.nbi_scraper.nbi_scraper module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.scrapers.nbi_scraper.nbi_scraper.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.scrapers.nbi_scraper.nbi_scraper">
+<span id="brails-scrapers-nbi-scraper-nbi-scraper-module"></span><h1>brails.scrapers.nbi_scraper.nbi_scraper module<a class="headerlink" href="#module-brails.scrapers.nbi_scraper.nbi_scraper" title="Link to this heading"></a></h1>
+<p>This module defines a class for retrieving bridge data from NBI.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#brails.scrapers.nbi_scraper.nbi_scraper.NBIScraper" title="brails.scrapers.nbi_scraper.nbi_scraper.NBIScraper"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NBIScraper</span></code></a>([input_dict])</p></td>
+<td><p>A class for scraping and processing National Bridge Inventory (NBI) data.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.scrapers.nbi_scraper.nbi_scraper.NBIScraper">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.scrapers.nbi_scraper.nbi_scraper.</span></span><span class="sig-name descname"><span class="pre">NBIScraper</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.scrapers.nbi_scraper.nbi_scraper.NBIScraper" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class for scraping and processing National Bridge Inventory (NBI) data.</p>
+<p>The class handles tasks such as fetching and processing bridge data,
+meshing the region into smaller cells for efficient data retrieval, and
+organizing the results into an AssetInventory.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.scrapers.nbi_scraper.nbi_scraper.NBIScraper.length_unit">
+<span class="sig-name descname"><span class="pre">length_unit</span></span><a class="headerlink" href="#brails.scrapers.nbi_scraper.nbi_scraper.NBIScraper.length_unit" title="Link to this definition"></a></dt>
+<dd><p>The unit of length (default is ‘ft’).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.scrapers.nbi_scraper.nbi_scraper.NBIScraper.inventory">
+<span class="sig-name descname"><span class="pre">inventory</span></span><a class="headerlink" href="#brails.scrapers.nbi_scraper.nbi_scraper.NBIScraper.inventory" title="Link to this definition"></a></dt>
+<dd><p>An inventory object that holds the assets for this instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="brails.types.asset_inventory.html#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory">AssetInventory</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_assets(region</span></span></dt>
+<dd><p>RegionBoundary) -&gt; AssetInventory:
+Retrieves bridge inventory data within a given region boundary,
+processes the data, and returns the inventory of assets.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.scrapers.nbi_scraper.nbi_scraper.NBIScraper.get_assets">
+<span class="sig-name descname"><span class="pre">get_assets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.scrapers.nbi_scraper.nbi_scraper.NBIScraper.get_assets" title="Link to this definition"></a></dt>
+<dd><p>Retrieve bridge inventory within a given region.</p>
+<p>This method processes the region boundary, splits it into smaller
+cells, fetches the necessary bridge data for each cell, and returns the
+processed bridge asset inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>region</strong> (<a class="reference internal" href="brails.types.region_boundary.html#brails.types.region_boundary.RegionBoundary" title="brails.types.region_boundary.RegionBoundary"><em>RegionBoundary</em></a>) – A <cite>RegionBoundary</cite> object representing the geographic region
+for which to retrieve bridge inventory data.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An <cite>AssetInventory</cite> object containing the bridge assets within
+the specified region.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="brails.types.asset_inventory.html#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory">AssetInventory</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError</strong> – If the <cite>region</cite> argument is not an instance of the
+    <cite>RegionBoundary</cite> class. The error message will indicate that
+    the ‘region’ argument must be an instance of the
+    <cite>RegionBoundary</cite> class.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.scrapers.nbi_scraper.html" class="btn btn-neutral float-left" title="brails.scrapers.nbi_scraper package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.scrapers.nlcd_scraper.html" class="btn btn-neutral float-right" title="brails.scrapers.nlcd_scraper package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

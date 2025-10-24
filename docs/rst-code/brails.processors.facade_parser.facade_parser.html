@@ -1,0 +1,288 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.processors.facade_parser.facade_parser module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.processors.ffh_predictor_klepac package" href="brails.processors.ffh_predictor_klepac.html" />
+    <link rel="prev" title="brails.processors.facade_parser package" href="brails.processors.facade_parser.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.processors.html">brails.processors package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="brails.processors.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="brails.processors.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.utils.html">brails.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.html">brails.processors package</a></li>
+          <li class="breadcrumb-item"><a href="brails.processors.facade_parser.html">brails.processors.facade_parser package</a></li>
+      <li class="breadcrumb-item active">brails.processors.facade_parser.facade_parser module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.processors.facade_parser.facade_parser.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.processors.facade_parser.facade_parser">
+<span id="brails-processors-facade-parser-facade-parser-module"></span><h1>brails.processors.facade_parser.facade_parser module<a class="headerlink" href="#module-brails.processors.facade_parser.facade_parser" title="Link to this heading"></a></h1>
+<p>Class object to parse building facade images to get metric attributes.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.processors.facade_parser.facade_parser.FacadeParser">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.processors.facade_parser.facade_parser.</span></span><span class="sig-name descname"><span class="pre">FacadeParser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.facade_parser.facade_parser.FacadeParser" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="brails.processors.image_processor.html#brails.processors.image_processor.ImageProcessor" title="brails.processors.image_processor.ImageProcessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageProcessor</span></code></a></p>
+<p>A class to parse facade images of buildings and predict metric attributes.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.facade_parser.facade_parser.FacadeParser.cam_elevs">
+<span class="sig-name descname"><span class="pre">cam_elevs</span></span><a class="headerlink" href="#brails.processors.facade_parser.facade_parser.FacadeParser.cam_elevs" title="Link to this definition"></a></dt>
+<dd><p>Camera elevation angles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.facade_parser.facade_parser.FacadeParser.depthmaps">
+<span class="sig-name descname"><span class="pre">depthmaps</span></span><a class="headerlink" href="#brails.processors.facade_parser.facade_parser.FacadeParser.depthmaps" title="Link to this definition"></a></dt>
+<dd><p>Depth maps
+for building images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Tuple[str, Tuple[int, int], List[float]]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.facade_parser.facade_parser.FacadeParser.footprints">
+<span class="sig-name descname"><span class="pre">footprints</span></span><a class="headerlink" href="#brails.processors.facade_parser.facade_parser.FacadeParser.footprints" title="Link to this definition"></a></dt>
+<dd><p>Building footprints.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[list[float, float]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.facade_parser.facade_parser.FacadeParser.model_path">
+<span class="sig-name descname"><span class="pre">model_path</span></span><a class="headerlink" href="#brails.processors.facade_parser.facade_parser.FacadeParser.model_path" title="Link to this definition"></a></dt>
+<dd><p>Path to the trained model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.facade_parser.facade_parser.FacadeParser.street_images">
+<span class="sig-name descname"><span class="pre">street_images</span></span><a class="headerlink" href="#brails.processors.facade_parser.facade_parser.FacadeParser.street_images" title="Link to this definition"></a></dt>
+<dd><p>Paths to the street images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.processors.facade_parser.facade_parser.FacadeParser.predictions">
+<span class="sig-name descname"><span class="pre">predictions</span></span><a class="headerlink" href="#brails.processors.facade_parser.facade_parser.FacadeParser.predictions" title="Link to this definition"></a></dt>
+<dd><p>DataFrame to store predictions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.processors.facade_parser.facade_parser.FacadeParser.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.processors.facade_parser.facade_parser.FacadeParser.predict" title="Link to this definition"></a></dt>
+<dd><p>Predict building metric attributes from street-level imagery.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>images</strong> (<a class="reference internal" href="brails.types.image_set.html#brails.types.image_set.ImageSet" title="brails.types.image_set.ImageSet"><em>ImageSet</em></a>) – <p>An object that contains camera elevations, depth maps,
+footprints, and street images. It should have the following
+.. attribute:: - images</p>
+<blockquote>
+<div><p>A dictionary containing image data with keys as</p>
+</div></blockquote>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">image</span> <span class="pre">identifiers.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">-</span> <span class="pre">dir_path</span></span></dt>
+<dd><p>The directory path where the images are stored.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">-</span> <span class="pre">properties</span></span></dt>
+<dd><p>A dictionary of properties for each image,</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">including</span> <span class="pre">'depthMap'</span> <span class="pre">and</span> <span class="pre">'camElev'.</span></span></dt>
+<dd></dd></dl>
+
+</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>A dictionary containing predictions for each image. Each entry
+includes:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>’roofEaveHeight’: The predicted roof eave height in feet,
+rounded to one decimal place.</p></li>
+<li><p>’buildingHeight’: The predicted building height in feet,
+rounded to the nearest integer.</p></li>
+<li><p>’roofPitch’: The predicted roof pitch, rounded to two
+decimal places.</p></li>
+</ul>
+</div></blockquote>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If the model path does not exist.</p></li>
+<li><p><strong>ValueError</strong> – If the required data for predictions is missing or invalid.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Ensure that the input <cite>images</cite> contains valid image paths and
+properties.</p></li>
+<li><p>The prediction process may be computationally expensive and
+time-consuming.</p></li>
+<li><p>The method utilizes the GPU if available, and the model is
+unloaded from the GPU after inference.</p></li>
+</ul>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.processors.facade_parser.html" class="btn btn-neutral float-left" title="brails.processors.facade_parser package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.processors.ffh_predictor_klepac.html" class="btn btn-neutral float-right" title="brails.processors.ffh_predictor_klepac package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

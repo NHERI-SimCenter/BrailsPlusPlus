@@ -44,7 +44,7 @@ import sys
 import copy
 
 from brails.types.asset_inventory import AssetInventory
-from brails.inferers.inferenceEngine import InferenceEngine
+from brails.inferers.inference_engine import InferenceEngine
 
 import importlib.util
 import logging
@@ -86,7 +86,8 @@ class UserInferer(InferenceEngine):
 
         input_inventory = self.input_inventory
         module_name = os.path.splitext(os.path.basename(self.user_path))[0]
-        spec = importlib.util.spec_from_file_location(module_name, self.user_path)
+        spec = importlib.util.spec_from_file_location(
+            module_name, self.user_path)
         user_module = importlib.util.module_from_spec(spec)
         sys.modules[module_name] = user_module
         spec.loader.exec_module(user_module)
@@ -114,7 +115,8 @@ class UserInferer(InferenceEngine):
             if nw == 0:
                 prop = prop_world_i
             else:
-                prop = self.merge_two_json(prop, prop_world_i, shrink=(nw == n_pw - 1))
+                prop = self.merge_two_json(
+                    prop, prop_world_i, shrink=(nw == n_pw - 1))
 
         #
         # Update the inventory
@@ -185,9 +187,11 @@ class UserInferer(InferenceEngine):
         inventory_json = {}
         for key, asset in this_inventory.inventory.items():
             if len(asset.coordinates) == 1:
-                geometry = {"type": "Point", "coordinates": [asset.coordinates[0][:]]}
+                geometry = {"type": "Point", "coordinates": [
+                    asset.coordinates[0][:]]}
             else:
-                geometry = {"type": "Polygon", "coordinates": asset.coordinates}
+                geometry = {"type": "Polygon",
+                            "coordinates": asset.coordinates}
 
             feature = {
                 "type": "Feature",

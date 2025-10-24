@@ -42,19 +42,17 @@ moc*
 # Logs
 debug.log
 
-# Temporary files and folders
+# Temporary and system files
 tmp
 tmp.SimCenter
-*#
 .DS_Store
-.ipynb_checkpoints
-docs/source/notebooks/.ipynb_checkpoints/
+*#
 
 # Build and distribution artifacts
 build
 /brails.egg-info/
 dist
-rst-code
+/rst-code
 
 # Coverage reports
 /.coverage
@@ -62,7 +60,9 @@ rst-code
 
 # Documentation
 /docs/source/_autosummary/
+/docs/source/notebooks/.ipynb_checkpoints/
 /docs/source/notebooks/*.ipynb
+.ipynb_checkpoints
 
 # Example data
 examples/**/*tif
@@ -81,4 +81,6 @@ external_tools/
 # Scripts and config
 apiKey.txt
 api_key.txt
+*key.txt
+*Key.txt
 userID.sh

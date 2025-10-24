@@ -38,7 +38,7 @@
 
 # minor minor mods: fmk
 
-from brails.types.image_set import ImageSet
+import brails.types.image_set as brails_image_set
 from brails.filters.filter import Filter
 
 import torch
@@ -189,7 +189,7 @@ class HouseView(Filter):
     crop_dict = self._bound_one_image(image_path, self.text_prompt, self.box_treshhold, self.text_treshhold, model, device)
     self._crop_and_save_img(crop_dict, output_dir, random = False)
 
-  def filter(self, input_images: ImageSet,  output_dir: str):
+  def filter(self, input_images: brails_image_set.ImageSet,  output_dir: str):
 
     
     def isImage(im):
@@ -208,7 +208,7 @@ class HouseView(Filter):
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     
-    output_images = ImageSet()
+    output_images = brails_image_set.ImageSet()
     output_images.dir_path = dir_path    
 
     input_dir = input_images.dir_path
@@ -225,7 +225,8 @@ class HouseView(Filter):
         #batch_features.append(im.features)
         crop_dict = self._bound_one_image(image, self.text_prompt, self.box_treshhold, self.text_treshhold, model = None, device = device)
         self._crop_and_save_img(crop_dict, output_dir, random = False)
-        output_images.add_image(key, im.filename, im.properties)
+        img = brails_image_set.Image(im.filename, im.properties)
+        output_images.add_image(key, img)
 
     return output_images
 

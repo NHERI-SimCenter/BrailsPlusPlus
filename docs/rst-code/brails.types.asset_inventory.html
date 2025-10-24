@@ -1,0 +1,1757 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.types.asset_inventory module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.types.image_set module" href="brails.types.image_set.html" />
+    <link rel="prev" title="brails.types package" href="brails.types.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.processors.html">brails.processors package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.types.html">brails.types package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="brails.types.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="brails.utils.html">brails.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.types.html">brails.types package</a></li>
+      <li class="breadcrumb-item active">brails.types.asset_inventory module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.types.asset_inventory.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.types.asset_inventory">
+<span id="brails-types-asset-inventory-module"></span><h1>brails.types.asset_inventory module<a class="headerlink" href="#module-brails.types.asset_inventory" title="Link to this heading"></a></h1>
+<p>This module defines classes associated with asset inventories.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AssetInventory</span></code></a>()</p></td>
+<td><p>A class representing a collection of Assets managed as an inventory.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#brails.types.asset_inventory.Asset" title="brails.types.asset_inventory.Asset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Asset</span></code></a>(asset_id, coordinates[, features])</p></td>
+<td><p>A spatial asset with geometry coordinates, and attributes.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.types.asset_inventory.</span></span><span class="sig-name descname"><span class="pre">Asset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">asset_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.Asset" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A spatial asset with geometry coordinates, and attributes.</p>
+<p>To import the <a class="reference internal" href="#brails.types.asset_inventory.Asset" title="brails.types.asset_inventory.Asset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Asset</span></code></a> class, use:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.types.asset_inventory</span><span class="w"> </span><span class="kn">import</span> <span class="n">Asset</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.asset_id">
+<span class="sig-name descname"><span class="pre">asset_id</span></span><a class="headerlink" href="#brails.types.asset_inventory.Asset.asset_id" title="Link to this definition"></a></dt>
+<dd><p>Unique identifier for the asset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str or int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.coordinates">
+<span class="sig-name descname"><span class="pre">coordinates</span></span><a class="headerlink" href="#brails.types.asset_inventory.Asset.coordinates" title="Link to this definition"></a></dt>
+<dd><p>Geometry coordinates of the asset, typically as a list of [x, y]
+pairs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[list[float]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.features">
+<span class="sig-name descname"><span class="pre">features</span></span><a class="headerlink" href="#brails.types.asset_inventory.Asset.features" title="Link to this definition"></a></dt>
+<dd><p>Additional attributes/features of the asset. Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, Any], optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.add_features">
+<span class="sig-name descname"><span class="pre">add_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">additional_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.Asset.add_features" title="Link to this definition"></a></dt>
+<dd><p>Update the existing features in the asset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>additional_features</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – New features to merge into the asset’s features.</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to overwrite existing features. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>A tuple containing two values:</p>
+<ul class="simple">
+<li><p>updated (bool): <code class="docutils literal notranslate"><span class="pre">True</span></code> if any features were added or
+updated, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p></li>
+<li><p>n_pw (int): Number of possible worlds.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[bool, int]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;123&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4180</span><span class="p">,</span> <span class="mf">37.7755</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">updated</span><span class="p">,</span> <span class="n">n_pw</span> <span class="o">=</span> <span class="n">asset</span><span class="o">.</span><span class="n">add_features</span><span class="p">({</span><span class="s1">&#39;roof_type&#39;</span><span class="p">:</span> <span class="s1">&#39;gable&#39;</span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">updated</span><span class="p">,</span> <span class="n">n_pw</span><span class="p">)</span>
+<span class="go">True 1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">asset</span><span class="o">.</span><span class="n">features</span><span class="p">)</span>
+<span class="go">{&#39;roof_type&#39;: &#39;gable&#39;}</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">updated</span><span class="p">,</span> <span class="n">n_pw</span> <span class="o">=</span> <span class="n">asset</span><span class="o">.</span><span class="n">add_features</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s1">&#39;possible_heights&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span> <span class="s1">&#39;roof_type&#39;</span><span class="p">:</span> <span class="s1">&#39;hip&#39;</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">updated</span><span class="p">,</span> <span class="n">n_pw</span><span class="p">)</span>
+<span class="go">True 3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">asset</span><span class="o">.</span><span class="n">features</span><span class="p">)</span>
+<span class="go">{&#39;roof_type&#39;: &#39;hip&#39;, &#39;possible_heights&#39;: [10, 15, 20]}</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># When overwrite=False, existing keys are not updated</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">updated</span><span class="p">,</span> <span class="n">n_pw</span> <span class="o">=</span> <span class="n">asset</span><span class="o">.</span><span class="n">add_features</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s1">&#39;roof_type&#39;</span><span class="p">:</span> <span class="s1">&#39;flat&#39;</span><span class="p">,</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;red&#39;</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">updated</span><span class="p">,</span> <span class="n">n_pw</span><span class="p">)</span>
+<span class="go">True 1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">asset</span><span class="o">.</span><span class="n">features</span><span class="p">)</span>
+<span class="go">{&#39;roof_type&#39;: &#39;hip&#39;,</span>
+<span class="go">&#39;possible_heights&#39;: [10, 15, 20],</span>
+<span class="go">&#39;color&#39;: &#39;red&#39;}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.get_centroid">
+<span class="sig-name descname"><span class="pre">get_centroid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.Asset.get_centroid" title="Link to this definition"></a></dt>
+<dd><p>Get the centroid of the asset geometry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">[[x,</span> <span class="pre">y]]</span></code> if centroid can be calculated, <code class="docutils literal notranslate"><span class="pre">[[None,</span> <span class="pre">None]]</span></code>
+otherwise.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[list[float]]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;123&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4190</span><span class="p">,</span> <span class="mf">37.7750</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span><span class="o">.</span><span class="n">get_centroid</span><span class="p">()</span>
+<span class="go">[[-122.41919999999999, 37.774950000000004]]</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">empty_asset</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span><span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;empty&#39;</span><span class="p">,</span> <span class="n">coordinates</span><span class="o">=</span><span class="p">[])</span>
+<span class="go">Coordinates input is empty for empty; defaulting to an empty list.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">empty_asset</span><span class="o">.</span><span class="n">get_centroid</span><span class="p">()</span>
+<span class="go">[[None, None]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.hash_asset">
+<span class="sig-name descname"><span class="pre">hash_asset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.Asset.hash_asset" title="Link to this definition"></a></dt>
+<dd><p>Generate a unique hash for this asset based on its coordinates and features.</p>
+<p>This hash can be used to quickly identify duplicate assets by comparing
+geometry and attribute data. Both the coordinates and features are
+serialized as strings and then hashed using MD5.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A hexadecimal string representing the MD5 hash of the asset.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">asset1</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;123&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4180</span><span class="p">,</span> <span class="mf">37.7755</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;roof_type&#39;</span><span class="p">:</span> <span class="s1">&#39;gable&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset2</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;124&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4180</span><span class="p">,</span> <span class="mf">37.7755</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;roof_type&#39;</span><span class="p">:</span> <span class="s1">&#39;flat&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hash1</span> <span class="o">=</span> <span class="n">asset1</span><span class="o">.</span><span class="n">hash_asset</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">hash1</span><span class="p">)</span>
+<span class="go">1e629fc184329ea688c648e7663b439d</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hash2</span> <span class="o">=</span> <span class="n">asset2</span><span class="o">.</span><span class="n">hash_asset</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">hash2</span><span class="p">)</span>
+<span class="go">ac0d104a411f92bffff8cc1398257dd8</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hash1</span> <span class="o">!=</span> <span class="n">hash2</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.print_info">
+<span class="sig-name descname"><span class="pre">print_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.Asset.print_info" title="Link to this definition"></a></dt>
+<dd><p>Print the asset’s coordinates and feature attributes.</p>
+<p>This method outputs the spatial coordinates and all associated
+feature key-value pairs of the asset to the console.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;123&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4180</span><span class="p">,</span> <span class="mf">37.7755</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;roof_type&#39;</span><span class="p">:</span> <span class="s1">&#39;gable&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">Coordinates:  [[-122.4194, 37.7749], [-122.4180, 37.7755]]</span>
+<span class="go">Features:  {&#39;roof_type&#39;: &#39;gable&#39;}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.Asset.remove_features">
+<span class="sig-name descname"><span class="pre">remove_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">features_to_remove</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.Asset.remove_features" title="Link to this definition"></a></dt>
+<dd><p>Remove specified features from the asset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>features_to_remove</strong> (<em>Iterable</em><em>[</em><em>str</em><em>]</em>) – An iterable of feature keys to remove from the Asset features.
+Accepts iterable types such as <code class="docutils literal notranslate"><span class="pre">list</span></code>, <code class="docutils literal notranslate"><span class="pre">tuple</span></code>, <code class="docutils literal notranslate"><span class="pre">set</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">dict_keys</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if at least one feature was removed; <code class="docutils literal notranslate"><span class="pre">False</span></code>
+otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">features_to_remove</span></code> is not an iterable of strings.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;123&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4180</span><span class="p">,</span> <span class="mf">37.7755</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span><span class="o">.</span><span class="n">remove_features</span><span class="p">([</span><span class="s1">&#39;color&#39;</span><span class="p">])</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span><span class="o">.</span><span class="n">features</span>
+<span class="go">{&#39;height&#39;: 10}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.types.asset_inventory.</span></span><span class="sig-name descname"><span class="pre">AssetInventory</span></span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class representing a collection of Assets managed as an inventory.</p>
+<p>This class provides methods to add, manipulate, join, write and query
+a collaction of :<cite>class:Asset</cite> objects.</p>
+<p>To import the <a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a> class, use:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.types.asset_inventory</span><span class="w"> </span><span class="kn">import</span> <span class="n">AssetInventory</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.add_asset">
+<span class="sig-name descname"><span class="pre">add_asset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">asset_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">asset</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.add_asset" title="Link to this definition"></a></dt>
+<dd><p>Add an Asset to the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>asset_id</strong> (<em>str</em><em> or </em><em>int</em>) – The unique identifier for the asset.</p></li>
+<li><p><strong>asset</strong> (<a class="reference internal" href="#brails.types.asset_inventory.Asset" title="brails.types.asset_inventory.Asset"><em>Asset</em></a>) – The asset to be added.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the asset was added successfully, <code class="docutils literal notranslate"><span class="pre">False</span></code>
+otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">asset</span></code> is not an instance of <a class="reference internal" href="#brails.types.asset_inventory.Asset" title="brails.types.asset_inventory.Asset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Asset</span></code></a>.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;001&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;building&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">success</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span><span class="s1">&#39;001&#39;</span><span class="p">,</span> <span class="n">asset</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Adding the same asset_id again will fail</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">success</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span><span class="s1">&#39;001&#39;</span><span class="p">,</span> <span class="n">asset</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.add_asset_coordinates">
+<span class="sig-name descname"><span class="pre">add_asset_coordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">asset_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.add_asset_coordinates" title="Link to this definition"></a></dt>
+<dd><p>Add an <code class="docutils literal notranslate"><span class="pre">Asset</span></code> to the inventory by adding its coordinate information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>asset_id</strong> (<em>str</em><em> or </em><em>int</em>) – The unique identifier for the asset.</p></li>
+<li><p><strong>coordinates</strong> (<em>list</em><em>[</em><em>list</em><em>[</em><em>float</em><em>]</em><em>]</em>) – A two-dimensional list
+representing the geometry in <code class="docutils literal notranslate"><span class="pre">[[lon1,</span> <span class="pre">lat1],</span> <span class="pre">[lon2,</span> <span class="pre">lat2],</span>
+<span class="pre">...,</span> <span class="pre">[lonN,</span> <span class="pre">latN]]</span></code> format.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the asset was added successfully, <code class="docutils literal notranslate"><span class="pre">False</span></code>
+otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">coords</span> <span class="o">=</span> <span class="p">[[</span><span class="o">-</span><span class="mf">122.42</span><span class="p">,</span> <span class="mf">37.77</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.43</span><span class="p">,</span> <span class="mf">37.78</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.44</span><span class="p">,</span> <span class="mf">37.79</span><span class="p">]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">success</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span><span class="s1">&#39;A123&#39;</span><span class="p">,</span> <span class="n">coords</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Attempt to add the same asset_id again</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">success</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span><span class="s1">&#39;A123&#39;</span><span class="p">,</span> <span class="n">coords</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.add_asset_features">
+<span class="sig-name descname"><span class="pre">add_asset_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">asset_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.add_asset_features" title="Link to this definition"></a></dt>
+<dd><p>Add new asset features to the Asset with the specified <code class="docutils literal notranslate"><span class="pre">asset_id</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>asset_id</strong> (<em>str</em><em> or </em><em>int</em>) – The unique identifier for the asset.</p></li>
+<li><p><strong>new_features</strong> (<em>dict</em>) – A dictionary of features to add to the asset.</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Whether to overwrite existing features with the same keys.
+Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if features were successfully added, <code class="docutils literal notranslate"><span class="pre">False</span></code> if the
+asset does not exist or the operation fails.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;A123&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4180</span><span class="p">,</span> <span class="mf">37.7755</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">features</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;material&#39;</span><span class="p">:</span> <span class="s1">&#39;concrete&#39;</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">success</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_features</span><span class="p">(</span><span class="s1">&#39;A123&#39;</span><span class="p">,</span> <span class="n">features</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Add features without overwriting existing keys</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">more_features</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;material&#39;</span><span class="p">:</span> <span class="s1">&#39;steel&#39;</span><span class="p">,</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;red&#39;</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">success</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_features</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;A123&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">more_features</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">[</span><span class="s1">&#39;A123&#39;</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">asset</span><span class="o">.</span><span class="n">features</span><span class="p">)</span>
+<span class="go">{&#39;height&#39;: 10, &#39;material&#39;: &#39;concrete&#39;, &#39;color&#39;: &#39;red&#39;}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.add_asset_features_from_csv">
+<span class="sig-name descname"><span class="pre">add_asset_features_from_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id_column</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.add_asset_features_from_csv" title="Link to this definition"></a></dt>
+<dd><p>Read inventory data from a CSV file and add it to the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_path</strong> (<em>str</em>) – The path to the CSV file</p></li>
+<li><p><strong>id_column</strong> (<em>str</em>) – The name of column that contains id values. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, new
+indicies will be assigned</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if assets were addded, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.add_model_predictions">
+<span class="sig-name descname"><span class="pre">add_model_predictions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature_key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.add_model_predictions" title="Link to this definition"></a></dt>
+<dd><p>Add model predictions to the inventory.</p>
+<p>This method goes through the inventory and updates each item by adding
+the corresponding model prediction as a new feature under the specified
+key. Items without a matching prediction are left unchanged.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>predictions</strong> (<em>dict</em>) – A dictionary where keys correspond to inventory items and
+values represent the predicted features to be added.</p></li>
+<li><p><strong>feature_key</strong> (<em>str</em>) – The key under which the predictions will be stored as a new
+feature in each inventory item.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">predictions</span></code> is not a dictionary or <code class="docutils literal notranslate"><span class="pre">feature_key</span></code> is
+    not a string.</p></li>
+<li><p><strong>ValueError</strong> – If none of the keys in <code class="docutils literal notranslate"><span class="pre">predictions</span></code> exist in the inventory.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>Suppose the inventory contains assets with IDs 1, 3, and 12. To add
+predicted roof types for these assets:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">predictions</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;gable&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="s1">&#39;flat&#39;</span><span class="p">,</span> <span class="mi">12</span><span class="p">:</span> <span class="s1">&#39;hip&#39;</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">add_model_predictions</span><span class="p">(</span>
+<span class="go">        predictions,</span>
+<span class="go">        feature_key=&#39;roof_type&#39;</span>
+<span class="go">    )</span>
+</pre></div>
+</div>
+<p>After this call, each asset with an ID in <code class="docutils literal notranslate"><span class="pre">predictions</span></code> will have
+a new feature <code class="docutils literal notranslate"><span class="pre">roof_type</span></code> set to the corresponding predicted
+value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.change_feature_names">
+<span class="sig-name descname"><span class="pre">change_feature_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_name_mapping</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.change_feature_names" title="Link to this definition"></a></dt>
+<dd><p>Rename feature names in <code class="docutils literal notranslate"><span class="pre">AssetInventory</span></code> via user-specified mapping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>feature_name_mapping</strong> (<em>dict</em>) – A dictionary where keys are the original feature names and
+values are the new feature names.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError</strong> – If the mapping is not a dictionary or contains invalid
+    key-value pairs.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>First create an <a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a> with two assets with IDs
+<code class="docutils literal notranslate"><span class="pre">asset1</span></code> and <code class="docutils literal notranslate"><span class="pre">asset2</span></code>.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset1</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;asset1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7849</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4094</span><span class="p">,</span> <span class="mf">37.7849</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4094</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;old_name&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;unchanged&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span><span class="s1">&#39;asset1&#39;</span><span class="p">,</span> <span class="n">asset1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset2</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;asset2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4094</span><span class="p">,</span> <span class="mf">37.7849</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;old_name&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span><span class="s1">&#39;asset2&#39;</span><span class="p">,</span> <span class="n">asset2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then, change the names of the features of these assets.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">change_feature_names</span><span class="p">({</span><span class="s1">&#39;old_name&#39;</span><span class="p">:</span> <span class="s1">&#39;new_name&#39;</span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">[</span><span class="s1">&#39;asset1&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">features</span>
+<span class="go">{&#39;new_name&#39;: 100, &#39;unchanged&#39;: 50}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span><span class="p">[</span><span class="s1">&#39;asset2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">features</span>
+<span class="go">{&#39;new_name&#39;: 200}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.combine">
+<span class="sig-name descname"><span class="pre">combine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inventory_to_combine</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.combine" title="Link to this definition"></a></dt>
+<dd><p>Combine with another AssetInventory, avoiding duplicate assets.</p>
+<p>Assets are compared using their hashed coordinate and feature data.
+Duplicate assets (identical geometry and properties) are skipped.
+Optionally, keys from the inventory to combine can be remapped using
+<code class="docutils literal notranslate"><span class="pre">key_map</span></code>. Any resulting key conflicts are automatically resolved by
+assigning new unique numeric IDs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>inventory_to_combine</strong> (<a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><em>AssetInventory</em></a>) – The secondary inventory whose assets will be merged into this
+one.</p></li>
+<li><p><strong>key_map</strong> (<em>dict</em><em>, </em><em>optional</em>) – A mapping of original keys in <code class="docutils literal notranslate"><span class="pre">inventory_to_combine</span></code> to new
+keys in this inventory. For example: {“old_key1”: “new_keyA”,
+“old_key2”: “new_keyB”}. If not provided, original keys are
+used as-is unless they already exist in the current inventory.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary mapping each original key from
+<code class="docutils literal notranslate"><span class="pre">inventory_to_combine</span></code> to its final key in this inventory
+(after applying <code class="docutils literal notranslate"><span class="pre">key_map</span></code> and resolving conflicts).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Modifies:</dt><dd><dl class="simple">
+<dt>self.inventory (dict):</dt><dd><p>Updates the inventory in-place by adding new, non-duplicate
+assets from <code class="docutils literal notranslate"><span class="pre">inventory_to_combine</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.convert_polygons_to_centroids">
+<span class="sig-name descname"><span class="pre">convert_polygons_to_centroids</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.convert_polygons_to_centroids" title="Link to this definition"></a></dt>
+<dd><p>Convert polygon geometries in the inventory to their centroid points.</p>
+<p>Iterates through the asset inventory and replaces the coordinates of
+each polygon or linestring geometry with the coordinates of its
+centroid. Point geometries are left unchanged.</p>
+<p>This function is useful for spatial operations that require point
+representations of larger geometries(e.g., matching, distance
+calculations).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>Polygon coordinates are wrapped in a list to ensure proper
+GeoJSON structure.</p></li>
+<li><p>Linestrings are converted to points at their centroid unless the
+geometry is invalid or ambiguous.</p></li>
+</ul>
+</div>
+<dl class="simple">
+<dt>Modifies:</dt><dd><dl class="simple">
+<dt>self.inventory (dict):</dt><dd><p>Updates the <code class="docutils literal notranslate"><span class="pre">coordinates</span></code> field of each asset in-place by
+replacing polygons and linestrings with their centroid.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;asset1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7849</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4094</span><span class="p">,</span> <span class="mf">37.7849</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4094</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">]</span>  <span class="c1"># Polygon</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;asset2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">122.4094</span><span class="p">,</span> <span class="mf">37.7849</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">]</span>  <span class="c1"># LineString</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">convert_polygons_to_centroids</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">get_asset_coordiates</span><span class="p">(</span><span class="s1">&#39;asset1&#39;</span><span class="p">)</span>
+<span class="go">[[-122.4144, 37.7799]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">get_asset_coordiates</span><span class="p">(</span><span class="s1">&#39;asset2&#39;</span><span class="p">)</span>
+<span class="go">[[-122.4144, 37.7799]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_asset_coordinates">
+<span class="sig-name descname"><span class="pre">get_asset_coordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">asset_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_asset_coordinates" title="Link to this definition"></a></dt>
+<dd><p>Get the coordinates of a particular asset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>asset_id</strong> (<em>str</em><em> or </em><em>int</em>) – The unique identifier for the asset.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>bool</strong> – Indicates whether the asset was found.</p></li>
+<li><p><strong>list</strong> – A list of coordinate pairs in the format
+<code class="docutils literal notranslate"><span class="pre">[[lon1,</span> <span class="pre">lat1],</span> <span class="pre">[lon2,</span> <span class="pre">lat2],</span> <span class="pre">...,</span> <span class="pre">[lonN,</span> <span class="pre">latN]]</span></code> if
+found, or an empty list if the asset does not exist.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[bool, list]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s2">&quot;A101&quot;</span><span class="p">:</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="mf">30.123</span><span class="p">,</span> <span class="o">-</span><span class="mf">97.456</span><span class="p">],</span> <span class="p">[</span><span class="mf">30.124</span><span class="p">,</span> <span class="o">-</span><span class="mf">97.457</span><span class="p">]]</span>
+<span class="gp">... </span>    <span class="p">),</span>
+<span class="gp">... </span>    <span class="s2">&quot;B202&quot;</span><span class="p">:</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="mf">40.789</span><span class="p">,</span> <span class="o">-</span><span class="mf">74.123</span><span class="p">],</span> <span class="p">[</span><span class="mf">40.790</span><span class="p">,</span> <span class="o">-</span><span class="mf">74.124</span><span class="p">]]</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">get_asset_coordinates</span><span class="p">(</span><span class="s2">&quot;A101&quot;</span><span class="p">)</span>
+<span class="go">(True, [[30.123, -97.456], [30.124, -97.457]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">get_asset_coordinates</span><span class="p">(</span><span class="s2">&quot;Z999&quot;</span><span class="p">)</span>
+<span class="go">(False, [])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_asset_features">
+<span class="sig-name descname"><span class="pre">get_asset_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">asset_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_asset_features" title="Link to this definition"></a></dt>
+<dd><p>Get features of a particular asset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>asset_id</strong> (<em>str</em><em> or </em><em>int</em>) – The unique identifier for the asset.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple where the first element is a boolean indicating whether
+the asset was found, and the second element is a dictionary
+containing the asset’s features if the asset is present.
+Returns an empty dictionary if the asset is not found.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[bool, Dict]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asset</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;001&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;material&#39;</span><span class="p">:</span> <span class="s1">&#39;concrete&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span><span class="s1">&#39;001&#39;</span><span class="p">,</span> <span class="n">asset</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">found</span><span class="p">,</span> <span class="n">features</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_asset_features</span><span class="p">(</span><span class="s1">&#39;001&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">found</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">features</span>
+<span class="go">{&#39;height&#39;: 10, &#39;material&#39;: &#39;concrete&#39;}</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">found</span><span class="p">,</span> <span class="n">features</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_asset_features</span><span class="p">(</span><span class="s1">&#39;nonexistent&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">found</span>
+<span class="go">False</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">features</span>
+<span class="go">{}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_asset_ids">
+<span class="sig-name descname"><span class="pre">get_asset_ids</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_asset_ids" title="Link to this definition"></a></dt>
+<dd><p>Retrieve the IDs of all assets in the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of asset IDs, which may be strings or
+integers.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[str or int]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;asset1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4180</span><span class="p">,</span> <span class="mf">37.7750</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="o">-</span><span class="mf">74.0060</span><span class="p">,</span> <span class="mf">40.7128</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">74.0055</span><span class="p">,</span> <span class="mf">40.7130</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">get_asset_ids</span><span class="p">()</span>
+<span class="go">[&#39;asset1&#39;, 2]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_assets_intersecting_polygon">
+<span class="sig-name descname"><span class="pre">get_assets_intersecting_polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bpoly</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_assets_intersecting_polygon" title="Link to this definition"></a></dt>
+<dd><p>Get assets with geometries intersecting a bounding polygon.</p>
+<p>This method performs a spatial intersection check between each asset’s
+geometry in the inventory and a provided bounding polygon (or
+multipolygon). Assets that intersect the polygon are identified and
+retained. All non-intersecting assets are removed from the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>bpoly</strong> (<em>shapely.geometry.base.BaseGeometry</em>) – The bounding polygon or multipolygon used to determine spatial
+intersections.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">bpoly</span></code> is not a <code class="docutils literal notranslate"><span class="pre">Polygon</span></code> or <code class="docutils literal notranslate"><span class="pre">MultiPolygon</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Polygon</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># A LineString in Dallas, TX (will intersect the Dallas bpoly):</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;bridge_A&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="o">-</span><span class="mf">96.8003</span><span class="p">,</span> <span class="mf">32.7767</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">96.7998</span><span class="p">,</span> <span class="mf">32.7770</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># A Polygon in Los Angeles, CA (will NOT intersect the bpoly):</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;tower_B&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">118.2450</span><span class="p">,</span> <span class="mf">34.0537</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">118.2450</span><span class="p">,</span> <span class="mf">34.0540</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">118.2445</span><span class="p">,</span> <span class="mf">34.0540</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">118.2445</span><span class="p">,</span> <span class="mf">34.0537</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mf">118.2450</span><span class="p">,</span> <span class="mf">34.0537</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># A bounding polygon roughly around downtown Dallas:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bpoly</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">96.81</span><span class="p">,</span> <span class="mf">32.77</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">96.81</span><span class="p">,</span> <span class="mf">32.78</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">96.79</span><span class="p">,</span> <span class="mf">32.78</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">96.79</span><span class="p">,</span> <span class="mf">32.77</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="o">-</span><span class="mf">96.81</span><span class="p">,</span> <span class="mf">32.77</span><span class="p">)</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">get_assets_intersecting_polygon</span><span class="p">(</span><span class="n">bpoly</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="s1">&#39;bridge_A&#39;</span> <span class="ow">in</span> <span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="s1">&#39;tower_B&#39;</span> <span class="ow">in</span> <span class="n">inventory</span><span class="o">.</span><span class="n">inventory</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_coordinates">
+<span class="sig-name descname"><span class="pre">get_coordinates</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_coordinates" title="Link to this definition"></a></dt>
+<dd><p>Get geometry(coordinates) and keys of all assets in the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><p>A tuple containing:</p>
+<ul class="simple">
+<li><p>A list of coordinates for each asset, where each coordinate
+is represented as a list of [longitude, latitude] pairs.</p></li>
+<li><p>A list of asset keys corresponding to each asset.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[list[list[list[float, float]]], list[str or int]]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;asset1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.4180</span><span class="p">,</span> <span class="mf">37.7750</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;asset2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="o">-</span><span class="mf">74.0060</span><span class="p">,</span> <span class="mf">40.7128</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">74.0055</span><span class="p">,</span> <span class="mf">40.7130</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">coords</span><span class="p">,</span> <span class="n">keys</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_coordinates</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">coords</span>
+<span class="go">[[[-122.4194, 37.7749], [-122.4180, 37.7750]],</span>
+<span class="go"> [[-74.0060, 40.7128], [-74.0055, 40.7130]]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">keys</span>
+<span class="go">[&#39;asset1&#39;, &#39;asset2&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_dataframe">
+<span class="sig-name descname"><span class="pre">get_dataframe</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_dataframe" title="Link to this definition"></a></dt>
+<dd><p>Convert the asset inventory into two structured DataFrames and count.</p>
+<p>This method processes the internal asset inventory and returns:</p>
+<ul class="simple">
+<li><p>A <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> containing the features of each asset, with support
+for multiple possible worlds(realizations).</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> containing centroid coordinates(longitude and
+latitude) for spatial operations.</p></li>
+<li><p>The total number of assets in the inventory.</p></li>
+</ul>
+<p>The method flattens feature lists into separate columns if multiple
+possible worlds exist. It also derives centroid coordinates from the
+GeoJSON geometry for each asset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>Asset feature <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> (indexed by asset ID).</p></li>
+<li><p>Asset geometry <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> with ‘Lat’ and ‘Lon’ columns.</p></li>
+<li><p>Total number of assets (int).</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple[pd.DataFrame, pd.DataFrame, int]</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If a feature list’s length does not match the expected number
+    of possible worlds.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_extent">
+<span class="sig-name descname"><span class="pre">get_extent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'default'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_extent" title="Link to this definition"></a></dt>
+<dd><p>Calculate the geographical extent of the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>buffer</strong> (<em>str</em><em> or </em><em>list</em><em>[</em><em>float</em><em>]</em>) – <p>A string or a list of 4 floats.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">'default'</span></code> applies preset buffer values.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'none'</span></code> applies zero buffer values.</p></li>
+<li><p>A list of 4 floats defines custom buffer values for each
+edge of the bounding box in the order:
+[minlon buffer, minlat buffer, maxlon buffer, maxlat buffer].</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Shapely polygon representing the extent of the inventory,
+with buffer applied.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>shapely.geometry.box</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the <code class="docutils literal notranslate"><span class="pre">buffer</span></code> input is invalid.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span><span class="s1">&#39;asset1&#39;</span><span class="p">,</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;asset1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;building&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span><span class="s1">&#39;asset2&#39;</span><span class="p">,</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;asset2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">74.0060</span><span class="p">,</span> <span class="mf">40.7128</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;bridge&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get extent with default buffer:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">extent_default</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_extent</span><span class="p">(</span><span class="n">buffer</span><span class="o">=</span><span class="s1">&#39;default&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">extent_default</span><span class="o">.</span><span class="n">bounds</span><span class="p">)</span>
+<span class="go">(-122.4196, 37.7748, -74.0058, 40.712900000000005)</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get extent with no buffer:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">extent_none</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_extent</span><span class="p">(</span><span class="n">buffer</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">extent_none</span><span class="o">.</span><span class="n">bounds</span><span class="p">)</span>
+<span class="go">(-122.4194, 37.7749, -74.006, 40.7128)</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get extent with a custom buffer:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">extent_custom</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_extent</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">buffer</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">extent_custom</span><span class="o">.</span><span class="n">bounds</span><span class="p">)</span>
+<span class="go">(-122.51939999999999, 37.6749, -73.906, 40.8128)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_geojson">
+<span class="sig-name descname"><span class="pre">get_geojson</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_geojson" title="Link to this definition"></a></dt>
+<dd><p>Generate a GeoJSON representation of the assets in the inventory.</p>
+<p>The function constructs a valid GeoJSON <code class="docutils literal notranslate"><span class="pre">FeatureCollection</span></code>, where
+each asset is represented as a <code class="docutils literal notranslate"><span class="pre">Feature</span></code>. Each feature contains:</p>
+<ul class="simple">
+<li><p>A <code class="docutils literal notranslate"><span class="pre">geometry</span></code> field defining a <code class="docutils literal notranslate"><span class="pre">Point</span></code>, <code class="docutils literal notranslate"><span class="pre">LineString</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">Polygon</span></code> based on the asset’s coordinates.</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">properties</span></code> field containing asset-specific metadata.</p></li>
+</ul>
+<p>Additionally, the GeoJSON output includes:</p>
+<ul class="simple">
+<li><p>A timestamp indicating when the data was created.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">BRAILS</span></code> package version (if available).</p></li>
+<li><p>A Coordinate Reference System (<code class="docutils literal notranslate"><span class="pre">crs</span></code>) definition set to <code class="docutils literal notranslate"><span class="pre">CRS84</span></code>.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary formatted as a GeoJSON <code class="docutils literal notranslate"><span class="pre">FeatureCollection</span></code>
+containing all assets in the inventory.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Assets without geometry are excluded from the generated GeoJSON
+representation.</p>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;asset1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset_coordinates</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;asset2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">74.0060</span><span class="p">,</span> <span class="mf">40.7128</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">73.935242</span><span class="p">,</span> <span class="mf">40.730610</span><span class="p">]]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory_geojson</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_geojson</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">inventory_geojson</span><span class="p">)</span>
+<span class="go">{&#39;type&#39;: &#39;FeatureCollection&#39;,</span>
+<span class="go"> &#39;generated&#39;: &#39;2025-08-11 02:49:47.520953&#39;,</span>
+<span class="go"> &#39;brails_version&#39;: &#39;4.0&#39;,</span>
+<span class="go"> &#39;crs&#39;: {&#39;type&#39;: &#39;name&#39;,</span>
+<span class="go">         &#39;properties&#39;: {&#39;name&#39;: &#39;urn:ogc:def:crs:OGC:1.3:CRS84&#39;}},</span>
+<span class="go"> &#39;features&#39;: [{&#39;type&#39;: &#39;Feature&#39;, &#39;properties&#39;: {},</span>
+<span class="go">               &#39;geometry&#39;: {&#39;type&#39;: &#39;Point&#39;,</span>
+<span class="go">                            &#39;coordinates&#39;: [-122.4194, 37.7749]}},</span>
+<span class="go">              {&#39;type&#39;: &#39;Feature&#39;, &#39;properties&#39;: {},</span>
+<span class="go">               &#39;geometry&#39;: {</span>
+<span class="go">                   &#39;type&#39;: &#39;LineString&#39;,</span>
+<span class="go">                   &#39;coordinates&#39;: [[-74.006, 40.7128],</span>
+<span class="go">                                   [-73.935242, 40.73061]]</span>
+<span class="go">                   }</span>
+<span class="go">               }</span>
+<span class="go">              ]</span>
+<span class="go"> }</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_multi_keys">
+<span class="sig-name descname"><span class="pre">get_multi_keys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_multi_keys" title="Link to this definition"></a></dt>
+<dd><p>Identify features that contain multiple realizations across assets.</p>
+<p>Iterates through all assets and returns two lists:</p>
+<ul class="simple">
+<li><p>Keys associated with multi-valued features(i.e., lists).</p></li>
+<li><p>All unique feature keys present in the inventory.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>A list of keys corresponding to multi-realization features.</p></li>
+<li><p>A complete list of all unique feature keys in the inventory.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple[List[str], List[str]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_n_pw">
+<span class="sig-name descname"><span class="pre">get_n_pw</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_n_pw" title="Link to this definition"></a></dt>
+<dd><p>Get the number of possible worlds (realizations) in the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The number of possible worlds stored in the inventory.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_random_sample">
+<span class="sig-name descname"><span class="pre">get_random_sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nsamples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_random_sample" title="Link to this definition"></a></dt>
+<dd><p>Generate a smaller asset inventory with a random selection of assets.</p>
+<p>This method randomly selects <code class="docutils literal notranslate"><span class="pre">nsamples</span></code> assets from the existing
+inventory and returns a new <a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a> instance containing
+only these sampled assets. The randomness can be controlled using an
+optional <code class="docutils literal notranslate"><span class="pre">seed</span></code> for reproducibility.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nsamples</strong> (<em>int</em>) – The number of assets to randomly sample from the inventory.
+Must be a positive integer not exceeding the total number of
+assets.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em> or </em><em>float</em><em> or </em><em>str</em><em> or </em><em>bytes</em><em> or </em><em>bytearray</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – A seed value for the random generator to ensure
+reproducibility. If None, the system default (current system
+time) is used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A new <a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a> instance containing the randomly
+selected subset of assets.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory">AssetInventory</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">nsamples</span></code> is not a positive integer or exceeds the number
+    of assets in the inventory.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span><span class="s1">&#39;asset1&#39;</span><span class="p">,</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;asset1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">122.4194</span><span class="p">,</span> <span class="mf">37.7749</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;building&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span><span class="s1">&#39;asset2&#39;</span><span class="p">,</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;asset2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="mf">74.0060</span><span class="p">,</span> <span class="mf">40.7128</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;bridge&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span><span class="s1">&#39;asset3&#39;</span><span class="p">,</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;asset3&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">coordinates</span><span class="o">=</span><span class="p">[[</span><span class="mf">2.3522</span><span class="p">,</span> <span class="mf">48.8566</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;tower&#39;</span><span class="p">}</span>
+<span class="gp">... </span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sample_inventory</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">get_random_sample</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">nsamples</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">sorted</span><span class="p">(</span><span class="n">sample_inventory</span><span class="o">.</span><span class="n">get_asset_ids</span><span class="p">())</span>
+<span class="go">[&#39;asset1&#39;, &#39;asset3&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.get_world_realization">
+<span class="sig-name descname"><span class="pre">get_world_realization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.get_world_realization" title="Link to this definition"></a></dt>
+<dd><p>Extract a single realization(possible world) from an inventory.</p>
+<p>This method generates a new <a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a> instance where all
+features containing multiple possible worlds are reduced to a single
+realization specified by <cite>id</cite>. Features that are not lists are copied
+as-is .</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>id</strong> (<em>int</em><em>, </em><em>default=0</em>) – The index of the realization to extract. Must be within the
+range of available possible worlds(0-based indexing).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A new inventory object representing the selected realization.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory">AssetInventory</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>Exception</strong> – If <code class="docutils literal notranslate"><span class="pre">id</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> but the inventory only contains a single
+    realization.</p></li>
+<li><p><strong>Exception</strong> – If any feature has fewer realizations than the specified
+    <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.join">
+<span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inventory_to_join</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'GetPointsInPolygons'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.join" title="Link to this definition"></a></dt>
+<dd><p>Merge with another AssetInventory using specified spatial join method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>inventory_to_join</strong> (<a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><em>AssetInventory</em></a>) – The inventory to be joined with the current one.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – The spatial join method to use. Defaults to
+<code class="docutils literal notranslate"><span class="pre">GetPointsInPolygons</span></code>. The <code class="docutils literal notranslate"><span class="pre">method</span></code> defines how the join
+operation is executed between inventories.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">inventory_to_join</span></code> is not an instance of
+    <a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a> or if <code class="docutils literal notranslate"><span class="pre">method</span></code> is not a string.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>This method modifies the <a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a> instance in
+place.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">polygon1_asset</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span><span class="s1">&#39;polygon1&#39;</span><span class="p">,</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.76</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.39</span><span class="p">,</span> <span class="mf">37.76</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.39</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">polygon2_asset</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span><span class="s1">&#39;polygon2&#39;</span><span class="p">,</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.38</span><span class="p">,</span> <span class="mf">37.77</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.38</span><span class="p">,</span> <span class="mf">37.78</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.37</span><span class="p">,</span> <span class="mf">37.78</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.37</span><span class="p">,</span> <span class="mf">37.77</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mf">122.38</span><span class="p">,</span> <span class="mf">37.77</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">poly_inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">poly_inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;polygon1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">polygon1_asset</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">poly_inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;polygon2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">polygon2_asset</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">poly_inventory</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">AssetInventory</span>
+<span class="go">Inventory stored in:  dict</span>
+<span class="go">Key:  polygon1 Asset:</span>
+<span class="go">    Coordinates:  [[-122.4, 37.75], [-122.4, 37.76],</span>
+<span class="go">                   [-122.39, 37.76], [-122.39, 37.75],</span>
+<span class="go">                   [-122.4, 37.75]]</span>
+<span class="go">    Features:  {}</span>
+<span class="go">Key:  polygon2 Asset:</span>
+<span class="go">    Coordinates:  [[-122.38, 37.77], [-122.38, 37.78],</span>
+<span class="go">                   [-122.37, 37.78], [-122.37, 37.77],</span>
+<span class="go">                   [-122.38, 37.77]]</span>
+<span class="go">    Features:  {}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># This point lies within polygon1&#39;s boundaries:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">point_inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">point_inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span> <span class="o">=</span> <span class="s1">&#39;point1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span> <span class="o">=</span> <span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;point1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[[</span><span class="o">-</span><span class="mf">122.395</span><span class="p">,</span> <span class="mf">37.755</span><span class="p">]],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;FFE&#39;</span><span class="p">:</span><span class="mf">6.8</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">poly_inventory</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">point_inventory</span><span class="p">)</span>
+<span class="go">Joining inventories using GetPointsInPolygons method...</span>
+<span class="go">Identified a total of 1 matched points.</span>
+<span class="go">Inventories successfully joined.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">poly_inventory</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">AssetInventory</span>
+<span class="go">Inventory stored in:  dict</span>
+<span class="go">Key:  polygon1 Asset:</span>
+<span class="go">    Coordinates:  [[-122.4, 37.75], [-122.4, 37.76],</span>
+<span class="go">                   [-122.39, 37.76], [-122.39, 37.75],</span>
+<span class="go">                   [-122.4, 37.75]]</span>
+<span class="go">    Features:  {&#39;FFE&#39;: 6.8}</span>
+<span class="go">Key:  polygon2 Asset:</span>
+<span class="go">    Coordinates:  [[-122.38, 37.77], [-122.38, 37.78],</span>
+<span class="go">                   [-122.37, 37.78], [-122.37, 37.77],</span>
+<span class="go">                   [-122.38, 37.77]]</span>
+<span class="go">    Features:  {}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.print_info">
+<span class="sig-name descname"><span class="pre">print_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.print_info" title="Link to this definition"></a></dt>
+<dd><p>Print summary information about the AssetInventory.</p>
+<p>This method outputs the name of the class , the type of data structure
+used to store the inventory, and basic information about each asset
+in the inventory, including its <code class="docutils literal notranslate"><span class="pre">key</span></code> and <code class="docutils literal notranslate"><span class="pre">features</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;building1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;building1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.76</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">122.39</span><span class="p">,</span> <span class="mf">37.76</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.39</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">]],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">12.5</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;building2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;building2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[[</span><span class="o">-</span><span class="mf">122.38</span><span class="p">,</span> <span class="mf">37.77</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.38</span><span class="p">,</span> <span class="mf">37.78</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">122.37</span><span class="p">,</span> <span class="mf">37.78</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.37</span><span class="p">,</span> <span class="mf">37.77</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">122.38</span><span class="p">,</span> <span class="mf">37.77</span><span class="p">]],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">8.0</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">AssetInventory</span>
+<span class="go">Inventory stored in:  dict</span>
+<span class="go">Key:  building1 Asset:</span>
+<span class="go">    Coordinates:  [[-122.4, 37.75], [-122.4, 37.76],</span>
+<span class="go">                   [-122.39, 37.76], [-122.39, 37.75],</span>
+<span class="go">                   [-122.4, 37.75]]</span>
+<span class="go">    Features:  {&#39;height&#39;: 12.5}</span>
+<span class="go">Key:  building2 Asset:</span>
+<span class="go">    Coordinates:  [[-122.38, 37.77], [-122.38, 37.78],</span>
+<span class="go">                   [-122.37, 37.78], [-122.37, 37.77],</span>
+<span class="go">                   [-122.38, 37.77]]</span>
+<span class="go">    Features:  {&#39;height&#39;: 8.0}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.read_from_csv">
+<span class="sig-name descname"><span class="pre">read_from_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_existing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">str_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'building'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.read_from_csv" title="Link to this definition"></a></dt>
+<dd><p>Read inventory data from a CSV file and add it to the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_path</strong> (<em>str</em>) – The path to the CSV file</p></li>
+<li><p><strong>keep_existing</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the inventory will be initialized</p></li>
+<li><p><strong>str_type</strong> (<em>str</em>) – <code class="docutils literal notranslate"><span class="pre">building</span></code> or <code class="docutils literal notranslate"><span class="pre">bridge</span></code></p></li>
+<li><p><strong>id_column</strong> (<em>str</em>) – The name of column that contains id values. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, new
+indices will be assigned</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if assets were addded, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.read_from_geojson">
+<span class="sig-name descname"><span class="pre">read_from_geojson</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">asset_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'building'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.read_from_geojson" title="Link to this definition"></a></dt>
+<dd><p>Reads a GeoJSON file and imports assets into a BRAILS asset inventory.</p>
+<p>This method loads a GeoJSON file, validates its structure, checks that
+geometries contain valid <cite>[longitude, latitude]</cite> coordinates, and
+converts each feature into a BRAILS <cite>Asset</cite> object. Each asset is
+assigned a unique numeric identifier and stored in the class inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_path</strong> (<em>str</em>) – Path to the GeoJSON file to be read. Must represent a valid
+GeoJSON FeatureCollection.</p></li>
+<li><p><strong>asset_type</strong> (<em>str</em><em>, </em><em>optional</em>) – The type assigned to all imported assets. Defaults to
+<cite>‘building’</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the GeoJSON file is successfully read and assets
+are added to the inventory.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If the specified file path does not exist or is not a file.</p></li>
+<li><p><strong>ValueError</strong> – If the file is invalid JSON, not a valid GeoJSON
+    FeatureCollection, contains no features, or has out-of-range
+    coordinates.</p></li>
+<li><p><strong>NotImplementedError</strong> – If one or more geometries include unsupported types.</p></li>
+<li><p><strong>KeyError</strong> – If a feature is missing required keys
+    (<cite>geometry</cite> or <cite>attributes</cite>).</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>Example GeoJSON file (<cite>seattle_buildings.geojson</cite>):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FeatureCollection&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;features&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Feature&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;geometry&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Polygon&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;coordinates&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">[</span>
+<span class="w">            </span><span class="p">[</span><span class="mf">-122.3355</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6080</span><span class="p">],</span>
+<span class="w">            </span><span class="p">[</span><span class="mf">-122.3350</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6080</span><span class="p">],</span>
+<span class="w">            </span><span class="p">[</span><span class="mf">-122.3350</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6085</span><span class="p">],</span>
+<span class="w">            </span><span class="p">[</span><span class="mf">-122.3355</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6085</span><span class="p">],</span>
+<span class="w">            </span><span class="p">[</span><span class="mf">-122.3355</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6080</span><span class="p">]</span>
+<span class="w">          </span><span class="p">]</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;attributes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Building A&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;height_m&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">18.7</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Feature&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;geometry&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Point&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;coordinates&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">-122.3321</span><span class="p">,</span><span class="w"> </span><span class="mf">47.6062</span><span class="p">]</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;attributes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Building B&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;height_m&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">12.4</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Example usage:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inv</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inv</span><span class="o">.</span><span class="n">read_from_geojson</span><span class="p">(</span><span class="s1">&#39;seattle_buildings.geojson&#39;</span><span class="p">,</span>
+<span class="gp">... </span><span class="n">asset_type</span><span class="o">=</span><span class="s1">&#39;building&#39;</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inv</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">AssetInventory</span>
+<span class="go">Inventory stored in:  dict</span>
+<span class="go">Key:  0 Asset:</span>
+<span class="go">         Coordinates:  [[-122.3355, 47.608], [-122.335, 47.608],</span>
+<span class="go"> [-122.335, 47.6085], [-122.3355, 47.6085],</span>
+<span class="go"> [-122.3355, 47.608]]</span>
+<span class="go">         Features:  {&#39;name&#39;: &#39;Building A&#39;, &#39;height_m&#39;: 18.7,</span>
+<span class="go"> &#39;type&#39;: &#39;building&#39;}</span>
+<span class="go">Key:  1 Asset:</span>
+<span class="go">         Coordinates:  [[-122.3321, 47.6062]]</span>
+<span class="go">         Features:  {&#39;name&#39;: &#39;Building B&#39;, &#39;height_m&#39;: 12.4,</span>
+<span class="go"> &#39;type&#39;: &#39;building&#39;}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>All coordinates are expected to follow the GeoJSON standard
+<code class="docutils literal notranslate"><span class="pre">[longitude,</span> <span class="pre">latitude]</span></code> order and use the WGS-84 geographic
+coordinate reference system (EPSG:4326).</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.remove_asset">
+<span class="sig-name descname"><span class="pre">remove_asset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">asset_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.remove_asset" title="Link to this definition"></a></dt>
+<dd><p>Remove an asset from the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>asset_id</strong> (<em>str</em><em> or </em><em>int</em>) – The unique identifier for the asset.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if asset was removed, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;building1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;building1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.76</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">122.39</span><span class="p">,</span> <span class="mf">37.76</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.39</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">]],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">12.5</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">remove_asset</span><span class="p">(</span><span class="s1">&#39;building1&#39;</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">AssetInventory</span>
+<span class="go">Inventory stored in:  dict</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.remove_features">
+<span class="sig-name descname"><span class="pre">remove_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">features_to_remove</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.remove_features" title="Link to this definition"></a></dt>
+<dd><p>Remove specified features from all assets in the inventory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>features_to_remove</strong> (<em>Iterable</em><em>[</em><em>str</em><em>]</em>) – An iterable of feature keys to remove from each <a class="reference internal" href="#brails.types.asset_inventory.Asset" title="brails.types.asset_inventory.Asset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Asset</span></code></a>.
+Accepts types such as <code class="docutils literal notranslate"><span class="pre">list</span></code>, <code class="docutils literal notranslate"><span class="pre">tuple</span></code>, <code class="docutils literal notranslate"><span class="pre">dict_keys</span></code>, etc.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if at least one feature was removed from any asset,
+<code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">features_to_remove</span></code> is not an iterable of strings.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;building1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;building1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.76</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">122.39</span><span class="p">,</span> <span class="mf">37.76</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.39</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">]],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">12.5</span><span class="p">,</span> <span class="s1">&#39;floors&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;building2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;building2&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[[</span><span class="o">-</span><span class="mf">122.38</span><span class="p">,</span> <span class="mf">37.77</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.38</span><span class="p">,</span> <span class="mf">37.78</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">122.37</span><span class="p">,</span> <span class="mf">37.78</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">122.37</span><span class="p">,</span> <span class="mf">37.77</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">122.38</span><span class="p">,</span> <span class="mf">37.77</span><span class="p">]],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">8.0</span><span class="p">,</span> <span class="s1">&#39;floors&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">remove_features</span><span class="p">([</span><span class="s1">&#39;floors&#39;</span><span class="p">])</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">AssetInventory</span>
+<span class="go">Inventory stored in:  dict</span>
+<span class="go">Key:  building1 Asset:</span>
+<span class="go">    Coordinates:  [[-122.4, 37.75], [-122.4, 37.76],</span>
+<span class="go">                   [-122.39, 37.76], [-122.39, 37.75],</span>
+<span class="go">                   [-122.4, 37.75]]</span>
+<span class="go">    Features:  {&#39;height&#39;: 12.5}</span>
+<span class="go">Key:  building2 Asset:</span>
+<span class="go">    Coordinates:  [[-122.38, 37.77], [-122.38, 37.78],</span>
+<span class="go">                   [-122.37, 37.78], [-122.37, 37.77],</span>
+<span class="go">                   [-122.38, 37.77]]</span>
+<span class="go">    Features:  {&#39;height&#39;: 8.0}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.remove_nonmatching_assets">
+<span class="sig-name descname"><span class="pre">remove_nonmatching_assets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_set</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.remove_nonmatching_assets" title="Link to this definition"></a></dt>
+<dd><p>Remove assets that do not have corresponding entries in image set.</p>
+<p>This method compares asset keys in the inventory with those in the
+provided ImageSet and removes any asset whose key does not exist in
+the ImageSet.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_set</strong> (<a class="reference internal" href="brails.types.image_set.html#brails.types.image_set.ImageSet" title="brails.types.image_set.ImageSet"><em>ImageSet</em></a>) – The image set containing valid image keys.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, prints a summary of removed keys. Default is
+<code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Modifies:</dt><dd><dl class="simple">
+<dt>self.inventory(dict):</dt><dd><p>Removes nonmatching asset entries directly from the inventory.
+The object is updated in-place.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;house_A&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;house_A&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[[</span><span class="o">-</span><span class="mf">118.5123</span><span class="p">,</span> <span class="mf">34.0451</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">118.5120</span><span class="p">,</span> <span class="mf">34.0454</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">118.5117</span><span class="p">,</span> <span class="mf">34.0452</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">118.5121</span><span class="p">,</span> <span class="mf">34.0449</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">118.5123</span><span class="p">,</span> <span class="mf">34.0451</span><span class="p">]],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;residential&#39;</span><span class="p">,</span> <span class="s1">&#39;floors&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;warehouse_B&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;warehouse_B&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[[</span><span class="o">-</span><span class="mf">118.5105</span><span class="p">,</span> <span class="mf">34.0467</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">118.5102</span><span class="p">,</span> <span class="mf">34.0471</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">118.5099</span><span class="p">,</span> <span class="mf">34.0468</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">118.5103</span><span class="p">,</span> <span class="mf">34.0464</span><span class="p">],</span>
+<span class="gp">... </span>         <span class="p">[</span><span class="o">-</span><span class="mf">118.5105</span><span class="p">,</span> <span class="mf">34.0467</span><span class="p">]],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;commercial&#39;</span><span class="p">,</span> <span class="s1">&#39;floors&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">print_info</span><span class="p">()</span>
+<span class="go">AssetInventory</span>
+<span class="go">Inventory stored in:  dict</span>
+<span class="go">Key:  house_A Asset:</span>
+<span class="go">     Coordinates:  [[-118.5123, 34.0451], [-118.512, 34.0454],</span>
+<span class="go">[-118.5117, 34.0452], [-118.5121, 34.0449], [-118.5123, 34.0451]]</span>
+<span class="go">     Features:  {&#39;type&#39;: &#39;residential&#39;, &#39;floors&#39;: 2}</span>
+<span class="go">Key:  warehouse_B Asset:</span>
+<span class="go">     Coordinates:  [[-118.5105, 34.0467], [-118.5102, 34.0471],</span>
+<span class="go">[-118.5099, 34.0468], [-118.5103, 34.0464], [-118.5105, 34.0467]]</span>
+<span class="go">     Features:  {&#39;type&#39;: &#39;commercial&#39;, &#39;floors&#39;: 1}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img_set</span> <span class="o">=</span> <span class="n">ImageSet</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img1</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;bldg1.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img2</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;bldg2.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;house_A&#39;</span><span class="p">,</span> <span class="n">img1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">img_set</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s1">&#39;house_B&#39;</span><span class="p">,</span> <span class="n">img2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">remove_nonmatching_assets</span><span class="p">(</span><span class="n">img_set</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">Removed 1 nonmatching assets: [&#39;warehouse_B&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.update_world_realization">
+<span class="sig-name descname"><span class="pre">update_world_realization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">world_realization</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.update_world_realization" title="Link to this definition"></a></dt>
+<dd><p>Update the current AssetInventory with a specific world realization.</p>
+<p>This method integrates feature values from a single-world
+<code class="docutils literal notranslate"><span class="pre">world_realization</span></code> inventory into the current multi-world inventory
+by updating the realization at the specified index <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> (<em>int</em>) – The index of the world(realization) to update. Must be less
+than <code class="docutils literal notranslate"><span class="pre">self.n_pw</span></code>.</p></li>
+<li><p><strong>world_realization</strong> (<a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><em>AssetInventory</em></a>) – An <a class="reference internal" href="#brails.types.asset_inventory.AssetInventory" title="brails.types.asset_inventory.AssetInventory"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssetInventory</span></code></a> instance representing a single
+realization of the world. All features in this inventory must
+be scalar (i.e., not lists).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>Exception</strong> – <ul class="simple">
+<li><p>If the specified <code class="docutils literal notranslate"><span class="pre">id</span></code> is not within the valid range of
+      realizations.
+    - If <code class="docutils literal notranslate"><span class="pre">world_realization</span></code> contains features with multiple
+      realizations.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.AssetInventory.write_to_geojson">
+<span class="sig-name descname"><span class="pre">write_to_geojson</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.AssetInventory.write_to_geojson" title="Link to this definition"></a></dt>
+<dd><p>Write inventory to a GeoJSON file and return the GeoJSON dictionary.</p>
+<p>This method generates a GeoJSON representation of the asset inventory,
+writes it to the specified file path (if provided), and returns the
+GeoJSON object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_file</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to the output GeoJSON file. If empty, no file is written.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary containing the GeoJSON <code class="docutils literal notranslate"><span class="pre">FeatureCollection</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Define an AssetInventory consisting of a single asset.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span> <span class="o">=</span> <span class="n">AssetInventory</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inventory</span><span class="o">.</span><span class="n">add_asset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">asset_id</span><span class="o">=</span><span class="s1">&#39;asset1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="n">Asset</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;asset1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">[</span>
+<span class="gp">... </span>            <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">],</span>
+<span class="gp">... </span>            <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.76</span><span class="p">],</span>
+<span class="gp">... </span>            <span class="p">[</span><span class="o">-</span><span class="mf">122.39</span><span class="p">,</span> <span class="mf">37.76</span><span class="p">],</span>
+<span class="gp">... </span>            <span class="p">[</span><span class="o">-</span><span class="mf">122.39</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">],</span>
+<span class="gp">... </span>            <span class="p">[</span><span class="o">-</span><span class="mf">122.40</span><span class="p">,</span> <span class="mf">37.75</span><span class="p">]</span>
+<span class="gp">... </span>        <span class="p">],</span>
+<span class="gp">... </span>        <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Building A&#39;</span><span class="p">,</span> <span class="s1">&#39;roofHeight&#39;</span><span class="p">:</span> <span class="mf">22.6</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Write the AssetInventory data into a GeoJSON dictionary.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">geojson_dict</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">write_to_geojson</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">geojson_dict</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">])</span>
+<span class="go">[{&#39;type&#39;: &#39;Feature&#39;, &#39;properties&#39;: {&#39;name&#39;: &#39;Building A&#39;,</span>
+<span class="go">&#39;roofHeight&#39;: 22.6}, &#39;geometry&#39;: {&#39;type&#39;: &#39;Polygon&#39;, &#39;coordinates&#39;:</span>
+<span class="go">[[[-122.4, 37.75], [-122.4, 37.76], [-122.39, 37.76],</span>
+<span class="go">[-122.39, 37.75], [-122.4, 37.75]]]}, &#39;id&#39;: &#39;0&#39;}]</span>
+</pre></div>
+</div>
+<p>Write the AssetInventory data in a GeoJSON dictionary and a file
+named  <code class="docutils literal notranslate"><span class="pre">output.geojson</span></code>.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">geojson_written</span> <span class="o">=</span> <span class="n">inventory</span><span class="o">.</span><span class="n">write_to_geojson</span><span class="p">(</span><span class="s1">&#39;output.geojson&#39;</span><span class="p">)</span>
+<span class="go">Wrote 1 asset to {../output.geojson}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="brails.types.asset_inventory.clean_floats">
+<span class="sig-prename descclassname"><span class="pre">brails.types.asset_inventory.</span></span><span class="sig-name descname"><span class="pre">clean_floats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.types.asset_inventory.clean_floats" title="Link to this definition"></a></dt>
+<dd><p>Recursively convert float values that are mathematically integers to int.</p>
+<p>This function traverses a nested structure (e.g., dict, list, JSON-like
+object) and converts any float that is numerically equivalent to an integer
+into an int, improving the readability and cleanliness of the output,
+especially for serialization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obj</strong> (<em>Any</em>) – A JSON-like object (dict, list, or primitive value) to process.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The input object with eligible floats converted to integers.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.types.html" class="btn btn-neutral float-left" title="brails.types package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.types.image_set.html" class="btn btn-neutral float-right" title="brails.types.image_set module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

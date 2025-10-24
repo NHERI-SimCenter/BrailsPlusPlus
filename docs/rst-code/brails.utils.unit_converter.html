@@ -1,0 +1,522 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brails.utils.unit_converter module &mdash; BRAILS++  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brails.constants module" href="brails.constants.html" />
+    <link rel="prev" title="brails.utils.segmentation_utils module" href="brails.utils.segmentation_utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BRAILS++
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="brails.html">brails package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="brails.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="brails.filters.html">brails.filters package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.imputers.html">brails.imputers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.inferers.html">brails.inferers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.processors.html">brails.processors package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.scrapers.html">brails.scrapers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="brails.types.html">brails.types package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="brails.utils.html">brails.utils package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="brails.utils.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="brails.utils.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="brails.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/acknowledgements.html">Acknowledgements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/license.html">Copyright and License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rst-doc/cite.html">How to Cite</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BRAILS++</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="brails.html">brails package</a></li>
+          <li class="breadcrumb-item"><a href="brails.utils.html">brails.utils package</a></li>
+      <li class="breadcrumb-item active">brails.utils.unit_converter module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/rst-code/brails.utils.unit_converter.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-brails.utils.unit_converter">
+<span id="brails-utils-unit-converter-module"></span><h1>brails.utils.unit_converter module<a class="headerlink" href="#module-brails.utils.unit_converter" title="Link to this heading"></a></h1>
+<p>This module defines a class for performing unit parsing and conversions.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#brails.utils.unit_converter.UnitConverter" title="brails.utils.unit_converter.UnitConverter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnitConverter</span></code></a>()</p></td>
+<td><p>A utility class for converting values between different measurement units.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="brails.utils.unit_converter.UnitConverter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">brails.utils.unit_converter.</span></span><span class="sig-name descname"><span class="pre">UnitConverter</span></span><a class="headerlink" href="#brails.utils.unit_converter.UnitConverter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A utility class for converting values between different measurement units.</p>
+<p>The UnitConverter provides static methods for converting values across
+three main measurement categories: length, area, and weight. All
+conversions are performed via standardized base units to ensure consistency
+and accuracy.</p>
+<dl class="simple">
+<dt>Base units:</dt><dd><ul class="simple">
+<li><p>Length: meters (m)</p></li>
+<li><p>Area: square meters (m²)</p></li>
+<li><p>Weight: kilograms (kg)</p></li>
+</ul>
+</dd>
+<dt>Supported Units:</dt><dd><dl class="simple">
+<dt>Length:</dt><dd><p>m, meter, metre
+km, kilometer, kilometre
+cm, centimeter, centimetre
+mm, millimeter, millimetre
+in, inch
+ft, foot, feet
+yd, yard
+mi, mile</p>
+</dd>
+<dt>Area (derived from squared length units):</dt><dd><p>m2, square_meter
+km2, square_kilometer
+cm2, square_centimeter
+mm2, square_millimeter
+in2, square_inch
+ft2, square_foot
+yd2, square_yard
+mi2, square_mile</p>
+</dd>
+<dt>Weight:</dt><dd><dl class="simple">
+<dt>Metric:</dt><dd><p>mg, milligram
+g, gram
+kg, kilogram
+ton, metric_ton (1000 kg)</p>
+</dd>
+<dt>Imperial:</dt><dd><p>oz, ounce
+lb, pound
+ton_us, short_ton (2000 lb)
+ton_uk, long_ton (2240 lb)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+<dt>Key Features:</dt><dd><ul class="simple">
+<li><p>Supports standard and alias unit names.</p></li>
+<li><p>Validates unit category compatibility.</p></li>
+<li><p>Converts via base units.</p></li>
+<li><p>Area conversions use squared length conversions.</p></li>
+<li><p>Weight conversions use kilograms as reference.</p></li>
+<li><p>Optional rounding precision for conversion results.</p></li>
+<li><p>Raises errors for mismatched or unsupported units.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>All conversions are first mapped to the category’s base unit, then
+converted to the target unit.</p></li>
+<li><p>Passing None or NaN values returns them unchanged.</p></li>
+<li><p>Unit names are case-insensitive.</p></li>
+</ul>
+</div>
+<p><strong>Importing instructions:</strong></p>
+<blockquote>
+<div><p>The following line is suggested to import the <a class="reference internal" href="#brails.utils.unit_converter.UnitConverter" title="brails.utils.unit_converter.UnitConverter"><code class="xref py py-class docutils literal notranslate"><span class="pre">UnitConverter</span></code></a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">brails.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnitConverter</span>
+</pre></div>
+</div>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.unit_converter.UnitConverter.convert_area">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">convert_area</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.unit_converter.UnitConverter.convert_area" title="Link to this definition"></a></dt>
+<dd><p>Convert an area value from one unit to another.</p>
+<p>Supported units: ‘m2’, ‘km2’, ‘cm2’, ‘mm2’, ‘in2’, ‘ft2’, ‘yd2’, ‘mi2’</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>float</em>) – The numeric area value to convert.</p></li>
+<li><p><strong>from_unit</strong> (<em>str</em>) – The current area unit(e.g., ‘m2’).</p></li>
+<li><p><strong>to_unit</strong> (<em>str</em>) – The desired area unit(e.g., ‘ft2’).</p></li>
+<li><p><strong>precision</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of decimal places to round the result to. Defaults to 2.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Converted value in the target unit, rounded to the specified
+<code class="docutils literal notranslate"><span class="pre">precision</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If either unit is unsupported.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">convert_area</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;m2&#39;</span><span class="p">,</span> <span class="s1">&#39;ft2&#39;</span><span class="p">)</span>
+<span class="go">1076.39</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">convert_area</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;m2&#39;</span><span class="p">,</span> <span class="s1">&#39;ft2&#39;</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="go">1076.39104</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.unit_converter.UnitConverter.convert_length">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">convert_length</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.unit_converter.UnitConverter.convert_length" title="Link to this definition"></a></dt>
+<dd><p>Convert a length value from one unit to another.</p>
+<p>Supported units: ‘m’, ‘km’, ‘cm’, ‘mm’, ‘in’, ‘ft’, ‘yd’, ‘mi’</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>float</em>) – The numeric value to convert.</p></li>
+<li><p><strong>from_unit</strong> (<em>str</em>) – The current unit of the value.</p></li>
+<li><p><strong>to_unit</strong> (<em>str</em>) – The desired unit to convert to.</p></li>
+<li><p><strong>precision</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of decimal places to round the result to. Defaults to 2.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Converted value in the target unit, rounded to the specified
+<code class="docutils literal notranslate"><span class="pre">precision</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If either unit is unsupported.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">convert_length</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;m&#39;</span><span class="p">,</span> <span class="s1">&#39;ft&#39;</span><span class="p">)</span>
+<span class="go">32.81</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">convert_length</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;m&#39;</span><span class="p">,</span> <span class="s1">&#39;ft&#39;</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="go">32.8084</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.unit_converter.UnitConverter.convert_unit">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">convert_unit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.unit_converter.UnitConverter.convert_unit" title="Link to this definition"></a></dt>
+<dd><p>Convert a numerical value between compatible units.</p>
+<p>This method supports conversions across three unit categories: length,
+area, and weight. Unit aliases(e.g., <code class="docutils literal notranslate"><span class="pre">'kg'</span></code> for <code class="docutils literal notranslate"><span class="pre">'kilogram'</span></code>) are
+supported. The function automatically detects the category of the input
+and output units and ensures they are compatible.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>float</em>) – The numerical value to convert.</p></li>
+<li><p><strong>from_unit</strong> (<em>str</em>) – The source unit (e.g., <code class="docutils literal notranslate"><span class="pre">'meter'</span></code>, <code class="docutils literal notranslate"><span class="pre">'sqft'</span></code>, <code class="docutils literal notranslate"><span class="pre">'kg'</span></code>).
+Aliases are supported.</p></li>
+<li><p><strong>to_unit</strong> (<em>str</em>) – The target unit for conversion. Must be in the same category as
+<code class="docutils literal notranslate"><span class="pre">from_unit</span></code>.</p></li>
+<li><p><strong>precision</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of decimal places to round the result to. Defaults to 2.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Converted value in the target unit, rounded to the specified
+<code class="docutils literal notranslate"><span class="pre">precision</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the units belong to different categories (e.g., length vs
+    weight), are unrecognized, or if the unit type is unsupported.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">convert_unit</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;km&#39;</span><span class="p">,</span> <span class="s1">&#39;mi&#39;</span><span class="p">)</span>
+<span class="go">3.11</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">convert_unit</span><span class="p">(</span><span class="mi">2500</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;lb&#39;</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="go">5.512</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.unit_converter.UnitConverter.convert_weight">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">convert_weight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.unit_converter.UnitConverter.convert_weight" title="Link to this definition"></a></dt>
+<dd><p>Convert a weight value from one unit to another.</p>
+<p>Supported units: ‘mg’, ‘g’, ‘kg’, ‘ton’ (metric ton), ‘oz’, ‘lb’,
+‘ton_us’, ‘ton_uk’</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>float</em>) – The numeric value to convert.</p></li>
+<li><p><strong>from_unit</strong> (<em>str</em>) – The source unit.</p></li>
+<li><p><strong>to_unit</strong> (<em>str</em>) – The target unit.</p></li>
+<li><p><strong>precision</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of decimal places to round the result to. Defaults to 2.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Converted value in the target unit, rounded to the specified
+<code class="docutils literal notranslate"><span class="pre">precision</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If either unit is unsupported.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">convert_weight</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;ton&#39;</span><span class="p">,</span> <span class="s1">&#39;lb&#39;</span><span class="p">)</span>
+<span class="go">2204.62</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">convert_weight</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;ton&#39;</span><span class="p">,</span> <span class="s1">&#39;lb&#39;</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">2204.6</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.unit_converter.UnitConverter.get_supported_units">
+<span class="sig-name descname"><span class="pre">get_supported_units</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.unit_converter.UnitConverter.get_supported_units" title="Link to this definition"></a></dt>
+<dd><p>Return a formatted string listing supported units for a unit type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>unit_type</strong> (<em>str</em>) – The type of unit to retrieve(<code class="docutils literal notranslate"><span class="pre">'length'</span></code>, <code class="docutils literal notranslate"><span class="pre">'area'</span></code>,
+<code class="docutils literal notranslate"><span class="pre">'weight'</span></code>, or <code class="docutils literal notranslate"><span class="pre">'all'</span></code>). Defaults to <code class="docutils literal notranslate"><span class="pre">'all'</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A human-readable string of supported units.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">get_supported_units</span><span class="p">())</span>
+<span class="go">Length: cm, ft, in , km, m, mi, mm, yd</span>
+<span class="go">Area:   cm2, ft2, in2, km2, m2, mi2, mm2, yd2</span>
+<span class="go">Weight: g, kg, lb, mg, oz, ton, ton_uk, ton_us</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">get_supported_units</span><span class="p">(</span><span class="n">unit_type</span><span class="o">=</span><span class="s1">&#39;length&#39;</span><span class="p">))</span>
+<span class="go">Length: cm, ft, in , km, m, mi, mm, yd</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.unit_converter.UnitConverter.get_unit_type">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_unit_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.unit_converter.UnitConverter.get_unit_type" title="Link to this definition"></a></dt>
+<dd><p>Identify unit type as <code class="docutils literal notranslate"><span class="pre">'length'</span></code>, <code class="docutils literal notranslate"><span class="pre">'area'</span></code>, or <code class="docutils literal notranslate"><span class="pre">'weight'</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Unit type.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If unit is not recognized.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">get_unit_type</span><span class="p">(</span><span class="s1">&#39;yd2&#39;</span><span class="p">)</span>
+<span class="go">&#39;area&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.unit_converter.UnitConverter.normalize_unit">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">normalize_unit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.unit_converter.UnitConverter.normalize_unit" title="Link to this definition"></a></dt>
+<dd><p>Normalize unit name by reformatting and resolving aliases.</p>
+<p>This function ensures consistent internal representation of units,
+allowing users to use common names or variations(e.g., <code class="docutils literal notranslate"><span class="pre">'meters'</span></code>,
+<code class="docutils literal notranslate"><span class="pre">'LBS'</span></code>, <code class="docutils literal notranslate"><span class="pre">'square</span> <span class="pre">foot'</span></code>) which will be mapped to standard short
+forms (e.g., <code class="docutils literal notranslate"><span class="pre">'m'</span></code>, <code class="docutils literal notranslate"><span class="pre">'lb'</span></code>, <code class="docutils literal notranslate"><span class="pre">'ft2'</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>unit</strong> (<em>str</em>) – The input unit string to normalize.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The standardized unit string. If no alias is found, returns the
+cleaned input.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">normalize_unit</span><span class="p">(</span><span class="s1">&#39;Meters&#39;</span><span class="p">)</span>
+<span class="go">&#39;m&#39;</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">normalize_unit</span><span class="p">(</span><span class="s1">&#39;kilogram&#39;</span><span class="p">)</span>
+<span class="go">&#39;kg&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.unit_converter.UnitConverter.parse_units">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parse_units</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_defaults</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.unit_converter.UnitConverter.parse_units" title="Link to this definition"></a></dt>
+<dd><p>Parse and validate units from input_dict based on defaults.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_dict</strong> (<em>dict</em>) – Dictionary with unit inputs.</p></li>
+<li><p><strong>unit_defaults</strong> (<em>dict</em>) – Default unit values for each unit type.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Validated units per type(e.g.,
+<code class="docutils literal notranslate"><span class="pre">{'length':</span> <span class="pre">'ft',</span> <span class="pre">'weight':</span> <span class="pre">'lb'}</span></code>).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If a unit is invalid.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">parse_units</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">input_dict</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;weight&#39;</span><span class="p">:</span> <span class="s1">&#39;lb&#39;</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="n">unit_defaults</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;length&#39;</span><span class="p">:</span> <span class="s1">&#39;m&#39;</span><span class="p">,</span> <span class="s1">&#39;weight&#39;</span><span class="p">:</span> <span class="s1">&#39;kg&#39;</span><span class="p">}</span>
+<span class="go">...)</span>
+<span class="go">{&#39;length&#39;: &#39;m&#39;, &#39;weight&#39;: &#39;lb&#39;}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="brails.utils.unit_converter.UnitConverter.unit_valid">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unit_valid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expected_unit_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#brails.utils.unit_converter.UnitConverter.unit_valid" title="Link to this definition"></a></dt>
+<dd><p>Validate that a unit belongs to the expected unit type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> (<em>str</em>) – The unit to check(e.g., <code class="docutils literal notranslate"><span class="pre">'m'</span></code>, <code class="docutils literal notranslate"><span class="pre">'kg'</span></code>, <code class="docutils literal notranslate"><span class="pre">'ft2'</span></code>).</p></li>
+<li><p><strong>expected_unit_type</strong> (<em>str</em>) – The expected type(<code class="docutils literal notranslate"><span class="pre">'length'</span></code>, <code class="docutils literal notranslate"><span class="pre">'area'</span></code>, or <code class="docutils literal notranslate"><span class="pre">'weight'</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the unit matches the expected type. <code class="docutils literal notranslate"><span class="pre">False</span></code>
+otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">unit_valid</span><span class="p">(</span><span class="s1">&#39;oz&#39;</span><span class="p">,</span> <span class="s1">&#39;weight&#39;</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">UnitConverter</span><span class="o">.</span><span class="n">unit_valid</span><span class="p">(</span><span class="s1">&#39;m2&#39;</span><span class="p">,</span> <span class="s1">&#39;length&#39;</span><span class="p">)</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="brails.utils.segmentation_utils.html" class="btn btn-neutral float-left" title="brails.utils.segmentation_utils module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="brails.constants.html" class="btn btn-neutral float-right" title="brails.constants module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

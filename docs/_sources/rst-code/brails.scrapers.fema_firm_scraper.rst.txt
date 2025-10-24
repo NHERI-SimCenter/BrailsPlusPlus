@@ -1,0 +1,15 @@
+brails.scrapers.fema\_firm\_scraper package
+===========================================
+
+.. automodule:: brails.scrapers.fema_firm_scraper
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   brails.scrapers.fema_firm_scraper.fema_firm_scraper

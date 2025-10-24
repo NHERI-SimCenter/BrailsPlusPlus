@@ -1,0 +1,7 @@
+brails.scrapers.usgs\_data\_scrapers.nlcd\_scraper module
+=========================================================
+
+.. automodule:: brails.scrapers.usgs_data_scrapers.nlcd_scraper
+   :members:
+   :undoc-members:
+   :show-inheritance:

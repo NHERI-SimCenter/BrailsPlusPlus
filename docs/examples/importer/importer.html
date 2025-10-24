@@ -10,21 +10,21 @@
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../../_static/copybutton.js?v=f281be69"></script>
+      <script src="../../_static/design-tabs.js?v=f930bc37"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Building Footprints" href="../footprint/footprint.html" />
-    <link rel="prev" title="Examples" href="../examples.html" /> 
+    <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -47,19 +47,11 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/install.html">Installation</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../examples.html">Examples</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Importer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../footprint/footprint.html">Building Footprints</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../nsi_integration/nsi_integration.html">NSI Integration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_downloads/image_downloads.html">Downloading Images</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_filters/image_filters.html">Image Filters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../image_processor/image_processors.html">Image Processors</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../imputation/imputation.html">Imputation Algorithms</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rst-code/brails.html">brails package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/acknowledgements.html">Acknowledgements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/license.html">Copyright and License</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rst-doc/cite.html">How to Cite</a></li>
@@ -79,7 +71,6 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
-          <li class="breadcrumb-item"><a href="../examples.html">Examples</a></li>
       <li class="breadcrumb-item active">Importer</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/examples/importer/importer.rst.txt" rel="nofollow"> View page source</a>
@@ -92,8 +83,9 @@
              
   <section id="importer">
 <span id="importer-example"></span><h1>Importer<a class="headerlink" href="#importer" title="Link to this heading"></a></h1>
-<p>BrailsPlusPlus is a modular python framework for creating workflows that create data for SimCenter applications. In order to allow applications to be built <strong>w/o the need to hard code every possible case</strong> within if blocks, there is a class in BrailsPlusPlus that will return the class given the class name. This is the <strong>Importer</strong> class. It’s has one method, <strong>get_class()</strong>, which will return the python class with that given name from which an object can be instantiated.</p>
-<p>The following example shows a more typical python example.</p>
+<p>BRAILS++ is a modular Python framework for creating workflows that create data for SimCenter applications. To <strong>avoid hard-coding every possible case</strong>, BRAILS++ includes a utility class that can return a class object based on its name — the Importer class.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class has a single method, <code class="docutils literal notranslate"><span class="pre">get_class()</span></code>, which takes a class name as input and returns the corresponding Python class, allowing you to instantiate objects dynamically.</p>
+<p>The following example demonstrates a typical Python usage scenario:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1"># Written: fmk 4/23</span>
 <span class="linenos"> 2</span><span class="c1"># License: BSD-2</span>
 <span class="linenos"> 3</span>
@@ -140,7 +132,7 @@
 <span class="linenos">44</span>    <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>The following example shows it re-written using the <strong>Importer</strong> class.</p>
+<p>The following example shows it re-written using the <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1"># Written: fmk 09/24</span>
 <span class="linenos"> 2</span><span class="c1"># License: BSD-2</span>
 <span class="linenos"> 3</span>
@@ -188,7 +180,7 @@
 <span class="linenos">45</span>    
 </pre></div>
 </div>
-<p>To run for example the <strong>importer.py</strong> script for Berkeley, CA the following would be issued frm a terminal window:</p>
+<p>To run, for example, the <strong>importer.py</strong> script for Berkeley, CA, you would enter the following command in a terminal window:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">importer</span><span class="o">.</span><span class="n">py</span> <span class="n">USA_FootprintScraper</span> <span class="s2">&quot;Berkeley, CA&quot;</span>
 </pre></div>
 </div>
@@ -222,135 +214,71 @@
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ol class="arabic simple">
-<li><p>When constructing an <strong>Importer</strong> object, the constructor code automatically searches through all directories within the brails codebase to locate every available class. This setup allows developers to add their code seamlessly, without needing to modify this class.</p></li>
-<li><p>The purpose of the <strong>Importer</strong> class is to allow applications to be developed for building workflows. Consider developing an application that would parse the following JSON input file to such an application. By using the <strong>Importer</strong> class, this application can avoid a complex series of if-else statements to handle different types. Instead, it reads the type information and retrieves the appropriate class directly from the Importer. This approach is made possible because BrailsPlusPlus is an object-oriented framework that leverages abstract base classes (ABCs), defined using Python’s abc module.</p></li>
+<li><ol class="arabic simple">
+<li><p>The purpose of the <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class is to enable the development of applications for building workflows.  For example, imagine creating an application that parses the following JSON input file. By using the <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class, the application can be written without lengthy <code class="docutils literal notranslate"><span class="pre">if-else</span></code> statements that switch on the type.  This is possible in BRAILS++ because all the classes that perform work inherit from <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code> (<em>Abstract Base Class</em>), which is part of Python’s <code class="xref py py-mod docutils literal notranslate"><span class="pre">abc</span></code> module.</p></li>
 </ol>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="linenos">  1</span><span class="p">{</span>
-<span class="linenos">  2</span><span class="w">    </span><span class="nt">&quot;workflow&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="linenos">  3</span><span class="w">	</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="s2">&quot;Building&quot;</span><span class="p">,</span>
-<span class="linenos">  4</span><span class="w">	</span><span class="nt">&quot;Description&quot;</span><span class="p">:</span><span class="s2">&quot;Inventory for NoWhere, FL&quot;</span><span class="p">,</span><span class="w">	    </span>
-<span class="linenos">  5</span><span class="w">	</span><span class="nt">&quot;location&quot;</span><span class="p">:{</span>
-<span class="linenos">  6</span><span class="w">	    </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;namedLocation&quot;</span><span class="p">,</span>
-<span class="linenos">  7</span><span class="w">	    </span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos">  8</span><span class="w">		    </span><span class="nt">&quot;coordinates&quot;</span><span class="p">:</span><span class="s2">&quot;Fort Meyers, FL&quot;</span>
-<span class="linenos">  9</span><span class="w">	    </span><span class="p">}</span>
-<span class="linenos"> 10</span><span class="w">	</span><span class="p">},</span>
-<span class="linenos"> 11</span><span class="w">	</span><span class="nt">&quot;footprintSource&quot;</span><span class="p">:{</span>
-<span class="linenos"> 12</span><span class="w">	    </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;USA Structures&quot;</span><span class="p">,</span>
-<span class="linenos"> 13</span><span class="w">	    </span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 14</span><span class="w">		</span><span class="nt">&quot;length&quot;</span><span class="p">:</span><span class="s2">&quot;ft&quot;</span>
-<span class="linenos"> 15</span><span class="w">	    </span><span class="p">}</span>
-<span class="linenos"> 16</span><span class="w">	</span><span class="p">},</span>
-<span class="linenos"> 17</span><span class="w">	</span><span class="nt">&quot;augmentFiles&quot;</span><span class="p">:[</span>
-<span class="linenos"> 18</span><span class="w">	    </span><span class="p">{</span>
-<span class="linenos"> 19</span><span class="w">		</span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;csv&quot;</span><span class="p">,</span>
-<span class="linenos"> 20</span><span class="w">		</span><span class="nt">&quot;appData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="linenos"> 21</span><span class="w">		    </span><span class="nt">&quot;fileName&quot;</span><span class="p">:</span><span class="s2">&quot;assessor.csv&quot;</span><span class="p">,</span>
-<span class="linenos"> 22</span><span class="w">		    </span><span class="nt">&quot;colMapping&quot;</span><span class="p">:</span><span class="s2">&quot;mapAssessor.json&quot;</span>
-<span class="linenos"> 23</span><span class="w">		</span><span class="p">}</span>
-<span class="linenos"> 24</span><span class="w">	    </span><span class="p">},</span>
-<span class="linenos"> 25</span><span class="w">	    </span><span class="p">{</span>
-<span class="linenos"> 26</span><span class="w">		</span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;csv&quot;</span><span class="p">,</span><span class="w">		</span>
-<span class="linenos"> 27</span><span class="w">		</span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 28</span><span class="w">		    </span><span class="nt">&quot;fileName&quot;</span><span class="p">:</span><span class="s2">&quot;myData.csv&quot;</span><span class="p">,</span>
-<span class="linenos"> 29</span><span class="w">		    </span><span class="nt">&quot;colMapping&quot;</span><span class="p">:</span><span class="s2">&quot;None&quot;</span>
-<span class="linenos"> 30</span><span class="w">		</span><span class="p">}</span>
-<span class="linenos"> 31</span><span class="w">	    </span><span class="p">}</span>
-<span class="linenos"> 32</span><span class="w">	</span><span class="p">],</span>
-<span class="linenos"> 33</span><span class="w">	</span><span class="nt">&quot;satelliteImageSource&quot;</span><span class="p">:{</span>
-<span class="linenos"> 34</span><span class="w">	    </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;Google&quot;</span><span class="p">,</span>
-<span class="linenos"> 35</span><span class="w">	    </span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 36</span><span class="w">		</span><span class="nt">&quot;gcpKey&quot;</span><span class="p">:</span><span class="s2">&quot;qg;lgqlgj&quot;</span>
-<span class="linenos"> 37</span><span class="w">	    </span><span class="p">}</span>
-<span class="linenos"> 38</span><span class="w">	</span><span class="p">},</span>
-<span class="linenos"> 39</span><span class="w">	</span><span class="nt">&quot;streetImagesSource&quot;</span><span class="p">:{</span>
-<span class="linenos"> 40</span><span class="w">	    </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;Google&quot;</span><span class="p">,</span>
-<span class="linenos"> 41</span><span class="w">	    </span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 42</span><span class="w">		</span><span class="nt">&quot;gcpKey&quot;</span><span class="p">:</span><span class="s2">&quot;qg;lgqlgj&quot;</span>
-<span class="linenos"> 43</span><span class="w">	    </span><span class="p">}</span>
-<span class="linenos"> 44</span><span class="w">	</span><span class="p">}</span>
-<span class="linenos"> 45</span><span class="w">	</span><span class="nt">&quot;streetFilters&quot;</span><span class="p">:[</span>
-<span class="linenos"> 46</span><span class="w">	    </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;VanishingPoint&quot;</span><span class="p">,</span>
-<span class="linenos"> 47</span><span class="w">	    </span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 48</span><span class="w">	    </span><span class="p">},</span>
-<span class="linenos"> 49</span><span class="w">	    </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;ClipVIT&quot;</span><span class="p">,</span>
-<span class="linenos"> 50</span><span class="w">	    </span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 51</span><span class="w">		</span><span class="nt">&quot;prompt&quot;</span><span class="p">:</span><span class="s2">&quot;Remove trees occluding this image of a house&quot;</span>
-<span class="linenos"> 52</span><span class="w">	    </span><span class="p">}</span>
-<span class="linenos"> 53</span><span class="w">	    </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;RemoveBackgroundNoise&quot;</span><span class="p">,</span>
-<span class="linenos"> 54</span><span class="w">	    </span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 55</span><span class="w">		</span><span class="nt">&quot;model&quot;</span><span class="p">:</span><span class="s2">&quot;zenodo://blha.blah.blah&quot;</span>
-<span class="linenos"> 56</span><span class="w">	    </span><span class="p">}</span><span class="w">    </span>
-<span class="linenos"> 57</span><span class="w">	</span><span class="p">],</span>
-<span class="linenos"> 58</span><span class="w">	</span><span class="nt">&quot;arialFilters&quot;</span><span class="p">:[</span>
-<span class="linenos"> 59</span><span class="w">	    </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="linenos"> 60</span><span class="w">	    </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;RemoveTrees&quot;</span><span class="p">,</span>
-<span class="linenos"> 61</span><span class="w">	    </span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 62</span><span class="w">	    </span><span class="p">},</span><span class="w">		</span>
-<span class="linenos"> 63</span><span class="w">	</span><span class="p">],</span>
-<span class="linenos"> 64</span><span class="w">	</span><span class="s2">&quot;predictionsArial&quot;</span><span class="err">=</span><span class="p">[</span>
-<span class="linenos"> 65</span><span class="w">	    </span><span class="p">{</span>
-<span class="linenos"> 66</span><span class="w">		</span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;BrailsRoofType&quot;</span><span class="p">,</span>
-<span class="linenos"> 67</span><span class="w">		</span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 68</span><span class="w">		    </span><span class="nt">&quot;model&quot;</span><span class="p">::</span><span class="s2">&quot;zenodo://blah/blah/blah&quot;</span>
-<span class="linenos"> 69</span><span class="w">		</span><span class="p">},</span>
-<span class="linenos"> 70</span><span class="w">		</span><span class="nt">&quot;heading&quot;</span><span class="p">:</span><span class="s2">&quot;roofShape&quot;</span>
-<span class="linenos"> 71</span><span class="w">	    </span><span class="p">},</span>
-<span class="linenos"> 72</span><span class="w">	    </span><span class="p">{</span>
-<span class="linenos"> 73</span><span class="w">		</span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;Clip&quot;</span><span class="p">,</span>
-<span class="linenos"> 74</span><span class="w">		</span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 75</span><span class="w">		    </span><span class="nt">&quot;prompts&quot;</span><span class="p">::</span><span class="s2">&quot;this is a pricture of a roof, is it a gabled roof, hiiped roof or flat roof?&quot;</span>
-<span class="linenos"> 76</span><span class="w">		</span><span class="p">}</span>
-<span class="linenos"> 77</span><span class="w">		</span><span class="nt">&quot;heading&quot;</span><span class="p">:</span><span class="s2">&quot;roofShapeClip&quot;</span>
-<span class="linenos"> 78</span><span class="w">	    </span><span class="p">},</span>
-<span class="linenos"> 79</span><span class="w">	</span><span class="p">},</span>
-<span class="linenos"> 80</span><span class="w">	</span><span class="s2">&quot;predictionsStreet&quot;</span><span class="err">=</span><span class="p">[</span>
-<span class="linenos"> 81</span><span class="w">	    </span><span class="p">{</span>
-<span class="linenos"> 82</span><span class="w">		</span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;BrailsNOS&quot;</span><span class="p">,</span>
-<span class="linenos"> 83</span><span class="w">		</span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 84</span><span class="w">		    </span><span class="nt">&quot;model&quot;</span><span class="p">::</span><span class="s2">&quot;zenodo://blah/blah/blah&quot;</span>
-<span class="linenos"> 85</span><span class="w">		</span><span class="p">},</span>
-<span class="linenos"> 86</span><span class="w">		</span><span class="nt">&quot;heading&quot;</span><span class="p">:</span><span class="s2">&quot;numberOfStories&quot;</span>
-<span class="linenos"> 87</span><span class="w">	    </span><span class="p">},</span>
-<span class="linenos"> 88</span><span class="w">	    </span><span class="p">{</span>
-<span class="linenos"> 89</span><span class="w">		</span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;Clip_NumberOfFloors&quot;</span><span class="p">,</span>
-<span class="linenos"> 90</span><span class="w">		</span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 91</span><span class="w">		    </span><span class="nt">&quot;fileName&quot;</span><span class="p">::</span><span class="nt">&quot;promptsForNumFloors.txt&quot;</span>
-<span class="linenos"> 92</span><span class="w">		    </span><span class="nt">&quot;segmenter&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="linenos"> 93</span><span class="w">			</span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;SAM&quot;</span><span class="p">,</span>
-<span class="linenos"> 94</span><span class="w">			</span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos"> 95</span><span class="w">			</span><span class="p">}</span>
-<span class="linenos"> 96</span><span class="w">		    </span><span class="p">}</span>
-<span class="linenos"> 97</span><span class="w">		</span><span class="p">}</span>
-<span class="linenos"> 98</span><span class="w">		</span><span class="nt">&quot;heading&quot;</span><span class="p">:</span><span class="s2">&quot;roofShape&quot;</span>
-<span class="linenos"> 99</span><span class="w">	    </span><span class="p">},</span>
-<span class="linenos">100</span><span class="w">	    </span><span class="p">{</span>
-<span class="linenos">101</span><span class="w">		</span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;FirstFloorElevation&quot;</span><span class="p">,</span>
-<span class="linenos">102</span><span class="w">		</span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos">103</span><span class="w">		</span><span class="p">}</span>
-<span class="linenos">104</span><span class="w">		</span><span class="nt">&quot;heading&quot;</span><span class="p">:</span><span class="s2">&quot;firstFloorElevation&quot;</span>
-<span class="linenos">105</span><span class="w">	    </span><span class="p">}</span><span class="w">  </span>
-<span class="linenos">106</span><span class="w">	</span><span class="p">]</span>
-<span class="linenos">107</span><span class="w">	</span><span class="p">{</span>
-<span class="linenos">108</span><span class="w">	    </span><span class="nt">&quot;imputer&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="linenos">109</span><span class="w">		</span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="s2">&quot;KNN&quot;</span><span class="p">,</span>
-<span class="linenos">110</span><span class="w">		</span><span class="nt">&quot;appData&quot;</span><span class="p">:{</span>
-<span class="linenos">111</span><span class="w">                </span><span class="p">}</span>
-<span class="linenos">112</span><span class="w">	    </span><span class="p">}</span>
-<span class="linenos">113</span><span class="w">	</span><span class="p">}</span>
-<span class="linenos">114</span><span class="w">    </span><span class="p">}</span>
-<span class="linenos">115</span><span class="p">}</span>
-<span class="linenos">116</span><span class="w">    </span>
-<span class="linenos">117</span>
-<span class="linenos">118</span><span class="w">	</span>
-<span class="linenos">119</span><span class="w">	</span>
-<span class="linenos">120</span>
-<span class="linenos">121</span>
-<span class="linenos">122</span><span class="w">    </span>
+</li>
+</ol>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="p">{</span>
+<span class="linenos"> 2</span><span class="w">  </span><span class="nt">&quot;_comment&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Building workflow #1 — Demonstrates integration of image filters, processors, and BRAILS++ prediction modules.&quot;</span><span class="p">,</span>
+<span class="linenos"> 3</span><span class="w">  </span><span class="nt">&quot;workflows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="linenos"> 4</span><span class="w">    </span><span class="p">{</span>
+<span class="linenos"> 5</span><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;buildingInventory&quot;</span><span class="p">,</span>
+<span class="linenos"> 6</span><span class="w">      </span><span class="nt">&quot;location&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos"> 7</span><span class="w">        </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;boundingBox&quot;</span><span class="p">,</span>
+<span class="linenos"> 8</span><span class="w">        </span><span class="nt">&quot;appData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos"> 9</span><span class="w">          </span><span class="nt">&quot;coordinates&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;-122.2,55.6,-122.56,55.7&quot;</span>
+<span class="linenos">10</span><span class="w">        </span><span class="p">}</span>
+<span class="linenos">11</span><span class="w">      </span><span class="p">},</span>
+<span class="linenos">12</span><span class="w">      </span><span class="nt">&quot;footprintSource&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">13</span><span class="w">        </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OvertureMaps&quot;</span><span class="p">,</span>
+<span class="linenos">14</span><span class="w">        </span><span class="nt">&quot;appData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">15</span><span class="w">          </span><span class="nt">&quot;LengthUnit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;m&quot;</span>
+<span class="linenos">16</span><span class="w">        </span><span class="p">}</span>
+<span class="linenos">17</span><span class="w">      </span><span class="p">},</span>
+<span class="linenos">18</span><span class="w">      </span><span class="nt">&quot;augmentFiles&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="linenos">19</span><span class="w">        </span><span class="p">{</span>
+<span class="linenos">20</span><span class="w">          </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;basic&quot;</span><span class="p">,</span>
+<span class="linenos">21</span><span class="w">          </span><span class="nt">&quot;appData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">22</span><span class="w">            </span><span class="nt">&quot;fileName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;assessor.csv&quot;</span><span class="p">,</span>
+<span class="linenos">23</span><span class="w">            </span><span class="nt">&quot;colMapping&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mapAssessor.json&quot;</span>
+<span class="linenos">24</span><span class="w">          </span><span class="p">}</span>
+<span class="linenos">25</span><span class="w">        </span><span class="p">},</span>
+<span class="linenos">26</span><span class="w">        </span><span class="p">{</span>
+<span class="linenos">27</span><span class="w">          </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;basic&quot;</span><span class="p">,</span>
+<span class="linenos">28</span><span class="w">          </span><span class="nt">&quot;appData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">29</span><span class="w">            </span><span class="nt">&quot;fileName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;myData.csv&quot;</span><span class="p">,</span>
+<span class="linenos">30</span><span class="w">            </span><span class="nt">&quot;colMapping&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;None&quot;</span>
+<span class="linenos">31</span><span class="w">          </span><span class="p">}</span>
+<span class="linenos">32</span><span class="w">        </span><span class="p">}</span>
+<span class="linenos">33</span><span class="w">      </span><span class="p">],</span>
+<span class="linenos">34</span><span class="w">      </span><span class="nt">&quot;satelliteImageSource&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">35</span><span class="w">        </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Google&quot;</span><span class="p">,</span>
+<span class="linenos">36</span><span class="w">        </span><span class="nt">&quot;appData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">37</span><span class="w">          </span><span class="nt">&quot;gcpKey&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;YOUR-GCP-KEY&quot;</span>
+<span class="linenos">38</span><span class="w">        </span><span class="p">}</span>
+<span class="linenos">39</span><span class="w">      </span><span class="p">},</span>
+<span class="linenos">40</span><span class="w">      </span><span class="nt">&quot;streetImageSource&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">41</span><span class="w">        </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Google&quot;</span><span class="p">,</span>
+<span class="linenos">42</span><span class="w">        </span><span class="nt">&quot;appData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">43</span><span class="w">          </span><span class="nt">&quot;gcpKey&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;YOUR-GCP-KEY&quot;</span>
+<span class="linenos">44</span><span class="w">        </span><span class="p">}</span>
+<span class="linenos">45</span><span class="w">      </span><span class="p">},</span>
+<span class="linenos">46</span><span class="w">      </span><span class="nt">&quot;streetFilters&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="linenos">47</span><span class="w">        </span><span class="p">{</span>
+<span class="linenos">48</span><span class="w">          </span><span class="nt">&quot;classType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;VanishingPoint&quot;</span><span class="p">,</span>
+<span class="linenos">49</span><span class="w">          </span><span class="nt">&quot;appData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<span class="linenos">50</span><span class="w">        </span><span class="p">}</span>
+<span class="linenos">51</span><span class="w">      </span><span class="p">]</span>
+<span class="linenos">52</span><span class="w">    </span><span class="p">}</span>
+<span class="linenos">53</span><span class="w">  </span><span class="p">]</span>
+<span class="linenos">54</span><span class="p">}</span>
 </pre></div>
 </div>
-<ol class="arabic simple" start="3">
-<li><p>An additional advantage of this approach is that as developers add new subclasses, they do not have to search through the code to see all the places that need the if-else statements modified for their classes to be used.</p></li>
+<ol class="arabic simple">
+<li><p>An additional benefit of this approach is that when developers add new subclasses, they do not need to search the codebase to locate and update all the if-else statements required for their classes to function. The process is fully automated.</p></li>
+<li><p>When constructing a <code class="docutils literal notranslate"><span class="pre">Importer</span></code> object, the code automatically scans all directories within the BRAILS++ codebase to identify every available class. This means that developers can integrate their new code without making any modifications to the existing <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class.</p></li>
+<li><p>Most of the provided examples will make use of the <code class="docutils literal notranslate"><span class="pre">Importer</span></code> class, both to illustrate its functionality and to serve as a means of testing its behavior.</p></li>
 </ol>
 </div>
 </section>
@@ -358,15 +286,12 @@
 
            </div>
           </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../examples.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../footprint/footprint.html" class="btn btn-neutral float-right" title="Building Footprints" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+          <footer>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, fmk.</p>
+    <p>&#169; Copyright 2024; Licensed under BSD 3-Clause.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
