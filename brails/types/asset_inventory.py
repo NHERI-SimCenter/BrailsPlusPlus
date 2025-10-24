@@ -57,7 +57,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from collections.abc import Iterable
+from collections.abc import Hashable, Iterable
 
 try:
     # Python 3.8+
@@ -1475,49 +1475,58 @@ class AssetInventory:
             asset.print_info()
 
     def read_from_geojson(
-            self,
-            file_path: str,
-            asset_type: str = "building"
-        ) -> bool:
+        self,
+        file_path: str,
+        asset_type: str = "building",
+        id_column: Optional[str] = None,
+        keep_existing: bool = False
+    ) -> bool:
         """
-        Reads a GeoJSON file and imports assets into a BRAILS asset inventory.
-        
-        This method loads a GeoJSON file, validates its structure, checks that
-        geometries contain valid `[longitude, latitude]` coordinates, and 
-        converts each feature into a BRAILS `Asset` object. Each asset is 
-        assigned a unique numeric identifier and stored in the class inventory.
-        
+        Reads a GeoJSON file and imports assets into the asset inventory.
+
+        This method loads a GeoJSON FeatureCollection, validates its
+        structure, checks geometries, and converts each asset_data into a
+        BRAILS `Asset` object.
+
+        It can append to the existing inventory or replace it
+        (using `keep_existing=False`). It also supports mapping asset IDs
+        from the GeoJSON file's properties (using `id_column`) or
+        auto-generating new numeric IDs.
+
         Args:
-            file_path (str): 
-                Path to the GeoJSON file to be read. Must represent a valid 
+            file_path (str):
+                Path to the GeoJSON file to be read. Must represent a valid
                 GeoJSON FeatureCollection.
-            asset_type (str, optional): 
-                The type assigned to all imported assets. Defaults to 
-                `'building'`.
-        
+            asset_type (str, optional):
+                The 'type' assigned to all imported assets.
+                Defaults to `'building'`.
+            id_column (str, optional):
+                The name of the asset_data-level or properties key containing
+                the unique asset ID. If `None` (default), IDs are
+                auto-generated sequentially.
+            keep_existing (bool):
+                If `False` (default), the inventory is cleared before loading.
+                If `True`, new assets are added to the existing inventory.
+
         Returns:
-            bool: 
-                ``True`` if the GeoJSON file is successfully read and assets 
+            bool:
+                ``True`` if the GeoJSON file is successfully read and assets
                 are added to the inventory.
-        
+
         Raises:
-            FileNotFoundError: 
-                If the specified file path does not exist or is not a file.
-            ValueError: 
-                If the file is invalid JSON, not a valid GeoJSON 
-                FeatureCollection, contains no features, or has out-of-range
-                coordinates.
-            NotImplementedError: 
-                If one or more geometries include unsupported types.
-            KeyError: 
-                If a feature is missing required keys 
-                (`geometry` or `attributes`).
-        
+            FileNotFoundError:
+                If the specified `file_path` does not exist or is not a file.
+            json.JSONDecodeError:
+                If the file is not valid JSON.
+            ValueError:
+                If the file is invalid JSON, not a valid GeoJSON
+                FeatureCollection, or contains no features.
+
         Example:
             Example GeoJSON file (`seattle_buildings.geojson`):
-        
+
             .. code-block:: json
-    
+
                 {
                   "type": "FeatureCollection",
                   "features": [
@@ -1535,7 +1544,7 @@ class AssetInventory:
                           ]
                         ]
                       },
-                      "attributes": {
+                      "properties": {
                         "name": "Building A",
                         "height_m": 18.7
                       }
@@ -1546,73 +1555,146 @@ class AssetInventory:
                         "type": "Point",
                         "coordinates": [-122.3321, 47.6062]
                       },
-                      "attributes": {
+                      "properties": {
                         "name": "Building B",
                         "height_m": 12.4
                       }
                     }
                   ]
                 }
-        
+
             Example usage:
-        
+
                 >>> inv = AssetInventory()
-                >>> inv.read_from_geojson('seattle_buildings.geojson',
-                ... asset_type='building')
+                >>> inv.read_from_geojson(
+                ...     'seattle_buildings.geojson',
+                ...     asset_type='building',
+                ...     id_column='name',
+                ...     keep_existing=False
+                ... )
                 True
                 >>> inv.print_info()
                 AssetInventory
                 Inventory stored in:  dict
-                Key:  0 Asset:
-                	 Coordinates:  [[-122.3355, 47.608], [-122.335, 47.608], 
-                 [-122.335, 47.6085], [-122.3355, 47.6085], 
+                Key:  Building A Asset:
+                     Coordinates:  [[-122.3355, 47.608], [-122.335, 47.608],
+                 [-122.335, 47.6085], [-122.3355, 47.6085],
                  [-122.3355, 47.608]]
-                	 Features:  {'name': 'Building A', 'height_m': 18.7, 
+                     Features:  {'name': 'Building A', 'height_m': 18.7,
                  'type': 'building'}
-                Key:  1 Asset:
-                	 Coordinates:  [[-122.3321, 47.6062]]
-                	 Features:  {'name': 'Building B', 'height_m': 12.4, 
+                Key:  Building B Asset:
+                     Coordinates:  [[-122.3321, 47.6062]]
+                     Features:  {'name': 'Building B', 'height_m': 12.4,
                  'type': 'building'}
-        
+
         Note:
-            All coordinates are expected to follow the GeoJSON standard 
-            ``[longitude, latitude]`` order and use the WGS-84 geographic 
+            All geometries are expected to follow the GeoJSON standard
+            ``[longitude, latitude]`` order and use the WGS-84 geographic
             coordinate reference system (EPSG:4326).
         """
-    
+        if not keep_existing:
+            self.inventory = {}
+
         # Path checks:
         path = Path(file_path)
         if not path.exists() or not path.is_file():
             raise FileNotFoundError(f'File not found: {file_path}')
-        
+
         # JSON parsing:
         try:
             with path.open('r', encoding='utf-8') as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
             raise ValueError(f'Invalid JSON format in {file_path}: {e}')
-        
+
         # GeoJSON structure validation:
         if not isinstance(data, dict) or \
-            data.get('type') != 'FeatureCollection':
+           data.get('type') != 'FeatureCollection':
             raise ValueError(
                 'Input file is not a valid GeoJSON FeatureCollection.'
-                )
-        
+            )
+
         features = data.get('features', [])
         if not isinstance(features, list) or not features:
             raise ValueError(
                 'GeoJSON FeatureCollection contains no valid features.'
-                )
-        
+            )
+
         # Determine next available numeric ID
-        next_id = self._get_next_numeric_id()
-        
-        for index, item in enumerate(features):
-            geometry = GeoTools.parse_geojson_geometry(item['geometry'])
-            asset_features = {**item['properties'], 'type': asset_type}
-            asset = Asset(index, geometry, asset_features)
-            self.add_asset(next_id + index, asset)
+        if keep_existing:
+            id_counter = self._get_next_numeric_id()
+        else:
+            id_counter = 0  # Inventory is empty, start from 0
+
+        for i, asset_data in enumerate(features):
+            # Validate asset_data structure
+            if not isinstance(asset_data, dict):
+                print(f"Warning: Skipping invalid asset data at index {i} "
+                      f"(not a dictionary)")
+                continue
+
+            if asset_data.get("type") != "Feature":
+                print(f"Warning: Skipping asset data at index {i} "
+                      f"(type is not 'Feature')")
+                continue
+
+            # Parse Geometry
+            try:
+                geometry = GeoTools.parse_geojson_geometry(
+                    asset_data.get("geometry")
+                )
+            except Exception as e:
+                # Catch-all for any geometry parsing error
+                print(f"Warning: Skipping asset data at index {i} "
+                      f"(invalid geometry structure: {e})")
+                continue
+
+            if not geometry:
+                print(f"Warning: Skipping asset data at index {i} "
+                      f"(unsupported or empty geometry)")
+                continue
+
+            # Get properties and add asset_type
+            properties = asset_data.get("properties", {})
+            if not isinstance(properties, dict):
+                print(f"Warning: Asset data at index {i} has invalid properties "
+                      f"(not a dictionary), using empty properties")
+                properties = {}
+
+            properties["type"] = asset_type
+
+            # Determine asset ID
+            # Use id_column if provided, otherwise default to "id"
+            id_key = id_column if id_column else "id"
+
+            if id_key in asset_data:
+                asset_id = asset_data[id_key]
+            elif id_key in properties:
+                asset_id = properties[id_key]
+            else:
+                # Use auto-generated ID
+                asset_id = id_counter
+                id_counter += 1
+
+            # Make sure numeric IDs are represented as ints to avoid duplicates
+            if isinstance(asset_id, str) and asset_id.isdigit():
+                asset_id = int(asset_id)
+
+            # Make sure the asset_id is hashable
+            if not isinstance(asset_id, Hashable):
+                print(f"Warning: Skipping asset data at index {i}. "
+                      f"The asset ID '{asset_id}' is not a hashable type "
+                      "(e.g., it might be a list or dict).")
+                continue
+
+            # Create and add the asset
+            asset = Asset(asset_id, geometry, properties)
+            success = self.add_asset(asset_id, asset)
+            if not success:
+                print(f"Warning: Asset with ID {asset_id} already exists, "
+                      f"skipping asset data at index {i}")
+
+        return True
 
     def remove_asset(self, asset_id: Union[str, int]) -> bool:
         """
@@ -1982,166 +2064,6 @@ class AssetInventory:
 
         return True
 
-    def read_from_geojson(
-        self,
-        file_path: str,
-        id_column: Optional[str] = None,
-        keep_existing: bool = False
-    ) -> bool:
-        """
-        Read inventory data from a GeoJSON file and add it to the inventory.
-
-        This method loads an asset inventory from a provided GeoJSON file path.
-        The GeoJSON should be a FeatureCollection where each Feature represents
-        an asset with geometry and properties.
-
-        Args:
-            file_path (str):
-                The path to the GeoJSON file
-            id_column (str, optional):
-                The name of the parameter containing asset IDs. If ``None``,
-                the asset IDs will be assigned automatically.
-            keep_existing (bool):
-                If False, the inventory will be cleared before loading.
-                If True, new assets will be added to existing inventory.
-                Defaults to False.
-
-        Returns:
-            bool:
-                True if assets were added successfully, False otherwise.
-
-        Raises:
-            Exception:
-                If the file doesn't exist, is not valid JSON, or doesn't
-                conform to the expected GeoJSON schema.
-        """
-        if not keep_existing:
-            self.inventory = {}
-
-        # Attempt to open and parse the file
-        try:
-            with open(file_path, mode="r", encoding="utf-8") as geojson_file:
-                data = json.load(geojson_file)
-        except FileNotFoundError:
-            raise Exception(f"The file {file_path} does not exist.")
-        except json.JSONDecodeError as e:
-            raise Exception(f"The file {file_path} is not valid JSON: {e}")
-
-        # Validate basic GeoJSON structure
-        if not isinstance(data, dict):
-            raise Exception("GeoJSON must be a dictionary object.")
-
-        if data.get("type") != "FeatureCollection":
-            raise Exception("GeoJSON must be a FeatureCollection.")
-
-        if "features" not in data:
-            raise Exception("GeoJSON FeatureCollection must contain 'features'.")
-
-        features = data["features"]
-        if not isinstance(features, list):
-            raise Exception("GeoJSON 'features' must be a list.")
-
-        # Process each feature
-        id_counter = 1
-        if keep_existing and len(self.inventory) > 0:
-            # Start ID counter after existing assets
-            existing_ids = [k for k in self.inventory.keys()
-                          if isinstance(k, int)]
-            if existing_ids:
-                id_counter = max(existing_ids) + 1
-
-        for i, feature in enumerate(features):
-            # Validate feature structure
-            if not isinstance(feature, dict):
-                print(f"Warning: Skipping invalid feature at index {i} "
-                      f"(not a dictionary)")
-                continue
-
-            if feature.get("type") != "Feature":
-                print(f"Warning: Skipping feature at index {i} "
-                      f"(type is not 'Feature')")
-                continue
-
-            # Extract geometry
-            geometry = feature.get("geometry")
-            if not geometry:
-                print(f"Warning: Skipping feature at index {i} "
-                      f"(no geometry)")
-                continue
-
-            # Convert geometry to coordinates format expected by Asset class
-            coordinates = []
-            geom_type = geometry.get("type")
-            geom_coords = geometry.get("coordinates")
-
-            if not geom_coords:
-                print(f"Warning: Skipping feature at index {i} "
-                      f"(no coordinates in geometry)")
-                continue
-
-            try:
-                if geom_type == "Point":
-                    # Point: coordinates are [lon, lat]
-                    coordinates = [geom_coords]
-                elif geom_type == "LineString":
-                    # LineString: coordinates are [[lon1, lat1], [lon2, lat2], ...]
-                    coordinates = geom_coords
-                elif geom_type == "Polygon":
-                    # Polygon: coordinates are [[[lon1, lat1], [lon2, lat2], ...]]
-                    # We take the exterior ring (first array)
-                    coordinates = geom_coords[0]
-                else:
-                    print(f"Warning: Skipping feature at index {i} "
-                          f"(unsupported geometry type: {geom_type})")
-                    continue
-            except (IndexError, TypeError) as e:
-                print(f"Warning: Skipping feature at index {i} "
-                      f"(invalid coordinates structure: {e})")
-                continue
-
-            # Extract properties (features)
-            properties = feature.get("properties", {})
-            if not isinstance(properties, dict):
-                print(f"Warning: Feature at index {i} has invalid properties "
-                      f"(not a dictionary), using empty properties")
-                properties = {}
-
-            # Determine asset ID
-            asset_id = None
-
-            # First, check if there's an 'id' field at the feature level
-            if id_column is None:
-                id_key = "id"
-            else:
-                id_key = id_column
-
-            if id_key in feature:
-                asset_id = feature[id_key]
-            # Then check if there's an 'id' in properties
-            elif id_key in properties:
-                asset_id = properties[id_key]  # Remove from properties
-            else:
-                # Use auto-generated ID
-                asset_id = id_counter
-                id_counter += 1
-
-            # Convert string IDs to int if they represent integers
-            if isinstance(asset_id, str) and asset_id.isdigit():
-                asset_id = int(asset_id)
-
-            # Create and add the asset
-            try:
-                asset = Asset(asset_id, coordinates, properties)
-                success = self.add_asset(asset_id, asset)
-                if not success:
-                    print(f"Warning: Asset with ID {asset_id} already exists, "
-                          f"skipping feature at index {i}")
-            except Exception as e:
-                print(f"Warning: Failed to create asset from feature at "
-                      f"index {i}: {e}")
-                continue
-
-        return True
 
     def add_asset_features_from_csv(
         self,
@@ -2492,19 +2414,12 @@ class AssetInventory:
         Returns:
             int:
                 The next available numeric ID (max numeric key + 1).
-                Returns 0 if the inventory is empty, contains no numeric keys,
-                or cannot be accessed.
-    
+                Returns 0 if the inventory contains no numeric keys.
+
         Notes:
-            - Non-numeric keys are ignored.
-            - If inventory access or key conversion fails, the function
-              safely falls back to returning 0.
+            - Non-numeric keys (e.g., 'A101') are ignored.
             - This function is typically used to generate sequential
               numeric identifiers for new assets.
         """
-        try:
-            keys = getattr(self.inventory, 'keys', lambda: [])()
-            numeric_ids = [int(k) for k in keys if str(k).isdigit()]
-            return (max(numeric_ids) + 1) if numeric_ids else 0
-        except Exception:
-            return 0
+        numeric_ids = [int(k) for k in self.inventory.keys() if str(k).isdigit()]
+        return (max(numeric_ids) + 1) if numeric_ids else 0
