@@ -43,52 +43,25 @@ This module defines classes associated with household inventories.
     Household
 """
 
+from __future__ import annotations
+
 import json
 import os
-from datetime import datetime
-from typing import Any, Dict, List, Tuple, Union
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 try:
     # Python 3.8+
-    from importlib.metadata import version
+    from importlib.metadata import PackageNotFoundError, version
 except ImportError:
     # For Python <3.8, use the backport
-    from importlib_metadata import version
+    from importlib_metadata import PackageNotFoundError, version
 
 import jsonschema
-from jsonschema import validate, ValidationError
+from jsonschema import ValidationError, validate
 
-# TODO: refactor clean_floats
-# This function is a copy of the function `clean_floats` in
-# `asset_inventory.py`. It would be better to have it in a separate file in
-# utils and import it from there.
-
-def clean_floats(obj: Any) -> Any:
-    """
-    Recursively convert float values that are mathematically integers to int.
-
-    This function traverses a nested structure (e.g., dict, list, JSON-like
-    object) and converts any float that is numerically equivalent to an integer
-    into an int, improving the readability and cleanliness of the output,
-    especially for serialization.
-
-    Args:
-        obj (Any):
-            A JSON-like object (dict, list, or primitive value) to process.
-
-    Returns:
-        Any:
-            The input object with eligible floats converted to integers.
-    """
-    if isinstance(obj, dict):
-        return {k: clean_floats(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [clean_floats(v) for v in obj]
-    elif isinstance(obj, float) and obj.is_integer():
-        return int(obj)
-    else:
-        return obj
+from brails.types.asset_inventory import clean_floats
 
 
 class Household:
@@ -108,7 +81,7 @@ class Household:
 
     def __init__(
         self,
-        features: Dict[str, Any] = None,
+        features: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Initialize a Household with a household ID and features.
@@ -120,9 +93,7 @@ class Household:
         self.features = features if features is not None else {}
 
     def add_features(
-            self,
-            additional_features: Dict[str, Any],
-            overwrite: bool = True
+        self, additional_features: Dict[str, Any], *, overwrite: bool = True
     ) -> bool:
         """
         Update the existing features in the household.
@@ -136,7 +107,6 @@ class Household:
         Returns:
             bool: True if features were updated, False otherwise.
         """
-
         if overwrite:
             self.features.update(additional_features)
             return True
@@ -149,21 +119,20 @@ class Household:
 
         return updated
 
-    def remove_features(self, feature_list: List[str]):
+    def remove_features(self, feature_list: List[str]) -> None:
         """
         Remove specified features from the household.
 
         Args:
             feature_list (List[str]): List of features to be removed
         """
-
         for key in feature_list:
             if key in self.features:
                 del self.features[key]
 
     def print_info(self) -> None:
         """Print the features of the household."""
-        print(f"\t Features: {json.dumps(self.features, indent=2)}")
+        print(f'\t Features: {json.dumps(self.features, indent=2)}')
 
 
 class HouseholdInventory:
@@ -184,8 +153,9 @@ class HouseholdInventory:
         """Initialize HouseholdInventory with an empty inventory dictionary."""
         self.inventory: Dict = {}
 
-    def add_household(self, household_id: str, household: Household,
-                      overwrite: bool = False):
+    def add_household(
+        self, household_id: str, household: Household, *, overwrite: bool = False
+    ) -> None:
         """
         Add a Household to the inventory.
 
@@ -208,7 +178,7 @@ class HouseholdInventory:
             >>> inventory.add_household("1", household)
         """
         if not isinstance(household, Household):
-            msg = "Expected an instance of Household."
+            msg = 'Expected an instance of Household.'
             raise TypeError(msg)
 
         if ~overwrite and household_id in self.inventory:
@@ -217,11 +187,7 @@ class HouseholdInventory:
 
         self.inventory[household_id] = household
 
-
-    def change_feature_names(
-            self,
-            feature_name_mapping: Dict[str, str]
-    ) -> None:
+    def change_feature_names(self, feature_name_mapping: Dict[str, str]) -> None:
         """
         Rename features in a HouseholdInventory using user-specified mapping.
 
@@ -237,16 +203,14 @@ class HouseholdInventory:
         """
         # Validate that feature_name_mapping is a dictionary:
         if not isinstance(feature_name_mapping, dict):
-            raise TypeError(
-                "Expected 'feature_name_mapping' to be a dictionary."
-            )
+            raise TypeError("Expected 'feature_name_mapping' to be a dictionary.")
 
         # Validate that all keys and values in the mapping are strings:
         for old_name, new_name in feature_name_mapping.items():
             if not isinstance(old_name, str) or not isinstance(new_name, str):
                 raise TypeError(
                     "All keys and values in 'feature_name_mapping' must be "
-                    f"strings. Invalid pair: ({old_name}, {new_name})"
+                    f'strings. Invalid pair: ({old_name}, {new_name})'
                 )
 
         # Apply the feature name changes to each household in the inventory:
@@ -254,11 +218,12 @@ class HouseholdInventory:
             for old_name, new_name in feature_name_mapping.items():
                 if old_name in household.features:
                     if new_name in household.features:
-                        raise NameError(f"New feature name {new_name} already exists.")
+                        raise NameError(
+                            f'New feature name {new_name} already exists.'
+                        )
 
                     # Move the feature to the new name and remove the old one:
                     household.features[new_name] = household.features.pop(old_name)
-
 
     def get_household_ids(self) -> list[str]:
         """
@@ -270,8 +235,7 @@ class HouseholdInventory:
         """
         return list(self.inventory.keys())
 
-
-    def print_info(self):
+    def print_info(self) -> None:
         """
         Print summary information about the HouseholdInventory.
 
@@ -280,13 +244,12 @@ class HouseholdInventory:
         in the inventory, including its key and features.
         """
         print(self.__class__.__name__)
-        print("Inventory stored in: ", self.inventory.__class__.__name__)
+        print('Inventory stored in: ', self.inventory.__class__.__name__)
         for key, household in self.inventory.items():
-            print("Key: ", key, "Household:")
+            print('Key: ', key, 'Household:')
             household.print_info()
 
-
-    def remove_household(self, household_id: str):
+    def remove_household(self, household_id: str) -> None:
         """
         Remove a Household from the inventory.
 
@@ -298,8 +261,7 @@ class HouseholdInventory:
         if household_id in self.inventory:
             del self.inventory[household_id]
 
-
-    def remove_features(self, feature_list: List[str]):
+    def remove_features(self, feature_list: List[str]) -> None:
         """
         Remove specified features from all households in the inventory.
 
@@ -308,11 +270,10 @@ class HouseholdInventory:
                 List of feature names to remove from all households.
 
         """
-        for _, household in self.inventory.items():
+        for household in self.inventory.values():
             household.remove_features(feature_list)
 
-
-    def to_json(self, output_file: str = "") -> dict[str, Any]:
+    def to_json(self, output_file: str = '') -> dict[str, Any]:
         """
         Generate JSON representation and optionally write to file.
 
@@ -326,35 +287,32 @@ class HouseholdInventory:
 
         Returns:
             dict[str, Any]:
-                A dictionary containing the JSON representation of the 
+                A dictionary containing the JSON representation of the
                 inventory.
         """
         try:
-            brails_version = version("BRAILS")
-        except Exception:
-            brails_version = "NA"
+            brails_version = version('BRAILS')
+        except PackageNotFoundError:
+            brails_version = 'NA'
 
         json_data = {
-            "type": "HouseholdInventory",
-            "generated": str(datetime.now()),
-            "brails_version": brails_version,
-            "households": {}
+            'type': 'HouseholdInventory',
+            'generated': str(datetime.now(timezone.utc)),
+            'brails_version': brails_version,
+            'households': {},
         }
 
         for household_id, household in self.inventory.items():
-            json_data["households"][str(household_id)] = household.features
+            json_data['households'][str(household_id)] = household.features
 
         # Write the created JSON dictionary into a JSON file:
         if output_file:
-            with open(output_file, "w", encoding="utf-8") as file_out:
+            with Path(output_file).open('w', encoding='utf-8') as file_out:
                 json.dump(clean_floats(json_data), file_out, indent=2)
 
         return json_data
 
-    def read_from_json(
-        self,
-        json_data: Union[str, Dict[str, Any]]
-    ):
+    def read_from_json(self, json_data: Union[str, Dict[str, Any]]) -> None:
         """
         Read inventory data from a JSON file, string, or dictionary and add it to the inventory.
 
@@ -370,52 +328,51 @@ class HouseholdInventory:
         else:
             try:
                 # First try to treat it as a file path
-                if os.path.exists(json_data):
-                    with open(json_data, mode="r", encoding="utf-8") as jsonfile:
+                json_data_file = Path(json_data)
+                if json_data_file.exists():
+                    with json_data_file.open(encoding='utf-8') as jsonfile:
                         data = json.load(jsonfile)
                 else:
                     # If not a file path, treat it as a JSON string
                     try:
                         data = json.loads(json_data)
-                    except json.JSONDecodeError:
-                        msg = f"The input is neither a valid file path nor a valid JSON string."
-                        raise Exception(msg)
+                    except json.JSONDecodeError as e:
+                        msg = 'The input is neither a valid file path nor a valid JSON string.'
+                        raise json.JSONDecodeError(msg) from e
             except Exception as e:
-                msg = f"Error processing input: {str(e)}"
-                raise Exception(msg)
+                msg = f'Error processing input: {e!s}'
+                raise ValueError(msg) from e
 
         # Load and validate against JSON schema
-        schema_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 
-            "household_inventory_schema.json"
+        schema_path = (
+            Path(__file__).resolve().parent / 'household_inventory_schema.json'
         )
-        
+
         try:
-            with open(schema_path, 'r', encoding='utf-8') as schema_file:
+            with schema_path.open(encoding='utf-8') as schema_file:
                 schema = json.load(schema_file)
-            
+
             # Validate against schema
             validate(instance=data, schema=schema)
-            
-        except FileNotFoundError:
-            msg = f"Schema file not found at {schema_path}"
-            raise Exception(msg)
+
+        except FileNotFoundError as e:
+            msg = f'Schema file not found at {schema_path}'
+            raise FileNotFoundError(msg) from e
+
         except ValidationError as e:
-            msg = f"Invalid JSON data: {e.message}"
-            raise ValueError(msg)
+            msg = f'Invalid JSON data: {e.message}'
+            raise ValueError(msg) from e
 
         # Extract households data after validation
-        households_data = data.get("households", {})
+        households_data = data.get('households', {})
 
         # Load data after successful validation
         for household_id, features in households_data.items():
-
             if isinstance(household_id, str) and household_id.isdigit():
-                household_id = int(household_id)
+                household_id = int(household_id)  # noqa: PLW2901
 
             # Create and add each household
             self.add_household(household_id, Household(features))
-
 
     def _get_next_numeric_id(self) -> int:
         """
@@ -431,17 +388,14 @@ class HouseholdInventory:
             - This function is typically used to generate sequential
               numeric identifiers for new households.
         """
-        numeric_ids = [int(k) for k in self.inventory.keys() if str(k).isdigit()]
+        numeric_ids = [int(k) for k in self.inventory if str(k).isdigit()]
         return (max(numeric_ids) + 1) if numeric_ids else 0
 
-
     def merge_inventory(
-        self,
-        other_inventory: 'HouseholdInventory'
+        self, other_inventory: HouseholdInventory
     ) -> Dict[Union[str, int], Union[str, int]]:
         """
-        Merge another household inventory into this one, resolving ID
-        conflicts.
+        Merge another household inventory into this one, resolving ID conflicts.
 
         This method iterates through the `other_inventory`. It attempts
         to add each household using its original ID. If that ID already
@@ -464,7 +418,8 @@ class HouseholdInventory:
         """
         if not isinstance(other_inventory, HouseholdInventory):
             raise TypeError(
-                "Can only merge with another HouseholdInventory instance.")
+                'Can only merge with another HouseholdInventory instance.'
+            )
 
         # Get the next safe starting ID for use *if* we find conflicts
         next_id = self._get_next_numeric_id()

@@ -1,18 +1,46 @@
-name: Tests
+# .github/workflows/tests.yml
+name: BRAILS++ CI/CD
 
 on:
-  - push
-  - pull_request
+  push:
+  pull_request:
 
 jobs:
+  lint:
+    name: Ruff Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chartboost/ruff-action@v1
+        with:
+          version: 0.12.10
+
+  format_check:
+    name: Ruff Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chartboost/ruff-action@v1
+        with:
+          args: 'format --check'
+          version: 0.12.10
+
+  spell_check:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: codespell-project/actions-codespell@v2
+
   test:
+    name: Run Tests
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.10', '3.11', '3.12']
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -22,5 +50,4 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .[development]
       - name: Run tests
-        run: |
-          python -m pytest --cov=brails --cov-report xml tests
+        run: python -m pytest --cov=brails --cov-report xml tests
