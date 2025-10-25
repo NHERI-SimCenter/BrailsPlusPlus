@@ -492,10 +492,9 @@ def assign_households_to_buildings(
     households_by_bldg_id = assigned_households.groupby('building_id').agg(
         household_ids = ('household_id', lambda x: x.tolist())
     )
-    for building_id, household_ids in households_by_bldg_id.iterrows():
-        building_inventory.add_asset_features(
-            asset_id = building_id,
-            new_features = dict(Households = household_ids['household_ids'])
-        )
 
-    building_inventory.household_inventory = household_inventory
+    building_inventory.set_household_inventory(
+        hh_inventory=household_inventory,
+        hh_assignment=households_by_bldg_id['household_ids'].to_dict(),
+        validate=True
+    )

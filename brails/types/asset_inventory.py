@@ -74,6 +74,7 @@ from shapely.geometry.base import BaseGeometry
 from brails.utils.geo_tools import GeoTools
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
+from brails.types.household_inventory import HouseholdInventory
 
 
 def clean_floats(obj: Any) -> Any:
@@ -156,7 +157,8 @@ class Asset:
     def add_features(
             self,
             additional_features: Dict[str, Any],
-            overwrite: bool = True
+            overwrite: bool = True,
+            vector_features: Optional[List[str]] = []
     ) -> Tuple[bool, int]:
         """
         Update the existing features in the asset.
@@ -208,26 +210,42 @@ class Asset:
             'color': 'red'}
         """
 
-        def update_possible_worlds(n_pw, val):
+        def update_possible_worlds(n_pw: int, key:str, val:Any)->int:
+            """
+            Check a feature and update the number of possible worlds.
+            """
+            is_probabilistic = False
 
-            if isinstance(val, list) and key != 'Households': # Households are currently deterministic
+            if key in vector_features:
+                # These are only probabilistic if they are a list of lists.
+                if (isinstance(val, list) and len(val) > 0 and
+                        isinstance(val[0], list)):
+                    is_probabilistic = True
+
+            else:
+                if isinstance(val, list):
+                    is_probabilistic = True
+
+            # If the feature is probabilistic, update n_pw
+            if is_probabilistic:
                 if (n_pw != 1) and (n_pw != len(val)):
                     print(
                         f'WARNING: # possible worlds was {n_pw} but now '
                         f'is {len(val)}. Something went wrong.'
                     )
                 return len(val)
-            else:
-                return n_pw
 
-        n_pw = 1
+            # Otherwise, return the existing n_pw
+            return n_pw
+
+        n_pw: int = 1
 
         if overwrite:
             # Overwrite existing features with new ones:
             self.features.update(additional_features)
 
             for key, val in additional_features.items():
-                n_pw = update_possible_worlds(n_pw, val)
+                n_pw = update_possible_worlds(n_pw, key, val)
 
             updated = True
 
@@ -239,7 +257,7 @@ class Asset:
                     # write
                     self.features[key] = val
 
-                    n_pw = update_possible_worlds(n_pw, val)
+                    n_pw = update_possible_worlds(n_pw, key, val)
 
                     updated = True
 
@@ -406,7 +424,9 @@ class AssetInventory:
     def __init__(self) -> None:
         """Initialize AssetInventory with an empty inventory dictionary."""
         self.inventory: Dict = {}
+        self.household_inventory: Optional[HouseholdInventory] = None
         self.n_pw = 1
+        self.vector_features: List[str] = ['Households']
 
     def add_asset(self, asset_id: Union[str, int], asset: Asset) -> bool:
         """
@@ -551,7 +571,11 @@ class AssetInventory:
                   'features not added.')
             return False
 
-        status, n_pw = asset.add_features(new_features, overwrite)
+        status, n_pw = asset.add_features(
+            new_features,
+            overwrite,
+            vector_features=self.vector_features
+        )
         if n_pw == 1:
             pass
         elif (n_pw == self.n_pw) or (self.n_pw == 1):
@@ -622,9 +646,12 @@ class AssetInventory:
             raise TypeError("Expected 'feature_key' to be a string.")
 
         # Update inventory items with corresponding predictions:
-        for key, val in self.inventory.items():
-            if key in predictions:
-                val.add_features({feature_key: predictions.get(key)})
+        for asset_id, asset in self.inventory.items():
+            if asset_id in predictions:
+                self.add_asset_features(
+                    asset_id,
+                    {feature_key: predictions.get(asset_id)}
+                )
 
     def change_feature_names(
             self,
@@ -702,75 +729,140 @@ class AssetInventory:
                     asset.features[new_name] = asset.features.pop(
                         original_name)
 
+
     def combine(
-            self, 
-            inventory_to_combine: 'AssetInventory', 
-            key_map: dict = None
-        ) -> dict:
+            self,
+            other_inventory: 'AssetInventory',
+            asset_id_map: Optional[Dict[Union[str, int], Union[str, int]]] = None
+    ) -> Dict[Union[str, int], Union[str, int]]:
         """
-        Combine with another AssetInventory, avoiding duplicate assets.
-    
-        Assets are compared using their hashed coordinate and feature data.
-        Duplicate assets (identical geometry and properties) are skipped.
-        Optionally, keys from the inventory to combine can be remapped using 
-        ``key_map``. Any resulting key conflicts are automatically resolved by
-        assigning new unique numeric IDs.
-    
+        Merge another AssetInventory into this one, handling conflicts.
+
+        This method merges all unique assets from `other_inventory` into
+        the current inventory (`self`).
+
+        - **Asset De-duplication:** It automatically skips any incoming
+          asset that is an exact duplicate of an existing one (based on
+          a hash of its geometry and features).
+        - **Asset ID Conflicts:** It resolves all asset ID collisions.
+          You can provide an `asset_id_map` to suggest new IDs. If a
+          suggested ID (or an original ID) already exists, a new
+          sequential numeric ID will be assigned.
+        - **Household Merging:** If both inventories have linked household
+          data, this method validates both, then merges the incoming
+          `HouseholdInventory`, re-indexes all new household IDs to
+          prevent conflicts, and updates the `Households` feature
+          on all newly-added assets.
+
         Args:
-            inventory_to_combine (AssetInventory):
-                The secondary inventory whose assets will be merged into this
-                one.
-            key_map (dict, optional):
-                A mapping of original keys in ``inventory_to_combine`` to new
-                keys in this inventory. For example: {"old_key1": "new_keyA", 
-                "old_key2": "new_keyB"}. If not provided, original keys are 
-                used as-is unless they already exist in the current inventory.
-    
+            other_inventory (AssetInventory):
+                The secondary inventory to merge into this one.
+            asset_id_map (Dict, optional):
+                A dictionary mapping {original_asset_id: suggested_asset_id}.
+                Use this to rename asset IDs from `other_inventory` during
+                the merge.
+
         Returns:
-            dict:
-                A dictionary mapping each original key from 
-                ``inventory_to_combine`` to its final key in this inventory
-                (after applying ``key_map`` and resolving conflicts).
-    
-        Modifies:
-            self.inventory (dict):
-                Updates the inventory in-place by adding new, non-duplicate 
-                assets from ``inventory_to_combine``.
+            Dict[Union[str, int], Union[str, int]]:
+                A `final_id_map` dictionary, which acts as a "receipt"
+                mapping {original_asset_id: final_asset_id}. This is
+                critical for data traceability, as it reports the
+                actual ID assigned after resolving all conflicts.
+
+        Raises:
+            ValueError, LookupError, TypeError:
+                If either `self` or `other_inventory` has an invalid
+                household state (e.g., orphan IDs, invalid data types)
+                before the merge.
         """
 
-        # Build hash lookup for existing assets:
+        # --- 1. Asset Merging ---
+
+        # Build a set of existing hashes for O(1) duplicate checking
         existing_hashes = {
             asset.hash_asset(): key for key, asset in self.inventory.items()
         }
-    
-        # Determine next available numeric ID:
         next_id = self._get_next_numeric_id()
-    
-        # Track key mapping from inventory_to_combine → self.inventory:
-        merged_key_map = {}
-    
-        for orig_key, asset in inventory_to_combine.inventory.items():
+        final_id_map = {}
+
+        for orig_key, asset in other_inventory.inventory.items():
             asset_hash = asset.hash_asset()
-    
-            # Skip duplicates based on geometry and feature data:
+
+            # Skip any asset that is a perfect duplicate
             if asset_hash in existing_hashes:
                 continue
-    
-            # Apply user-provided key mapping if available:
-            mapped_key = key_map.get(orig_key, orig_key) if key_map else orig_key
-            new_key = mapped_key
-            
-            # Ensure uniqueness of the key:
-            while new_key in self.inventory:
-                new_key = next_id
+
+            # Determine the suggested ID, using the map or the original key
+            suggested_id = asset_id_map.get(orig_key, orig_key) if asset_id_map else orig_key
+            final_id = suggested_id
+
+            # Ensure uniqueness.
+            while final_id in self.inventory:
+                final_id = next_id
                 next_id += 1
-    
-            # Add asset and record mapping:
-            self.add_asset(new_key, asset)
-            merged_key_map[orig_key] = new_key
-            existing_hashes[asset_hash] = new_key
-    
-        return merged_key_map
+
+            # Add the asset to the inventory and record its final ID
+            self.add_asset(final_id, asset)
+            final_id_map[orig_key] = final_id
+            existing_hashes[asset_hash] = final_id # Add hash to prevent duplicates from within other_inventory
+
+        # --- 2. Household Inventory Merging ---
+        hh_id_remap = {}
+
+        # Case 1: We have no inventory, but the incoming one does.
+        if self.household_inventory is None and other_inventory.household_inventory is not None:
+            # First, validate the incoming inventory to prevent merging bad data
+            print("Validating incoming household inventory...")
+            other_inventory.validate_household_assignments()
+
+            # Use deepcopy to avoid two AssetInventory objects pointing to
+            # the same mutable HouseholdInventory object.
+            self.household_inventory = deepcopy(other_inventory.household_inventory)
+            # No ID remapping is needed; the new assets' links are already correct.
+
+        # Case 2: Both inventories have household data.
+        elif self.household_inventory is not None and other_inventory.household_inventory is not None:
+            # Validate both inventories before attempting to merge.
+            print("Validating current household inventory...")
+            self.validate_household_assignments()
+            print("Validating incoming household inventory...")
+            other_inventory.validate_household_assignments()
+
+            # Merge the incoming inventory into our own. This returns a
+            # map of {old_hh_id: new_hh_id} for all merged households.
+            print("Merging household inventories... Re-indexing incoming data.")
+            hh_id_remap = self.household_inventory.merge_inventory(
+                other_inventory.household_inventory
+            )
+
+        # Case 3 (both are None) -> do nothing.
+        # Case 4 (self has one, other is None) -> do nothing.
+
+        # --- 3. Asset Household-Link Fixing ---
+
+        # If we remapped household IDs (Case 2), we must update the
+        # 'Households' feature on all newly-added assets.
+        if hh_id_remap:
+            print("Updating household links for merged assets...")
+
+            # We only need to check the assets we *just added*.
+            for final_id in final_id_map.values():
+                asset = self.inventory[final_id]
+                old_hh_id_list = asset.features.get('Households')
+
+                if old_hh_id_list:
+                    # Rebuild the list using the re-map.
+                    remapped_hh_id_list = [
+                        hh_id_remap[old_hh_id] for old_hh_id in old_hh_id_list
+                    ]
+
+                    self.add_asset_features(
+                        final_id,
+                        {'Households': remapped_hh_id_list},
+                        overwrite=True
+                    )
+
+        return final_id_map
 
     def convert_polygons_to_centroids(self) -> None:
         """
@@ -1478,8 +1570,7 @@ class AssetInventory:
         self,
         file_path: str,
         asset_type: str = "building",
-        id_column: Optional[str] = None,
-        keep_existing: bool = False
+        id_column: Optional[str] = None
     ) -> bool:
         """
         Reads a GeoJSON file and imports assets into the asset inventory.
@@ -1488,10 +1579,8 @@ class AssetInventory:
         structure, checks geometries, and converts each asset_data into a
         BRAILS `Asset` object.
 
-        It can append to the existing inventory or replace it
-        (using `keep_existing=False`). It also supports mapping asset IDs
-        from the GeoJSON file's properties (using `id_column`) or
-        auto-generating new numeric IDs.
+        It also supports mapping asset IDs from the GeoJSON file's properties
+        (using `id_column`) or auto-generating new numeric IDs.
 
         Args:
             file_path (str):
@@ -1504,9 +1593,6 @@ class AssetInventory:
                 The name of the asset_data-level or properties key containing
                 the unique asset ID. If `None` (default), IDs are
                 auto-generated sequentially.
-            keep_existing (bool):
-                If `False` (default), the inventory is cleared before loading.
-                If `True`, new assets are added to the existing inventory.
 
         Returns:
             bool:
@@ -1569,8 +1655,7 @@ class AssetInventory:
                 >>> inv.read_from_geojson(
                 ...     'seattle_buildings.geojson',
                 ...     asset_type='building',
-                ...     id_column='name',
-                ...     keep_existing=False
+                ...     id_column='name'
                 ... )
                 True
                 >>> inv.print_info()
@@ -1592,9 +1677,6 @@ class AssetInventory:
             ``[longitude, latitude]`` order and use the WGS-84 geographic
             coordinate reference system (EPSG:4326).
         """
-        if not keep_existing:
-            self.inventory = {}
-
         # Path checks:
         path = Path(file_path)
         if not path.exists() or not path.is_file():
@@ -1620,12 +1702,7 @@ class AssetInventory:
                 'GeoJSON FeatureCollection contains no valid features.'
             )
 
-        # Determine next available numeric ID
-        if keep_existing:
-            id_counter = self._get_next_numeric_id()
-        else:
-            id_counter = 0  # Inventory is empty, start from 0
-
+        id_counter = 1
         for i, asset_data in enumerate(features):
             # Validate asset_data structure
             if not isinstance(asset_data, dict):
@@ -2423,3 +2500,190 @@ class AssetInventory:
         """
         numeric_ids = [int(k) for k in self.inventory.keys() if str(k).isdigit()]
         return (max(numeric_ids) + 1) if numeric_ids else 0
+
+    def set_household_inventory(
+        self,
+        hh_inventory: HouseholdInventory,
+        hh_assignment: Optional[Dict[Union[str, int], List]] = None,
+        validate: bool = True
+    ) -> None:
+        """
+        Set the household inventory and optionally assign households to assets.
+
+        This method links a HouseholdInventory object to the AssetInventory.
+        It can also be used to assign household ID lists to individual assets
+        using the `hh_assignment` dictionary.
+
+        This enables two primary workflows:
+        1.  **Assigning New Households:** Pass both `hh_inventory` and
+            `hh_assignment`. The function will link the inventory and add
+            the 'Households' feature to each asset in the assignment dict.
+        2.  **Linking a Loaded Inventory:** After loading an AssetInventory
+            (e.g., from GeoJSON) that already has 'Households' features,
+            pass only the `hh_inventory` object. The function will link it
+            and can optionally validate the existing assignments.
+
+        Args:
+            hh_inventory (HouseholdInventory):
+                The `HouseholdInventory` object to link to this
+                `AssetInventory`.
+            hh_assignment (Dict[Union[str, int], List], optional):
+                A dictionary mapping `asset_id` to a list of household IDs.
+                If provided, this list will be added as the 'Households'
+                feature for each corresponding asset, overwriting any
+                existing 'Households' feature. Defaults to `None`.
+            validate (bool, optional):
+                If `True`, run `validate_household_assignments()` after
+                linking to check for mismatches. Defaults to `True`.
+
+        Raises:
+            TypeError: If `hh_inventory` is not an instance of
+                       `HouseholdInventory` or if `hh_assignment` is
+                       provided and is not a `dict`.
+        """
+        if not isinstance(hh_inventory, HouseholdInventory):
+            raise TypeError(
+                f"hh_inventory must be an instance of HouseholdInventory, "
+                f"not {type(hh_inventory)}."
+            )
+
+        self.household_inventory = hh_inventory
+
+        if hh_assignment is not None:
+            if not isinstance(hh_assignment, dict):
+                raise TypeError(
+                    f"hh_assignment must be a dictionary or None, "
+                    f"not {type(hh_assignment)}."
+                )
+
+            print(f"Assigning households to {len(hh_assignment)} assets...")
+            assets_not_found = 0
+            for asset_id, hh_list in hh_assignment.items():
+                success = self.add_asset_features(
+                    asset_id,
+                    {'Households': hh_list},
+                    overwrite=True
+                )
+                if not success:
+                    assets_not_found += 1
+
+            if assets_not_found > 0:
+                print(
+                    f"Warning: {assets_not_found} asset(s) listed in "
+                    f"hh_assignment were not found in the inventory."
+                )
+
+        if validate:
+            print("Validating household assignments...")
+            self.validate_household_assignments()
+            print("Validation successful.")
+
+
+    def validate_household_assignments(self) -> bool:
+        """
+        Check the integrity of household assignments.
+
+        This function performs two main checks:
+        1.  If any assets have a 'Households' feature, it checks that
+            `self.household_inventory` is not `None`.
+        2.  If `self.household_inventory` is set, it checks that every
+            household ID in every asset's 'Households' list exists in the
+            `self.household_inventory`.
+
+        Returns:
+            bool:
+                `True` if all assignments are valid or if there are
+                no assignments.
+
+        Raises:
+            TypeError:
+                If an asset's 'Households' feature is not a `list`.
+            LookupError:
+                If assets have 'Households' assignments but
+                `self.household_inventory` is `None`.
+            ValueError:
+                If any household IDs assigned to assets are not found
+                in the `self.household_inventory`.
+        """
+        all_asset_hh_ids = set()
+        found_assignments = False
+        assets_with_bad_data = []
+
+        # First, collect all household IDs from assets
+        for asset_id, asset in self.inventory.items():
+            hh_data = asset.features.get('Households')
+            if hh_data is not None:
+                found_assignments = True
+                if not isinstance(hh_data, list):
+                    assets_with_bad_data.append(asset_id)
+                else:
+                    all_asset_hh_ids.update(hh_data)
+
+        # Check for non-list 'Households' features
+        if assets_with_bad_data:
+            raise TypeError(
+                f"The 'Households' feature must be a list. Found invalid "
+                f"data in assets: {assets_with_bad_data}")
+
+        # If no assets have assignments, we are in a valid state.
+        if not found_assignments:
+            return True
+
+        # If we have assignments, we MUST have an inventory linked.
+        if self.household_inventory is None:
+            raise LookupError(
+                "Assets have household assignments, but no "
+                "HouseholdInventory is linked. Call "
+                "set_household_inventory() first."
+            )
+
+        # Check for orphan IDs
+        valid_hh_ids = set(self.household_inventory.get_household_ids())
+        missing_ids = all_asset_hh_ids - valid_hh_ids
+
+        if missing_ids:
+            sample = list(missing_ids)[:10]
+            raise ValueError(
+                f"Found {len(missing_ids)} orphan household IDs assigned to "
+                f"assets that are not in the HouseholdInventory. "
+                f"Example orphans: {sample}"
+            )
+
+        # All checks passed
+        return True
+
+
+    def remove_household_inventory(
+        self,
+        clear_assignments: bool = True
+    ) -> None:
+        """
+        Remove the linked household inventory and clear all assignments.
+
+        This method removes the `HouseholdInventory` object from the
+        `AssetInventory` by setting `self.household_inventory` to `None`.
+
+        By default, it also removes the 'Households' feature from all
+        assets in the inventory, as the assignments are specific to the
+        inventory being removed. This ensures the `AssetInventory`
+        remains in a valid state.
+
+        Args:
+            clear_assignments (bool, optional):
+                If `True` (the default), this method will iterate through
+                all assets and remove the 'Households' feature from them.
+                If set to `False`, only the main `household_inventory`
+                attribute will be removed, which will likely result
+                in an invalid state that fails validation.
+        """
+        self.household_inventory = None
+        print("HouseholdInventory removed.")
+
+        if clear_assignments:
+            print("Removing 'Households' feature from all assets...")
+            # Use the existing remove_features method
+            self.remove_features(['Households'])
+            print("Asset assignments cleared.")
+        else:
+            print("Warning: Asset 'Households' features were not cleared. "
+                  "The inventory is likely in an invalid state.")

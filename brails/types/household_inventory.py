@@ -353,8 +353,7 @@ class HouseholdInventory:
 
     def read_from_json(
         self,
-        json_data: Union[str, Dict[str, Any]],
-        keep_existing: bool = False
+        json_data: Union[str, Dict[str, Any]]
     ):
         """
         Read inventory data from a JSON file, string, or dictionary and add it to the inventory.
@@ -362,12 +361,7 @@ class HouseholdInventory:
         Args:
             json_data (Union[str, Dict[str, Any]]):
                   Either a path to a JSON file, a JSON string, or a dictionary object
-            keep_existing (bool):
-                  If False, the inventory will be initialized
         """
-        if not keep_existing:
-            self.inventory = {}
-
         # Determine input type (dict, file path, or JSON string)
         data = None
         if isinstance(json_data, dict):
@@ -415,5 +409,79 @@ class HouseholdInventory:
 
         # Load data after successful validation
         for household_id, features in households_data.items():
+
+            if isinstance(household_id, str) and household_id.isdigit():
+                household_id = int(household_id)
+
             # Create and add each household
             self.add_household(household_id, Household(features))
+
+
+    def _get_next_numeric_id(self) -> int:
+        """
+        Compute the next available numeric household ID in the inventory.
+
+        Returns:
+            int:
+                The next available numeric ID (max numeric key + 1).
+                Returns 0 if the inventory contains no numeric keys.
+
+        Notes:
+            - Non-numeric keys (e.g., 'HH-A101') are ignored.
+            - This function is typically used to generate sequential
+              numeric identifiers for new households.
+        """
+        numeric_ids = [int(k) for k in self.inventory.keys() if str(k).isdigit()]
+        return (max(numeric_ids) + 1) if numeric_ids else 0
+
+
+    def merge_inventory(
+        self,
+        other_inventory: 'HouseholdInventory'
+    ) -> Dict[Union[str, int], Union[str, int]]:
+        """
+        Merge another household inventory into this one, resolving ID
+        conflicts.
+
+        This method iterates through the `other_inventory`. It attempts
+        to add each household using its original ID. If that ID already
+        exists in the current inventory, it generates a new unique
+        numeric ID for that household.
+
+        Args:
+            other_inventory (HouseholdInventory):
+                The inventory to merge into this one.
+
+        Returns:
+            Dict[Union[str, int], Union[str, int]]:
+                A dictionary mapping {old_household_id: new_household_id}.
+                This map tracks all ID changes.
+
+        Raises:
+            TypeError:
+                If `other_inventory` is not an instance of
+                ``HouseholdInventory``.
+        """
+        if not isinstance(other_inventory, HouseholdInventory):
+            raise TypeError(
+                "Can only merge with another HouseholdInventory instance.")
+
+        # Get the next safe starting ID for use *if* we find conflicts
+        next_id = self._get_next_numeric_id()
+        hh_id_remap = {}
+
+        for old_id, household in other_inventory.inventory.items():
+            new_id = old_id  # Try to use the original ID first
+
+            if new_id in self.inventory:
+                new_id = next_id
+                next_id += 1
+
+            # Since we've guaranteed new_id is unique, we can set
+            # overwrite=False.
+            self.add_household(new_id, household, overwrite=False)
+
+            # Store the mapping, even if the ID didn't change
+            hh_id_remap[old_id] = new_id
+
+        return hh_id_remap
