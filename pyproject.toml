@@ -135,3 +135,6 @@ skip = [
     "./brails/households/pyncoda/supporting_data/fips_lookup.json",
     "./brails/households/pyncoda/supporting_data/state_abbreviations.json"
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

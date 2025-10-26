@@ -50,4 +50,4 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .[development]
       - name: Run tests
-        run: python -m pytest --cov=brails --cov-report xml tests
+        run: python -m pytest --cov --cov-report xml tests

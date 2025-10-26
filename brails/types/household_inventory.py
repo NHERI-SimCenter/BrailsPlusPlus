@@ -61,7 +61,7 @@ except ImportError:
 import jsonschema
 from jsonschema import ValidationError, validate
 
-from brails.types.asset_inventory import clean_floats
+from brails.utils.clean_floats import clean_floats
 
 
 class Household:

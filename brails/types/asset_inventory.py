@@ -72,36 +72,11 @@ from shapely import box
 from shapely.geometry import LineString, Polygon, shape
 from shapely.geometry.base import BaseGeometry  # noqa: TC002
 
+from brails.utils.clean_floats import clean_floats
 from brails.types.household_inventory import HouseholdInventory
 from brails.utils.geo_tools import GeoTools
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
-
-
-def clean_floats(obj: Any) -> Any:  # noqa: ANN401
-    """
-    Recursively convert float values that are mathematically integers to int.
-
-    This function traverses a nested structure (e.g., dict, list, JSON-like
-    object) and converts any float that is numerically equivalent to an integer
-    into an int, improving the readability and cleanliness of the output,
-    especially for serialization.
-
-    Args:
-        obj (Any):
-            A JSON-like object (dict, list, or primitive value) to process.
-
-    Returns:
-        Any:
-            The input object with eligible floats converted to integers.
-    """
-    if isinstance(obj, dict):
-        return {k: clean_floats(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [clean_floats(v) for v in obj]
-    if isinstance(obj, float) and obj.is_integer():
-        return int(obj)
-    return obj
 
 
 class Asset:
