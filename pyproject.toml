@@ -62,8 +62,8 @@ line-length = 85
 include = [
     #"brails/types/asset_inventory.py",
     "brails/types/household_inventory.py",
-    "brails/households/pyncoda/assign_households.py",
-    "brails/households/pyncoda/supporting_data/FIPS_lookup_generator.py",
+    "brails/merge/households/pyncoda/assign_households.py",
+    "brails/merge/households/pyncoda/supporting_data/FIPS_lookup_generator.py",
     "brails/scrapers/census_scraper/census_scraper.py"
 ]
 
@@ -132,8 +132,8 @@ skip = [
     "./brails/processors/*",
     "./brails/filters/*",
     "./brails/utils/*",
-    "./brails/households/pyncoda/supporting_data/fips_lookup.json",
-    "./brails/households/pyncoda/supporting_data/state_abbreviations.json"
+    "./brails/merge/households/pyncoda/supporting_data/fips_lookup.json",
+    "./brails/merge/households/pyncoda/supporting_data/state_abbreviations.json"
 ]
 
 [tool.pytest.ini_options]
