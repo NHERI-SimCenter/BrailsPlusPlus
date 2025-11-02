@@ -89,7 +89,13 @@ class Household:
         Args:
             features (dict[str, Any], optional): A dictionary of features.
                 Defaults to an empty dict.
+
+        Raises:
+            TypeError: If ``features`` is provided and is not a dictionary.
         """
+        if features is not None and not isinstance(features, dict):
+            msg = 'features must be a dict when provided.'
+            raise TypeError(msg)
         self.features = features if features is not None else {}
 
     def add_features(
@@ -106,7 +112,14 @@ class Household:
 
         Returns:
             bool: True if features were updated, False otherwise.
+
+        Raises:
+            TypeError: If ``additional_features`` is not a dictionary.
         """
+        if not isinstance(additional_features, dict):
+            msg = 'additional_features must be a dict.'
+            raise TypeError(msg)
+
         if overwrite:
             self.features.update(additional_features)
             return True
@@ -125,7 +138,16 @@ class Household:
 
         Args:
             feature_list (List[str]): List of features to be removed
+
+        Raises:
+            TypeError: If ``feature_list`` is not a list of strings.
         """
+        if not isinstance(feature_list, list) or not all(
+            isinstance(item, str) for item in feature_list
+        ):
+            msg = 'feature_list must be a list of strings.'
+            raise TypeError(msg)
+
         for key in feature_list:
             if key in self.features:
                 del self.features[key]
@@ -181,7 +203,7 @@ class HouseholdInventory:
             msg = 'Expected an instance of Household.'
             raise TypeError(msg)
 
-        if ~overwrite and household_id in self.inventory:
+        if household_id in self.inventory and not overwrite:
             print(f'The inventory already has a household with id {household_id}.')
             return
 
@@ -269,7 +291,16 @@ class HouseholdInventory:
             feature_list (list[str]):
                 List of feature names to remove from all households.
 
+        Raises:
+            TypeError: If ``feature_list`` is not a list of strings.
         """
+        # Validate input type: must be a list of strings
+        if not isinstance(feature_list, list) or not all(
+            isinstance(item, str) for item in feature_list
+        ):
+            msg = 'feature_list must be a list of strings.'
+            raise TypeError(msg)
+
         for household in self.inventory.values():
             household.remove_features(feature_list)
 
@@ -327,7 +358,7 @@ class HouseholdInventory:
             data = json_data
         else:
             try:
-                # First try to treat it as a file path
+                # First, try to treat it as a file path
                 json_data_file = Path(json_data)
                 if json_data_file.exists():
                     with json_data_file.open(encoding='utf-8') as jsonfile:
@@ -367,9 +398,12 @@ class HouseholdInventory:
         households_data = data.get('households', {})
 
         # Load data after successful validation
-        for household_id, features in households_data.items():
-            if isinstance(household_id, str) and household_id.isdigit():
-                household_id = int(household_id)  # noqa: PLW2901
+        for household_id_raw, features in households_data.items():
+            household_id = (
+                int(household_id_raw)
+                if isinstance(household_id_raw, str) and household_id_raw.isdigit()
+                else household_id_raw
+            )
 
             # Create and add each household
             self.add_household(household_id, Household(features))

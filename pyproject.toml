@@ -64,7 +64,8 @@ include = [
     "brails/types/household_inventory.py",
     "brails/merge/households/pyncoda/assign_households.py",
     "brails/merge/households/pyncoda/supporting_data/FIPS_lookup_generator.py",
-    "brails/scrapers/census_scraper/census_scraper.py"
+    "brails/scrapers/census_scraper/census_scraper.py",
+    "tests/types/test_household_inventory.py"
 ]
 
 [tool.ruff.lint]
@@ -101,6 +102,11 @@ ignore = [
   "N999"
 ]
 
+[tool.ruff.lint.per-file-ignores]
+    "tests/*" = [
+        "ANN401"
+    ]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
@@ -125,7 +131,7 @@ skip = [
     "./docs/*",
     "./examples/*",
     "./external_tools/*",
-    "./tests/*",
+    "./tests/utils/*",
     "./brails/inferers/*",
     "./brails/scrapers/*",
     "./brails/imputers/*",
