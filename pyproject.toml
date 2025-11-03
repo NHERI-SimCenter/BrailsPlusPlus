@@ -65,7 +65,8 @@ include = [
     "brails/merge/households/pyncoda/assign_households.py",
     "brails/merge/households/pyncoda/supporting_data/FIPS_lookup_generator.py",
     "brails/scrapers/census_scraper/census_scraper.py",
-    "tests/types/test_household_inventory.py"
+    "tests/types/test_household_inventory.py",
+    "tests/scrapers/test_census_scraper.py",
 ]
 
 [tool.ruff.lint]
@@ -144,3 +145,6 @@ skip = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "live: marks tests that make real network calls (deselect with 'not live')"
+]

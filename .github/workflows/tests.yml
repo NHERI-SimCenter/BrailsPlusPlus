@@ -4,6 +4,8 @@ name: BRAILS++ CI/CD
 on:
   push:
   pull_request:
+  release:
+    types: [created]
 
 jobs:
   lint:
@@ -49,5 +51,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[development]
-      - name: Run tests
+      - name: Run tests (excluding live)
+        if: github.event_name == 'push'
+        run: python -m pytest --cov --cov-report xml -m "not live"
+      - name: Run all tests (including live)
+        if: github.event_name == 'pull_request' || github.event_name == 'release'
         run: python -m pytest --cov --cov-report xml

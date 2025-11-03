@@ -68,6 +68,7 @@ setup(
             'ruff==0.12.10',
             'pytest',
             'pytest-cov',
+            'pytest-mock',
             'jupyter',
             'jupytext',
             'sphinx',
