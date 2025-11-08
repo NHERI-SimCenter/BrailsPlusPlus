@@ -65,8 +65,9 @@ include = [
     "brails/merge/households/pyncoda/assign_households.py",
     "brails/merge/households/pyncoda/supporting_data/FIPS_lookup_generator.py",
     "brails/scrapers/census_scraper/census_scraper.py",
-    "tests/types/test_household_inventory.py",
+    "tests/merge/households/pyncoda/test_assign_households.py",
     "tests/scrapers/test_census_scraper.py",
+    "tests/types/test_household_inventory.py",
 ]
 
 [tool.ruff.lint]
@@ -105,7 +106,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
     "tests/*" = [
-        "ANN401"
+        "ANN401",
+        "SLF001",
+        "PLR2004"
     ]
 
 [tool.ruff.lint.pydocstyle]
@@ -134,7 +137,6 @@ skip = [
     "./external_tools/*",
     "./tests/utils/*",
     "./brails/inferers/*",
-    "./brails/scrapers/*",
     "./brails/imputers/*",
     "./brails/processors/*",
     "./brails/filters/*",
@@ -145,6 +147,7 @@ skip = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-m 'not live'"
 markers = [
     "live: marks tests that make real network calls (deselect with 'not live')"
 ]

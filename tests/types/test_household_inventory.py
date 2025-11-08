@@ -691,7 +691,7 @@ def test_inventory_round_trip_int_keys(tmp_path: Path) -> None:
 def test_inventory_get_next_numeric_id_empty() -> None:
     """Test that next numeric ID is 0 when inventory has no numeric keys."""
     inv = HouseholdInventory()
-    assert inv._get_next_numeric_id() == 0  # noqa: SLF001 - test intentionally calls private helper
+    assert inv._get_next_numeric_id() == 0
 
 
 def test_inventory_get_next_numeric_id_non_numeric_only() -> None:
@@ -699,7 +699,7 @@ def test_inventory_get_next_numeric_id_non_numeric_only() -> None:
     inv = HouseholdInventory()
     inv.add_household('A', Household(features={}))
     inv.add_household('H7X', Household(features={}))
-    assert inv._get_next_numeric_id() == 0  # noqa: SLF001 - test intentionally calls private helper
+    assert inv._get_next_numeric_id() == 0
 
 
 def test_inventory_get_next_numeric_id_numeric_only() -> None:
@@ -710,7 +710,7 @@ def test_inventory_get_next_numeric_id_numeric_only() -> None:
     inv.add_household(2, Household(features={}))
     # Max numeric key is 3 -> expect 4
     expected_next = 4
-    assert inv._get_next_numeric_id() == expected_next  # noqa: SLF001 - test intentionally calls private helper
+    assert inv._get_next_numeric_id() == expected_next
 
 
 def test_inventory_get_next_numeric_id_mixed_keys() -> None:
@@ -721,7 +721,7 @@ def test_inventory_get_next_numeric_id_mixed_keys() -> None:
     inv.add_household('007', Household(features={}))  # numeric string counts as 7
     # Numeric keys present: {10, 7} -> next should be 11
     expected_next = 11
-    assert inv._get_next_numeric_id() == expected_next  # noqa: SLF001 - test intentionally calls private helper
+    assert inv._get_next_numeric_id() == expected_next
 
 
 # merge_inventory tests

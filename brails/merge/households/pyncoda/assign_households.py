@@ -34,7 +34,14 @@
 # Contributors:
 # Adam Zsarnoczay
 
-"""This module assigns households to housing units using the pyncoda package."""
+"""
+This module assigns households to residential buildings in an AssetInventory.
+
+It leverages the pyncoda package to generate detailed household demographics
+based on census data. The main entry point is the
+`assign_households_to_buildings` function, which orchestrates the entire
+workflow from data preparation to final assignment.
+"""
 
 from __future__ import annotations
 
@@ -45,7 +52,7 @@ from typing import Any, Dict, List, Tuple
 
 import geopandas as gpd
 import numpy as np
-import pandas as pd  # noqa: TC002
+import pandas as pd
 from pyncoda import ncoda_00h_bldg_archetype_structure as bldg_arch
 from pyncoda.ncoda_07i_process_communities import process_community_workflow
 
@@ -63,51 +70,66 @@ def get_county_and_state_names(census_tracts: list) -> Tuple[Dict[str, Any], str
     """
     Identify the counties and state covered by an asset inventory.
 
-    This function uses the 'TRACT_GEOID' column in the input GeoDataFrame to
-    extract the 5-digit county FIPS codes of every county that has at least one
-    asset in it. It then maps these FIPS codes to human-readable names using
-    the fips_lookup.json and state_abbreviations.json files.
+    This function takes a list of census tract identifiers and extracts the
+    5-digit county FIPS codes for every county that has at least one asset in it.
+    It then maps these FIPS codes to human-readable names using the
+    fips_lookup.json and state_abbreviations.json files.
+
+    Note:
+        This function assumes that all input tracts belong to the same state.
 
     Args:
-        census_tracts(list): A list of 11-digit FIPS codes identifying the
-            census tracts covered by the asset inventory.
+        census_tracts (list[str]): A list of 11-digit FIPS codes (as strings)
+            identifying the census tracts covered by the asset inventory.
 
     Returns:
-        counties(dict): A dictionary providing the FIPS code and the name of
+        counties (dict): A dictionary providing the FIPS code and the name of
             each county.
-        state_name(str): The full name of the state that contains the counties.
+        state_name (str): The full name of the state that contains the counties.
     """
-    # --- Load the lookup tables from the JSON files ---
+    if not isinstance(census_tracts, list):
+        raise TypeError('census_tracts must be a list of 11-digit strings.')
+    if len(census_tracts) == 0:
+        raise ValueError(
+            'census_tracts list is empty; provide at least one tract id.'
+        )
+    invalid_items = [
+        x
+        for x in census_tracts
+        if not isinstance(x, str) or len(x) != 11 or not x.isdigit()  # noqa: PLR2004
+    ]
+    if invalid_items:
+        raise ValueError(
+            'All items in census_tracts must be 11-digit strings; invalid items: '
+            + ', '.join(map(str, invalid_items))
+        )
+
     with FIPS_LOOKUP_PATH.open(encoding='utf-8') as f:
         fips_names = json.load(f)
     with STATE_ABBREV_PATH.open(encoding='utf-8') as f:
         state_abbreviations = json.load(f)
 
-    # --- Extract unique 5-digit county FIPS codes from the census tract list ---
     unique_county_fips = sorted({tract_id[:5] for tract_id in census_tracts})
 
-    # --- Build the output dictionary ---
     counties_dict = {'counties': {}}
     county_counter = 1
 
-    for fips_code in unique_county_fips:
-        state_fips = fips_code[:2]
+    state_name = 'Unknown State'
 
-        # Look up the county and state names from the fips_names dictionary
-        county_name = fips_names.get(fips_code, 'Unknown County')
+    for county_fips in unique_county_fips:
+        state_fips = county_fips[:2]
+
+        county_name = fips_names.get(county_fips, 'Unknown County')
         state_name = fips_names.get(state_fips, 'Unknown State')
 
-        # Look up the state abbreviation
         state_abbr = state_abbreviations.get(state_name, '')
 
-        # Format the final name string
         formatted_name = (
             f'{county_name}, {state_abbr}' if state_abbr else county_name
         )
 
-        # Add the entry to the dictionary
         counties_dict['counties'][county_counter] = {
-            'FIPS Code': fips_code,
+            'FIPS Code': county_fips,
             'Name': formatted_name,
         }
         county_counter += 1
@@ -158,7 +180,6 @@ def validate_key_features_dict(key_features: Dict[str, Any]) -> None:
         if key == 'length_unit' and value not in ['ft', 'm']:
             type_errors.append(f"Key '{key}': expected 'ft' or 'm', got '{value}'")
 
-    # Consolidate errors and raise a single, informative message
     if missing_keys or type_errors:
         error_msg = "Invalid 'key_features' argument:\n"
         if missing_keys:
@@ -180,6 +201,10 @@ def prepare_building_inventory(
     to square feet if necessary and return a GeoDataFrame with the desired
     columns.
 
+    Note:
+        All input building geometries are converted to their centroids to
+        provide point representations for downstream processing.
+
     Args:
         inventory(AssetInventory): The AssetInventory object containing
             building data.
@@ -192,35 +217,60 @@ def prepare_building_inventory(
             residential buildings and the desired columns for pyncoda.
     """
     validate_key_features_dict(key_features)
+    if not isinstance(inventory, AssetInventory):
+        raise TypeError('inventory must be an instance of AssetInventory')
+
+    # Helper to produce an empty GeoDataFrame with expected structure
+    def _empty_buildings_gdf() -> gpd.GeoDataFrame:
+        gdf = gpd.GeoDataFrame(
+            {
+                'building_id': pd.Series(dtype='int64'),
+                'geometry': gpd.GeoSeries(dtype='geometry'),
+                'occtype': pd.Series(dtype='object'),
+                'gross_area_in_sqft': pd.Series(dtype='float64'),
+            },
+            geometry='geometry',
+            crs='EPSG:4326',
+        )
+        return gdf.set_index('building_id', drop=True)
+
+    # Empty inventory short-circuit
+    if not inventory.inventory:
+        print(
+            'No buildings found in the provided inventory. Returning empty GeoDataFrame.'
+        )
+        return _empty_buildings_gdf()
 
     buildings_geojson = inventory.get_geojson()
-    buildings_gdf = gpd.GeoDataFrame.from_features(
-        buildings_geojson['features'], crs='EPSG:4326'
-    )
-    buildings_gdf = buildings_gdf.set_index('id')
+    features = buildings_geojson.get('features', [])
+    if not features:
+        print('Inventory geojson has no features. Returning empty GeoDataFrame.')
+        return _empty_buildings_gdf()
 
-    print(f'Initial number of buildings loaded: {len(buildings_gdf)}')
-    print('-' * 30)
+    buildings_gdf = gpd.GeoDataFrame.from_features(features, crs='EPSG:4326')
 
     # Pyncoda expects ids in a building_id column
     buildings_gdf = buildings_gdf.rename(columns={'id': 'building_id'})
+
+    print(f'Initial number of buildings loaded: {len(buildings_gdf)}')
+    print('-' * 30)
 
     occupancy_col = key_features['occupancy_col']
     plan_area_col = key_features['plan_area_col']
     story_count_col = key_features['story_count_col']
     length_unit = key_features['length_unit']
 
-    # Keep only the residential buildings
-    buildings_gdf = buildings_gdf.loc[
-        buildings_gdf[occupancy_col].str.startswith('RES')
-    ]
-
-    print(f'Number of residential buildings in the inventory: {len(buildings_gdf)}')
-
-    # Report and drop buildings with missing required columns
     required_cols = [occupancy_col, plan_area_col, story_count_col, 'geometry']
     missing_cols_mask = buildings_gdf[required_cols].isna().any(axis=1)
     dropped_for_cols = buildings_gdf[missing_cols_mask]['building_id'].tolist()
+
+    if len(buildings_gdf) > 0 and missing_cols_mask.all():
+        print(
+            'All buildings are missing one or more required columns '
+            f"('{occupancy_col}', '{plan_area_col}', '{story_count_col}', 'geometry'). "
+            'Dropping all buildings and returning empty GeoDataFrame.'
+        )
+        return _empty_buildings_gdf()
 
     if dropped_for_cols:
         cols_to_show = 5
@@ -234,20 +284,34 @@ def prepare_building_inventory(
             f'{"..." if len(dropped_for_cols) > cols_to_show else ""}'
         )
 
-    # Keep only the rows that are NOT in the missing_cols_mask
     buildings_gdf = buildings_gdf[~missing_cols_mask]
+
+    print(
+        f'Number of buildings with all required features present: {len(buildings_gdf)}'
+    )
+
+    buildings_gdf = buildings_gdf.loc[
+        buildings_gdf[occupancy_col].str.startswith('RES')
+    ]
+
+    if buildings_gdf.empty:
+        print(
+            'No residential buildings found in the inventory. Returning empty GeoDataFrame.'
+        )
+        return _empty_buildings_gdf()
 
     print('-' * 30)
     print(f'Number of buildings remaining after filtering: {len(buildings_gdf)}')
 
-    # Ensure columns have the correct data type for calculations
     buildings_gdf['building_id'] = buildings_gdf['building_id'].astype(int)
     buildings_gdf[plan_area_col] = buildings_gdf[plan_area_col].astype(float)
     buildings_gdf[story_count_col] = buildings_gdf[story_count_col].astype(float)
 
-    # Perform the unit conversion on the plan area column
     if length_unit == 'm':
         buildings_gdf[plan_area_col] *= 10.7639
+
+    # replace all geometries with their centroids
+    buildings_gdf['geometry'] = buildings_gdf['geometry'].centroid
 
     # Select and rename the columns to match the desired output properties.
     lean_buildings_gdf = buildings_gdf[['building_id', 'geometry']].copy()
@@ -258,6 +322,42 @@ def prepare_building_inventory(
     )
 
     return lean_buildings_gdf.set_index('building_id')
+
+
+def _validate_pyncoda_output(output_df: pd.DataFrame) -> None:
+    """
+    Validate that the pyncoda output DataFrame contains all required columns.
+
+    Args:
+        output_df (pd.DataFrame): The pyncoda output to validate.
+
+    Raises:
+        ValueError: If any of the required columns are missing.
+    """
+    required_columns = [
+        'blockid',
+        'numprec',
+        'ownershp',
+        'race',
+        'hispan',
+        'family',
+        'vacancy',
+        'gqtype',
+        'incomegroup',
+        'randincome',
+        'poverty',
+        'building_id',
+    ]
+
+    if not isinstance(output_df, pd.DataFrame):
+        raise TypeError('The pyncoda output must be provided as a DataFrame')
+
+    missing = [col for col in required_columns if col not in output_df.columns]
+    if missing:
+        raise ValueError(
+            'Assigned households dataframe is missing required columns: '
+            + ', '.join(missing)
+        )
 
 
 def create_household_inventory(
@@ -278,7 +378,11 @@ def create_household_inventory(
         household_inventory(HouseholdInventory): A HouseholdInventory object
             containing the household assignments.
     """
-    # keep only the columns we need from the raw pyncoda output
+    _validate_pyncoda_output(assigned_households)
+
+    if assigned_households.empty:
+        return HouseholdInventory()
+
     cols_to_keep = [
         'blockid',
         'numprec',
@@ -314,8 +418,6 @@ def create_household_inventory(
             'poverty': 'Poverty',
         }
     )
-
-    # Map digits to actual values for clarity
 
     # No need to map Hispanic, Family, and Poverty, just use the raw boolean values
     # No need to map IncomeSample, just use the raw float value
@@ -417,86 +519,108 @@ def assign_households_to_buildings(
         output_folder (str): Path to directory where temporary and output files
             will be stored.
 
+    Returns:
+        None: The function modifies the `building_inventory` object in-place.
+
     Raises:
         FileNotFoundError: If required files are not found.
     """
-    # Create the output folder if it doesn't exist
     output_dir = Path(output_folder)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Step 1: Prepare Building Inventory Input
-    # Create a temporary GeoJSON file for the pyncoda-optimized inventory
     temp_geojson_path = output_dir / 'temp_building_inventory.geojson'
 
     lean_building_gdf = prepare_building_inventory(building_inventory, key_features)
+
+    if lean_building_gdf.empty:
+        print(
+            'No valid buildings were found to process. Exiting assignment workflow.'
+        )
+        return
+
     lean_building_gdf.to_file(temp_geojson_path, driver='GeoJSON')
 
     # Step 2: Prepare the Census tract, State, and County information
-
-    # Create a lean inventory that only has the buildings that were kept
     filtered_inventory = AssetInventory()
-    filtered_inventory.inventory = {
-        k: v
-        for k, v in building_inventory.inventory.items()
-        if k in lean_building_gdf.index
-    }
+    filtered_inventory.read_from_geojson(temp_geojson_path)
 
-    # Run scraper to identify the census tracts covered by the buildings
+    # filtered_inventory = AssetInventory()
+    # for k, v in building_inventory.inventory.items():
+    #    if k in lean_building_gdf.index:
+    #        filtered_inventory.add_asset(k, v)
+
     importer = Importer()
     census_scraper = importer.get_class('CensusScraper')()
     census_tract_dict = census_scraper.get_census_tracts(filtered_inventory)
-    census_tracts = list(census_tract_dict.keys())
 
-    # Get county list and state name
+    if not census_tract_dict:
+        raise ValueError(
+            'No census tracts were found for the filtered inventory; '
+            'households cannot be assigned without census tract information.'
+        )
+
+    census_tracts = list(census_tract_dict.keys())
     counties, state_name = get_county_and_state_names(census_tracts)
 
-    # Step 2: Run Household Assignment
-    # Set up community info
     if vintage not in ['2010', '2020']:
         raise ValueError(f'The provided {vintage} vintage is not valid')
 
-    community_info = {
-        'BRAILS Community': {
-            'community_name': 'BRAILS Community',
-            'focalplace_name': 'BRAILS Community Focal Place',
-            'STATE': state_name.upper(),
-            'years': [vintage],
-            'counties': counties['counties'],
-            'building_inventory': {
-                'filename': temp_geojson_path,
-                'note': 'Community for BRAILS Building Inventory',
-                'archetype_var': 'occtype',
-                'bldg_uniqueid': 'building_id',
-                'building_area_var': 'gross_area_in_sqft',
-                'building_area_cutoff': 300,
-                'use_incore': False,
-                'id': 'filtered NSI',
-                'residential_archetypes': bldg_arch.HAZUS_residential_archetypes,
-            },
+    try:
+        community_info = {
+            'BRAILS Community': {
+                'community_name': 'BRAILS Community',
+                'focalplace_name': 'BRAILS Community Focal Place',
+                'STATE': state_name.upper(),
+                'years': [vintage],
+                'counties': counties['counties'],
+                'building_inventory': {
+                    'filename': temp_geojson_path,
+                    'note': 'Community for BRAILS Building Inventory',
+                    'archetype_var': 'occtype',
+                    'bldg_uniqueid': 'building_id',
+                    'building_area_var': 'gross_area_in_sqft',
+                    'building_area_cutoff': 300,
+                    'use_incore': False,
+                    'id': 'filtered NSI',
+                    'residential_archetypes': bldg_arch.HAZUS_residential_archetypes,
+                },
+            }
         }
-    }
 
-    # Create the workflow
-    workflow = process_community_workflow(
-        community_info,
-        seed=9877,
-        version='2.1.0',
-        version_text='v2-1-0',
-        basevintage=vintage,
-        outputfolder=output_folder,
-        census_tracts=census_tracts,
-        # import_hui_path='housing_unit_inventory_filtered.csv',
-        export_hui_path=str(output_dir / 'housing_unit_inventory_filtered.csv'),
-        force_hua_rerun=True,
-    )
+        workflow = process_community_workflow(
+            community_info,
+            seed=9877,
+            version='2.1.0',
+            version_text='v2-1-0',
+            basevintage=vintage,
+            outputfolder=output_folder,
+            census_tracts=census_tracts,
+            # import_hui_path='housing_unit_inventory_filtered.csv',
+            export_hui_path=str(output_dir / 'housing_unit_inventory_filtered.csv'),
+            force_hua_rerun=True,
+        )
 
-    # Process communities and return results
-    assigned_households = workflow.process_communities()
+        assigned_households = workflow.process_communities()
+
+    except (OSError, ValueError, TypeError, KeyError, FileNotFoundError) as e:
+        print(f'An error occurred while running pyncoda: {e}')
+        return
+
+    # 5) Validate pyncoda output columns
+    _validate_pyncoda_output(assigned_households)
 
     # remove unassigned households and convert data types
     assigned_households = assigned_households.loc[
         assigned_households['building_id'] != 'missing building id'
     ].copy()
+
+    # After filtering, if no rows remain, exit
+    if assigned_households.empty:
+        print(
+            'No households were assigned to buildings. Exiting assignment workflow.'
+        )
+        return
+
     assigned_households['building_id'] = (
         assigned_households['building_id'].astype(float).astype(int)
     )

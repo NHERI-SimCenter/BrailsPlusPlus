@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import geopandas as gpd
 import pytest
 from requests import Response, exceptions
 from shapely.geometry import Polygon, mapping
@@ -68,7 +69,7 @@ def test_fetch_success_contract(
 
     mock_get = mocker.patch('requests.get', return_value=mock_response)
 
-    feature = scraper._fetch_tract_geometry(  # noqa: SLF001
+    feature = scraper._fetch_tract_geometry(
         lon=-122.2585, lat=37.8719, retries=3, timeout=5, delay=0
     )
 
@@ -115,12 +116,12 @@ def test_fetch_retries_on_transient_errors(
         'brails.scrapers.census_scraper.census_scraper.time.sleep', return_value=None
     )
 
-    feature = scraper._fetch_tract_geometry(  # noqa: SLF001
+    feature = scraper._fetch_tract_geometry(
         lon=-120.0, lat=35.0, retries=3, timeout=5, delay=0
     )
 
     assert isinstance(feature, dict)
-    assert mock_get.call_count == 2  # noqa: PLR2004
+    assert mock_get.call_count == 2
 
 
 @pytest.mark.parametrize(
@@ -163,7 +164,7 @@ def test_fetch_fails_fast_on_permanent_errors(
     )
 
     with pytest.raises(expected_exception):
-        scraper._fetch_tract_geometry(  # noqa: SLF001
+        scraper._fetch_tract_geometry(
             lon=-77.0, lat=38.9, retries=3, timeout=5, delay=0
         )
 
@@ -188,11 +189,11 @@ def test_fetch_exhausts_retries(mocker: MockerFixture) -> None:
     )
 
     with pytest.raises(exceptions.ConnectionError):
-        scraper._fetch_tract_geometry(  # noqa: SLF001
+        scraper._fetch_tract_geometry(
             lon=-100.0, lat=40.0, retries=3, timeout=5, delay=0
         )
 
-    assert mock_get.call_count == 3  # noqa: PLR2004
+    assert mock_get.call_count == 3
 
 
 # ---------------------
@@ -309,7 +310,7 @@ def test_get_tracts_happy_path(
     downloaded = scraper.get_census_tracts(inv)
 
     # 1. Called once per unique tract
-    assert mock_fetch.call_count == 2  # noqa: PLR2004
+    assert mock_fetch.call_count == 2
 
     # 2. Inventory updated with expected GEOIDs
     expected = {
@@ -442,3 +443,114 @@ def test_get_tracts_live_api_call() -> None:
     assert isinstance(geoid, str)
     assert len(geoid) == geoid_length
     assert geoid.isdigit()
+
+
+# -------------------------------------------------
+# Additional fixtures and tests: geometry handling for get_census_tracts
+# -------------------------------------------------
+
+
+@pytest.fixture
+def point_only_inventory() -> AssetInventory:
+    """AssetInventory containing only Point geometries.
+
+    Two nearby points around (-120, 35) to ensure they fall in the same tract
+    for a sufficiently large mock polygon.
+    """
+    inv = AssetInventory()
+    inv.add_asset_coordinates('p1', [[-120.000, 35.000]])
+    inv.add_asset_coordinates('p2', [[-120.002, 35.001]])
+    return inv
+
+
+@pytest.fixture
+def polygon_only_inventory() -> AssetInventory:
+    """AssetInventory containing only Polygon geometries.
+
+    Create two small square polygons near (-120, 35). Coordinates are provided
+    as closed linear rings as required by AssetInventory polygon handling.
+    """
+    inv = AssetInventory()
+    poly1 = _square_polygon(-120.005, 35.002, half_size=0.01)
+    poly2 = _square_polygon(-119.995, 34.998, half_size=0.01)
+
+    coords1 = list(mapping(poly1)['coordinates'][0])
+    coords2 = list(mapping(poly2)['coordinates'][0])
+
+    inv.add_asset(
+        'g1', Asset('g1', coordinates=[list(pt) for pt in coords1], features={})
+    )
+    inv.add_asset(
+        'g2', Asset('g2', coordinates=[list(pt) for pt in coords2], features={})
+    )
+    return inv
+
+
+@pytest.fixture
+def mixed_geometry_inventory(
+    polygon_only_inventory: AssetInventory,
+) -> AssetInventory:
+    """AssetInventory containing a mix of Point and Polygon geometries."""
+    inv = AssetInventory()
+
+    # Add one point
+    inv.add_asset_coordinates('m_p', [[-120.001, 35.0005]])
+
+    # Add one polygon by reusing coordinates from polygon_only_inventory's 'g1'
+    poly_geojson = polygon_only_inventory.get_geojson()
+    poly_feats = [
+        f for f in poly_geojson['features'] if f['properties'].get('id') == 'g1'
+    ]
+    if poly_feats:
+        coords = poly_feats[0]['geometry']['coordinates'][0]
+        inv.add_asset(
+            'm_g', Asset('m_g', coordinates=[list(pt) for pt in coords], features={})
+        )
+
+    return inv
+
+
+@pytest.mark.parametrize(
+    'inventory_fixture_name',
+    [
+        'point_only_inventory',
+        'polygon_only_inventory',
+        'mixed_geometry_inventory',
+    ],
+)
+def test_get_census_tracts_handles_various_geometries(
+    request: Any, mocker: MockerFixture, inventory_fixture_name: str
+) -> None:
+    """Ensure TRACT_GEOID is assigned correctly for Point, Polygon, and mixed inventories.
+
+    Mock _fetch_tract_geometry to return a tract polygon that covers the centroids
+    of all assets so that a single GEOID is assigned to all assets regardless of
+    original geometry type.
+    """
+    inv: AssetInventory = request.getfixturevalue(inventory_fixture_name)
+
+    # Build a covering polygon based on centroids of current inventory
+    gdf = gpd.GeoDataFrame.from_features(
+        inv.get_geojson()['features'], crs='EPSG:4326'
+    )
+    if not gdf.empty:
+        gdf['geometry'] = gdf['geometry'].centroid
+        center_lon = float(gdf.geometry.x.mean())
+        center_lat = float(gdf.geometry.y.mean())
+    else:
+        center_lon, center_lat = -120.0, 35.0
+
+    covering_poly = _square_polygon(center_lon, center_lat, half_size=0.1)
+    geoid = '12345678901'  # Dummy 11-digit GEOID
+    feature = _feature_for_polygon(geoid, covering_poly)
+
+    mocker.patch.object(CensusScraper, '_fetch_tract_geometry', return_value=feature)
+
+    scraper = CensusScraper()
+    _ = scraper.get_census_tracts(inv)
+
+    # Assert every asset received the mocked GEOID
+    for asset_id in inv.get_asset_ids():
+        found, features = inv.get_asset_features(asset_id)
+        assert found is True
+        assert features.get('TRACT_GEOID') == geoid

@@ -206,6 +206,7 @@ class CensusScraper:
 
         # Create a copy that will serve as our "to-do list." We will shrink this list.
         asset_gdf_to_do = asset_gdf.copy()
+        asset_gdf_to_do['geometry'] = asset_gdf_to_do['geometry'].centroid
 
         # Create an empty gdf that will store the results
         asset_gdf_with_census_tracts = gpd.GeoDataFrame(columns=asset_gdf.columns)

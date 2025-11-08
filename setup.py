@@ -66,6 +66,7 @@ setup(
             'pylint',
             'black',
             'ruff==0.12.10',
+            'codespell',
             'pytest',
             'pytest-cov',
             'pytest-mock',
