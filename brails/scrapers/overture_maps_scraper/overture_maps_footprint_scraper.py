@@ -134,7 +134,7 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper):
         Retrieve Overture building assets within a specified region.
 
         This method loads Overture dataset for assets of 'building' and
-        'building_part' types that are withing the boundary of the given
+        'building_part' types that are within the boundary of the given
         region. Resulting assets are save as an
         :class:`~brails.types.asset_inventory.AssetInventory`.
 

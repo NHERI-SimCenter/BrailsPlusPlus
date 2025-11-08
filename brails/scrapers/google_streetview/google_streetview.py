@@ -426,7 +426,7 @@ class GoogleStreetview(ImageScraper):
             )
             return None
 
-        # Get the metdata for the pano:
+        # Get the metadata for the pano:
         pano = self._get_pano_meta(pano, dmap_outname=pano_dmap_name)
 
         # Download the panorama image:

@@ -38,7 +38,7 @@
 # 08-28-2025
 
 """
-Class for scraping FEMA FIRM infomation for inidividual assets in an inventory.
+Class for scraping FEMA FIRM information for individual assets in an inventory.
 
 .. autosummary::
 
@@ -260,7 +260,7 @@ class FEMAFIRMScraper(AssetDataAugmenter):
         region_boundary_class = importer.get_class("RegionBoundary")
         region = region_boundary_class(region_data)
 
-        # Download FIRM data for the extracted bouding box:
+        # Download FIRM data for the extracted bounding box:
         api_tools = ArcgisAPIServiceHelper(API_ENDPOINT)
         results, _ = api_tools.download_all_attr_for_region(
             region,

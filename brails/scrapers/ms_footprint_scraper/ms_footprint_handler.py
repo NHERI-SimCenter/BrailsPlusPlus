@@ -377,7 +377,7 @@ class MS_FootprintScraper(FootprintScraper):
             # Unpack latitude and longitude:
             (lat, lon) = (vert[1], vert[0])
 
-            # Convert upacked coordinates to tile coordinates at the desired
+            # Convert unpacked coordinates to tile coordinates at the desired
             # zoom level:
             x, y = self._deg2num(lat, lon, ZOOM_LEVEL)
             xlist.append(x)
