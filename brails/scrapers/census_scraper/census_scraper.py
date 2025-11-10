@@ -53,7 +53,7 @@ import requests
 from requests import exceptions
 from shapely.geometry import shape
 
-from brails.types.asset_inventory import AssetInventory  # noqa: TC001
+from brails.types.asset_inventory import AssetInventory
 
 CENSUS_TRACT_QUERY_URL = 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/6/query'
 
@@ -175,7 +175,7 @@ class CensusScraper:
         )
         raise exceptions.ConnectionError(msg)
 
-    def get_census_tracts(self, asset_inventory: AssetInventory) -> AssetInventory:
+    def get_census_tracts(self, asset_inventory: AssetInventory) -> Dict[str, Any]:
         """
         Identify the census tract corresponding to each asset.
 
@@ -188,6 +188,15 @@ class CensusScraper:
                 The downloaded census tract labels and geometries.
 
         """
+        # Validate input type early
+        if not isinstance(asset_inventory, AssetInventory):
+            raise TypeError('asset_inventory must be an instance of AssetInventory')
+
+        # Guard: empty inventory -> nothing to process
+        if len(asset_inventory.get_asset_ids()) == 0:
+            print('Input asset inventory is empty, skipping census tract lookup.')
+            return {}
+
         # Prepare a GeoDataFrame that is easier to work with
         geojson_data = asset_inventory.get_geojson()
         asset_gdf = gpd.GeoDataFrame.from_features(
@@ -197,6 +206,7 @@ class CensusScraper:
 
         # Create a copy that will serve as our "to-do list." We will shrink this list.
         asset_gdf_to_do = asset_gdf.copy()
+        asset_gdf_to_do['geometry'] = asset_gdf_to_do['geometry'].centroid
 
         # Create an empty gdf that will store the results
         asset_gdf_with_census_tracts = gpd.GeoDataFrame(columns=asset_gdf.columns)
@@ -205,6 +215,10 @@ class CensusScraper:
         downloaded_tracts_cache = {}
 
         print(f'Starting job. Total points to process: {len(asset_gdf_to_do)}')
+
+        # Initialize error state
+        error_occurred = False
+        error_details: Optional[BaseException] = None
 
         try:
             while not asset_gdf_to_do.empty:
@@ -224,50 +238,31 @@ class CensusScraper:
                 # If the code continues, 'feature' is guaranteed to be valid.
                 tract_geoid = feature['properties']['GEOID']
 
-                # Check if we already have this polygon. If not, add it.
-                if tract_geoid not in downloaded_tracts_cache:
-                    print(f'  API Call success. Caching new GEOID: {tract_geoid}')
-                    tract_polygon = shape(feature['geometry'])
-                    downloaded_tracts_cache[tract_geoid] = tract_polygon
-                else:
-                    print(
-                        f'  This point is in a known tract: {tract_geoid}. '
-                        f'Using cache.'
-                    )
-                    tract_polygon = downloaded_tracts_cache[tract_geoid]
+                # Cache the polygon geometry for this tract GEOID
+                print(f'  API Call success. Caching new GEOID: {tract_geoid}')
+                tract_polygon = shape(feature['geometry'])
+                downloaded_tracts_cache[tract_geoid] = tract_polygon
 
                 # Find all points within this polygon
                 points_within_this_tract = asset_gdf_to_do[
                     asset_gdf_to_do.intersects(tract_polygon)
                 ]
 
-                if not points_within_this_tract.empty:
-                    print(
-                        f'  Local search found {len(points_within_this_tract)} '
-                        f'points inside this tract.'
-                    )
+                print(
+                    f'  Local search found {len(points_within_this_tract)} '
+                    f'points inside this tract.'
+                )
 
-                    points_within_this_tract = points_within_this_tract.assign(
-                        TRACT_GEOID=tract_geoid
-                    )
-                    asset_gdf_with_census_tracts = gpd.pd.concat(
-                        [asset_gdf_with_census_tracts, points_within_this_tract]
-                    )
+                points_within_this_tract = points_within_this_tract.assign(
+                    TRACT_GEOID=tract_geoid
+                )
+                asset_gdf_with_census_tracts = gpd.pd.concat(
+                    [asset_gdf_with_census_tracts, points_within_this_tract]
+                )
 
-                    asset_gdf_to_do = asset_gdf_to_do.drop(
-                        points_within_this_tract.index
-                    )
-                else:
-                    # This should not happen if the first_point is valid
-                    msg = (
-                        f'Fatal Logic Error: The query point ('
-                        f'{first_point.geometry.y}, {first_point.geometry.x}) '
-                        f'did not intersect the polygon (Tract GEOID: '
-                        f'{tract_geoid}) that the API returned for it. '
-                        f'This should never happen. Halting script to prevent '
-                        f'data corruption.'
-                    )
-                    raise RuntimeError(msg)
+                asset_gdf_to_do = asset_gdf_to_do.drop(
+                    points_within_this_tract.index
+                )
 
         except (
             ValueError,
@@ -275,29 +270,44 @@ class CensusScraper:
             exceptions.ConnectionError,
             KeyError,
         ) as e:
-            print('\n--- CRITICAL ERROR ---')
-            print('The script has halted due to a permanent or unrecoverable error.')
-            print(f'Error Type: {type(e).__name__}')
-            print(f'Details: {e}')
-            print('No further processing will be done.')
+            # Mark error state and capture details; do not print here
+            error_occurred = True
+            error_details = e
 
-        finally:
-            print('\n--- Job Finished (or Halted) ---')
+        # Post-processing based on success/failure
+        if not error_occurred:
+            # Success path: update original inventory only for processed assets
+            for asset_id in asset_gdf_with_census_tracts.index:
+                asset_inventory.add_asset_features(
+                    asset_id,
+                    {
+                        'TRACT_GEOID': asset_gdf_with_census_tracts.loc[
+                            asset_id, 'TRACT_GEOID'
+                        ]
+                    },
+                )
+
+            # Success summary
+            print('\n--- Job Finished ---')
             print(
                 f'Total points successfully processed: {len(asset_gdf_with_census_tracts)}'
             )
             print(f'Total points remaining (unprocessed): {len(asset_gdf_to_do)}')
             print(f'Total unique API calls made: {len(downloaded_tracts_cache)}')
-
-        # Add the TRACT_GEOID feature to the original inventory
-        for asset_id in asset_inventory.get_asset_ids():
-            asset_inventory.add_asset_features(
-                asset_id,
-                {
-                    'TRACT_GEOID': asset_gdf_with_census_tracts.loc[
-                        asset_id, 'TRACT_GEOID'
-                    ]
-                },
+        else:
+            # Failure summary and critical error report
+            print('\n--- CRITICAL ERROR ---')
+            print('The script has halted due to a permanent or unrecoverable error.')
+            print(
+                f'Error Type: {type(error_details).__name__ if error_details else "Unknown"}'
             )
+            print(f'Details: {error_details}')
+            print('No further processing will be done.')
+            print('\n--- Job Halted ---')
+            print(
+                f'Total points successfully processed: {len(asset_gdf_with_census_tracts)}'
+            )
+            print(f'Total points remaining (unprocessed): {len(asset_gdf_to_do)}')
+            print(f'Total unique API calls made: {len(downloaded_tracts_cache)}')
 
         return downloaded_tracts_cache

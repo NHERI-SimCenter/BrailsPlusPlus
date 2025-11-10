@@ -868,7 +868,7 @@ class UserFootprint:
                         elif len(temp_fp[0][0]) > 1:
                             fp = temp_fp[0][0][:]
 
-                        # If mutliple polygons are detected for a location,
+                        # If multiple polygons are detected for a location,
                         # take the outermost polygon:
                         if len(fp) == 2:
                             list_len = [len(i) for i in fp]

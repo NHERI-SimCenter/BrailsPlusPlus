@@ -86,7 +86,7 @@ class OSM_PowerNetworkScraper:
 
     def get_elements(self, region: RegionBoundary) -> AssetInventory:
         """
-        Get the OSM geometries and atrributes for the power network in an area.
+        Get the OSM geometries and attributes for the power network in an area.
 
         Args:
             region (RegionBoundary):
@@ -184,7 +184,7 @@ class OSM_PowerNetworkScraper:
                 A dictionary organized by asset type, containing asset
                 geometries and attributes.
         """
-        # Create dictinary of node coordinates for assembling way geometries
+        # Create dictionary of node coordinates for assembling way geometries
         # and create a dictionary of assets organized by asset type:
         nodedict = {}
         assets_data = {}

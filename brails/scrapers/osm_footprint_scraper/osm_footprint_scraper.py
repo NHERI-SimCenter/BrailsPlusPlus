@@ -87,7 +87,7 @@ class OSM_FootprintScraper(FootprintScraper):
 
     def get_footprints(self, region: RegionBoundary) -> AssetInventory:
         """
-        Get the OSM footprints and atrributes for buildings in an area.
+        Get the OSM footprints and attributes for buildings in an area.
 
         Args:
             region (RegionBoundary):
