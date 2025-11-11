@@ -22,7 +22,7 @@ import pytest
 from pandas.testing import assert_frame_equal as pdt_assert_frame_equal
 from shapely.geometry import Point
 
-from brails.merge.households.pyncoda import assign_households as ah
+from brails.aggregators.households.pyncoda import assign_households as ah
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.types.household_inventory import HouseholdInventory
 
@@ -666,7 +666,7 @@ def _mock_happy_path_dependencies(
     # Avoid actual file IO
     mocker.patch('geopandas.GeoDataFrame.to_file', autospec=True)
     mocker.patch(
-        'brails.merge.households.pyncoda.assign_households.AssetInventory.read_from_geojson',
+        'brails.aggregators.households.pyncoda.assign_households.AssetInventory.read_from_geojson',
         autospec=True,
     )
 
@@ -738,7 +738,7 @@ def test_assign_households_census_scraper_failure(
 
     # New behavior: filtered inventory is reloaded from file; avoid actual IO
     mocker.patch(
-        'brails.merge.households.pyncoda.assign_households.AssetInventory.read_from_geojson',
+        'brails.aggregators.households.pyncoda.assign_households.AssetInventory.read_from_geojson',
         autospec=True,
     )
 
@@ -1009,7 +1009,7 @@ def test_assign_households_end_to_end_mocked(  # noqa: C901
     # Avoid actual file IO in prepare -> to_file and the filtered-inventory reload
     mocker.patch('geopandas.GeoDataFrame.to_file', autospec=True)
     mocker.patch(
-        'brails.merge.households.pyncoda.assign_households.AssetInventory.read_from_geojson',
+        'brails.aggregators.households.pyncoda.assign_households.AssetInventory.read_from_geojson',
         autospec=True,
     )
 
