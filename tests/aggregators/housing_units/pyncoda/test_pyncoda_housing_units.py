@@ -1,5 +1,5 @@
 """
-Test suite for the assign_households module.
+Test suite for the pyncoda_housing_units module.
 
 This suite includes:
 - Unit tests for individual helper functions.
@@ -22,9 +22,9 @@ import pytest
 from pandas.testing import assert_frame_equal as pdt_assert_frame_equal
 from shapely.geometry import Point
 
-from brails.aggregators.households.pyncoda import assign_households as ah
+from brails.aggregators.housing_units.pyncoda import pyncoda_housing_units as ah
 from brails.types.asset_inventory import Asset, AssetInventory
-from brails.types.household_inventory import HouseholdInventory
+from brails.types.housing_unit_inventory import HousingUnitInventory
 
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -439,7 +439,7 @@ def test_prepare_building_inventory_integration_validator_error(
 
 
 # -----------------------------
-# Tests: _validate_pyncoda_output and create_household_inventory
+# Tests: _validate_pyncoda_output and create_housing_unit_inventory
 # -----------------------------
 
 
@@ -522,7 +522,7 @@ def test_validate_pyncoda_output_raises_for_missing_columns(
         ah._validate_pyncoda_output(df_missing_columns)
 
 
-# --- Tests: create_household_inventory ---
+# --- Tests: create_housing_unit_inventory ---
 
 
 @pytest.mark.parametrize(
@@ -531,33 +531,33 @@ def test_validate_pyncoda_output_raises_for_missing_columns(
         pytest.param(None, TypeError, id='invalid_type'),
     ],
 )
-def test_create_household_inventory_input_validation_invalid_type(
+def test_create_housing_unit_inventory_input_validation_invalid_type(
     bad_input: Any, expected_exception: type[Exception]
 ) -> None:
     """It should raise a TypeError for invalid input types (per spec)."""
     with pytest.raises(expected_exception, match='must be provided as a DataFrame'):
-        ah.create_household_inventory(bad_input)  # type: ignore[arg-type]
+        ah.create_housing_unit_inventory(bad_input)  # type: ignore[arg-type]
 
 
-def test_create_household_inventory_missing_columns_raises(
+def test_create_housing_unit_inventory_missing_columns_raises(
     df_missing_columns: pd.DataFrame,
 ) -> None:
     """It should raise ValueError when input DataFrame lacks required columns."""
     with pytest.raises(ValueError, match='missing required columns'):
-        ah.create_household_inventory(df_missing_columns)
+        ah.create_housing_unit_inventory(df_missing_columns)
 
 
-def test_create_household_inventory_empty_df_returns_empty_inventory(
+def test_create_housing_unit_inventory_empty_df_returns_empty_inventory(
     df_empty_with_required_columns: pd.DataFrame,
 ) -> None:
-    """It should return an empty HouseholdInventory for an empty DataFrame."""
-    inv = ah.create_household_inventory(df_empty_with_required_columns)
+    """It should return an empty HousingUnitInventory for an empty DataFrame."""
+    inv = ah.create_housing_unit_inventory(df_empty_with_required_columns)
 
-    assert isinstance(inv, HouseholdInventory)
+    assert isinstance(inv, HousingUnitInventory)
     assert inv.inventory == {}
 
 
-def test_create_household_inventory_success_path_and_mappings(
+def test_create_housing_unit_inventory_success_path_and_mappings(
     df_valid_pyncoda_small: pd.DataFrame,
 ) -> None:
     """Success path: verify renaming, mappings, and that building_id is dropped."""
@@ -565,11 +565,11 @@ def test_create_household_inventory_success_path_and_mappings(
     original = df_valid_pyncoda_small.copy(deep=True)
 
     # Act
-    inv = ah.create_household_inventory(df_valid_pyncoda_small)
+    inv = ah.create_housing_unit_inventory(df_valid_pyncoda_small)
 
     # Assert: type and count
-    assert isinstance(inv, HouseholdInventory)
-    ids = inv.get_household_ids()
+    assert isinstance(inv, HousingUnitInventory)
+    ids = inv.get_housing_unit_ids()
     assert len(ids) == 2
 
     # Row 0 expectations
@@ -666,7 +666,7 @@ def _mock_happy_path_dependencies(
     # Avoid actual file IO
     mocker.patch('geopandas.GeoDataFrame.to_file', autospec=True)
     mocker.patch(
-        'brails.aggregators.households.pyncoda.assign_households.AssetInventory.read_from_geojson',
+        'brails.aggregators.housing_units.pyncoda.pyncoda_housing_units.AssetInventory.read_from_geojson',
         autospec=True,
     )
 
@@ -692,7 +692,7 @@ def _mock_happy_path_dependencies(
     )
 
 
-def test_assign_households_invalid_vintage(
+def test_assign_housing_units_invalid_vintage(
     simple_inventory: AssetInventory,
     valid_key_features: Dict[str, str],
     lean_buildings_gdf_one: gpd.GeoDataFrame,
@@ -706,7 +706,7 @@ def test_assign_households_invalid_vintage(
     output_dir.mkdir()
 
     with pytest.raises(ValueError, match='vintage is not valid') as exc:
-        ah.assign_households_to_buildings(
+        ah.assign_housing_units_to_buildings(
             building_inventory=simple_inventory,
             key_features=valid_key_features,
             vintage='2015',  # invalid per spec
@@ -715,7 +715,7 @@ def test_assign_households_invalid_vintage(
     assert 'vintage is not valid' in str(exc.value)
 
 
-def test_assign_households_census_scraper_failure(
+def test_assign_housing_units_census_scraper_failure(
     simple_inventory: AssetInventory,
     valid_key_features: Dict[str, str],
     lean_buildings_gdf_one: gpd.GeoDataFrame,
@@ -738,7 +738,7 @@ def test_assign_households_census_scraper_failure(
 
     # New behavior: filtered inventory is reloaded from file; avoid actual IO
     mocker.patch(
-        'brails.aggregators.households.pyncoda.assign_households.AssetInventory.read_from_geojson',
+        'brails.aggregators.housing_units.pyncoda.pyncoda_housing_units.AssetInventory.read_from_geojson',
         autospec=True,
     )
 
@@ -746,7 +746,7 @@ def test_assign_households_census_scraper_failure(
     output_dir.mkdir()
 
     with pytest.raises(ValueError, match='No census tracts were found'):
-        ah.assign_households_to_buildings(
+        ah.assign_housing_units_to_buildings(
             building_inventory=simple_inventory,
             key_features=valid_key_features,
             vintage='2020',
@@ -754,7 +754,7 @@ def test_assign_households_census_scraper_failure(
         )
 
 
-def test_assign_households_pyncoda_process_failure(
+def test_assign_housing_units_pyncoda_process_failure(
     simple_inventory: AssetInventory,
     valid_key_features: Dict[str, str],
     lean_buildings_gdf_one: gpd.GeoDataFrame,
@@ -772,7 +772,7 @@ def test_assign_households_pyncoda_process_failure(
     output_dir = tmp_path / 'test_output'
     output_dir.mkdir()
 
-    result = ah.assign_households_to_buildings(
+    result = ah.assign_housing_units_to_buildings(
         building_inventory=simple_inventory,
         key_features=valid_key_features,
         vintage='2020',
@@ -781,7 +781,7 @@ def test_assign_households_pyncoda_process_failure(
     assert result is None
 
 
-def test_assign_households_pyncoda_empty_result(
+def test_assign_housing_units_pyncoda_empty_result(
     simple_inventory: AssetInventory,
     valid_key_features: Dict[str, str],
     lean_buildings_gdf_one: gpd.GeoDataFrame,
@@ -789,7 +789,7 @@ def test_assign_households_pyncoda_empty_result(
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
-    """It should print a message and return None when no households are assigned."""
+    """It should print a message and return None when no housing units are assigned."""
     _mock_happy_path_dependencies(mocker, lean_buildings_gdf_one)
 
     # Mock a workflow object with process_communities returning a DF that becomes empty after filtering
@@ -832,7 +832,7 @@ def test_assign_households_pyncoda_empty_result(
     output_dir = tmp_path / 'test_output'
     output_dir.mkdir()
 
-    result = ah.assign_households_to_buildings(
+    result = ah.assign_housing_units_to_buildings(
         building_inventory=simple_inventory,
         key_features=valid_key_features,
         vintage='2020',
@@ -840,7 +840,7 @@ def test_assign_households_pyncoda_empty_result(
     )
 
     captured = capsys.readouterr()
-    assert 'No households were assigned to buildings' in captured.out
+    assert 'No housing units were assigned to buildings' in captured.out
     assert result is None
 
 
@@ -909,7 +909,7 @@ def mixed_geometry_inventory() -> AssetInventory:
         'mixed_geometry_inventory',
     ],
 )
-def test_assign_households_handles_various_geometries(
+def test_assign_housing_units_handles_various_geometries(
     request: Any,
     inventory_fixture_name: str,
     valid_key_features: Dict[str, str],
@@ -917,11 +917,11 @@ def test_assign_households_handles_various_geometries(
     mocker: MockerFixture,
     tmp_path: Path,
 ) -> None:
-    """Workflow should complete and link a HouseholdInventory for any geometry mix.
+    """Workflow should complete and link a HousingUnitInventory for any geometry mix.
 
-    The pyncoda process is mocked to return a valid, canned assigned-households
-    DataFrame loaded from tests/fixtures/pyncoda_output/loving_county_assigned_households.csv.
-    We assert that the workflow links a HouseholdInventory to the provided
+    The pyncoda process is mocked to return a valid, canned assigned-housing-units
+    DataFrame loaded from tests/fixtures/pyncoda_output/loving_county_assigned_housing_units.csv.
+    We assert that the workflow links a HousingUnitInventory to the provided
     building inventory regardless of original geometry types.
     """
     # Arrange: get the parameterized input inventory
@@ -937,7 +937,7 @@ def test_assign_households_handles_various_geometries(
         Path(__file__).parents[3]
         / 'fixtures'
         / 'pyncoda_output'
-        / 'loving_county_assigned_households.csv'
+        / 'loving_county_assigned_housing_units.csv'
     )
     df_ok = pd.read_csv(fixture_csv, dtype={'blockid': str})
 
@@ -946,20 +946,22 @@ def test_assign_households_handles_various_geometries(
     mocker.patch.object(ah, 'process_community_workflow', return_value=fake_workflow)
 
     # Act: run the workflow
-    result = ah.assign_households_to_buildings(
+    result = ah.assign_housing_units_to_buildings(
         building_inventory=building_inventory,
         key_features=valid_key_features,
         vintage='2020',
         output_folder=str(tmp_path),
     )
 
-    # Assert: function returns None and links a HouseholdInventory
+    # Assert: function returns None and links a HousingUnitInventory
     assert result is None
 
-    assert hasattr(building_inventory, 'household_inventory')
-    assert isinstance(building_inventory.household_inventory, HouseholdInventory)
-    # Should have at least one household created by the mocked DataFrame
-    assert len(building_inventory.household_inventory.get_household_ids()) > 0
+    assert hasattr(building_inventory, 'housing_unit_inventory')
+    assert isinstance(
+        building_inventory.housing_unit_inventory, HousingUnitInventory
+    )
+    # Should have at least one housing unit created by the mocked DataFrame
+    assert len(building_inventory.housing_unit_inventory.get_housing_unit_ids()) > 0
 
 
 # -----------------------------
@@ -967,26 +969,26 @@ def test_assign_households_handles_various_geometries(
 # -----------------------------
 
 
-def test_assign_households_end_to_end_mocked(  # noqa: C901
+def test_assign_housing_units_end_to_end_mocked(  # noqa: C901
     mocker: MockerFixture,
     tmp_path: Path,
 ) -> None:
     """End-to-end workflow using canned pyncoda output (mocked process).
 
     This test exercises the full pipeline from a valid AssetInventory to a
-    linked HouseholdInventory, while mocking only the external pyncoda
+    linked HousingUnitInventory, while mocking only the external pyncoda
     processing step to return a canned DataFrame loaded from the fixture file
-    at tests/fixtures/pyncoda_output/loving_county_assigned_households.csv.
+    at tests/fixtures/pyncoda_output/loving_county_assigned_housing_units.csv.
 
     IMPORTANT: Use the Loving County input inventory so building_ids match the
     canned pyncoda output fixture.
 
     Assertions follow Part 2 of the test plan:
     1) Process Completion
-    2) State Change (HouseholdInventory linked)
-    3) Household Linking (0 < linked <= residential assets)
-    4) Household Count sanity bounds
-    5) Data Transformation Spot Check on one non-vacant, non-GQ household
+    2) State Change (HousingUnitInventory linked)
+    3) Housing Unit Linking (0 < linked <= residential assets)
+    4) Housing Unit Count sanity bounds
+    5) Data Transformation Spot Check on one non-vacant, non-GQ housing unit
     """
     # Arrange: load AssetInventory from the Loving County fixture
     fixture_geojson = (
@@ -1009,7 +1011,7 @@ def test_assign_households_end_to_end_mocked(  # noqa: C901
     # Avoid actual file IO in prepare -> to_file and the filtered-inventory reload
     mocker.patch('geopandas.GeoDataFrame.to_file', autospec=True)
     mocker.patch(
-        'brails.aggregators.households.pyncoda.assign_households.AssetInventory.read_from_geojson',
+        'brails.aggregators.housing_units.pyncoda.pyncoda_housing_units.AssetInventory.read_from_geojson',
         autospec=True,
     )
 
@@ -1034,7 +1036,7 @@ def test_assign_households_end_to_end_mocked(  # noqa: C901
         Path(__file__).parents[3]
         / 'fixtures'
         / 'pyncoda_output'
-        / 'loving_county_assigned_households.csv'
+        / 'loving_county_assigned_housing_units.csv'
     )
     df_assigned = pd.read_csv(fixture_csv, dtype={'blockid': str})
 
@@ -1044,29 +1046,29 @@ def test_assign_households_end_to_end_mocked(  # noqa: C901
 
     # Act: run the workflow; the function returns None on success
     try:
-        result = ah.assign_households_to_buildings(
+        result = ah.assign_housing_units_to_buildings(
             building_inventory=inv,
             key_features=key_features,
             vintage='2020',
             output_folder=str(tmp_path),
         )
     except Exception as exc:  # noqa: BLE001
-        pytest.fail(f'assign_households_to_buildings raised unexpectedly: {exc}')
+        pytest.fail(f'assign_housing_units_to_buildings raised unexpectedly: {exc}')
 
     # Assert 1: Process Completion
     assert result is None
 
-    # Assert 2: State Change — HouseholdInventory linked
-    assert hasattr(inv, 'household_inventory')
-    assert isinstance(inv.household_inventory, HouseholdInventory)
+    # Assert 2: State Change — HousingUnitInventory linked
+    assert hasattr(inv, 'housing_unit_inventory')
+    assert isinstance(inv.housing_unit_inventory, HousingUnitInventory)
 
-    # Assert 3: Household Linking — count assets with Households feature
+    # Assert 3: Housing Unit Linking — count assets with HousingUnits feature
     asset_ids = inv.get_asset_ids()
     linked_assets = 0
     for aid in asset_ids:
         found, features = inv.get_asset_features(aid)
         assert found is True
-        if isinstance(features.get('Households'), list):
+        if isinstance(features.get('HousingUnits'), list):
             linked_assets += 1
     assert linked_assets > 0
 
@@ -1082,11 +1084,11 @@ def test_assign_households_end_to_end_mocked(  # noqa: C901
     else:
         assert linked_assets <= len(asset_ids)
 
-    # Assert 4: Household Count — sanity bounds (>0 and below a generous cap)
-    total_households = len(inv.household_inventory.get_household_ids())
-    assert total_households > 0
+    # Assert 4: Housing Unit Count — sanity bounds (>0 and below a generous cap)
+    total_housing_units = len(inv.housing_unit_inventory.get_housing_unit_ids())
+    assert total_housing_units > 0
     # Set a generous upper cap so the test remains robust to fixture updates
-    assert total_households <= 10000
+    assert total_housing_units <= 10000
 
     # Assert 5: Data Transformation Spot Check — human-readable mappings
     readable_ownership = {'Owner occupied', 'Renter occupied'}
@@ -1121,8 +1123,8 @@ def test_assign_households_end_to_end_mocked(  # noqa: C901
     }
 
     candidate_features = None
-    for hid in inv.household_inventory.get_household_ids():
-        feats = inv.household_inventory.inventory[hid].features
+    for hid in inv.housing_unit_inventory.get_housing_unit_ids():
+        feats = inv.housing_unit_inventory.inventory[hid].features
         if (
             feats.get('VacancyStatus') == 'Occupied'
             and feats.get('GroupQuartersType') == 'Not a group quarters building'
@@ -1130,10 +1132,13 @@ def test_assign_households_end_to_end_mocked(  # noqa: C901
             candidate_features = feats
             break
 
-    # Fallback: any household for basic presence checks
-    if candidate_features is None and inv.household_inventory.get_household_ids():
-        candidate_features = inv.household_inventory.inventory[
-            inv.household_inventory.get_household_ids()[0]
+    # Fallback: any housing unit for basic presence checks
+    if (
+        candidate_features is None
+        and inv.housing_unit_inventory.get_housing_unit_ids()
+    ):
+        candidate_features = inv.housing_unit_inventory.inventory[
+            inv.housing_unit_inventory.get_housing_unit_ids()[0]
         ].features
 
     assert candidate_features is not None
@@ -1154,13 +1159,13 @@ def test_assign_households_end_to_end_mocked(  # noqa: C901
 
 
 @pytest.mark.live
-def test_assign_households_live_pyncoda(tmp_path: Path) -> None:  # noqa: C901
+def test_assign_housing_units_live_pyncoda(tmp_path: Path) -> None:  # noqa: C901
     """Live end-to-end test running the real pyncoda workflow on Loving County data.
 
-    This test uses the provided GeoJSON fixture and runs assign_households_to_buildings
+    This test uses the provided GeoJSON fixture and runs assign_housing_units_to_buildings
     without mocking. It performs robust assertions equivalent to the mocked
-    end-to-end test: process completion, state change, household linking, total
-    household count sanity bounds, and data transformation spot check.
+    end-to-end test: process completion, state change, housing unit linking, total
+    housing unit count sanity bounds, and data transformation spot check.
     """
     # Arrange: load AssetInventory from the live fixture
     fixture_path = (
@@ -1183,29 +1188,29 @@ def test_assign_households_live_pyncoda(tmp_path: Path) -> None:  # noqa: C901
 
     # Act: run the real workflow (expect ~3 minutes)
     try:
-        result = ah.assign_households_to_buildings(
+        result = ah.assign_housing_units_to_buildings(
             building_inventory=inv,
             key_features=key_features,
             vintage='2020',
             output_folder=str(tmp_path),
         )
     except Exception as exc:  # noqa: BLE001
-        pytest.fail(f'assign_households_to_buildings raised unexpectedly: {exc}')
+        pytest.fail(f'assign_housing_units_to_buildings raised unexpectedly: {exc}')
 
     # Assert 1: Process Completion (function returns None by design)
     assert result is None
 
-    # Assert 2: State Change — a HouseholdInventory is linked
-    assert hasattr(inv, 'household_inventory')
-    assert isinstance(inv.household_inventory, HouseholdInventory)
+    # Assert 2: State Change — a HousingUnitInventory is linked
+    assert hasattr(inv, 'housing_unit_inventory')
+    assert isinstance(inv.housing_unit_inventory, HousingUnitInventory)
 
-    # Assert 3: Household Linking — count assets with Households feature
+    # Assert 3: Housing Unit Linking — count assets with HousingUnits feature
     asset_ids = inv.get_asset_ids()
     linked_assets = 0
     for aid in asset_ids:
         found, features = inv.get_asset_features(aid)
         assert found is True
-        if isinstance(features.get('Households'), list):
+        if isinstance(features.get('HousingUnits'), list):
             linked_assets += 1
     assert linked_assets > 0
 
@@ -1222,10 +1227,10 @@ def test_assign_households_live_pyncoda(tmp_path: Path) -> None:  # noqa: C901
         # If occtype not present in features, at least ensure we didn't link more than total assets
         assert linked_assets <= len(asset_ids)
 
-    # Assert 4: Household Count — sanity bounds (>0 and reasonably small for Loving County)
-    total_households = len(inv.household_inventory.get_household_ids())
-    assert total_households > 0
-    assert total_households <= 2000  # generous upper bound to remain robust
+    # Assert 4: Housing Unit Count — sanity bounds (>0 and reasonably small for Loving County)
+    total_housing_units = len(inv.housing_unit_inventory.get_housing_unit_ids())
+    assert total_housing_units > 0
+    assert total_housing_units <= 2000  # generous upper bound to remain robust
 
     # Assert 5: Data Transformation Spot Check — verify human-readable mappings
     readable_ownership = {'Owner occupied', 'Renter occupied'}
@@ -1259,10 +1264,10 @@ def test_assign_households_live_pyncoda(tmp_path: Path) -> None:  # noqa: C901
         'Other noninstitutional facilities',
     }
 
-    # Find the first household that is not Vacant and not Group Quarters
+    # Find the first housing unit that is not Vacant and not Group Quarters
     candidate_features = None
-    for hid in inv.household_inventory.get_household_ids():
-        feats = inv.household_inventory.inventory[hid].features
+    for hid in inv.housing_unit_inventory.get_housing_unit_ids():
+        feats = inv.housing_unit_inventory.inventory[hid].features
         if (
             feats.get('VacancyStatus') == 'Occupied'
             and feats.get('GroupQuartersType') == 'Not a group quarters building'
@@ -1270,10 +1275,13 @@ def test_assign_households_live_pyncoda(tmp_path: Path) -> None:  # noqa: C901
             candidate_features = feats
             break
 
-    # If none found (edge case for tiny datasets), fall back to any household for basic checks
-    if candidate_features is None and inv.household_inventory.get_household_ids():
-        candidate_features = inv.household_inventory.inventory[
-            inv.household_inventory.get_household_ids()[0]
+    # If none found (edge case for tiny datasets), fall back to any housing unit for basic checks
+    if (
+        candidate_features is None
+        and inv.housing_unit_inventory.get_housing_unit_ids()
+    ):
+        candidate_features = inv.housing_unit_inventory.inventory[
+            inv.housing_unit_inventory.get_housing_unit_ids()[0]
         ].features
 
     assert candidate_features is not None

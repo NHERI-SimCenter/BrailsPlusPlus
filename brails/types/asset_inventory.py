@@ -73,7 +73,7 @@ from shapely.geometry import LineString, Polygon, shape
 from shapely.geometry.base import BaseGeometry  # noqa: TC002
 
 from brails.utils.clean_floats import clean_floats
-from brails.types.household_inventory import HouseholdInventory
+from brails.types.housing_unit_inventory import HousingUnitInventory
 from brails.utils.geo_tools import GeoTools
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
@@ -400,9 +400,9 @@ class AssetInventory:
     def __init__(self) -> None:
         """Initialize AssetInventory with an empty inventory dictionary."""
         self.inventory: Dict = {}
-        self.household_inventory: Optional[HouseholdInventory] = None
+        self.housing_unit_inventory: Optional[HousingUnitInventory] = None
         self.n_pw = 1
-        self.vector_features: List[str] = ['Households']
+        self.vector_features: List[str] = ['HousingUnits']
 
     def add_asset(self, asset_id: Union[str, int], asset: Asset) -> bool:
         """
@@ -730,10 +730,10 @@ class AssetInventory:
           You can provide an `asset_id_map` to suggest new IDs. If a
           suggested ID (or an original ID) already exists, a new
           sequential numeric ID will be assigned.
-        - **Household Merging:** If both inventories have linked household
+        - **Housing Unit Merging:** If both inventories have linked housing unit
           data, this method validates both, then merges the incoming
-          `HouseholdInventory`, re-indexes all new household IDs to
-          prevent conflicts, and updates the `Households` feature
+          `HousingUnitInventory`, re-indexes all new housing unit IDs to
+          prevent conflicts, and updates the `HousingUnits` feature
           on all newly-added assets.
 
         Args:
@@ -754,7 +754,7 @@ class AssetInventory:
         Raises:
             ValueError, LookupError, TypeError:
                 If either `self` or `other_inventory` has an invalid
-                household state (e.g., orphan IDs, invalid data types)
+                housing unit state (e.g., orphan IDs, invalid data types)
                 before the merge.
         """
         # --- 1. Asset Merging ---
@@ -791,64 +791,64 @@ class AssetInventory:
                 final_id  # Add hash to prevent duplicates from within other_inventory
             )
 
-        # --- 2. Household Inventory Merging ---
-        hh_id_remap = {}
+        # --- 2. Housing Unit Inventory Merging ---
+        hu_id_remap = {}
 
         # Case 1: We have no inventory, but the incoming one does.
         if (
-            self.household_inventory is None
-            and other_inventory.household_inventory is not None
+            self.housing_unit_inventory is None
+            and other_inventory.housing_unit_inventory is not None
         ):
             # First, validate the incoming inventory to prevent merging bad data
-            print('Validating incoming household inventory...')
-            other_inventory.validate_household_assignments()
+            print('Validating incoming housing unit inventory...')
+            other_inventory.validate_housing_unit_assignments()
 
             # Use deepcopy to avoid two AssetInventory objects pointing to
-            # the same mutable HouseholdInventory object.
-            self.household_inventory = deepcopy(other_inventory.household_inventory)
+            # the same mutable HousingUnitInventory object.
+            self.housing_unit_inventory = deepcopy(other_inventory.housing_unit_inventory)
             # No ID remapping is needed; the new assets' links are already correct.
 
-        # Case 2: Both inventories have household data.
+        # Case 2: Both inventories have housing unit data.
         elif (
-            self.household_inventory is not None
-            and other_inventory.household_inventory is not None
+                self.housing_unit_inventory is not None
+                and other_inventory.housing_unit_inventory is not None
         ):
             # Validate both inventories before attempting to merge.
-            print('Validating current household inventory...')
-            self.validate_household_assignments()
-            print('Validating incoming household inventory...')
-            other_inventory.validate_household_assignments()
+            print('Validating current housing unit inventory...')
+            self.validate_housing_unit_assignments()
+            print('Validating incoming housing unit inventory...')
+            other_inventory.validate_housing_unit_assignments()
 
             # Merge the incoming inventory into our own. This returns a
-            # map of {old_hh_id: new_hh_id} for all merged households.
-            print('Merging household inventories... Re-indexing incoming data.')
-            hh_id_remap = self.household_inventory.merge_inventory(
-                other_inventory.household_inventory
+            # map of {old_hu_id: new_hu_id} for all merged housing units.
+            print('Merging housing unit inventories... Re-indexing incoming data.')
+            hu_id_remap = self.housing_unit_inventory.merge_inventory(
+                other_inventory.housing_unit_inventory
             )
 
         # Case 3 (both are None) -> do nothing.
         # Case 4 (self has one, other is None) -> do nothing.
 
-        # --- 3. Asset Household-Link Fixing ---
+        # --- 3. Asset Housing-Unit Link Fixing ---
 
-        # If we remapped household IDs (Case 2), we must update the
-        # 'Households' feature on all newly-added assets.
-        if hh_id_remap:
-            print('Updating household links for merged assets...')
+        # If we remapped housing unit IDs (Case 2), we must update the
+        # 'HousingUnits' feature on all newly-added assets.
+        if hu_id_remap:
+            print('Updating housing unit links for merged assets...')
 
             # We only need to check the assets we *just added*.
             for final_id in final_id_map.values():
                 asset = self.inventory[final_id]
-                old_hh_id_list = asset.features.get('Households')
+                old_hu_id_list = asset.features.get('HousingUnits')
 
-                if old_hh_id_list:
+                if old_hu_id_list:
                     # Rebuild the list using the re-map.
-                    remapped_hh_id_list = [
-                        hh_id_remap[old_hh_id] for old_hh_id in old_hh_id_list
+                    remapped_hu_id_list = [
+                        hu_id_remap[old_hu_id] for old_hu_id in old_hu_id_list
                     ]
 
                     self.add_asset_features(
-                        final_id, {'Households': remapped_hh_id_list}, overwrite=True
+                        final_id, {'HousingUnits': remapped_hu_id_list}, overwrite=True
                     )
 
         return final_id_map
@@ -2484,67 +2484,67 @@ class AssetInventory:
         numeric_ids = [int(k) for k in self.inventory if str(k).isdigit()]
         return (max(numeric_ids) + 1) if numeric_ids else 0
 
-    def set_household_inventory(
+    def set_housing_unit_inventory(
         self,
-        hh_inventory: HouseholdInventory,
-        hh_assignment: Optional[Dict[Union[str, int], List]] = None,
+        hu_inventory: HousingUnitInventory,
+        hu_assignment: Optional[Dict[Union[str, int], List]] = None,
         *,
         validate: bool = True,
     ) -> None:
         """
-        Set the household inventory and optionally assign households to assets.
+        Set the housing unit inventory and optionally assign housing units to assets.
 
-        This method links a HouseholdInventory object to the AssetInventory.
-        It can also be used to assign household ID lists to individual assets
-        using the `hh_assignment` dictionary.
+        This method links a HousingUnitInventory object to the AssetInventory.
+        It can also be used to assign housing unit ID lists to individual assets
+        using the `hu_assignment` dictionary.
 
         This enables two primary workflows:
-        1.  **Assigning New Households:** Pass both `hh_inventory` and
-            `hh_assignment`. The function will link the inventory and add
-            the 'Households' feature to each asset in the assignment dict.
-        2.  **Linking a Loaded Inventory:** After loading an AssetInventory
-            (e.g., from GeoJSON) that already has 'Households' features,
-            pass only the `hh_inventory` object. The function will link it
+        1.  Assigning new housing units: Pass both `hu_inventory` and
+            `hu_assignment`. The function will link the inventory and add
+            the 'HousingUnits' feature to each asset in the assignment dict.
+        2.  Linking a loaded inventory: After loading an AssetInventory
+            (e.g., from GeoJSON) that already has 'HousingUnits' features,
+            pass only the `hu_inventory` object. The function will link it
             and can optionally validate the existing assignments.
 
         Args:
-            hh_inventory (HouseholdInventory):
-                The `HouseholdInventory` object to link to this
+            hu_inventory (HousingUnitInventory):
+                The `HousingUnitInventory` object to link to this
                 `AssetInventory`.
-            hh_assignment (Dict[Union[str, int], List], optional):
-                A dictionary mapping `asset_id` to a list of household IDs.
-                If provided, this list will be added as the 'Households'
+            hu_assignment (Dict[Union[str, int], List], optional):
+                A dictionary mapping `asset_id` to a list of housing unit IDs.
+                If provided, this list will be added as the 'HousingUnits'
                 feature for each corresponding asset, overwriting any
-                existing 'Households' feature. Defaults to `None`.
+                existing 'HousingUnits' feature. Defaults to `None`.
             validate (bool, optional):
-                If `True`, run `validate_household_assignments()` after
+                If `True`, run `validate_housing_unit_assignments()` after
                 linking to check for mismatches. Defaults to `True`.
 
         Raises:
-            TypeError: If `hh_inventory` is not an instance of
-                       `HouseholdInventory` or if `hh_assignment` is
+            TypeError: If `hu_inventory` is not an instance of
+                       `HousingUnitInventory` or if `hu_assignment` is
                        provided and is not a `dict`.
         """
-        if not isinstance(hh_inventory, HouseholdInventory):
+        if not isinstance(hu_inventory, HousingUnitInventory):
             raise TypeError(
-                f'hh_inventory must be an instance of HouseholdInventory, '
-                f'not {type(hh_inventory)}.'
+                f'hu_inventory must be an instance of HousingUnitInventory, '
+                f'not {type(hu_inventory)}.'
             )
 
-        self.household_inventory = hh_inventory
+        self.housing_unit_inventory = hu_inventory
 
-        if hh_assignment is not None:
-            if not isinstance(hh_assignment, dict):
+        if hu_assignment is not None:
+            if not isinstance(hu_assignment, dict):
                 raise TypeError(
-                    f'hh_assignment must be a dictionary or None, '
-                    f'not {type(hh_assignment)}.'
+                    f'hu_assignment must be a dictionary or None, '
+                    f'not {type(hu_assignment)}.'
                 )
 
-            print(f'Assigning households to {len(hh_assignment)} assets...')
+            print(f'Assigning housing units to {len(hu_assignment)} assets...')
             assets_not_found = 0
-            for asset_id, hh_list in hh_assignment.items():
+            for asset_id, hu_list in hu_assignment.items():
                 success = self.add_asset_features(
-                    asset_id, {'Households': hh_list}, overwrite=True
+                    asset_id, {'HousingUnits': hu_list}, overwrite=True
                 )
                 if not success:
                     assets_not_found += 1
@@ -2552,24 +2552,24 @@ class AssetInventory:
             if assets_not_found > 0:
                 print(
                     f'Warning: {assets_not_found} asset(s) listed in '
-                    f'hh_assignment were not found in the inventory.'
+                    f'hu_assignment were not found in the inventory.'
                 )
 
         if validate:
-            print('Validating household assignments...')
-            self.validate_household_assignments()
+            print('Validating housing unit assignments...')
+            self.validate_housing_unit_assignments()
             print('Validation successful.')
 
-    def validate_household_assignments(self) -> bool:
+    def validate_housing_unit_assignments(self) -> bool:
         """
-        Check the integrity of household assignments.
+        Check the integrity of housing unit assignments.
 
         This function performs two main checks:
-        1.  If any assets have a 'Households' feature, it checks that
-            `self.household_inventory` is not `None`.
-        2.  If `self.household_inventory` is set, it checks that every
-            household ID in every asset's 'Households' list exists in the
-            `self.household_inventory`.
+        1.  If any assets have a 'HousingUnits' feature, it checks that
+            `self.housing_unit_inventory` is not `None`.
+        2.  If `self.housing_unit_inventory` is set, it checks that every
+            housing unit ID in every asset's 'HousingUnits' list exists in the
+            `self.housing_unit_inventory`.
 
         Returns:
             bool:
@@ -2578,32 +2578,32 @@ class AssetInventory:
 
         Raises:
             TypeError:
-                If an asset's 'Households' feature is not a `list`.
+                If an asset's 'HousingUnits' feature is not a `list`.
             LookupError:
-                If assets have 'Households' assignments but
-                `self.household_inventory` is `None`.
+                If assets have 'HousingUnits' assignments but
+                `self.housing_unit_inventory` is `None`.
             ValueError:
-                If any household IDs assigned to assets are not found
-                in the `self.household_inventory`.
+                If any housing unit IDs assigned to assets are not found
+                in the `self.housing_unit_inventory`.
         """
-        all_asset_hh_ids = set()
+        all_asset_hu_ids = set()
         found_assignments = False
         assets_with_bad_data = []
 
-        # First, collect all household IDs from assets
+        # First, collect all housing unit IDs from assets
         for asset_id, asset in self.inventory.items():
-            hh_data = asset.features.get('Households')
-            if hh_data is not None:
+            hu_data = asset.features.get('HousingUnits')
+            if hu_data is not None:
                 found_assignments = True
-                if not isinstance(hh_data, list):
+                if not isinstance(hu_data, list):
                     assets_with_bad_data.append(asset_id)
                 else:
-                    all_asset_hh_ids.update(hh_data)
+                    all_asset_hu_ids.update(hu_data)
 
-        # Check for non-list 'Households' features
+        # Check for non-list 'HousingUnits' features
         if assets_with_bad_data:
             raise TypeError(
-                f"The 'Households' feature must be a list. Found invalid "
+                f"The 'HousingUnits' feature must be a list. Found invalid "
                 f'data in assets: {assets_with_bad_data}'
             )
 
@@ -2612,36 +2612,36 @@ class AssetInventory:
             return True
 
         # If we have assignments, we MUST have an inventory linked.
-        if self.household_inventory is None:
+        if self.housing_unit_inventory is None:
             raise LookupError(
-                'Assets have household assignments, but no '
-                'HouseholdInventory is linked. Call '
-                'set_household_inventory() first.'
+                'Assets have housing unit assignments, but no '
+                'HousingUnitInventory is linked. Call '
+                'set_housing_unit_inventory() first.'
             )
 
         # Check for orphan IDs
-        valid_hh_ids = set(self.household_inventory.get_household_ids())
-        missing_ids = all_asset_hh_ids - valid_hh_ids
+        valid_hu_ids = set(self.housing_unit_inventory.get_housing_unit_ids())
+        missing_ids = all_asset_hu_ids - valid_hu_ids
 
         if missing_ids:
             sample = list(missing_ids)[:10]
             raise ValueError(
-                f'Found {len(missing_ids)} orphan household IDs assigned to '
-                f'assets that are not in the HouseholdInventory. '
+                f'Found {len(missing_ids)} orphan housing unit IDs assigned to '
+                f'assets that are not in the HousingUnitInventory. '
                 f'Example orphans: {sample}'
             )
 
         # All checks passed
         return True
 
-    def remove_household_inventory(self, *, clear_assignments: bool = True) -> None:
+    def remove_housing_unit_inventory(self, *, clear_assignments: bool = True) -> None:
         """
-        Remove the linked household inventory and clear all assignments.
+        Remove the linked housing unit inventory and clear all assignments.
 
-        This method removes the `HouseholdInventory` object from the
-        `AssetInventory` by setting `self.household_inventory` to `None`.
+        This method removes the `HousingUnitInventory` object from the
+        `AssetInventory` by setting `self.housing_unit_inventory` to `None`.
 
-        By default, it also removes the 'Households' feature from all
+        By default, it also removes the 'HousingUnits' feature from all
         assets in the inventory, as the assignments are specific to the
         inventory being removed. This ensures the `AssetInventory`
         remains in a valid state.
@@ -2649,21 +2649,21 @@ class AssetInventory:
         Args:
             clear_assignments (bool, optional):
                 If `True` (the default), this method will iterate through
-                all assets and remove the 'Households' feature from them.
-                If set to `False`, only the main `household_inventory`
+                all assets and remove the 'HousingUnits' feature from them.
+                If set to `False`, only the main `housing_unit_inventory`
                 attribute will be removed, which will likely result
                 in an invalid state that fails validation.
         """
-        self.household_inventory = None
-        print('HouseholdInventory removed.')
+        self.housing_unit_inventory = None
+        print('HousingUnitInventory removed.')
 
         if clear_assignments:
-            print("Removing 'Households' feature from all assets...")
+            print("Removing 'HousingUnits' feature from all assets...")
             # Use the existing remove_features method
-            self.remove_features(['Households'])
+            self.remove_features(['HousingUnits'])
             print('Asset assignments cleared.')
         else:
             print(
-                "Warning: Asset 'Households' features were not cleared. "
+                "Warning: Asset 'HousingUnits' features were not cleared. "
                 'The inventory is likely in an invalid state.'
             )

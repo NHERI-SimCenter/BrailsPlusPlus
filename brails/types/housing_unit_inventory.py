@@ -35,12 +35,12 @@
 # Adam Zsarnoczay
 
 """
-This module defines classes associated with household inventories.
+This module defines classes associated with housing unit inventories.
 
 .. autosummary::
 
-    HouseholdInventory
-    Household
+    HousingUnitInventory
+    HousingUnit
 """
 
 from __future__ import annotations
@@ -64,19 +64,19 @@ from jsonschema import ValidationError, validate
 from brails.utils.clean_floats import clean_floats
 
 
-class Household:
-    """A household with features and attributes.
+class HousingUnit:
+    """A housing unit with features and attributes.
 
-    To import the :class:`Household` class, use:
+    To import the :class:`HousingUnit` class, use:
 
     .. code-block:: python
 
-        from brails.types.household_inventory import Household
+        from brails.types.housing_unit_inventory import HousingUnit
 
 
     Attributes:
         features (dict[str, Any]):
-            A dictionary of features (attributes) for the household.
+            A dictionary of features (attributes) for the housing unit.
     """
 
     def __init__(
@@ -84,7 +84,7 @@ class Household:
         features: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
-        Initialize a Household with a household ID and features.
+        Initialize a HousingUnit with features.
 
         Args:
             features (dict[str, Any], optional): A dictionary of features.
@@ -102,11 +102,11 @@ class Household:
         self, additional_features: Dict[str, Any], *, overwrite: bool = True
     ) -> bool:
         """
-        Update the existing features in the household.
+        Update the existing features in the housing unit.
 
         Args:
             additional_features (dict[str, any]): New features to merge into
-                the household's features.
+                the housing unit's features.
             overwrite (bool, optional): Whether to overwrite existing features.
                 Defaults to True.
 
@@ -134,7 +134,7 @@ class Household:
 
     def remove_features(self, feature_list: List[str]) -> None:
         """
-        Remove specified features from the household.
+        Remove specified features from the housing unit.
 
         Args:
             feature_list (List[str]): List of features to be removed
@@ -153,65 +153,71 @@ class Household:
                 del self.features[key]
 
     def print_info(self) -> None:
-        """Print the features of the household."""
+        """Print the features of the housing unit."""
         print(f'\t Features: {json.dumps(self.features, indent=2)}')
 
 
-class HouseholdInventory:
+class HousingUnitInventory:
     """
-    A class representing a collection of Households managed as an inventory.
+    A class representing a collection of housing units managed as an inventory.
 
     This class provides methods to add, manipulate, write and query
-    a collection of :class:`Household` objects.
+    a collection of :class:`HousingUnit` objects.
 
-    To import the :class:`HouseholdInventory` class, use:
+    To import the :class:`HousingUnitInventory` class, use:
 
     .. code-block:: python
 
-        from brails.types.household_inventory import HouseholdInventory
+        from brails.types.housing_unit_inventory import HousingUnitInventory
     """
 
     def __init__(self) -> None:
-        """Initialize HouseholdInventory with an empty inventory dictionary."""
+        """Initialize HousingUnitInventory with an empty inventory dictionary."""
         self.inventory: Dict = {}
 
-    def add_household(
-        self, household_id: str, household: Household, *, overwrite: bool = False
+    def add_housing_unit(
+        self,
+        housing_unit_id: str,
+        housing_unit: HousingUnit,
+        *,
+        overwrite: bool = False,
     ) -> None:
         """
-        Add a Household to the inventory.
+        Add a housing unit to the inventory.
 
         Args:
-            household_id (str):
-                The unique identifier for the household.
-            household (Household):
-                The household to be added.
+            housing_unit_id (str):
+                The unique identifier for the housing unit.
+            housing_unit (HousingUnit):
+                The housing unit to be added.
             overwrite (bool):
-                Replace existing household if it exists. Defaults to False.
+                Replace existing housing unit if it exists. Defaults to False.
 
         Raises:
-            TypeError: If ``household`` is not an instance of :class:`Household`.
+            TypeError: If ``housing_unit`` is not an instance of :class:`HousingUnit`.
 
         Examples:
-            >>> household = Household(
+            >>> housing_unit = HousingUnit(
             ...     features={'income': 50000, 'size': 3}
             ... )
-            >>> inventory = HouseholdInventory()
-            >>> inventory.add_household("1", household)
+            >>> inventory = HousingUnitInventory()
+            >>> inventory.add_housing_unit("1", housing_unit)
         """
-        if not isinstance(household, Household):
-            msg = 'Expected an instance of Household.'
+        if not isinstance(housing_unit, HousingUnit):
+            msg = 'Expected an instance of HousingUnit.'
             raise TypeError(msg)
 
-        if household_id in self.inventory and not overwrite:
-            print(f'The inventory already has a household with id {household_id}.')
+        if housing_unit_id in self.inventory and not overwrite:
+            print(
+                f'The inventory already has a housing unit with id {housing_unit_id}.'
+            )
             return
 
-        self.inventory[household_id] = household
+        self.inventory[housing_unit_id] = housing_unit
 
     def change_feature_names(self, feature_name_mapping: Dict[str, str]) -> None:
         """
-        Rename features in a HouseholdInventory using user-specified mapping.
+        Rename features in a HousingUnitInventory using user-specified mapping.
 
         Args:
             feature_name_mapping (dict):
@@ -235,61 +241,63 @@ class HouseholdInventory:
                     f'strings. Invalid pair: ({old_name}, {new_name})'
                 )
 
-        # Apply the feature name changes to each household in the inventory:
-        for household in self.inventory.values():
+        # Apply the feature name changes to each housing unit in the inventory:
+        for housing_unit in self.inventory.values():
             for old_name, new_name in feature_name_mapping.items():
-                if old_name in household.features:
-                    if new_name in household.features:
+                if old_name in housing_unit.features:
+                    if new_name in housing_unit.features:
                         raise NameError(
                             f'New feature name {new_name} already exists.'
                         )
 
                     # Move the feature to the new name and remove the old one:
-                    household.features[new_name] = household.features.pop(old_name)
+                    housing_unit.features[new_name] = housing_unit.features.pop(
+                        old_name
+                    )
 
-    def get_household_ids(self) -> list[str]:
+    def get_housing_unit_ids(self) -> list[str]:
         """
-        Retrieve the IDs of all households in the inventory.
+        Retrieve the IDs of all housing units in the inventory.
 
         Returns:
             list[str]:
-                A list of household IDs.
+                A list of housing unit IDs.
         """
         return list(self.inventory.keys())
 
     def print_info(self) -> None:
         """
-        Print summary information about the HouseholdInventory.
+        Print summary information about the HousingUnitInventory.
 
         This method outputs the name of the class, the type of data structure
-        used to store the inventory, and basic information about each household
+        used to store the inventory, and basic information about each housing unit
         in the inventory, including its key and features.
         """
         print(self.__class__.__name__)
         print('Inventory stored in: ', self.inventory.__class__.__name__)
-        for key, household in self.inventory.items():
-            print('Key: ', key, 'Household:')
-            household.print_info()
+        for key, housing_unit in self.inventory.items():
+            print('Key: ', key, 'Housing unit:')
+            housing_unit.print_info()
 
-    def remove_household(self, household_id: str) -> None:
+    def remove_housing_unit(self, housing_unit_id: str) -> None:
         """
-        Remove a Household from the inventory.
+        Remove a housing unit from the inventory.
 
         Args:
-            household_id (str):
-                The unique identifier for the household.
+            housing_unit_id (str):
+                The unique identifier for the housing unit.
 
         """
-        if household_id in self.inventory:
-            del self.inventory[household_id]
+        if housing_unit_id in self.inventory:
+            del self.inventory[housing_unit_id]
 
     def remove_features(self, feature_list: List[str]) -> None:
         """
-        Remove specified features from all households in the inventory.
+        Remove specified features from all housing units in the inventory.
 
         Args:
             feature_list (list[str]):
-                List of feature names to remove from all households.
+                List of feature names to remove from all housing units.
 
         Raises:
             TypeError: If ``feature_list`` is not a list of strings.
@@ -301,16 +309,16 @@ class HouseholdInventory:
             msg = 'feature_list must be a list of strings.'
             raise TypeError(msg)
 
-        for household in self.inventory.values():
-            household.remove_features(feature_list)
+        for housing_unit in self.inventory.values():
+            housing_unit.remove_features(feature_list)
 
     def to_json(self, output_file: str = '') -> dict[str, Any]:
         """
         Generate JSON representation and optionally write to file.
 
-        This method generates a JSON representation of the household inventory,
-        writes it to the specified file path (if provided), and returns the
-        JSON object.
+        This method generates a JSON representation of the housing unit
+        inventory, writes it to the specified file path (if provided), and
+        returns the JSON object.
 
         Args:
             output_file (str, optional):
@@ -327,14 +335,14 @@ class HouseholdInventory:
             brails_version = 'NA'
 
         json_data = {
-            'type': 'HouseholdInventory',
+            'type': 'HousingUnitInventory',
             'generated': str(datetime.now(timezone.utc)),
             'brails_version': brails_version,
-            'households': {},
+            'housing_units': {},
         }
 
-        for household_id, household in self.inventory.items():
-            json_data['households'][str(household_id)] = household.features
+        for housing_unit_id, housing_unit in self.inventory.items():
+            json_data['housing_units'][str(housing_unit_id)] = housing_unit.features
 
         # Write the created JSON dictionary into a JSON file:
         if output_file:
@@ -376,7 +384,7 @@ class HouseholdInventory:
 
         # Load and validate against JSON schema
         schema_path = (
-            Path(__file__).resolve().parent / 'household_inventory_schema.json'
+            Path(__file__).resolve().parent / 'housing_unit_inventory_schema.json'
         )
 
         try:
@@ -394,23 +402,24 @@ class HouseholdInventory:
             msg = f'Invalid JSON data: {e.message}'
             raise ValueError(msg) from e
 
-        # Extract households data after validation
-        households_data = data.get('households', {})
+        # Extract housing units data after validation
+        housing_unit_data = data.get('housing_units')
 
         # Load data after successful validation
-        for household_id_raw, features in households_data.items():
-            household_id = (
-                int(household_id_raw)
-                if isinstance(household_id_raw, str) and household_id_raw.isdigit()
-                else household_id_raw
+        for housing_unit_id_raw, features in housing_unit_data.items():
+            housing_unit_id = (
+                int(housing_unit_id_raw)
+                if isinstance(housing_unit_id_raw, str)
+                and housing_unit_id_raw.isdigit()
+                else housing_unit_id_raw
             )
 
-            # Create and add each household
-            self.add_household(household_id, Household(features))
+            # Create and add each housing unit
+            self.add_housing_unit(housing_unit_id, HousingUnit(features))
 
     def _get_next_numeric_id(self) -> int:
         """
-        Compute the next available numeric household ID in the inventory.
+        Compute the next available numeric housing unit ID in the inventory.
 
         Returns:
             int:
@@ -418,48 +427,48 @@ class HouseholdInventory:
                 Returns 0 if the inventory contains no numeric keys.
 
         Notes:
-            - Non-numeric keys (e.g., 'HH-A101') are ignored.
+            - Non-numeric keys (e.g., 'HU-A101') are ignored.
             - This function is typically used to generate sequential
-              numeric identifiers for new households.
+              numeric identifiers for new housing units.
         """
         numeric_ids = [int(k) for k in self.inventory if str(k).isdigit()]
         return (max(numeric_ids) + 1) if numeric_ids else 0
 
     def merge_inventory(
-        self, other_inventory: HouseholdInventory
+        self, other_inventory: HousingUnitInventory
     ) -> Dict[Union[str, int], Union[str, int]]:
         """
-        Merge another household inventory into this one, resolving ID conflicts.
+        Merge another housing unit inventory into this one, resolving ID conflicts.
 
         This method iterates through the `other_inventory`. It attempts
-        to add each household using its original ID. If that ID already
+        to add each housing unit using its original ID. If that ID already
         exists in the current inventory, it generates a new unique
-        numeric ID for that household.
+        numeric ID for that housing unit.
 
         Args:
-            other_inventory (HouseholdInventory):
+            other_inventory (HousingUnitInventory):
                 The inventory to merge into this one.
 
         Returns:
             Dict[Union[str, int], Union[str, int]]:
-                A dictionary mapping {old_household_id: new_household_id}.
+                A dictionary mapping {old_housing_unit_id: new_housing_unit_id}.
                 This map tracks all ID changes.
 
         Raises:
             TypeError:
                 If `other_inventory` is not an instance of
-                ``HouseholdInventory``.
+                ``HousingUnitInventory``.
         """
-        if not isinstance(other_inventory, HouseholdInventory):
+        if not isinstance(other_inventory, HousingUnitInventory):
             raise TypeError(
-                'Can only merge with another HouseholdInventory instance.'
+                'Can only merge with another HousingUnitInventory instance.'
             )
 
         # Get the next safe starting ID for use *if* we find conflicts
         next_id = self._get_next_numeric_id()
-        hh_id_remap = {}
+        hu_id_remap = {}
 
-        for old_id, household in other_inventory.inventory.items():
+        for old_id, housing_unit in other_inventory.inventory.items():
             new_id = old_id  # Try to use the original ID first
 
             if new_id in self.inventory:
@@ -468,9 +477,9 @@ class HouseholdInventory:
 
             # Since we've guaranteed new_id is unique, we can set
             # overwrite=False.
-            self.add_household(new_id, household, overwrite=False)
+            self.add_housing_unit(new_id, housing_unit, overwrite=False)
 
             # Store the mapping, even if the ID didn't change
-            hh_id_remap[old_id] = new_id
+            hu_id_remap[old_id] = new_id
 
-        return hh_id_remap
+        return hu_id_remap

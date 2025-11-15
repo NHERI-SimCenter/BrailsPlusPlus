@@ -102,13 +102,13 @@ target-version = "py37"
 line-length = 85
 include = [
     #"brails/types/asset_inventory.py",
-    "brails/types/household_inventory.py",
-    "brails/aggregators/households/pyncoda/assign_households.py",
-    "brails/aggregators/households/pyncoda/supporting_data/FIPS_lookup_generator.py",
+    "brails/types/housing_unit_inventory.py",
+    "brails/aggregators/housing_units/pyncoda/pyncoda_housing_units.py",
+    "brails/aggregators/housing_units/pyncoda/supporting_data/FIPS_lookup_generator.py",
     "brails/scrapers/census_scraper/census_scraper.py",
-    "tests/aggregators/households/pyncoda/test_assign_households.py",
+    "tests/aggregators/housing_units/pyncoda/test_pyncoda_housing_units.py",
     "tests/scrapers/test_census_scraper.py",
-    "tests/types/test_household_inventory.py",
+    "tests/types/test_housing_unit_inventory.py",
 ]
 
 [tool.ruff.lint]
@@ -196,8 +196,8 @@ skip = [
     "./brails/scrapers/us_census_scrapers/*",
     "./brails/scrapers/usa_footprint_scraper/*",
     "./brails/scrapers/usgs_data_scrapers/*",
-    "./brails/aggregators/households/pyncoda/supporting_data/fips_lookup.json",
-    "./brails/aggregators/households/pyncoda/supporting_data/state_abbreviations.json"
+    "./brails/aggregators/housing_units/pyncoda/supporting_data/fips_lookup.json",
+    "./brails/aggregators/housing_units/pyncoda/supporting_data/state_abbreviations.json"
 ]
 
 [tool.pytest.ini_options]

@@ -35,11 +35,11 @@
 # Adam Zsarnoczay
 
 """
-This module assigns households to residential buildings in an AssetInventory.
+This module assigns housing units to residential buildings in an AssetInventory.
 
-It leverages the pyncoda package to generate detailed household demographics
+It leverages the pyncoda package to generate detailed housing unit demographics
 based on census data. The main entry point is the
-`assign_households_to_buildings` function, which orchestrates the entire
+`assign_housing_units_to_buildings` function, which orchestrates the entire
 workflow from data preparation to final assignment.
 """
 
@@ -57,7 +57,7 @@ from pyncoda import ncoda_00h_bldg_archetype_structure as bldg_arch
 from pyncoda.ncoda_07i_process_communities import process_community_workflow
 
 from brails.types.asset_inventory import AssetInventory
-from brails.types.household_inventory import Household, HouseholdInventory
+from brails.types.housing_unit_inventory import HousingUnit, HousingUnitInventory
 from brails.utils import Importer
 
 # Define the absolute paths to the data files
@@ -355,33 +355,33 @@ def _validate_pyncoda_output(output_df: pd.DataFrame) -> None:
     missing = [col for col in required_columns if col not in output_df.columns]
     if missing:
         raise ValueError(
-            'Assigned households dataframe is missing required columns: '
+            'Assigned housing units DataFrame is missing required columns: '
             + ', '.join(missing)
         )
 
 
-def create_household_inventory(
-    assigned_households: pd.DataFrame,
-) -> HouseholdInventory:
+def create_housing_unit_inventory(
+    assigned_housing_units: pd.DataFrame,
+) -> HousingUnitInventory:
     """
-    Create a HouseholdInventory object from a DataFrame of household assignments.
+    Create a HousingUnitInventory from a DataFrame of housing unit assignments.
 
-    Process the raw pyncoda output into a HouseholdInventory object by filtering
+    Process the raw pyncoda output into a HousingUnitInventory object by filtering
     the columns we need and converting the labels to SimCenter standard and
     mapping the concise digits to human-readable values.
 
     Args:
-        assigned_households(DataFrame): A DataFrame containing the raw pyncoda
-            output of the household assignment.
+        assigned_housing_units(DataFrame): A DataFrame containing the raw pyncoda
+            output of the housing unit assignment.
 
     Returns:
-        household_inventory(HouseholdInventory): A HouseholdInventory object
-            containing the household assignments.
+        housing_unit_inventory(HousingUnitInventory): A HousingUnitInventory object
+            containing the housing unit assignments.
     """
-    _validate_pyncoda_output(assigned_households)
+    _validate_pyncoda_output(assigned_housing_units)
 
-    if assigned_households.empty:
-        return HouseholdInventory()
+    if assigned_housing_units.empty:
+        return HousingUnitInventory()
 
     cols_to_keep = [
         'blockid',
@@ -397,13 +397,13 @@ def create_household_inventory(
         'poverty',
         'building_id',
     ]
-    households = assigned_households[cols_to_keep].copy()
+    housing_units = assigned_housing_units[cols_to_keep].copy()
 
-    # we don't need to save building id to households
-    del households['building_id']
+    # we don't need to save building id to housing units
+    del housing_units['building_id']
 
     # rename columns to use standard SimCenter names
-    households = households.rename(
+    housing_units = housing_units.rename(
         columns={
             'blockid': 'BLOCK_GEOID',
             'numprec': 'NumberOfPersons',
@@ -422,11 +422,11 @@ def create_household_inventory(
     # No need to map Hispanic, Family, and Poverty, just use the raw boolean values
     # No need to map IncomeSample, just use the raw float value
 
-    households['Ownership'] = households['Ownership'].map(
+    housing_units['Ownership'] = housing_units['Ownership'].map(
         {1: 'Owner occupied', 2: 'Renter occupied'}
     )
 
-    households['Race'] = households['Race'].map(
+    housing_units['Race'] = housing_units['Race'].map(
         {
             1: 'White',
             2: 'Black',
@@ -438,7 +438,7 @@ def create_household_inventory(
         }
     )
 
-    households['VacancyStatus'] = households['VacancyStatus'].map(
+    housing_units['VacancyStatus'] = housing_units['VacancyStatus'].map(
         {
             0: 'Occupied',
             1: 'For Rent',
@@ -451,7 +451,7 @@ def create_household_inventory(
         }
     )
 
-    households['GroupQuartersType'] = households['GroupQuartersType'].map(
+    housing_units['GroupQuartersType'] = housing_units['GroupQuartersType'].map(
         {
             0: 'Not a group quarters building',
             1: 'Correctional facilities for adults',
@@ -464,7 +464,7 @@ def create_household_inventory(
         }
     )
 
-    households['IncomeGroup'] = households['IncomeGroup'].map(
+    housing_units['IncomeGroup'] = housing_units['IncomeGroup'].map(
         {
             0: np.nan,
             1: 'Less than $10,000',
@@ -486,27 +486,27 @@ def create_household_inventory(
         }
     )
 
-    # create the household inventory and add the households
-    household_inventory = HouseholdInventory()
+    # create the housing unit inventory and add the housing units
+    housing_unit_inventory = HousingUnitInventory()
 
-    for household_id, household_features in households.iterrows():
-        household_inventory.add_household(
-            household_id, Household(household_features.dropna().to_dict())
+    for housing_unit_id, housing_unit_features in housing_units.iterrows():
+        housing_unit_inventory.add_housing_unit(
+            housing_unit_id, HousingUnit(housing_unit_features.dropna().to_dict())
         )
 
-    return household_inventory
+    return housing_unit_inventory
 
 
-def assign_households_to_buildings(
+def assign_housing_units_to_buildings(
     building_inventory: AssetInventory,
     key_features: Dict[str, Any],
     vintage: str,
     output_folder: str,
 ) -> None:
     """
-    Assign synthetic households to buildings in an AssetInventory.
+    Assign synthetic housing units to buildings in an AssetInventory.
 
-    This function prepares building inventory data and runs the household
+    This function prepares building inventory data and runs the housing unit
     assignment process using the pyncoda workflow.
 
     Args:
@@ -515,7 +515,7 @@ def assign_households_to_buildings(
         key_features (dict): A dictionary containing the names of the columns
             containing important attributes of each building. The expected keys
             are documented in the validate_key_features_dict function.
-        vintage (str): The reference vintage for the household information.
+        vintage (str): The reference vintage for the housing unit information.
         output_folder (str): Path to directory where temporary and output files
             will be stored.
 
@@ -556,7 +556,7 @@ def assign_households_to_buildings(
     if not census_tract_dict:
         raise ValueError(
             'No census tracts were found for the filtered inventory; '
-            'households cannot be assigned without census tract information.'
+            'housing units cannot be assigned without census tract information.'
         )
 
     census_tracts = list(census_tract_dict.keys())
@@ -600,41 +600,41 @@ def assign_households_to_buildings(
             force_hua_rerun=True,
         )
 
-        assigned_households = workflow.process_communities()
+        assigned_housing_units = workflow.process_communities()
 
     except (OSError, ValueError, TypeError, KeyError, FileNotFoundError) as e:
         print(f'An error occurred while running pyncoda: {e}')
         return
 
     # 5) Validate pyncoda output columns
-    _validate_pyncoda_output(assigned_households)
+    _validate_pyncoda_output(assigned_housing_units)
 
-    # remove unassigned households and convert data types
-    assigned_households = assigned_households.loc[
-        assigned_households['building_id'] != 'missing building id'
+    # remove unassigned housing units and convert data types
+    assigned_housing_units = assigned_housing_units.loc[
+        assigned_housing_units['building_id'] != 'missing building id'
     ].copy()
 
     # After filtering, if no rows remain, exit
-    if assigned_households.empty:
+    if assigned_housing_units.empty:
         print(
-            'No households were assigned to buildings. Exiting assignment workflow.'
+            'No housing units were assigned to buildings. Exiting assignment workflow.'
         )
         return
 
-    assigned_households['building_id'] = (
-        assigned_households['building_id'].astype(float).astype(int)
+    assigned_housing_units['building_id'] = (
+        assigned_housing_units['building_id'].astype(float).astype(int)
     )
-    assigned_households['gqtype'] = assigned_households['gqtype'].astype(int)
+    assigned_housing_units['gqtype'] = assigned_housing_units['gqtype'].astype(int)
 
-    household_inventory = create_household_inventory(assigned_households)
+    housing_unit_inventory = create_housing_unit_inventory(assigned_housing_units)
 
-    assigned_households['household_id'] = assigned_households.index.copy()
-    households_by_bldg_id = assigned_households.groupby('building_id').agg(
-        household_ids=('household_id', lambda x: x.tolist())
+    assigned_housing_units['housing_unit_id'] = assigned_housing_units.index.copy()
+    housing_units_by_bldg_id = assigned_housing_units.groupby('building_id').agg(
+        housing_unit_ids=('housing_unit_id', lambda x: x.tolist())
     )
 
-    building_inventory.set_household_inventory(
-        hh_inventory=household_inventory,
-        hh_assignment=households_by_bldg_id['household_ids'].to_dict(),
+    building_inventory.set_housing_unit_inventory(
+        hu_inventory=housing_unit_inventory,
+        hu_assignment=housing_units_by_bldg_id['housing_unit_ids'].to_dict(),
         validate=True,
     )

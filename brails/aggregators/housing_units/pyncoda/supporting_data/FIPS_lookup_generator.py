@@ -35,15 +35,6 @@
 # Contributors:
 # Adam Zsarnoczay
 
-"""This module assigns households to housing units using the pyncoda package."""
-
-import csv
-import json
-from pathlib import Path
-
-import pandas as pd
-from pandas.errors import EmptyDataError, ParserError
-
 """
 This script generates the 'fips_lookup.json' file.
 
@@ -51,6 +42,13 @@ It fetches a national FIPS code file from a URL, reads it into pandas,
 filters it for county and state-level codes, and saves the result
 as a clean JSON lookup.
 """
+
+import csv
+import json
+from pathlib import Path
+
+import pandas as pd
+from pandas.errors import EmptyDataError, ParserError
 
 
 def create_fips_lookup(csv_filepath: str, json_filepath: str) -> None:

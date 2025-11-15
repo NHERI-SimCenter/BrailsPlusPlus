@@ -7,8 +7,8 @@ omit =
 [report]
 include =
     brails/types/asset_inventory.py
-    brails/types/household_inventory.py
-    brails/aggregators/households/pyncoda/**/*.py
+    brails/types/housing_unit_inventory.py
+    brails/aggregators/housing_units/pyncoda/**/*.py
     brails/scrapers/census_scraper/**/*.py
 
 
