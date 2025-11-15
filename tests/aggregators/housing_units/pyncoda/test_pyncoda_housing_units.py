@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Tuple
+from typing import TYPE_CHECKING, Any
 
 import geopandas as gpd
 import numpy as np
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def valid_key_features() -> Dict[str, str]:
+def valid_key_features() -> dict[str, str]:
     """Return a valid baseline key_features dictionary."""
     return {
         'occupancy_col': 'Occupancy',
@@ -51,7 +51,7 @@ def valid_key_features() -> Dict[str, str]:
 
 
 def test_validate_key_features_dict_accepts_valid_input(
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
 ) -> None:
     """It should not raise when called with a valid dictionary."""
     # Arrange
@@ -89,7 +89,7 @@ def test_validate_key_features_dict_accepts_valid_input(
     ],
 )
 def test_validate_key_features_dict_raises_for_single_issue(
-    broken_data: Dict[str, Any],
+    broken_data: dict[str, Any],
 ) -> None:
     """It should raise ValueError for each single, isolated validation issue.
 
@@ -101,7 +101,7 @@ def test_validate_key_features_dict_raises_for_single_issue(
 
 
 def test_validate_key_features_dict_reports_all_errors(
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
 ) -> None:
     """It should report multiple errors in a single, consolidated message."""
     # Arrange: introduce multiple issues
@@ -226,8 +226,8 @@ def test_get_county_and_state_names_empty_list_returns_empty() -> None:
     ],
 )
 def test_get_county_and_state_names_unknown_placeholders(
-    tracts: Iterable[str],
-    expected_full_names: Iterable[str],
+    tracts: list[str],
+    expected_full_names: list[str],
     expected_state: str,
 ) -> None:
     """It should gracefully handle unknown FIPS by using "Unknown" placeholders."""
@@ -349,7 +349,7 @@ def comprehensive_inventory_meters() -> AssetInventory:
 def test_prepare_building_inventory_input_validation_invalid_type(
     bad_inventory: Any,
     expected_exception: type[Exception],
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
 ) -> None:
     """It should raise TypeError when inventory is not an AssetInventory."""
     with pytest.raises(
@@ -359,7 +359,7 @@ def test_prepare_building_inventory_input_validation_invalid_type(
 
 
 def test_prepare_building_inventory_empty_inventory_returns_empty(
-    empty_inventory: AssetInventory, valid_key_features: Dict[str, str]
+    empty_inventory: AssetInventory, valid_key_features: dict[str, str]
 ) -> None:
     """It should return an empty GeoDataFrame for an empty AssetInventory."""
     gdf = ah.prepare_building_inventory(empty_inventory, valid_key_features)
@@ -370,7 +370,7 @@ def test_prepare_building_inventory_empty_inventory_returns_empty(
 
 
 def test_prepare_building_inventory_no_residential_returns_empty(
-    non_residential_inventory: AssetInventory, valid_key_features: Dict[str, str]
+    non_residential_inventory: AssetInventory, valid_key_features: dict[str, str]
 ) -> None:
     """It should return an empty GeoDataFrame when no residential buildings present."""
     gdf = ah.prepare_building_inventory(
@@ -382,7 +382,7 @@ def test_prepare_building_inventory_no_residential_returns_empty(
 
 def test_prepare_building_inventory_all_dropped_warning(
     all_missing_data_inventory: AssetInventory,
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """It should return empty GeoDataFrame and print warning when all residential rows are invalid."""
@@ -396,7 +396,7 @@ def test_prepare_building_inventory_all_dropped_warning(
 
 def test_prepare_building_inventory_core_logic_meters_conversion(
     comprehensive_inventory_meters: AssetInventory,
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
     mocker: MockerFixture,
 ) -> None:
     """Core logic: drops non-res/invalid, computes area, applies 'm'→'ft' conversion; validator is mocked."""
@@ -428,7 +428,7 @@ def test_prepare_building_inventory_core_logic_meters_conversion(
 
 def test_prepare_building_inventory_integration_validator_error(
     comprehensive_inventory_meters: AssetInventory,
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
 ) -> None:
     """Integration: with invalid key_features, the ValueError from validator must propagate."""
     bad_features = dict(valid_key_features)
@@ -694,7 +694,7 @@ def _mock_happy_path_dependencies(
 
 def test_assign_housing_units_invalid_vintage(
     simple_inventory: AssetInventory,
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
     lean_buildings_gdf_one: gpd.GeoDataFrame,
     mocker: MockerFixture,
     tmp_path: Path,
@@ -717,7 +717,7 @@ def test_assign_housing_units_invalid_vintage(
 
 def test_assign_housing_units_census_scraper_failure(
     simple_inventory: AssetInventory,
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
     lean_buildings_gdf_one: gpd.GeoDataFrame,
     mocker: MockerFixture,
     tmp_path: Path,
@@ -756,7 +756,7 @@ def test_assign_housing_units_census_scraper_failure(
 
 def test_assign_housing_units_pyncoda_process_failure(
     simple_inventory: AssetInventory,
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
     lean_buildings_gdf_one: gpd.GeoDataFrame,
     mocker: MockerFixture,
     tmp_path: Path,
@@ -783,7 +783,7 @@ def test_assign_housing_units_pyncoda_process_failure(
 
 def test_assign_housing_units_pyncoda_empty_result(
     simple_inventory: AssetInventory,
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
     lean_buildings_gdf_one: gpd.GeoDataFrame,
     mocker: MockerFixture,
     capsys: pytest.CaptureFixture[str],
@@ -912,7 +912,7 @@ def mixed_geometry_inventory() -> AssetInventory:
 def test_assign_housing_units_handles_various_geometries(
     request: Any,
     inventory_fixture_name: str,
-    valid_key_features: Dict[str, str],
+    valid_key_features: dict[str, str],
     lean_buildings_gdf_one: gpd.GeoDataFrame,
     mocker: MockerFixture,
     tmp_path: Path,

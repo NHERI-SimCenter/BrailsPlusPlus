@@ -46,17 +46,10 @@ This module defines classes associated with housing unit inventories.
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
-
-try:
-    # Python 3.8+
-    from importlib.metadata import PackageNotFoundError, version
-except ImportError:
-    # For Python <3.8, use the backport
-    from importlib_metadata import PackageNotFoundError, version
+from typing import Any
 
 import jsonschema
 from jsonschema import ValidationError, validate
@@ -81,7 +74,7 @@ class HousingUnit:
 
     def __init__(
         self,
-        features: Optional[Dict[str, Any]] = None,
+        features: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize a HousingUnit with features.
@@ -99,7 +92,7 @@ class HousingUnit:
         self.features = features if features is not None else {}
 
     def add_features(
-        self, additional_features: Dict[str, Any], *, overwrite: bool = True
+        self, additional_features: dict[str, Any], *, overwrite: bool = True
     ) -> bool:
         """
         Update the existing features in the housing unit.
@@ -132,12 +125,12 @@ class HousingUnit:
 
         return updated
 
-    def remove_features(self, feature_list: List[str]) -> None:
+    def remove_features(self, feature_list: list[str]) -> None:
         """
         Remove specified features from the housing unit.
 
         Args:
-            feature_list (List[str]): List of features to be removed
+            feature_list (list[str]): List of features to be removed
 
         Raises:
             TypeError: If ``feature_list`` is not a list of strings.
@@ -173,7 +166,7 @@ class HousingUnitInventory:
 
     def __init__(self) -> None:
         """Initialize HousingUnitInventory with an empty inventory dictionary."""
-        self.inventory: Dict = {}
+        self.inventory: dict = {}
 
     def add_housing_unit(
         self,
@@ -215,7 +208,7 @@ class HousingUnitInventory:
 
         self.inventory[housing_unit_id] = housing_unit
 
-    def change_feature_names(self, feature_name_mapping: Dict[str, str]) -> None:
+    def change_feature_names(self, feature_name_mapping: dict[str, str]) -> None:
         """
         Rename features in a HousingUnitInventory using user-specified mapping.
 
@@ -291,7 +284,7 @@ class HousingUnitInventory:
         if housing_unit_id in self.inventory:
             del self.inventory[housing_unit_id]
 
-    def remove_features(self, feature_list: List[str]) -> None:
+    def remove_features(self, feature_list: list[str]) -> None:
         """
         Remove specified features from all housing units in the inventory.
 
@@ -351,12 +344,12 @@ class HousingUnitInventory:
 
         return json_data
 
-    def read_from_json(self, json_data: Union[str, Dict[str, Any]]) -> None:
+    def read_from_json(self, json_data: str | dict[str, Any]) -> None:
         """
         Read inventory data from a JSON file, string, or dictionary and add it to the inventory.
 
         Args:
-            json_data (Union[str, Dict[str, Any]]):
+            json_data (str | dict[str, Any]):
                   Either a path to a JSON file, a JSON string, or a dictionary object
         """
         # Determine input type (dict, file path, or JSON string)
@@ -436,7 +429,7 @@ class HousingUnitInventory:
 
     def merge_inventory(
         self, other_inventory: HousingUnitInventory
-    ) -> Dict[Union[str, int], Union[str, int]]:
+    ) -> dict[str | int, str | int]:
         """
         Merge another housing unit inventory into this one, resolving ID conflicts.
 
@@ -450,7 +443,7 @@ class HousingUnitInventory:
                 The inventory to merge into this one.
 
         Returns:
-            Dict[Union[str, int], Union[str, int]]:
+            dict[str | int, str | int]:
                 A dictionary mapping {old_housing_unit_id: new_housing_unit_id}.
                 This map tracks all ID changes.
 

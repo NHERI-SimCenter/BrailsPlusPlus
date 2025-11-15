@@ -38,7 +38,7 @@
 """
 This script generates the 'fips_lookup.json' file.
 
-It fetches a national FIPS code file from a URL, reads it into pandas,
+It fetches a national FIPS code file from a URL, reads it using the csv module,
 filters it for county and state-level codes, and saves the result
 as a clean JSON lookup.
 """
@@ -46,9 +46,6 @@ as a clean JSON lookup.
 import csv
 import json
 from pathlib import Path
-
-import pandas as pd
-from pandas.errors import EmptyDataError, ParserError
 
 
 def create_fips_lookup(csv_filepath: str, json_filepath: str) -> None:
@@ -104,7 +101,7 @@ def create_fips_lookup(csv_filepath: str, json_filepath: str) -> None:
     except FileNotFoundError:
         print(f"Error: The file '{csv_filepath}' was not found.")
         return
-    except (EmptyDataError, ParserError, OSError) as e:
+    except (csv.Error, OSError) as e:
         print(f'An error occurred: {e}')
         return
 

@@ -46,9 +46,8 @@ workflow from data preparation to final assignment.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
@@ -66,7 +65,9 @@ FIPS_LOOKUP_PATH = SCRIPT_DIR / 'supporting_data' / 'fips_lookup.json'
 STATE_ABBREV_PATH = SCRIPT_DIR / 'supporting_data' / 'state_abbreviations.json'
 
 
-def get_county_and_state_names(census_tracts: list) -> Tuple[Dict[str, Any], str]:
+def get_county_and_state_names(
+    census_tracts: list[str],
+) -> tuple[dict[str, Any], str]:
     """
     Identify the counties and state covered by an asset inventory.
 
@@ -137,7 +138,7 @@ def get_county_and_state_names(census_tracts: list) -> Tuple[Dict[str, Any], str
     return counties_dict, state_name
 
 
-def validate_key_features_dict(key_features: Dict[str, Any]) -> None:
+def validate_key_features_dict(key_features: dict[str, Any]) -> None:
     """
     Validate the key_features dictionary.
 
@@ -190,7 +191,7 @@ def validate_key_features_dict(key_features: Dict[str, Any]) -> None:
 
 
 def prepare_building_inventory(
-    inventory: AssetInventory, key_features: Dict[str, Any]
+    inventory: AssetInventory, key_features: dict[str, Any]
 ) -> gpd.GeoDataFrame:
     """
     Prepare building inventory data for pyncoda.
@@ -499,7 +500,7 @@ def create_housing_unit_inventory(
 
 def assign_housing_units_to_buildings(
     building_inventory: AssetInventory,
-    key_features: Dict[str, Any],
+    key_features: dict[str, Any],
     vintage: str,
     output_folder: str,
 ) -> None:

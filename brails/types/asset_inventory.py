@@ -58,14 +58,9 @@ from collections.abc import Hashable, Iterable
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
-try:
-    # Python 3.8+
-    from importlib.metadata import PackageNotFoundError, version
-except ImportError:
-    # For Python <3.8, use the backport
-    from importlib_metadata import PackageNotFoundError, version
+from importlib.metadata import PackageNotFoundError, version
 
 import pandas as pd
 from shapely import box
@@ -101,9 +96,9 @@ class Asset:
 
     def __init__(
         self,
-        asset_id: Union[str, int],
-        coordinates: List[List[float]],
-        features: Optional[Dict[str, Any]] = None,
+        asset_id: str | int,
+        coordinates: list[list[float]],
+        features: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize an Asset with an asset ID, coordinates, and features.
@@ -128,11 +123,11 @@ class Asset:
 
     def add_features(
         self,
-        additional_features: Dict[str, Any],
-        vector_features: Optional[List[str]] = None,
+        additional_features: dict[str, Any],
+        vector_features: list[str] | None = None,
         *,
         overwrite: bool = True,
-    ) -> Tuple[bool, int]:
+    ) -> tuple[bool, int]:
         """
         Update the existing features in the asset.
 
@@ -240,7 +235,7 @@ class Asset:
 
         return updated, n_pw
 
-    def get_centroid(self) -> List[List[Optional[float]]]:
+    def get_centroid(self) -> list[list[float | None]]:
         """
         Get the centroid of the asset geometry.
 
@@ -399,12 +394,12 @@ class AssetInventory:
 
     def __init__(self) -> None:
         """Initialize AssetInventory with an empty inventory dictionary."""
-        self.inventory: Dict = {}
-        self.housing_unit_inventory: Optional[HousingUnitInventory] = None
+        self.inventory: dict = {}
+        self.housing_unit_inventory: HousingUnitInventory | None = None
         self.n_pw = 1
-        self.vector_features: List[str] = ['HousingUnits']
+        self.vector_features: list[str] = ['HousingUnits']
 
-    def add_asset(self, asset_id: Union[str, int], asset: Asset) -> bool:
+    def add_asset(self, asset_id: str | int, asset: Asset) -> bool:
         """
         Add an Asset to the inventory.
 
@@ -448,7 +443,7 @@ class AssetInventory:
         return True
 
     def add_asset_coordinates(
-        self, asset_id: Union[str, int], coordinates: List[List[float]]
+        self, asset_id: str | int, coordinates: list[list[float]]
     ) -> bool:
         """
         Add an ``Asset`` to the inventory by adding its coordinate information.
@@ -494,8 +489,8 @@ class AssetInventory:
 
     def add_asset_features(
         self,
-        asset_id: Union[str, int],
-        new_features: Dict[str, Any],
+        asset_id: str | int,
+        new_features: dict[str, Any],
         *,
         overwrite: bool = True,
     ) -> bool:
@@ -578,7 +573,7 @@ class AssetInventory:
         return status
 
     def add_model_predictions(
-        self, predictions: Dict[Any, Any], feature_key: str
+        self, predictions: dict[Any, Any], feature_key: str
     ) -> None:
         """
         Add model predictions to the inventory.
@@ -642,7 +637,7 @@ class AssetInventory:
                     asset_id, {feature_key: predictions.get(asset_id)}
                 )
 
-    def change_feature_names(self, feature_name_mapping: Dict[str, str]) -> None:
+    def change_feature_names(self, feature_name_mapping: dict[str, str]) -> None:
         """
         Rename feature names in ``AssetInventory`` via user-specified mapping.
 
@@ -715,8 +710,8 @@ class AssetInventory:
     def combine(
         self,
         other_inventory: AssetInventory,
-        asset_id_map: Optional[Dict[Union[str, int], Union[str, int]]] = None,
-    ) -> Dict[Union[str, int], Union[str, int]]:
+        asset_id_map: dict[str | int, str | int] | None = None,
+    ) -> dict[str | int, str | int]:
         """
         Merge another AssetInventory into this one, handling conflicts.
 
@@ -739,13 +734,13 @@ class AssetInventory:
         Args:
             other_inventory (AssetInventory):
                 The secondary inventory to merge into this one.
-            asset_id_map (Dict, optional):
+            asset_id_map (dict, optional):
                 A dictionary mapping {original_asset_id: suggested_asset_id}.
                 Use this to rename asset IDs from `other_inventory` during
                 the merge.
 
         Returns:
-            Dict[Union[str, int], Union[str, int]]:
+            dict[str | int, str | int]:
                 A `final_id_map` dictionary, which acts as a "receipt"
                 mapping {original_asset_id: final_asset_id}. This is
                 critical for data traceability, as it reports the
@@ -921,7 +916,7 @@ class AssetInventory:
             centroid = shape(geometry).centroid
             asset.coordinates = [[centroid.x, centroid.y]]
 
-    def get_asset_coordinates(self, asset_id: Union[str, int]) -> Tuple[bool, List]:
+    def get_asset_coordinates(self, asset_id: str | int) -> tuple[bool, list]:
         """
         Get the coordinates of a particular asset.
 
@@ -957,8 +952,8 @@ class AssetInventory:
         return True, asset.coordinates
 
     def get_asset_features(
-        self, asset_id: Union[str, int]
-    ) -> Tuple[bool, Dict[str, Any]]:
+        self, asset_id: str | int
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Get features of a particular asset.
 
@@ -967,7 +962,7 @@ class AssetInventory:
                 The unique identifier for the asset.
 
         Returns:
-            tuple[bool, Dict]:
+            tuple[bool, dict]:
                 A tuple where the first element is a boolean indicating whether
                 the asset was found, and the second element is a dictionary
                 containing the asset's features if the asset is present.
@@ -1000,7 +995,7 @@ class AssetInventory:
 
         return True, asset.features
 
-    def get_asset_ids(self) -> List[Union[str, int]]:
+    def get_asset_ids(self) -> list[str | int]:
         """
         Retrieve the IDs of all assets in the inventory.
 
@@ -1100,7 +1095,7 @@ class AssetInventory:
 
     def get_coordinates(
         self,
-    ) -> Tuple[List[List[List[float]]], List[Union[str, int]]]:
+    ) -> tuple[list[list[list[float]]], list[str | int]]:
         """
         Get geometry(coordinates) and keys of all assets in the inventory.
 
@@ -1137,7 +1132,7 @@ class AssetInventory:
     def get_random_sample(
         self,
         nsamples: int,
-        seed: Optional[Union[int, float, str, bytes, bytearray]] = None,
+        seed: int | float | str | bytes | bytearray | None = None,
     ) -> AssetInventory:
         """
         Generate a smaller asset inventory with a random selection of assets.
@@ -1211,7 +1206,7 @@ class AssetInventory:
 
         return result
 
-    def get_extent(self, buffer: Union[str, List[float]] = 'default') -> box:
+    def get_extent(self, buffer: str | list[float] = 'default') -> box:
         """
         Calculate the geographical extent of the inventory.
 
@@ -1299,7 +1294,7 @@ class AssetInventory:
             maxlat + buffer_levels[3],
         )
 
-    def get_geojson(self) -> Dict[str, Any]:
+    def get_geojson(self) -> dict[str, Any]:
         """
         Generate a GeoJSON representation of the assets in the inventory.
 
@@ -1553,7 +1548,7 @@ class AssetInventory:
         self,
         file_path: str,
         asset_type: str = 'building',
-        id_column: Optional[str] = None,
+        id_column: str | None = None,
     ) -> bool:
         """
         Reads a GeoJSON file and imports assets into the asset inventory.
@@ -1765,7 +1760,7 @@ class AssetInventory:
 
         return True
 
-    def remove_asset(self, asset_id: Union[str, int]) -> bool:
+    def remove_asset(self, asset_id: str | int) -> bool:
         """
         Remove an asset from the inventory.
 
@@ -1944,7 +1939,7 @@ class AssetInventory:
                 f'{sorted(missing_keys)}'
             )
 
-    def write_to_geojson(self, output_file: str = '') -> Dict:
+    def write_to_geojson(self, output_file: str = '') -> dict:
         """
         Write inventory to a GeoJSON file and return the GeoJSON dictionary.
 
@@ -1957,7 +1952,7 @@ class AssetInventory:
                 Path to the output GeoJSON file. If empty, no file is written.
 
         Returns:
-            Dict:
+            dict:
                 A dictionary containing the GeoJSON ``FeatureCollection``.
 
         Examples:
@@ -2020,7 +2015,7 @@ class AssetInventory:
         file_path: str,
         keep_existing: bool,
         str_type: str = 'building',
-        id_column: Optional[str] = None,
+        id_column: str | None = None,
     ) -> bool:
         """
         Read inventory data from a CSV file and add it to the inventory.
@@ -2068,7 +2063,7 @@ class AssetInventory:
         # Attempt to open the file
         try:
             with open(file_path) as csvfile:
-                csv_reader = csv.DictReader(csvfile)
+                csv_reader = csv.dictReader(csvfile)
                 rows = list(csv_reader)
         except FileNotFoundError:
             raise Exception(f'The file {file_path} does not exist.')
@@ -2135,7 +2130,7 @@ class AssetInventory:
         return True
 
     def add_asset_features_from_csv(
-        self, file_path: str, id_column: Union[str, None]
+        self, file_path: str, id_column: str | None
     ) -> bool:
         """
         Read inventory data from a CSV file and add it to the inventory.
@@ -2152,7 +2147,7 @@ class AssetInventory:
         """
         try:  # Attempt to open the file
             with open(file_path) as csvfile:
-                csv_reader = csv.DictReader(csvfile)
+                csv_reader = csv.dictReader(csvfile)
                 rows = list(csv_reader)
         except FileNotFoundError:
             raise Exception(f'The file {csvfile} does not exist.')
@@ -2176,7 +2171,7 @@ class AssetInventory:
 
         return True
 
-    def get_dataframe(self) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
+    def get_dataframe(self) -> tuple[pd.DataFrame, pd.DataFrame, int]:
         """
         Convert the asset inventory into two structured DataFrames and count.
 
@@ -2193,7 +2188,7 @@ class AssetInventory:
         GeoJSON geometry for each asset.
 
         Returns:
-            Tuple[pd.DataFrame, pd.DataFrame, int]:
+            tuple[pd.DataFrame, pd.DataFrame, int]:
 
                 - Asset feature ``DataFrame`` (indexed by asset ID).
                 - Asset geometry ``DataFrame`` with 'Lat' and 'Lon' columns.
@@ -2439,7 +2434,7 @@ class AssetInventory:
         """
         return self.n_pw
 
-    def get_multi_keys(self) -> Tuple[List[str], List[str]]:  # move to Asset
+    def get_multi_keys(self) -> tuple[list[str], list[str]]:  # move to Asset
         """
         Identify features that contain multiple realizations across assets.
 
@@ -2449,7 +2444,7 @@ class AssetInventory:
         - All unique feature keys present in the inventory.
 
         Returns:
-            Tuple[List[str], List[str]]:
+            tuple[list[str], list[str]]:
                 - A list of keys corresponding to multi-realization features.
                 - A complete list of all unique feature keys in the inventory.
         """
@@ -2487,7 +2482,7 @@ class AssetInventory:
     def set_housing_unit_inventory(
         self,
         hu_inventory: HousingUnitInventory,
-        hu_assignment: Optional[Dict[Union[str, int], List]] = None,
+        hu_assignment: dict[str | int, list] | None = None,
         *,
         validate: bool = True,
     ) -> None:
@@ -2511,7 +2506,7 @@ class AssetInventory:
             hu_inventory (HousingUnitInventory):
                 The `HousingUnitInventory` object to link to this
                 `AssetInventory`.
-            hu_assignment (Dict[Union[str, int], List], optional):
+            hu_assignment (dict[str | int, list], optional):
                 A dictionary mapping `asset_id` to a list of housing unit IDs.
                 If provided, this list will be added as the 'HousingUnits'
                 feature for each corresponding asset, overwriting any

@@ -44,9 +44,9 @@ HousingUnit and HousingUnitInventory instances.
 from __future__ import annotations
 
 import json
-from importlib.metadata import PackageNotFoundError as _PkgNotFound  # type: ignore
+from importlib.metadata import PackageNotFoundError
 from pathlib import Path as _Path
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import pytest
@@ -62,7 +62,7 @@ if TYPE_CHECKING:  # pragma: no cover - used only for typing annotations
 
 
 @pytest.fixture
-def sample_features() -> Dict[str, Any]:
+def sample_features() -> dict[str, Any]:
     """Provide a sample features dictionary used in multiple tests."""
     return {'IncomeSample': 50000, 'NumberOfPersons': 3, 'Family': False}
 
@@ -74,7 +74,7 @@ def empty_housing_unit() -> HousingUnit:
 
 
 @pytest.fixture
-def populated_housing_unit(sample_features: Dict[str, Any]) -> HousingUnit:
+def populated_housing_unit(sample_features: dict[str, Any]) -> HousingUnit:
     """Provide a HousingUnit pre-populated with sample features."""
     return HousingUnit(features=sample_features.copy())
 
@@ -92,7 +92,7 @@ def populated_housing_unit(sample_features: Dict[str, Any]) -> HousingUnit:
         {},
     ],
 )
-def test_housing_unit_initialization_valid(features: Dict[str, Any]) -> None:
+def test_housing_unit_initialization_valid(features: dict[str, Any]) -> None:
     """Test that valid feature dictionaries initialize HousingUnit correctly."""
     # Arrange & Act
     hu = HousingUnit(features=features)
@@ -217,7 +217,7 @@ def test_add_features_no_overwrite_no_changes_returns_false() -> None:
     ],
 )
 def test_remove_features_removes_as_expected(
-    sample_features: Dict[str, Any], to_remove: List[str], expected: Dict[str, Any]
+    sample_features: dict[str, Any], to_remove: list[str], expected: dict[str, Any]
 ) -> None:
     """Test HousingUnit.remove_features removes keys and ignores missing ones."""
     hu = HousingUnit(features=sample_features)
@@ -279,7 +279,7 @@ def empty_inventory() -> HousingUnitInventory:
 
 
 @pytest.fixture
-def populated_inventory(sample_features: Dict[str, Any]) -> HousingUnitInventory:
+def populated_inventory(sample_features: dict[str, Any]) -> HousingUnitInventory:
     """Provide a HousingUnitInventory with two predefined housing units."""
     inv = HousingUnitInventory()
     inv.add_housing_unit('H1', HousingUnit(features={'a': 1, 'b': 2}))
@@ -566,7 +566,8 @@ def test_inventory_to_json_sets_brails_version_NA_when_package_missing() -> None
 
     # Patch the function where it is used in the module
     with patch(
-        'brails.types.housing_unit_inventory.version', side_effect=_PkgNotFound
+        'brails.types.housing_unit_inventory.version',
+        side_effect=PackageNotFoundError,
     ):
         data = inv.to_json()
 

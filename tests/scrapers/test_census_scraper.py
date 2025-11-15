@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import geopandas as gpd
 import pytest
@@ -32,7 +32,7 @@ def census_api_fixture_path() -> Path:
 
 
 @pytest.fixture
-def census_api_response(census_api_fixture_path: Path) -> Dict[str, Any]:
+def census_api_response(census_api_fixture_path: Path) -> dict[str, Any]:
     """Load and return the JSON content of the TIGERweb fixture file."""
     text = census_api_fixture_path.read_text(encoding='utf-8')
     return json.loads(text)
@@ -53,7 +53,7 @@ def _make_http_error(status_code: int) -> exceptions.HTTPError:
 
 
 def test_fetch_success_contract(
-    mocker: MockerFixture, census_api_response: Dict[str, Any]
+    mocker: MockerFixture, census_api_response: dict[str, Any]
 ) -> None:
     """Verify method parses a known, canned API response correctly.
 
@@ -91,7 +91,7 @@ def test_fetch_success_contract(
 def test_fetch_retries_on_transient_errors(
     mocker: MockerFixture,
     side_effect_factory: Any,
-    census_api_response: Dict[str, Any],
+    census_api_response: dict[str, Any],
 ) -> None:
     """Ensure transient errors are retried and succeed on the second attempt.
 
@@ -103,7 +103,7 @@ def test_fetch_retries_on_transient_errors(
         def raise_for_status(self) -> None:
             return None
 
-        def json(self) -> Dict[str, Any]:
+        def json(self) -> dict[str, Any]:
             return census_api_response
 
     # First call: raise transient error; second: success
@@ -237,8 +237,8 @@ def single_tract_inventory() -> AssetInventory:
 
 
 @pytest.fixture
-def two_tracts_inventory() -> Tuple[
-    AssetInventory, List[Tuple[str, Tuple[float, float]]]
+def two_tracts_inventory() -> tuple[
+    AssetInventory, list[tuple[str, tuple[float, float]]]
 ]:
     """Inventory with assets placed in two distinct tracts.
 
@@ -250,7 +250,7 @@ def two_tracts_inventory() -> Tuple[
     inv.add_asset_coordinates('t1_a1', [[-120.0, 35.0]])  # tract T1
     inv.add_asset_coordinates('t1_a2', [[-120.002, 35.001]])  # tract T1
     inv.add_asset_coordinates('t2_a1', [[-77.0, 39.0]])  # tract T2
-    asset_coords: List[Tuple[str, Tuple[float, float]]] = [
+    asset_coords: list[tuple[str, tuple[float, float]]] = [
         ('t1_a1', (-120.0, 35.0)),
         ('t1_a2', (-120.002, 35.001)),
         ('t2_a1', (-77.0, 39.0)),
@@ -258,7 +258,7 @@ def two_tracts_inventory() -> Tuple[
     return inv, asset_coords
 
 
-def _feature_for_polygon(geoid: str, poly: Polygon) -> Dict[str, Any]:
+def _feature_for_polygon(geoid: str, poly: Polygon) -> dict[str, Any]:
     """Create a TIGER-like feature dict for a given GEOID and polygon."""
     return {
         'type': 'Feature',
@@ -278,8 +278,8 @@ def test_get_tracts_input_validation() -> None:
 
 def test_get_tracts_happy_path(
     mocker: MockerFixture,
-    two_tracts_inventory: Tuple[
-        AssetInventory, List[Tuple[str, Tuple[float, float]]]
+    two_tracts_inventory: tuple[
+        AssetInventory, list[tuple[str, tuple[float, float]]]
     ],
 ) -> None:
     """End-to-end success: assets across two tracts are updated and cached.
