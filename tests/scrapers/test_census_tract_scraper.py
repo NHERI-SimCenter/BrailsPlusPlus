@@ -18,7 +18,9 @@ import pytest
 from requests import Response, exceptions
 from shapely.geometry import Polygon, mapping
 
-from brails.scrapers.census_scraper.census_scraper import CensusScraper
+from brails.scrapers.us_census_scrapers.census_tract_scraper import (
+    CensusTractScraper,
+)
 from brails.types.asset_inventory import Asset, AssetInventory
 
 # Use a local alias to avoid a hard dependency on pytest-mock at import time
@@ -61,7 +63,7 @@ def test_fetch_success_contract(
     Act: call _fetch_tract_geometry with dummy coords.
     Assert: first feature dict is returned and requests.get was called once.
     """
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     mock_response = mocker.Mock()
     mock_response.raise_for_status.return_value = None
@@ -97,7 +99,7 @@ def test_fetch_retries_on_transient_errors(
 
     The first call raises the transient error; the second returns success.
     """
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     class _OK:
         def raise_for_status(self) -> None:
@@ -113,7 +115,7 @@ def test_fetch_retries_on_transient_errors(
     )
     # Avoid real sleep during retries
     mocker.patch(
-        'brails.scrapers.census_scraper.census_scraper.time.sleep', return_value=None
+        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep', return_value=None
     )
 
     feature = scraper._fetch_tract_geometry(
@@ -142,7 +144,7 @@ def test_fetch_fails_fast_on_permanent_errors(
     - 4xx HTTPError raised on first call -> should propagate immediately.
     - 2xx response with empty features -> should raise ValueError without retry.
     """
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     if side_effect is not None:
         # Simulate 4xx client error
@@ -160,7 +162,7 @@ def test_fetch_fails_fast_on_permanent_errors(
 
     # Avoid real sleep even though we do not expect retries
     mocker.patch(
-        'brails.scrapers.census_scraper.census_scraper.time.sleep', return_value=None
+        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep', return_value=None
     )
 
     with pytest.raises(expected_exception):
@@ -178,14 +180,14 @@ def test_fetch_exhausts_retries(mocker: MockerFixture) -> None:
     Mock requests.get to always raise ConnectionError; assert it is called
     exactly `retries` times and that a final ConnectionError is raised.
     """
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     mock_get = mocker.patch(
         'requests.get',
         side_effect=exceptions.ConnectionError('dns failure'),
     )
     mocker.patch(
-        'brails.scrapers.census_scraper.census_scraper.time.sleep', return_value=None
+        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep', return_value=None
     )
 
     with pytest.raises(exceptions.ConnectionError):
@@ -269,7 +271,7 @@ def _feature_for_polygon(geoid: str, poly: Polygon) -> dict[str, Any]:
 
 def test_get_tracts_input_validation() -> None:
     """get_census_tracts should raise TypeError for invalid input types."""
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
     with pytest.raises(TypeError):
         scraper.get_census_tracts(asset_inventory=None)  # type: ignore[arg-type]
     with pytest.raises(TypeError):
@@ -301,12 +303,12 @@ def test_get_tracts_happy_path(
     # Side effects: first call returns T1 (covers first two points),
     # second call returns T2 (covers the remaining point)
     mock_fetch = mocker.patch.object(
-        CensusScraper,
+        CensusTractScraper,
         '_fetch_tract_geometry',
         side_effect=[feature_t1, feature_t2],
     )
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
     downloaded = scraper.get_census_tracts(inv)
 
     # 1. Called once per unique tract
@@ -337,12 +339,12 @@ def test_get_tracts_uses_cache_correctly(
     feature = _feature_for_polygon('06001400100', poly)
 
     mock_fetch = mocker.patch.object(
-        CensusScraper,
+        CensusTractScraper,
         '_fetch_tract_geometry',
         return_value=feature,
     )
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
     inv = single_tract_inventory
     _ = scraper.get_census_tracts(inv)
 
@@ -366,12 +368,12 @@ def test_get_tracts_handles_api_failure_gracefully(
     Also verify that the new failure-path messages are printed to stdout.
     """
     mocker.patch.object(
-        CensusScraper,
+        CensusTractScraper,
         '_fetch_tract_geometry',
         side_effect=ValueError('no features for point'),
     )
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     # Snapshot original features (should be empty dicts) to compare after call
     before = {
@@ -404,10 +406,10 @@ def test_get_tracts_with_empty_inventory(
 ) -> None:
     """Empty inventory should result in zero API calls and an empty cache."""
     mock_fetch = mocker.patch.object(
-        CensusScraper, '_fetch_tract_geometry', autospec=True
+        CensusTractScraper, '_fetch_tract_geometry', autospec=True
     )
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
     downloaded = scraper.get_census_tracts(empty_inventory)
 
     assert mock_fetch.call_count == 0
@@ -430,7 +432,7 @@ def test_get_tracts_live_api_call() -> None:
     # UC Berkeley: (lon, lat)
     inv.add_asset_coordinates('live1', [[-122.2585, 37.8719]])
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     # Act: perform a real API call
     _ = scraper.get_census_tracts(inv)
@@ -544,9 +546,11 @@ def test_get_census_tracts_handles_various_geometries(
     geoid = '12345678901'  # Dummy 11-digit GEOID
     feature = _feature_for_polygon(geoid, covering_poly)
 
-    mocker.patch.object(CensusScraper, '_fetch_tract_geometry', return_value=feature)
+    mocker.patch.object(
+        CensusTractScraper, '_fetch_tract_geometry', return_value=feature
+    )
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
     _ = scraper.get_census_tracts(inv)
 
     # Assert every asset received the mocked GEOID

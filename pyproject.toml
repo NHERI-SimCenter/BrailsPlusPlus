@@ -105,9 +105,9 @@ include = [
     "brails/types/housing_unit_inventory.py",
     "brails/aggregators/housing_units/pyncoda/pyncoda_housing_units.py",
     "brails/aggregators/housing_units/pyncoda/supporting_data/FIPS_lookup_generator.py",
-    "brails/scrapers/census_scraper/census_scraper.py",
+    "brails/scrapers/us_census_scrapers/census_tract_scraper.py",
     "tests/aggregators/housing_units/pyncoda/test_pyncoda_housing_units.py",
-    "tests/scrapers/test_census_scraper.py",
+    "tests/scrapers/test_census_tract_scraper.py",
     "tests/types/test_housing_unit_inventory.py",
 ]
 

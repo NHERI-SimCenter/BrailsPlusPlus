@@ -658,7 +658,7 @@ def _mock_happy_path_dependencies(
     - prepare_building_inventory -> returns provided lean_gdf
     - GeoDataFrame.to_file -> no-op
     - AssetInventory.read_from_geojson -> no-op (new behavior reloads filtered inventory)
-    - Importer().get_class('CensusScraper')() -> object with get_census_tracts()
+    - CensusTractScraper().get_census_tracts() -> returns mocked tracts
     - get_county_and_state_names -> returns a fixed counties/state tuple
     """
     mocker.patch.object(ah, 'prepare_building_inventory', return_value=lean_gdf)
@@ -671,15 +671,13 @@ def _mock_happy_path_dependencies(
     )
 
     # Fake census scraper
-    fake_scraper = mocker.Mock()
-    fake_scraper.get_census_tracts.return_value = (
+    fake_scraper_instance = mocker.Mock()
+    fake_scraper_instance.get_census_tracts.return_value = (
         {'06001432100': {}}
         if census_tracts is None
         else {t: {} for t in census_tracts}
     )
-    fake_importer = mocker.Mock()
-    fake_importer.get_class.return_value = lambda: fake_scraper
-    mocker.patch.object(ah, 'Importer', return_value=fake_importer)
+    mocker.patch.object(ah, 'CensusTractScraper', return_value=fake_scraper_instance)
 
     # Counties/state
     mocker.patch.object(
@@ -729,12 +727,10 @@ def test_assign_housing_units_census_scraper_failure(
     )
     mocker.patch('geopandas.GeoDataFrame.to_file', autospec=True)
 
-    # Importer -> CensusScraper that returns empty dict
-    fake_scraper = mocker.Mock()
-    fake_scraper.get_census_tracts.return_value = {}
-    fake_importer = mocker.Mock()
-    fake_importer.get_class.return_value = lambda: fake_scraper
-    mocker.patch.object(ah, 'Importer', return_value=fake_importer)
+    # CensusTractScraper -> returns empty dict
+    fake_scraper_instance = mocker.Mock()
+    fake_scraper_instance.get_census_tracts.return_value = {}
+    mocker.patch.object(ah, 'CensusTractScraper', return_value=fake_scraper_instance)
 
     # New behavior: filtered inventory is reloaded from file; avoid actual IO
     mocker.patch(
@@ -1016,11 +1012,9 @@ def test_assign_housing_units_end_to_end_mocked(  # noqa: C901
     )
 
     # Mock census dependencies to provide non-empty tract and county/state data
-    fake_scraper = mocker.Mock()
-    fake_scraper.get_census_tracts.return_value = {'48301000000': {}}
-    fake_importer = mocker.Mock()
-    fake_importer.get_class.return_value = lambda: fake_scraper
-    mocker.patch.object(ah, 'Importer', return_value=fake_importer)
+    fake_scraper_instance = mocker.Mock()
+    fake_scraper_instance.get_census_tracts.return_value = {'48301000000': {}}
+    mocker.patch.object(ah, 'CensusTractScraper', return_value=fake_scraper_instance)
 
     mocker.patch.object(
         ah,

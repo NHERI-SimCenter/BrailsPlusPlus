@@ -55,9 +55,8 @@ import pandas as pd
 from pyncoda import ncoda_00h_bldg_archetype_structure as bldg_arch
 from pyncoda.ncoda_07i_process_communities import process_community_workflow
 
-from brails.types.asset_inventory import AssetInventory
-from brails.types.housing_unit_inventory import HousingUnit, HousingUnitInventory
-from brails.utils import Importer
+from brails.scrapers import CensusTractScraper
+from brails.types import AssetInventory, HousingUnitInventory, HousingUnit
 
 # Define the absolute paths to the data files
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -550,9 +549,7 @@ def assign_housing_units_to_buildings(
     #    if k in lean_building_gdf.index:
     #        filtered_inventory.add_asset(k, v)
 
-    importer = Importer()
-    census_scraper = importer.get_class('CensusScraper')()
-    census_tract_dict = census_scraper.get_census_tracts(filtered_inventory)
+    census_tract_dict = CensusTractScraper().get_census_tracts(filtered_inventory)
 
     if not census_tract_dict:
         raise ValueError(

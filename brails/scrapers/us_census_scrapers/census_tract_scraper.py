@@ -58,8 +58,8 @@ from brails.types.asset_inventory import AssetInventory
 CENSUS_TRACT_QUERY_URL = 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/6/query'
 
 
-class CensusScraper:
-    """A class to get data from the US Census."""
+class CensusTractScraper:
+    """A class to get census tract data from the US Census."""
 
     def __init__(self) -> None:
         """Initialize an instance of the class."""
