@@ -115,7 +115,8 @@ def test_fetch_retries_on_transient_errors(
     )
     # Avoid real sleep during retries
     mocker.patch(
-        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep', return_value=None
+        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep',
+        return_value=None,
     )
 
     feature = scraper._fetch_tract_geometry(
@@ -162,7 +163,8 @@ def test_fetch_fails_fast_on_permanent_errors(
 
     # Avoid real sleep even though we do not expect retries
     mocker.patch(
-        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep', return_value=None
+        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep',
+        return_value=None,
     )
 
     with pytest.raises(expected_exception):
@@ -187,7 +189,8 @@ def test_fetch_exhausts_retries(mocker: MockerFixture) -> None:
         side_effect=exceptions.ConnectionError('dns failure'),
     )
     mocker.patch(
-        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep', return_value=None
+        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep',
+        return_value=None,
     )
 
     with pytest.raises(exceptions.ConnectionError):

@@ -655,13 +655,15 @@ def _mock_happy_path_dependencies(
 ) -> None:
     """Patch dependencies to reach specific checkpoints in the workflow.
 
-    - prepare_building_inventory -> returns provided lean_gdf
+    - PyncodaHousingUnitAllocator._prepare_inventory -> returns provided lean_gdf
     - GeoDataFrame.to_file -> no-op
     - AssetInventory.read_from_geojson -> no-op (new behavior reloads filtered inventory)
     - CensusTractScraper().get_census_tracts() -> returns mocked tracts
     - get_county_and_state_names -> returns a fixed counties/state tuple
     """
-    mocker.patch.object(ah, 'prepare_building_inventory', return_value=lean_gdf)
+    mocker.patch.object(
+        ah.PyncodaHousingUnitAllocator, '_prepare_inventory', return_value=lean_gdf
+    )
 
     # Avoid actual file IO
     mocker.patch('geopandas.GeoDataFrame.to_file', autospec=True)
@@ -723,7 +725,9 @@ def test_assign_housing_units_census_scraper_failure(
     """It should raise ValueError when CensusScraper returns no tracts."""
     # Base mocks
     mocker.patch.object(
-        ah, 'prepare_building_inventory', return_value=lean_buildings_gdf_one
+        ah.PyncodaHousingUnitAllocator,
+        '_prepare_inventory',
+        return_value=lean_buildings_gdf_one,
     )
     mocker.patch('geopandas.GeoDataFrame.to_file', autospec=True)
 
