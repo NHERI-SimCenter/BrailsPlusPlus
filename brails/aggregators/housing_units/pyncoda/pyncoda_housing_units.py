@@ -46,6 +46,7 @@ workflow from data preparation to final assignment.
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -74,16 +75,26 @@ class PyncodaHousingUnitAllocator:
     housing units to an AssetInventory.
 
     Attributes:
+        inventory (AssetInventory): The bound asset inventory to which housing
+            units will be assigned. The same instance is modified in-place by
+            the allocator's workflow.
         vintage (str): The census data vintage to use ('2010' or '2020').
         seed (int): Random seed for pyncoda's probabilistic generation.
-        key_features (dict): Dictionary mapping internal feature names to
-            building inventory columns. It must contain the following keys:
+        key_features (dict): Mapping from required keys to inventory column names.
+            It must contain the following keys:
             - 'occupancy_col' (str): Column name for occupancy type (e.g., 'OccupancyClass').
             - 'plan_area_col' (str): Column name for building footprint area.
             - 'story_count_col' (str): Column name for number of stories.
             - 'length_unit' (str): Unit of measurement for length ('ft' or 'm').
-        work_dir (str | Path): Directory for storing temporary and output files.
+        work_dir (Path): The effective working directory used by pyncoda. It is
+            created as a subdirectory named 'pyncoda_working_dir' under the
+            user-provided base `work_dir` (or under the current working directory
+            if no base is provided). All temporary and output files are written
+            inside this subdirectory.
     """
+
+    # Working subdirectory name for pyncoda temporary/output files
+    PYNCODA_SUBDIR = 'pyncoda_working_dir'
 
     def __init__(
         self,
@@ -92,8 +103,34 @@ class PyncodaHousingUnitAllocator:
         seed: int = 9877,
         key_features: dict[str, Any] | None = None,
         work_dir: str | Path | None = None,
+        clean_work_dir: bool = True,  # noqa: FBT001, FBT002
     ) -> None:
-        """Initialize the allocator with an inventory and configuration settings."""
+        """Initialize the allocator with an inventory and configuration settings.
+
+        Args:
+            inventory (AssetInventory): The `AssetInventory` to which housing units
+                will be assigned. The same instance is stored on the allocator and
+                modified in-place during the allocation workflow.
+            vintage (str, optional): Census data vintage to use ('2010' or '2020').
+                Defaults to '2020'.
+            seed (int, optional): Random seed for pyncoda's probabilistic
+                generation. Defaults to 9877.
+            key_features (dict, optional): Mapping from required keys to inventory
+                column names. Required keys:
+                - 'occupancy_col' (str): Column name for occupancy type (e.g., 'OccupancyClass').
+                - 'plan_area_col' (str): Column name for building footprint area.
+                - 'story_count_col' (str): Column name for number of stories.
+                - 'length_unit' (str): Unit of measurement for length ('ft' or 'm').
+                Defaults to None.
+            work_dir (str or Path, optional): Base directory under which a
+                subdirectory will be created to store temporary and output files.
+                If not provided, uses current working directory. The final working
+                directory will be `(work_dir or cwd) / PYNCODA_SUBDIR`. Defaults
+                to None.
+            clean_work_dir (bool, optional): Initialization behavior flag. When
+                True and the working subdirectory already exists, it is removed
+                before being recreated to ensure a clean state. Defaults to True.
+        """
         if not isinstance(inventory, AssetInventory):
             raise TypeError('inventory must be an instance of AssetInventory')
         if vintage not in ['2010', '2020']:
@@ -103,13 +140,38 @@ class PyncodaHousingUnitAllocator:
         self.vintage = vintage
         self.seed = seed
         self.key_features = key_features or {}
-        self.work_dir = Path(work_dir) if work_dir is not None else Path.cwd()
+        # Resolve working directory as (provided base or cwd) joined with subdir
+        base_dir = Path(work_dir) if work_dir is not None else Path.cwd()
+        # Validate that base_dir, if it exists, is a directory
+        if base_dir.exists() and not base_dir.is_dir():
+            raise NotADirectoryError(
+                f'The provided work_dir is not a directory: {base_dir}'
+            )
+        self.work_dir = base_dir / self.PYNCODA_SUBDIR
 
         # validate key features if provided (some static wrappers may not need it)
         if self.key_features:
             self._validate_key_features(self.key_features)
 
+        # initialize working directory
+        self._initialize_working_directory(clean_work_dir)
+
     # --------------------- Private helpers (static where appropriate) ---------------------
+    def _initialize_working_directory(self, clean: bool) -> None:  # noqa: FBT001
+        """Ensure the pyncoda working directory exists, optionally cleaning it.
+
+        If `clean` is True and the directory already exists, it will be removed
+        before being recreated. The final directory is available at
+        `self.work_dir`.
+        """
+        work_dir_path = Path(self.work_dir)
+        if clean and work_dir_path.exists():
+            print(
+                f'Existing pyncoda working directory found. Removing and recreating: {work_dir_path}'
+            )
+            shutil.rmtree(work_dir_path)
+        work_dir_path.mkdir(parents=True, exist_ok=True)
+
     def _get_county_and_state_names(
         self,
         census_tracts: list[str],

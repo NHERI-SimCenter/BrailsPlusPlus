@@ -135,6 +135,76 @@ def test_validate_key_features_dict_reports_all_errors(
 
 
 # -----------------------------
+# Tests: working directory initialization
+# -----------------------------
+
+
+def test_init_creates_subdirectory_and_structure(tmp_path: Path) -> None:
+    """Allocator should create the pyncoda subdirectory under provided base dir."""
+    # Arrange
+    base_dir = tmp_path
+
+    # Act
+    allocator = ah.PyncodaHousingUnitAllocator(
+        AssetInventory(),
+        key_features={},
+        work_dir=base_dir,
+    )
+
+    # Assert
+    assert isinstance(allocator.work_dir, Path)
+    assert allocator.work_dir.name == 'pyncoda_working_dir'
+    assert allocator.work_dir.parent == base_dir
+    assert allocator.work_dir.exists()
+    assert allocator.work_dir.is_dir()
+
+
+def test_init_cleans_directory_by_default(tmp_path: Path) -> None:
+    """Existing subdirectory contents should be removed when clean_work_dir=True (default)."""
+    # Arrange: pre-create the subdir and a junk file
+    subdir = tmp_path / 'pyncoda_working_dir'
+    subdir.mkdir()
+    junk_file = subdir / 'junk.txt'
+    junk_file.touch()
+    assert junk_file.exists()  # sanity check
+
+    # Act
+    _ = ah.PyncodaHousingUnitAllocator(
+        AssetInventory(),
+        key_features={},
+        work_dir=tmp_path,
+    )  # default clean_work_dir=True
+
+    # Assert
+    assert subdir.exists()
+    assert subdir.is_dir()
+    assert not junk_file.exists()
+
+
+def test_init_preserves_directory_when_clean_is_false(tmp_path: Path) -> None:
+    """When clean_work_dir is False, existing files must be preserved."""
+    # Arrange
+    subdir = tmp_path / 'pyncoda_working_dir'
+    subdir.mkdir()
+    junk_file = subdir / 'junk.txt'
+    junk_file.touch()
+    assert junk_file.exists()  # sanity check
+
+    # Act
+    _ = ah.PyncodaHousingUnitAllocator(
+        AssetInventory(),
+        key_features={},
+        work_dir=tmp_path,
+        clean_work_dir=False,
+    )
+
+    # Assert
+    assert subdir.exists()
+    assert subdir.is_dir()
+    assert junk_file.exists()
+
+
+# -----------------------------
 # Tests: get_county_and_state_names
 # -----------------------------
 
@@ -1379,3 +1449,22 @@ def test_assign_housing_units_live_pyncoda(tmp_path: Path) -> None:  # noqa: C90
     # Group quarters mapped
     if 'GroupQuartersType' in candidate_features:
         assert candidate_features['GroupQuartersType'] in readable_gq
+
+
+def test_init_raises_if_work_dir_is_a_file(tmp_path: Path) -> None:
+    """It should raise NotADirectoryError when work_dir points to an existing file."""
+    # Arrange: create a file to pass as work_dir
+    file_path = tmp_path / 'not_a_dir.txt'
+    file_path.write_text('placeholder')
+    assert file_path.exists()
+    assert file_path.is_file()
+
+    # Act / Assert
+    with pytest.raises(
+        NotADirectoryError, match='The provided work_dir is not a directory'
+    ):
+        _ = ah.PyncodaHousingUnitAllocator(
+            AssetInventory(),
+            key_features={},
+            work_dir=file_path,
+        )
