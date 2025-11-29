@@ -634,7 +634,7 @@ class PyncodaHousingUnitAllocator:
             assigned_housing_units.index.copy()
         )
         housing_units_by_bldg_id = assigned_housing_units.groupby('building_id').agg(
-            housing_unit_ids=('housing_unit_id', lambda x: x.tolist())
+            housing_unit_ids=('housing_unit_id', list)
         )
 
         self.inventory.set_housing_unit_inventory(
@@ -642,62 +642,3 @@ class PyncodaHousingUnitAllocator:
             hu_assignment=housing_units_by_bldg_id['housing_unit_ids'].to_dict(),
             validate=True,
         )
-
-
-def get_county_and_state_names(
-    census_tracts: list[str],
-) -> tuple[dict[str, Any], str]:
-    """Backward-compatible wrapper to the allocator private method."""
-    allocator = PyncodaHousingUnitAllocator(
-        AssetInventory(), key_features={}
-    )  # dummy init
-    return allocator._get_county_and_state_names(census_tracts)  # noqa: SLF001
-
-
-def validate_key_features_dict(key_features: dict[str, Any]) -> None:
-    """Backward-compatible wrapper to allocator key_features validator."""
-    allocator = PyncodaHousingUnitAllocator(AssetInventory(), key_features={})
-    return allocator._validate_key_features(key_features)  # noqa: SLF001
-
-
-def prepare_building_inventory(
-    inventory: AssetInventory, key_features: dict[str, Any]
-) -> gpd.GeoDataFrame:
-    """
-    Backward-compatible wrapper.
-
-    Delegates to PyncodaHousingUnitAllocator._prepare_inventory using provided key_features.
-    """
-    allocator = PyncodaHousingUnitAllocator(inventory, key_features=key_features)
-    return allocator._prepare_inventory()  # noqa: SLF001
-
-
-def _validate_pyncoda_output(output_df: pd.DataFrame) -> None:
-    """Backward-compatible wrapper to allocator validator."""
-    allocator = PyncodaHousingUnitAllocator(AssetInventory(), key_features={})
-    return allocator._validate_pyncoda_output(output_df)  # noqa: SLF001
-
-
-def create_housing_unit_inventory(
-    assigned_housing_units: pd.DataFrame,
-) -> HousingUnitInventory:
-    """Backward-compatible wrapper to allocator inventory builder."""
-    allocator = PyncodaHousingUnitAllocator(AssetInventory(), key_features={})
-    return allocator._create_housing_unit_inventory(assigned_housing_units)  # noqa: SLF001
-
-
-def assign_housing_units_to_buildings(
-    building_inventory: AssetInventory,
-    key_features: dict[str, Any],
-    vintage: str,
-    output_folder: str,
-) -> None:
-    """Backward-compatible wrapper that uses the class-based allocator."""
-    allocator = PyncodaHousingUnitAllocator(
-        building_inventory,
-        vintage=vintage,
-        seed=9877,
-        key_features=key_features,
-        work_dir=output_folder,
-    )
-    allocator.allocate()
