@@ -1,9 +1,8 @@
 name: Run Brails++ tests
 
-on: push
-  # workflow_dispatch:
-  # schedule:
-  #   - cron: "0 5 * * *"
+on: workflow_dispatch
+# schedule:
+#   - cron: "0 5 * * *"
 
 jobs:
   setup_and_test:
