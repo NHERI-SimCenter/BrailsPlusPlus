@@ -995,6 +995,22 @@ class AssetInventory:
 
         return True, asset.features
 
+    def get_all_asset_features(self) -> set[str]:
+        """
+        Retrieves a set of unique feature keys present across all assets.
+
+        Iterates through every asset and collects the keys from their 'features'
+        dictionaries. This operation handles deduplication automatically.
+
+        Returns:
+            set[str]: A collection of unique feature names found in the inventory.
+        """
+        return {
+            feature
+            for asset in self.inventory.values()
+            for feature in asset.features
+        }
+
     def get_asset_ids(self) -> list[str | int]:
         """
         Retrieve the IDs of all assets in the inventory.
