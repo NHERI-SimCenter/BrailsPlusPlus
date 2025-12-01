@@ -544,18 +544,30 @@ class NSI_Parser:
         # NBI data:
         session = requests.Session()
         retries = Retry(total=5,
-                        backoff_factor=0.1,
-                        status_forcelist=[500, 502, 503, 504])
+                        backoff_factor=1,
+                        status_forcelist=[500, 502, 503, 504, 520, 522, 524],
+                        allowed_methods=["GET"])
         session.mount('https://', HTTPAdapter(max_retries=retries))
 
-        # Download NBI data using the defined retry strategy, read downloaded
+        # Download NSI data using the defined retry strategy, read downloaded
         # GeoJSON data into a list:
         logging.info('\nGetting National Structure Inventory (NSI) building '
                      'data for the entered location...')
 
         try:
-            response = session.get(url, timeout=10)
-            response.raise_for_status()  # Raise an HTTPError for bad responses
+            # Prevent 403 Forbidden errors by mimicking a browser
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                              'AppleWebKit/537.36 (KHTML, like Gecko) '
+                              'Chrome/91.0.4472.124 Safari/537.36'
+            }
+            response = session.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+
+            # Check content type before parsing to avoid blind failures
+            if 'application/json' not in response.headers.get('Content-Type', ''):
+                logging.warning(f"NSI returned non-JSON content type: {response.headers.get('Content-Type')}")
+
             data = response.json().get('features', [])
 
             # Convert GeoJSON features to a dictionary with (lon, lat) as keys
@@ -563,8 +575,10 @@ class NSI_Parser:
                     for feat in data}
 
         except requests.exceptions.RequestException as e:
-            logging.error(f"Request failed: {e}")
+            logging.error(f"NSI Network Request failed: {e}")
             return {}
         except (KeyError, ValueError) as e:
-            logging.error(f"Unexpected response structure: {e}")
+            # Log response to see if we got an HTML error page (e.g., 'Bad Gateway')
+            snippet = response.text[:200] if 'response' in locals() else "No response data"
+            logging.error(f"Failed to parse NSI JSON: {e}. \nResponse snippet: {snippet}")
             return {}
