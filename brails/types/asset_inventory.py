@@ -64,7 +64,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 import pandas as pd
 from shapely import box
-from shapely.geometry import Point, LineString, MultiLineString, Polygon, MultiPolygon, GeometryCollection, shape, mapping
+from shapely.geometry import GeometryCollection, mapping
 from shapely.geometry.base import BaseGeometry  # noqa: TC002
 
 from brails.utils.clean_floats import clean_floats
@@ -237,7 +237,6 @@ class Asset:
 
         return updated, n_pw
 
-
     def get_geometry(self) -> BaseGeometry | None:
         """
         Convert coordinates into a robust Shapely geometry object.
@@ -255,9 +254,8 @@ class Asset:
             return GeoTools.list_of_lists_to_geometry(self.coordinates)
 
         except ValueError as e:
-            print(f"WARNING: Asset geometry invalid. {e}")
+            print(f'WARNING: Asset geometry invalid. {e}')
             return None
-
 
     def get_centroid(self) -> list[list[float | None]]:
         """
@@ -457,7 +455,7 @@ class AssetInventory:
     def add_asset_coordinates(
         self,
         asset_id: str | int,
-        coordinates: list[list[float]] | list[list[list[float]]]
+        coordinates: list[list[float]] | list[list[list[float]]],
     ) -> bool:
         """
         Add an ``Asset`` to the inventory by adding its coordinate information.
@@ -558,9 +556,7 @@ class AssetInventory:
             return False
 
         status, n_pw = asset.add_features(
-            new_features,
-            vector_features=self.vector_features,
-            overwrite=overwrite
+            new_features, vector_features=self.vector_features, overwrite=overwrite
         )
         if n_pw == 1:
             # The new feature is deterministic.
@@ -813,13 +809,15 @@ class AssetInventory:
 
             # Use deepcopy to avoid two AssetInventory objects pointing to
             # the same mutable HousingUnitInventory object.
-            self.housing_unit_inventory = deepcopy(other_inventory.housing_unit_inventory)
+            self.housing_unit_inventory = deepcopy(
+                other_inventory.housing_unit_inventory
+            )
             # No ID remapping is needed; the new assets' links are already correct.
 
         # Case 2: Both inventories have housing unit data.
         elif (
-                self.housing_unit_inventory is not None
-                and other_inventory.housing_unit_inventory is not None
+            self.housing_unit_inventory is not None
+            and other_inventory.housing_unit_inventory is not None
         ):
             # Validate both inventories before attempting to merge.
             print('Validating current housing unit inventory...')
@@ -856,7 +854,9 @@ class AssetInventory:
                     ]
 
                     self.add_asset_features(
-                        final_id, {'HousingUnits': remapped_hu_id_list}, overwrite=True
+                        final_id,
+                        {'HousingUnits': remapped_hu_id_list},
+                        overwrite=True,
                     )
 
         return final_id_map
@@ -960,9 +960,7 @@ class AssetInventory:
 
         return True, asset.coordinates
 
-    def get_asset_features(
-        self, asset_id: str | int
-    ) -> tuple[bool, dict[str, Any]]:
+    def get_asset_features(self, asset_id: str | int) -> tuple[bool, dict[str, Any]]:
         """
         Get features of a particular asset.
 
@@ -1315,10 +1313,7 @@ class AssetInventory:
             raise ValueError(error_msg)
 
         # Determine the geographical extent of the inventory
-        valid_geoms = [
-            asset.get_geometry()
-            for asset in self.inventory.values()
-        ]
+        valid_geoms = [asset.get_geometry() for asset in self.inventory.values()]
         valid_geoms = [g for g in valid_geoms if g and not g.is_empty]
 
         if not valid_geoms:
@@ -1429,8 +1424,10 @@ class AssetInventory:
 
         # Report Failures
         if failed_ids:
-            print(f"\nWarning: {len(failed_ids)} assets were skipped due to invalid or unknown geometry.")
-            print(f"Skipped IDs: {', '.join(failed_ids)}")
+            print(
+                f'\nWarning: {len(failed_ids)} assets were skipped due to invalid or unknown geometry.'
+            )
+            print(f'Skipped IDs: {", ".join(failed_ids)}')
 
         return geojson
 
@@ -2208,9 +2205,7 @@ class AssetInventory:
                     bldg_features[key] = float(val)
 
             if id_column not in bldg_features.keys():
-                raise Exception(
-                    f"The key '{id_column}' not found in {file_path}"
-                )
+                raise Exception(f"The key '{id_column}' not found in {file_path}")
             id = bldg_features[id_column]
 
             self.add_asset_features(id, bldg_features)
@@ -2305,8 +2300,8 @@ class AssetInventory:
                     # Validate length
                     if len(val) != n_possible_worlds:
                         raise ValueError(
-                            f"Asset {entry['index']}: The specified # of "
-                            f"possible worlds is {n_possible_worlds} but "
+                            f'Asset {entry["index"]}: The specified # of '
+                            f'possible worlds is {n_possible_worlds} but '
                             f"'{col}' contains {len(val)} realizations."
                         )
 
@@ -2325,11 +2320,7 @@ class AssetInventory:
         bldg_properties_df = bldg_properties_df.set_index('index')
 
         # --- Construct Geometry DataFrame ---
-        bldg_geometries_df = pd.DataFrame({
-            'Lat': lats,
-            'Lon': lons,
-            'index': ids
-        })
+        bldg_geometries_df = pd.DataFrame({'Lat': lats, 'Lon': lons, 'index': ids})
         bldg_geometries_df = bldg_geometries_df.set_index('index')
 
         return bldg_properties_df, bldg_geometries_df, nbldg
@@ -2673,7 +2664,9 @@ class AssetInventory:
         # All checks passed
         return True
 
-    def remove_housing_unit_inventory(self, *, clear_assignments: bool = True) -> None:
+    def remove_housing_unit_inventory(
+        self, *, clear_assignments: bool = True
+    ) -> None:
         """
         Remove the linked housing unit inventory and clear all assignments.
 

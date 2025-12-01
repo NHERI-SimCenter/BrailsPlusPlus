@@ -60,26 +60,26 @@ import logging
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-warnings.simplefilter(action="ignore", category=FutureWarning)
-warnings.filterwarnings(action="ignore", category=UserWarning)
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.filterwarnings(action='ignore', category=UserWarning)
+
 
 class KnnImputer(Imputation):
     """
-    Imputes dataset based on k-nearest neighbors in the feature-agmented space. Sequentially generate inventory
+    Imputes dataset based on k-nearest neighbors in the feature-agmented space.
+    Sequentially generate inventory
 
     Attributes:
         n_pw (int):
-                The number of possible worlds (i.e. samples or realizations)
-                batch_size (int):
-                        The number of batches for sequential generation. If non-sequential, this variable is not used
-                gen_method (str):
-                        Select "sequential" or "non-sequential" (one-shot). The latter is faster but does not generate the spatial correlation
-                seed (int):
-                        For reproducibility
-
-    Methods:
-
-
+            The number of possible worlds (i.e. samples or realizations)
+        batch_size (int):
+            The number of batches for sequential generation. If non-sequential,
+            this variable is not used
+        gen_method (str):
+            Select "sequential" or "non-sequential" (one-shot). The latter is
+            faster but does not generate the spatial correlation
+        seed (int):
+            For reproducibility
     """
 
     def __init__(
@@ -115,22 +115,20 @@ class KnnImputer(Imputation):
     # ) -> AssetInventory:
 
     def impute(self) -> AssetInventory:
-
         #
         # set seed
         #
 
         np.random.seed(self.seed)
 
-
         #
         # Enforce Spatial Correlation
         #
 
         if self.create_correlation:
-            self.gen_method = "sequential"
+            self.gen_method = 'sequential'
         else:
-            self.gen_method = "non-sequential"
+            self.gen_method = 'non-sequential'
 
         exclude_features = self.exclude_features
         nbldg_per_cluster = self.nbldg_per_cluster
@@ -141,36 +139,35 @@ class KnnImputer(Imputation):
         # n_pw: # of to-be-generated possible worlds per existing world. It is either 1 or n_possible_worlds.
 
         if existing_worlds is None:
-            msg = "ERROR: All assets should have same number of possible worlds to run the imputation."
+            msg = 'ERROR: All assets should have same number of possible worlds to run the imputation.'
             raise Exception(msg)
 
         if existing_worlds == 1:
-            self.n_pw = self.n_possible_worlds  # if zero, it will give the most likely value
+            self.n_pw = (
+                self.n_possible_worlds
+            )  # if zero, it will give the most likely value
             logger.warning(
-                    f"The existing inventory does not contain multiple possible worlds. {self.n_pw} worlds will be generated for new features"
+                f'The existing inventory does not contain multiple possible worlds. {self.n_pw} worlds will be generated for new features'
             )
 
         else:
-            if (
-                (self.n_possible_worlds == 1)
-                or (self.n_possible_worlds == existing_worlds)
+            if (self.n_possible_worlds == 1) or (
+                self.n_possible_worlds == existing_worlds
             ):
                 logger.warning(
-                    f"Existing {existing_worlds} worlds detacted. {existing_worlds} samples will generated per feature"
+                    f'Existing {existing_worlds} worlds detacted. {existing_worlds} samples will generated per feature'
                 )
                 self.n_pw = 1  # n_pw per exisitng pw
             else:
-                msg = f"ERROR: the number of possible worlds {self.n_possible_worlds} should be the same as the existing possible worlds. Choose {existing_worlds} or 0 (to get only the most likely value) to run the inference."
+                msg = f'ERROR: the number of possible worlds {self.n_possible_worlds} should be the same as the existing possible worlds. Choose {existing_worlds} or 0 (to get only the most likely value) to run the inference.'
                 raise Exception(msg)
 
         print(f'Existing worlds: {existing_worlds}')
         print(f'New worlds per existing world: {self.n_pw}')
 
-
         output_inventory = deepcopy(input_inventory)
 
         for nw in range(0, existing_worlds):
-
             print(f'world # {nw}')
 
             # get inventory realization
@@ -180,7 +177,9 @@ class KnnImputer(Imputation):
             # convert inventory to df
             #
 
-            bldg_properties_df, bldg_geometries_df, nbldg = inventory_realization.get_dataframe()
+            bldg_properties_df, bldg_geometries_df, nbldg = (
+                inventory_realization.get_dataframe()
+            )
             column_names = bldg_properties_df.columns
 
             #
@@ -191,13 +190,15 @@ class KnnImputer(Imputation):
                 for feature in exclude_features:
                     if feature not in column_names:
                         print(
-                            "The feature {} does not exist in inventory. Ignoring it from the exclude list.".format(
+                            'The feature {} does not exist in inventory. Ignoring it from the exclude list.'.format(
                                 feature
                             )
                         )
                         exclude_features.remove(feature)
 
-                bldg_properties_df = bldg_properties_df.drop(columns=exclude_features)
+                bldg_properties_df = bldg_properties_df.drop(
+                    columns=exclude_features
+                )
                 column_names = bldg_properties_df.columns
 
             #
@@ -205,22 +206,28 @@ class KnnImputer(Imputation):
             #
 
             # pd.set_option("future.no_silent_downcasting", True)
-            bldg_properties_df = bldg_properties_df.replace("NA", np.nan, inplace=False)
-            bldg_properties_df = bldg_properties_df.replace("", np.nan, inplace=False)
+            bldg_properties_df = bldg_properties_df.replace(
+                'NA', np.nan, inplace=False
+            )
+            bldg_properties_df = bldg_properties_df.replace(
+                '', np.nan, inplace=False
+            )
             mask = bldg_properties_df.isnull()  # for missing
 
             column_entirely_missing = column_names[mask.all(axis=0)]
-            bldg_properties_df = bldg_properties_df.drop(columns=column_entirely_missing)
+            bldg_properties_df = bldg_properties_df.drop(
+                columns=column_entirely_missing
+            )
             mask = mask.drop(columns=column_entirely_missing)
 
             if len(column_entirely_missing) >= 1:
                 print(
-                    "Features with no reference data cannot be imputed. Removing them from the imputation target: "
-                    + ", ".join(list(column_entirely_missing))
+                    'Features with no reference data cannot be imputed. Removing them from the imputation target: '
+                    + ', '.join(list(column_entirely_missing))
                 )
 
             if sum(mask.any(axis=0)) == 0:
-                print("No feature to impute")
+                print('No feature to impute')
                 continue
 
             #
@@ -280,10 +287,12 @@ class KnnImputer(Imputation):
 
             elapseStart = time.time()
 
-            print("Running the main imputation. This may take a while.")
+            print('Running the main imputation. This may take a while.')
             for ci in range(n_cluster):
                 if np.mod(ci, 20) == 19:
-                    print("Enumerating clusters: {} among {}".format(ci + 1, n_cluster))
+                    print(
+                        'Enumerating clusters: {} among {}'.format(ci + 1, n_cluster)
+                    )
 
                 #
                 # Compute correlation matrix to select important features
@@ -292,11 +301,13 @@ class KnnImputer(Imputation):
                 cluster_idx = np.where(cluster_ids == ci)[0]
 
                 corrMat = np.array(
-                    bldg_properties_encoded.iloc[cluster_idx].corr(numeric_only=False)
+                    bldg_properties_encoded.iloc[cluster_idx].corr(
+                        numeric_only=False
+                    )
                 )
-                const_idx = np.where(bldg_properties_encoded.iloc[cluster_idx].var() == 0)[
-                    0
-                ]
+                const_idx = np.where(
+                    bldg_properties_encoded.iloc[cluster_idx].var() == 0
+                )[0]
                 corrMat[:, const_idx] = 0
                 corrMat[const_idx, :] = 0
 
@@ -307,7 +318,7 @@ class KnnImputer(Imputation):
                 bldg_prel_subset = bldg_prel_np[cluster_idx, :]  # Primitive
                 bldg_inde_subset = bldg_inde_np[cluster_idx]  # building indices
 
-                for npp in range(max(1,self.n_pw)):
+                for npp in range(max(1, self.n_pw)):
                     #
                     # Sub dataframes corresponding to the current cluster
                     #
@@ -335,8 +346,7 @@ class KnnImputer(Imputation):
                     )
 
             elapseEnd = (time.time() - elapseStart) / 60
-            print("Done imputation. It took {:.2f} mins".format(elapseEnd))
-
+            print('Done imputation. It took {:.2f} mins'.format(elapseEnd))
 
             #
             # update inventory
@@ -345,14 +355,14 @@ class KnnImputer(Imputation):
                 inventory_realization, sample_dic, label_encoders, is_category
             )
 
-
-            if existing_worlds==1:
+            if existing_worlds == 1:
                 output_inventory = inventory_realization_imputed
             else:
-                output_inventory.update_world_realization(nw, inventory_realization_imputed)
+                output_inventory.update_world_realization(
+                    nw, inventory_realization_imputed
+                )
 
         return output_inventory
-
 
     def merge_two_json(self, A, B, shrink=False):
         if A == {}:
@@ -395,21 +405,16 @@ class KnnImputer(Imputation):
 
         return C
 
-
-
     def update_inventory(self, inventory, sample_dic, label_encoders, is_category):
         output_inventory = deepcopy(inventory)
 
         for column in sample_dic.keys():
             for bldg_idx in sample_dic[column]:
                 if is_category[column]:
-
                     pred_val = sample_dic[column][bldg_idx]
 
                     imputed_value_sample = (
-                        label_encoders[column]
-                        .inverse_transform(pred_val)
-                        .tolist()
+                        label_encoders[column].inverse_transform(pred_val).tolist()
                     )
 
                 else:
@@ -435,33 +440,33 @@ class KnnImputer(Imputation):
                 the id of the asset
         """
 
-        features_json = inventory.get_geojson()["features"]
+        features_json = inventory.get_geojson()['features']
         bldg_properties = [
-            (inventory.inventory[i].features | {"index": i})
+            (inventory.inventory[i].features | {'index': i})
             for dummy, i in enumerate(inventory.inventory)
         ]
 
-        [bldg_features["properties"] for bldg_features in features_json]
+        [bldg_features['properties'] for bldg_features in features_json]
 
         nbldg = len(bldg_properties)
 
         bldg_properties_df = pd.DataFrame(bldg_properties)
-        bldg_properties_df.drop(columns=["type"], inplace=True)
+        bldg_properties_df.drop(columns=['type'], inplace=True)
 
         # to be used for spatial interpolation
         lat_values = [
-            features_json[idx]["geometry"]["coordinates"][0] for idx in range(nbldg)
+            features_json[idx]['geometry']['coordinates'][0] for idx in range(nbldg)
         ]
         lon_values = [
-            features_json[idx]["geometry"]["coordinates"][1] for idx in range(nbldg)
+            features_json[idx]['geometry']['coordinates'][1] for idx in range(nbldg)
         ]
         bldg_geometries_df = pd.DataFrame()
-        bldg_geometries_df["Lat"] = lat_values
-        bldg_geometries_df["Lon"] = lon_values
-        bldg_geometries_df["index"] = bldg_properties_df["index"]
+        bldg_geometries_df['Lat'] = lat_values
+        bldg_geometries_df['Lon'] = lon_values
+        bldg_geometries_df['index'] = bldg_properties_df['index']
 
-        bldg_properties_df = bldg_properties_df.set_index("index")
-        bldg_geometries_df = bldg_geometries_df.set_index("index")
+        bldg_properties_df = bldg_properties_df.set_index('index')
+        bldg_geometries_df = bldg_geometries_df.set_index('index')
 
         return bldg_properties_df, bldg_geometries_df, nbldg
 
@@ -477,7 +482,7 @@ class KnnImputer(Imputation):
 
             # if not is_numeric_dtype(values):
 
-            if math.isnan(sum(pd.to_numeric(values[idxs], errors="coerce"))):
+            if math.isnan(sum(pd.to_numeric(values[idxs], errors='coerce'))):
                 is_category[column] = True
             elif len(np.unique(values[~np.isnan(values.astype(float))])) < 20:
                 is_category[column] = True
@@ -502,13 +507,15 @@ class KnnImputer(Imputation):
         nbrs_G = {}
         trainY_G_list = {}
         print(
-            "Missing percentages among {} assets".format(len(bldg_properties_encoded))
+            'Missing percentages among {} assets'.format(
+                len(bldg_properties_encoded)
+            )
         )
         for column in column_names[mask.any(axis=0)]:
             colLoc = int(column_names.get_loc(column))
 
             print(
-                "{}: {:.2f}%".format(
+                '{}: {:.2f}%'.format(
                     column,
                     sum(bldg_properties_encoded[column].isnull())
                     / len(bldg_properties_encoded)
@@ -517,32 +524,38 @@ class KnnImputer(Imputation):
             )
             train_id = mask[column] == False  # noqa: E712
             test_id = mask[column]
-            trainX_G = np.array(bldg_geometries_df[["Lat", "Lon"]].loc[train_id])
+            trainX_G = np.array(bldg_geometries_df[['Lat', 'Lon']].loc[train_id])
             trainY_G = np.array(bldg_properties_encoded[column].loc[train_id])
-            testX_G = np.array(bldg_geometries_df[["Lat", "Lon"]].loc[test_id])
+            testX_G = np.array(bldg_geometries_df[['Lat', 'Lon']].loc[test_id])
 
             n_neighbors = min(self.k_nn, trainX_G.shape[0])
             nbrs_G[column] = NearestNeighbors(
-                n_neighbors=n_neighbors, algorithm="ball_tree"
+                n_neighbors=n_neighbors, algorithm='ball_tree'
             ).fit(trainX_G)
             trainY_G_list[column] = trainY_G
             distances, indices = nbrs_G[column].kneighbors(testX_G)
 
             for i, t_id in enumerate(np.where(test_id)[0]):
-                bldg_properties_preliminary.iat[t_id, colLoc] = trainY_G[indices[i][0]]
+                bldg_properties_preliminary.iat[t_id, colLoc] = trainY_G[
+                    indices[i][0]
+                ]
 
-        print("Primitive imputation done.")
+        print('Primitive imputation done.')
         return bldg_properties_preliminary, nbrs_G, trainY_G_list
 
     def clustering(
-        self, bldg_properties_encoded, bldg_geometries_df, nbldg_per_cluster=500, seed=0
+        self,
+        bldg_properties_encoded,
+        bldg_geometries_df,
+        nbldg_per_cluster=500,
+        seed=0,
     ):
         nbldg = bldg_properties_encoded.shape[0]
         n_cluster = int(np.ceil(nbldg / nbldg_per_cluster))  # 500 bldgs per cluster
-        kmeans = KMeans(n_clusters=int(n_cluster), random_state=seed, n_init="auto").fit(
-            bldg_geometries_df[["Lat", "Lon"]]
-        )
-        cluster_ids = kmeans.predict(bldg_geometries_df[["Lat", "Lon"]])
+        kmeans = KMeans(
+            n_clusters=int(n_cluster), random_state=seed, n_init='auto'
+        ).fit(bldg_geometries_df[['Lat', 'Lon']])
+        cluster_ids = kmeans.predict(bldg_geometries_df[['Lat', 'Lon']])
 
         return cluster_ids, n_cluster
 
@@ -561,7 +574,7 @@ class KnnImputer(Imputation):
         trainY_G_list,
         is_category,
         npp,
-        gen_method="sequential",
+        gen_method='sequential',
     ):
         tmpcounter = 0
         while np.max(np.sum(mask_impu_subset, 0)) > 0:
@@ -620,7 +633,7 @@ class KnnImputer(Imputation):
 
                     n_neighbors = min(self.k_nn, trainX.shape[0])
                     nbrs = NearestNeighbors(
-                        n_neighbors=n_neighbors, algorithm="ball_tree"
+                        n_neighbors=n_neighbors, algorithm='ball_tree'
                     ).fit(trainX)
                     distances, building_ids = nbrs.kneighbors(testX)
                     mytrainY = trainY
@@ -652,7 +665,7 @@ class KnnImputer(Imputation):
                 ndup = np.sum(distances == 0)
                 if ndup > 0:
                     print(
-                        f"Warning: Found {ndup} duplicated assets that has distance 0."
+                        f'Warning: Found {ndup} duplicated assets that has distance 0.'
                     )
 
                 invdistance = 1 / distances
@@ -665,9 +678,11 @@ class KnnImputer(Imputation):
                 #
 
                 rnd_index = np.array(range((missing_idx.shape[0])))
-                if gen_method == "sequential":
+                if gen_method == 'sequential':
                     np.random.shuffle(rnd_index)
-                    rnd_index = rnd_index[0 : int(min(testX.shape[0], self.batch_size))]
+                    rnd_index = rnd_index[
+                        0 : int(min(testX.shape[0], self.batch_size))
+                    ]
 
                 #
                 # batch generation
@@ -679,7 +694,10 @@ class KnnImputer(Imputation):
 
                     try:
                         surrounding_building_sample = np.random.choice(
-                            building_ids[nb, :], size=1, replace=True, p=weights[nb, :]
+                            building_ids[nb, :],
+                            size=1,
+                            replace=True,
+                            p=weights[nb, :],
                         )
                     except Exception:
                         print(weights[nb, :])
@@ -706,7 +724,7 @@ class KnnImputer(Imputation):
 
                     if not mask_impu_subset[missing_idx[nb], colLoc]:
                         raise Exception(
-                            "Something went wrong internally. Please report the bug. (SY01)"
+                            'Something went wrong internally. Please report the bug. (SY01)'
                         )
 
                     # save for iteration

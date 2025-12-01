@@ -44,6 +44,7 @@ This module provides a utility class for validating input data in BRAILS.
 
       InputValidator
 """
+
 import os
 from typing import Any, List, Tuple
 from shapely.geometry import Polygon
@@ -108,7 +109,7 @@ class InputValidator:
 
     @staticmethod
     def validate_coordinates(
-            coordinates: list[list[float]] | list[list[list[float]]]
+        coordinates: list[list[float]] | list[list[list[float]]],
     ) -> tuple[bool, str]:
         """
         Validate input for coordinates.
@@ -150,15 +151,19 @@ class InputValidator:
             return False, 'Coordinates input is empty'
 
         # Base case: single coordinate pair:
-        if len(coordinates) == 2 and all(isinstance(
-                c, float) for c in coordinates):
+        if len(coordinates) == 2 and all(isinstance(c, float) for c in coordinates):
             lon, lat = coordinates
             if not -180 <= lon <= 180:
-                return (False, f'Longitude {lon} is not a float or is '
-                        'out of range (-180 to 180).')
+                return (
+                    False,
+                    f'Longitude {lon} is not a float or is '
+                    'out of range (-180 to 180).',
+                )
             if not -90 <= lat <= 90:
-                return (False, f'Latitude {lat} is not a float or is out'
-                        ' of range (-90 to 90).')
+                return (
+                    False,
+                    f'Latitude {lat} is not a float or is out of range (-90 to 90).',
+                )
             return True, 'Coordinate pair is valid.'
 
         # Recurse if the item is a list of coordinates or sub-geometries:
@@ -168,7 +173,7 @@ class InputValidator:
                 return False, message
 
         # If all checks pass:
-        return True, "Coordinates input is valid"
+        return True, 'Coordinates input is valid'
 
     @staticmethod
     def is_point(coordinates: List[List[float]]) -> bool:
@@ -250,13 +255,14 @@ class InputValidator:
         if not InputValidator.validate_coordinates(coordinates)[0]:
             return False
 
-        return (len(coordinates) >= 2
-                and all(
-                    isinstance(pair, list)
-                    and len(pair) == 2
-                    and all(isinstance(coord, float) for coord in pair)
-                    for pair in coordinates
-        )
+        return (
+            len(coordinates) >= 2
+            and all(
+                isinstance(pair, list)
+                and len(pair) == 2
+                and all(isinstance(coord, float) for coord in pair)
+                for pair in coordinates
+            )
             and coordinates[0] != coordinates[-1]
         )
 
@@ -363,13 +369,14 @@ class InputValidator:
         if not InputValidator.validate_coordinates(coordinates)[0]:
             return False
 
-        return (len(coordinates) >= 2
-                and all(
-                    isinstance(pair, list)
-                    and len(pair) == 2
-                    and all(isinstance(coord, float) for coord in pair)
-                    for pair in coordinates
-        )
+        return (
+            len(coordinates) >= 2
+            and all(
+                isinstance(pair, list)
+                and len(pair) == 2
+                and all(isinstance(coord, float) for coord in pair)
+                for pair in coordinates
+            )
             and coordinates[0] == coordinates[-1]
         )
 
@@ -456,8 +463,7 @@ class InputValidator:
             False
         """
         valid_exts = ('.jpg', '.jpeg', '.png', '.bmp')
-        return os.path.isfile(filepath) and filepath.lower().endswith(
-            valid_exts)
+        return os.path.isfile(filepath) and filepath.lower().endswith(valid_exts)
 
     @staticmethod
     def is_box(geometry: Polygon) -> bool:
@@ -511,4 +517,4 @@ class InputValidator:
         (x1, y1), (x2, y2), (x3, y3), (x4, y4), _ = coords
 
         # Check if opposite sides are equal (box property):
-        return (x1 == x4 and x2 == x3 and y1 == y2 and y3 == y4)
+        return x1 == x4 and x2 == x3 and y1 == y2 and y3 == y4
