@@ -9,6 +9,7 @@ include =
     brails/types/asset_inventory.py
     brails/types/housing_unit_inventory.py
     brails/aggregators/housing_units/pyncoda/**/*.py
+    brails/aggregators/points_to_polygons/basic/**/*.py
     brails/scrapers/us_census_scrapers/census_tract_scraper.py
 
 

@@ -30,16 +30,8 @@
 #
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
-#
-# Contributors:
-# Adam Zsarnoczay
 
-"""Tests for HousingUnit and HousingUnitInventory in brails.types.housing_unit_inventory.
-
-These tests cover class CRUD operations, I/O/serialization, and core logic
-such as ID generation and inventory merging. Fixtures provide reusable
-HousingUnit and HousingUnitInventory instances.
-"""
+"""Tests for HousingUnit and HousingUnitInventory in brails.types.housing_unit_inventory."""
 
 from __future__ import annotations
 
