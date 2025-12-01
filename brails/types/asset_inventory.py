@@ -64,7 +64,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 import pandas as pd
 from shapely import box
-from shapely.geometry import LineString, Polygon, shape
+from shapely.geometry import Point, LineString, MultiLineString, Polygon, MultiPolygon, GeometryCollection, shape, mapping
 from shapely.geometry.base import BaseGeometry  # noqa: TC002
 
 from brails.utils.clean_floats import clean_floats
@@ -87,9 +87,11 @@ class Asset:
     Attributes:
         asset_id (str or int):
             Unique identifier for the asset.
-        coordinates (list[list[float]]):
-            Geometry coordinates of the asset, typically as a list of [x, y]
-            pairs.
+        coordinates (list[list[float]] | list[list[list[float]]]):
+            The geometry of the asset. Supports:
+            - ``[[x, y]]`` (Point)
+            - ``[[x, y], [x, y], ...]`` (LineString, Polygon)
+            - ``[[[x, y], ...], ...]`` (MultiLineString, MultiPolygon)
         features (dict[str, Any], optional):
             Additional attributes/features of the asset. Defaults to ``None``.
     """
@@ -235,6 +237,28 @@ class Asset:
 
         return updated, n_pw
 
+
+    def get_geometry(self) -> BaseGeometry | None:
+        """
+        Convert coordinates into a robust Shapely geometry object.
+
+        Wraps `GeoTools.list_of_lists_to_geometry` to handle errors gracefully.
+
+        Returns:
+            BaseGeometry | None: A valid Shapely geometry, or None if the
+            coordinates are malformed or invalid.
+        """
+        if not self.coordinates:
+            return None
+
+        try:
+            return GeoTools.list_of_lists_to_geometry(self.coordinates)
+
+        except ValueError as e:
+            print(f"WARNING: Asset geometry invalid. {e}")
+            return None
+
+
     def get_centroid(self) -> list[list[float | None]]:
         """
         Get the centroid of the asset geometry.
@@ -250,32 +274,20 @@ class Asset:
             ...     coordinates=[[-122.4194, 37.7749], [-122.4190, 37.7750]]
             ... )
             >>> asset.get_centroid()
-            [[-122.41919999999999, 37.774950000000004]]
+            [[-122.4192, 37.77495]]
 
             >>> empty_asset = Asset(asset_id='empty', coordinates=[])
             Coordinates input is empty for empty; defaulting to an empty list.
             >>> empty_asset.get_centroid()
             [[None, None]]
         """
-        coords = self.coordinates
-        if not coords:
-            return [[None, None]]
+        geometry = self.get_geometry()
 
-        try:
-            if InputValidator.is_point(coords):
-                return coords
-            if InputValidator.is_linestring(coords):
-                geometry = LineString(coords)
-            elif InputValidator.is_polygon(coords):
-                geometry = Polygon(coords)
-            else:
-                return [[None, None]]
-
+        if geometry:
             centroid = geometry.centroid
             return [[centroid.x, centroid.y]]
 
-        except Exception:
-            return [[None, None]]
+        return [[None, None]]
 
     def hash_asset(self) -> str:
         """
@@ -443,7 +455,9 @@ class AssetInventory:
         return True
 
     def add_asset_coordinates(
-        self, asset_id: str | int, coordinates: list[list[float]]
+        self,
+        asset_id: str | int,
+        coordinates: list[list[float]] | list[list[list[float]]]
     ) -> bool:
         """
         Add an ``Asset`` to the inventory by adding its coordinate information.
@@ -451,10 +465,9 @@ class AssetInventory:
         Args:
             asset_id(str or int):
                 The unique identifier for the asset.
-            coordinates(list[list[float]]):
-                A two-dimensional list
-                representing the geometry in ``[[lon1, lat1], [lon2, lat2],
-                ..., [lonN, latN]]`` format.
+            coordinates (list[list[float]] | list[list[list[float]]]):
+                A nested list of floats representing the geometry.
+                Accepts Points, LineStrings, Polygons, and Multi-geometries.
 
         Returns:
             bool: ``True`` if the asset was added successfully, ``False``
@@ -850,29 +863,25 @@ class AssetInventory:
 
     def convert_polygons_to_centroids(self) -> None:
         """
-        Convert polygon geometries in the inventory to their centroid points.
+        Convert geometries in the inventory to their centroid points.
 
         Iterates through the asset inventory and replaces the coordinates of
-        each polygon or linestring geometry with the coordinates of its
-        centroid. Point geometries are left unchanged.
+        each geometry with the coordinates of its centroid using the
+        logic defined in `Asset.get_centroid()`.
 
-        This function is useful for spatial operations that require point
-        representations of larger geometries(e.g., matching, distance
-        calculations).
-
-        Note:
-            - Polygon coordinates are wrapped in a list to ensure proper
-              GeoJSON structure.
-            - Linestrings are converted to points at their centroid unless the
-              geometry is invalid or ambiguous.
+        Notes:
+            - Points are left unchanged.
+            - Polygons, LineStrings, and Multi-geometries are converted to their centroid.
+            - Invalid or malformed geometries will be replaced with ``[[None, None]]``
+              and a warning will be printed by the Asset class.
 
         Modifies:
             self.inventory (dict):
-                Updates the ``coordinates`` field of each asset in-place by
-                replacing polygons and linestrings with their centroid.
+                Updates the ``coordinates`` field of each asset in-place.
 
         Example:
             >>> inventory = AssetInventory()
+            >>> # 1. Polygon
             >>> inventory.add_asset_coordinates(
             ...     'asset1',
             ...     [
@@ -881,40 +890,40 @@ class AssetInventory:
             ...         [-122.4094, 37.7849],
             ...         [-122.4094, 37.7749],
             ...         [-122.4194, 37.7749]
-            ...     ]  # Polygon
+            ...     ]
             ... )
+            >>> # 2. LineString
             >>> inventory.add_asset_coordinates(
             ...     'asset2',
             ...     [
             ...         [-122.4194, 37.7749],
             ...         [-122.4094, 37.7849]
-            ...     ]  # LineString
+            ...     ]
+            ... )
+            >>> # 3. MultiPolygon
+            >>> inventory.add_asset_coordinates(
+            ...     'asset3',
+            ...     [
+            ...         [
+            ...             [-122.4194, 37.7749], [-122.4194, 37.7849],
+            ...             [-122.4094, 37.7849], [-122.4094, 37.7749],
+            ...             [-122.4194, 37.7749]
+            ...         ],
+            ...         [
+            ...             [-122.3000, 37.8000], [-122.3000, 37.8100],
+            ...             [-122.2900, 37.8100], [-122.2900, 37.8000],
+            ...             [-122.3000, 37.8000]
+            ...         ]
+            ...     ]
             ... )
             >>> inventory.convert_polygons_to_centroids()
-            >>> inventory.get_asset_coordiates('asset1')
+            >>> inventory.get_asset_coordinates('asset1')
             [[-122.4144, 37.7799]]
-            >>> inventory.get_asset_coordiates('asset2')
+            >>> inventory.get_asset_coordinates('asset2')
             [[-122.4144, 37.7799]]
         """
-        for key, asset in self.inventory.items():
-            if InputValidator.is_point(asset.coordinates):
-                continue
-
-            if InputValidator.is_linestring(asset.coordinates):
-                geometry = {'type': 'LineString', 'coordinates': asset.coordinates}
-            elif InputValidator.is_polygon(asset.coordinates):
-                geometry = {
-                    'type': 'Polygon',
-                    'coordinates': [asset.coordinates],
-                }
-            else:
-                geometry = {
-                    'type': 'LineString',
-                    'coordinates': asset.coordinates,
-                }
-
-            centroid = shape(geometry).centroid
-            asset.coordinates = [[centroid.x, centroid.y]]
+        for asset in self.inventory.values():
+            asset.coordinates = asset.get_centroid()
 
     def get_asset_coordinates(self, asset_id: str | int) -> tuple[bool, list]:
         """
@@ -1098,29 +1107,39 @@ class AssetInventory:
         if not bpoly.is_valid:
             bpoly = bpoly.buffer(0)
 
-        # Build asset geometries:
-        geometries = {
-            key: GeoTools.list_of_lists_to_geometry(asset.coordinates)
-            for key, asset in self.inventory.items()
-        }
+        valid_geometries = {}
+        keys_to_remove = set()
 
-        keys_remove = GeoTools.compare_geometries(bpoly, geometries, 'intersects')
+        for key, asset in self.inventory.items():
+            geom = asset.get_geometry()
 
-        for key in keys_remove:
+            if geom and not geom.is_empty and geom.is_valid:
+                valid_geometries[key] = geom
+            else:
+                keys_to_remove.add(key)
+
+        if valid_geometries:
+            non_intersecting_keys = GeoTools.compare_geometries(
+                bpoly, valid_geometries, 'intersects'
+            )
+            keys_to_remove.update(non_intersecting_keys)
+
+        for key in keys_to_remove:
             self.remove_asset(key)
 
     def get_coordinates(
         self,
-    ) -> tuple[list[list[list[float]]], list[str | int]]:
+    ) -> tuple[list[list[list[float]] | list[list[list[float]]]], list[str | int]]:
         """
         Get geometry(coordinates) and keys of all assets in the inventory.
 
         Returns:
-            tuple[list[list[list[float, float]]], list[str or int]]:
+            tuple:
                 A tuple containing:
-
-                - A list of coordinates for each asset, where each coordinate
-                  is represented as a list of [longitude, latitude] pairs.
+                - A list of coordinates for each asset. Depending on the geometry
+                  type, this will be:
+                  - Depth 2: ``[[lon, lat], ...]`` (Point, LineString, Polygon)
+                  - Depth 3: ``[[[lon, lat], ...], ...]`` (MultiLineString, MultiPolygon)
                 - A list of asset keys corresponding to each asset.
 
         Example:
@@ -1295,19 +1314,24 @@ class AssetInventory:
         else:
             raise ValueError(error_msg)
 
-        # Determine the geographical extent of the inventory:
-        minlon, maxlon, minlat, maxlat = 180, -180, 90, -90
-        for asset in self.inventory.values():
-            for lon, lat in asset.coordinates:
-                minlon, maxlon = min(minlon, lon), max(maxlon, lon)
-                minlat, maxlat = min(minlat, lat), max(maxlat, lat)
+        # Determine the geographical extent of the inventory
+        valid_geoms = [
+            asset.get_geometry()
+            for asset in self.inventory.values()
+        ]
+        valid_geoms = [g for g in valid_geoms if g and not g.is_empty]
 
-        # Create a Shapely polygon from the determined extent:
+        if not valid_geoms:
+            return box(0, 0, 0, 0)
+
+        min_x, min_y, max_x, max_y = GeometryCollection(valid_geoms).bounds
+
+        # Return a Shapely polygon of the bounding box:
         return box(
-            minlon - buffer_levels[0],
-            minlat - buffer_levels[1],
-            maxlon + buffer_levels[2],
-            maxlat + buffer_levels[3],
+            min_x - buffer_levels[0],
+            min_y - buffer_levels[1],
+            max_x + buffer_levels[2],
+            max_y + buffer_levels[3],
         )
 
     def get_geojson(self) -> dict[str, Any]:
@@ -1382,25 +1406,31 @@ class AssetInventory:
             'features': [],
         }
 
-        for key, asset in self.inventory.items():
-            geometry = None
-            if InputValidator.is_point(asset.coordinates):
-                geometry = {'type': 'Point', 'coordinates': asset.coordinates[0]}
-            elif InputValidator.is_linestring(asset.coordinates):
-                geometry = {'type': 'LineString', 'coordinates': asset.coordinates}
-            elif InputValidator.is_polygon(asset.coordinates):
-                geometry = {'type': 'Polygon', 'coordinates': [asset.coordinates]}
+        # Initialize list to track assets with invalid geometries
+        failed_ids = []
 
-            if geometry:
+        for key, asset in self.inventory.items():
+            geometry_obj = asset.get_geometry()
+
+            # Only store valid geometries
+            if geometry_obj and not geometry_obj.is_empty:
                 properties = asset.features | {'id': key}
 
                 geojson['features'].append(
                     {
                         'type': 'Feature',
                         'properties': properties,
-                        'geometry': geometry,
+                        'geometry': mapping(geometry_obj),
                     }
                 )
+            else:
+                # Track failures
+                failed_ids.append(str(key))
+
+        # Report Failures
+        if failed_ids:
+            print(f"\nWarning: {len(failed_ids)} assets were skipped due to invalid or unknown geometry.")
+            print(f"Skipped IDs: {', '.join(failed_ids)}")
 
         return geojson
 
@@ -2194,14 +2224,14 @@ class AssetInventory:
         This method processes the internal asset inventory and returns:
 
         - A ``DataFrame`` containing the features of each asset, with support
-          for multiple possible worlds(realizations).
-        - A ``DataFrame`` containing centroid coordinates(longitude and
+          for multiple possible worlds (realizations).
+        - A ``DataFrame`` containing centroid coordinates (longitude and
           latitude) for spatial operations.
         - The total number of assets in the inventory.
 
         The method flattens feature lists into separate columns if multiple
         possible worlds exist. It also derives centroid coordinates from the
-        GeoJSON geometry for each asset.
+        geometry for each asset.
 
         Returns:
             tuple[pd.DataFrame, pd.DataFrame, int]:
@@ -2217,91 +2247,89 @@ class AssetInventory:
         """
         n_possible_worlds = self.get_n_pw()
 
-        asset_json = self.get_geojson()
-        features_json = asset_json['features']
-        bldg_properties = [
-            {**self.inventory[i].features, 'index': i}
-            for dummy, i in enumerate(self.inventory)
-        ]
+        # Lists to hold data for DataFrame construction
+        ids = []
+        lats = []
+        lons = []
+        feature_rows = []
 
-        # [bldg_features['properties'] for bldg_features in features_json]
+        # Single pass through the inventory to collect all data
+        for asset_id, asset in self.inventory.items():
+            ids.append(asset_id)
 
-        nbldg = len(bldg_properties)
+            # Geometry: Reuse the robust logic in Asset.get_centroid()
+            centroid_data = asset.get_centroid()[0]
+            lons.append(centroid_data[0])
+            lats.append(centroid_data[1])
 
+            # Features: Collect for processing below
+            features = asset.features.copy()
+            features['index'] = asset_id
+            feature_rows.append(features)
+
+        nbldg = len(ids)
+
+        # Process Features considering Possible Worlds
         if n_possible_worlds == 1:
-            bldg_properties_df = pd.DataFrame(bldg_properties)
-
+            bldg_properties_df = pd.DataFrame(feature_rows)
         else:
-            # First enumerate assets to see which columns have multiple worlds
-
+            # Identify columns that are lists (vector columns) in ANY asset
+            # These are the ones with multiple worlds
             vector_columns = set()
-            for entry in bldg_properties:
+            for entry in feature_rows:
                 vector_columns.update(
-                    [key for key, value in entry.items() if isinstance(value, list)]
+                    key for key, value in entry.items() if isinstance(value, list)
                 )
 
             flat_data = []
-            for entry in bldg_properties:
+            for entry in feature_rows:
+                # Base row with scalar values
                 row = {
                     key: value
                     for key, value in entry.items()
-                    if (key not in vector_columns)
-                }  # stays the same
-                for key in vector_columns:
-                    value = entry[key]
-                    if isinstance(value, list):
-                        if not len(value) == n_possible_worlds:
-                            raise ValueError(
-                                'The specified # of possible worlds are '
-                                f'{n_possible_worlds} but {key} contains '
-                                f'{len(value)} realizations in {entry}'
-                            )
+                    if key not in vector_columns
+                }
 
+                # Expand vector columns
+                for col in vector_columns:
+                    val = entry.get(col)
+
+                    # Safety Check: Handle mixed types.
+                    # If this asset has a scalar for a column that is a vector
+                    # elsewhere, we replicate that scalar across all worlds.
+                    if not isinstance(val, list):
                         for i in range(n_possible_worlds):
-                            row[f'{key}_{i + 1}'] = value[i]
-                    else:
-                        for i in range(n_possible_worlds):
-                            row[f'{key}_{i + 1}'] = value
+                            row[f'{col}_{i + 1}'] = val
+                        continue
+
+                    # Validate length
+                    if len(val) != n_possible_worlds:
+                        raise ValueError(
+                            f"Asset {entry['index']}: The specified # of "
+                            f"possible worlds is {n_possible_worlds} but "
+                            f"'{col}' contains {len(val)} realizations."
+                        )
+
+                    # Flatten
+                    for i in range(n_possible_worlds):
+                        row[f'{col}_{i + 1}'] = val[i]
 
                 flat_data.append(row)
 
             bldg_properties_df = pd.DataFrame(flat_data)
 
+        # Cleanup Feature DataFrame
         if 'type' in bldg_properties_df.columns:
-            bldg_properties_df.drop(columns=['type'], inplace=True)
-
-        #  get centoried
-        lat_values = [None] * nbldg
-        lon_values = [None] * nbldg
-
-        for idx in range(nbldg):
-            polygon_coordinate = features_json[idx]['geometry']['coordinates']
-
-            if isinstance(polygon_coordinate[0], list):
-                if isinstance(polygon_coordinate[0][0], list):
-                    # multipolygon
-                    latitudes = [coord[0][1] for coord in polygon_coordinate]
-                    longitudes = [coord[0][0] for coord in polygon_coordinate]
-                else:
-                    # polygon or point
-                    latitudes = [coord[1] for coord in polygon_coordinate]
-                    longitudes = [coord[0] for coord in polygon_coordinate]
-            else:
-                # point?
-                latitudes = [polygon_coordinate[1]]
-                longitudes = [polygon_coordinate[0]]
-            lat_values[idx] = sum(latitudes) / len(latitudes)
-            lon_values[idx] = sum(longitudes) / len(longitudes)
-
-        # to be used for spatial interpolation
-        # lat_values = [features_json[idx]['geometry']['coordinates'][0][0] for idx in range(nbldg)]
-        # lon_values = [features_json[idx]['geometry']['coordinates'][0][1] for idx in range(nbldg)]
-        bldg_geometries_df = pd.DataFrame()
-        bldg_geometries_df['Lat'] = lat_values
-        bldg_geometries_df['Lon'] = lon_values
-        bldg_geometries_df['index'] = bldg_properties_df['index']
+            bldg_properties_df = bldg_properties_df.drop(columns=['type'])
 
         bldg_properties_df = bldg_properties_df.set_index('index')
+
+        # --- Construct Geometry DataFrame ---
+        bldg_geometries_df = pd.DataFrame({
+            'Lat': lats,
+            'Lon': lons,
+            'index': ids
+        })
         bldg_geometries_df = bldg_geometries_df.set_index('index')
 
         return bldg_properties_df, bldg_geometries_df, nbldg

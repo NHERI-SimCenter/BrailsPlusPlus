@@ -108,15 +108,17 @@ class InputValidator:
 
     @staticmethod
     def validate_coordinates(
-            coordinates: List[List[float]]
-    ) -> Tuple[bool, str]:
+            coordinates: list[list[float]] | list[list[list[float]]]
+    ) -> tuple[bool, str]:
         """
         Validate input for coordinates.
 
         Args:
-            coordinates (list[list[float]]):
-                A two-dimensional list representing the geometry in
-                ``[[lon1, lat1], [lon2, lat2], ..., [lonN, latN]]`` format.
+            coordinates (list[list[float]] | list[list[list[float]]]):
+                A nested list of floats representing the geometry.
+                Supports:
+                - Points/LineStrings/Polygons (Depth 2): ``[[lon, lat], ...]``
+                - Multi-geometries (Depth 3): ``[[[lon, lat], ...], ...]``
         Returns:
             tuple[bool, str]:
                 A tuple containing:
@@ -294,19 +296,14 @@ class InputValidator:
             True
 
             >>> InputValidator.is_multilinestring([
-            ...     [
-            ...         [-122.4, 37.75],
-            ...         [-122.4, 37.76],
-            ...         [-122.39, 37.76],
-            ...         [-122.39, 37.75]
-            ...     ]
+            ...     [-122.4, 37.75],
+            ...     [-122.4, 37.76],
+            ...     [-122.39, 37.76],
+            ...     [-122.39, 37.75]
             ... ])
             False
         """
         if not InputValidator.validate_coordinates(coordinates)[0]:
-            return False
-
-        if len(coordinates) <= 1:
             return False
 
         for linestring in coordinates:
@@ -414,19 +411,14 @@ class InputValidator:
             True
 
             >>> InputValidator.is_multipolygon([
-            ...     [
-            ...         [-122.4, 37.75],
-            ...         [-122.4, 37.76],
-            ...         [-122.39, 37.76],
-            ...         [-122.39, 37.75]
-            ...     ]
+            ...     [-122.4, 37.75],
+            ...     [-122.4, 37.76],
+            ...     [-122.39, 37.76],
+            ...     [-122.39, 37.75]
             ... ])
             False
         """
         if not InputValidator.validate_coordinates(coordinates)[0]:
-            return False
-
-        if len(coordinates) <= 1:
             return False
 
         for polygon in coordinates:
