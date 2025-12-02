@@ -45,6 +45,8 @@ This module provides a utility class for validating input data in BRAILS.
       InputValidator
 """
 
+from __future__ import annotations
+
 import os
 from typing import Any, List, Tuple
 from shapely.geometry import Polygon
