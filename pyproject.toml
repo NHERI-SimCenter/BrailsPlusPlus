@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "brails"
 dynamic = ["version"]
 description = "BRAILS++: Building Regional Asset Inventories for Large Scale Simulation"
-readme = "README.md"
+readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
   { name = "NHERI SimCenter", email = "nheri-simcenter@berkeley.edu" }
 ]

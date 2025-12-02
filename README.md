@@ -26,7 +26,7 @@ Despite their value, these datasets often contain incomplete or inconsistent inf
   - ```brails/processors```: directory containing classes that do ```image_processing``` to make predictions, e.g. RoofShape
   - ```brails/scrapers```: directory containing classes that do internet downloads, e.g., footprint and image scrapers.
   - ```brails/filters```: directory containing image filters, e.g., classes that take images and revise or filter out unnecessary portions of images.
-  - ```brails/aggregators```: directory containing classes for doing merge and join operations, e.g., combining data from different datasets (inventories or other) to create a single inventory.  
+  - ```brails/aggregators```: directory containing classes for doing merge, join and allocation operations, e.g., combining data from different datasets (inventories or other) to create a single inventory.  
   - ```brails/imputers```: directory containing classes that fill in missing ```AssetInventory``` datasets, i.e., filling in features that are missing in certain Assets of the AssetInventory.
   - ```brails/inferers```: directory containing classes that infer new asset features based on existing features in the Assets of ```AssetInventory```.
   - ```brails/utils```: directory containing misc classes that do useful things, e.g. geometric conversions
