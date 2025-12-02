@@ -69,7 +69,10 @@ examples/**/*tif
 examples/image_filters/filtered_images/
 examples/inventory_creation/*geojson
 examples/nsi_integration/*geojson
-
+examples/housing_units/bldg_inventory.geojson
+examples/housing_units/housing_units.json
+examples/housing_units/pyncoda_working_dir/
+	
 # External tools
 external_tools/
 
