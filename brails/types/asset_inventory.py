@@ -2106,7 +2106,7 @@ class AssetInventory:
         # Attempt to open the file
         try:
             with open(file_path) as csvfile:
-                csv_reader = csv.dictReader(csvfile)
+                csv_reader = csv.DictReader(csvfile)
                 rows = list(csv_reader)
         except FileNotFoundError:
             raise Exception(f'The file {file_path} does not exist.')
