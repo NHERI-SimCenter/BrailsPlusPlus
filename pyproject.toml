@@ -98,17 +98,23 @@ brails = [
 ]
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py39"
 line-length = 85
 include = [
     #"brails/types/asset_inventory.py",
-    "brails/types/household_inventory.py",
-    "brails/merge/households/pyncoda/assign_households.py",
-    "brails/merge/households/pyncoda/supporting_data/FIPS_lookup_generator.py",
-    "brails/scrapers/census_scraper/census_scraper.py",
-    "tests/merge/households/pyncoda/test_assign_households.py",
-    "tests/scrapers/test_census_scraper.py",
-    "tests/types/test_household_inventory.py",
+
+    "brails/types/housing_unit_inventory.py",
+    "tests/types/test_housing_unit_inventory.py",
+
+    "brails/aggregators/points_to_polygons/basic/basic_points_to_polygons.py",
+    "tests/aggregators/points_to_polygons/basic/test_basic_points_to_polygons.py",
+
+    "brails/aggregators/housing_units/pyncoda/pyncoda_housing_units.py",
+    "brails/aggregators/housing_units/pyncoda/supporting_data/FIPS_lookup_generator.py",
+    "tests/aggregators/housing_units/pyncoda/test_pyncoda_housing_units.py",
+
+    "brails/scrapers/us_census_scrapers/census_tract_scraper.py",
+    "tests/scrapers/test_census_tract_scraper.py",
 ]
 
 [tool.ruff.lint]
@@ -196,8 +202,8 @@ skip = [
     "./brails/scrapers/us_census_scrapers/*",
     "./brails/scrapers/usa_footprint_scraper/*",
     "./brails/scrapers/usgs_data_scrapers/*",
-    "./brails/merge/households/pyncoda/supporting_data/fips_lookup.json",
-    "./brails/merge/households/pyncoda/supporting_data/state_abbreviations.json"
+    "./brails/aggregators/housing_units/pyncoda/supporting_data/fips_lookup.json",
+    "./brails/aggregators/housing_units/pyncoda/supporting_data/state_abbreviations.json"
 ]
 
 [tool.pytest.ini_options]

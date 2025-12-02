@@ -44,6 +44,9 @@ This module provides a utility class for validating input data in BRAILS.
 
       InputValidator
 """
+
+from __future__ import annotations
+
 import os
 from typing import Any, List, Tuple
 from shapely.geometry import Polygon
@@ -108,15 +111,17 @@ class InputValidator:
 
     @staticmethod
     def validate_coordinates(
-            coordinates: List[List[float]]
-    ) -> Tuple[bool, str]:
+        coordinates: list[list[float]] | list[list[list[float]]],
+    ) -> tuple[bool, str]:
         """
         Validate input for coordinates.
 
         Args:
-            coordinates (list[list[float]]):
-                A two-dimensional list representing the geometry in
-                ``[[lon1, lat1], [lon2, lat2], ..., [lonN, latN]]`` format.
+            coordinates (list[list[float]] | list[list[list[float]]]):
+                A nested list of floats representing the geometry.
+                Supports:
+                - Points/LineStrings/Polygons (Depth 2): ``[[lon, lat], ...]``
+                - Multi-geometries (Depth 3): ``[[[lon, lat], ...], ...]``
         Returns:
             tuple[bool, str]:
                 A tuple containing:
@@ -148,15 +153,19 @@ class InputValidator:
             return False, 'Coordinates input is empty'
 
         # Base case: single coordinate pair:
-        if len(coordinates) == 2 and all(isinstance(
-                c, float) for c in coordinates):
+        if len(coordinates) == 2 and all(isinstance(c, float) for c in coordinates):
             lon, lat = coordinates
             if not -180 <= lon <= 180:
-                return (False, f'Longitude {lon} is not a float or is '
-                        'out of range (-180 to 180).')
+                return (
+                    False,
+                    f'Longitude {lon} is not a float or is '
+                    'out of range (-180 to 180).',
+                )
             if not -90 <= lat <= 90:
-                return (False, f'Latitude {lat} is not a float or is out'
-                        ' of range (-90 to 90).')
+                return (
+                    False,
+                    f'Latitude {lat} is not a float or is out of range (-90 to 90).',
+                )
             return True, 'Coordinate pair is valid.'
 
         # Recurse if the item is a list of coordinates or sub-geometries:
@@ -166,7 +175,7 @@ class InputValidator:
                 return False, message
 
         # If all checks pass:
-        return True, "Coordinates input is valid"
+        return True, 'Coordinates input is valid'
 
     @staticmethod
     def is_point(coordinates: List[List[float]]) -> bool:
@@ -248,13 +257,14 @@ class InputValidator:
         if not InputValidator.validate_coordinates(coordinates)[0]:
             return False
 
-        return (len(coordinates) >= 2
-                and all(
-                    isinstance(pair, list)
-                    and len(pair) == 2
-                    and all(isinstance(coord, float) for coord in pair)
-                    for pair in coordinates
-        )
+        return (
+            len(coordinates) >= 2
+            and all(
+                isinstance(pair, list)
+                and len(pair) == 2
+                and all(isinstance(coord, float) for coord in pair)
+                for pair in coordinates
+            )
             and coordinates[0] != coordinates[-1]
         )
 
@@ -294,19 +304,14 @@ class InputValidator:
             True
 
             >>> InputValidator.is_multilinestring([
-            ...     [
-            ...         [-122.4, 37.75],
-            ...         [-122.4, 37.76],
-            ...         [-122.39, 37.76],
-            ...         [-122.39, 37.75]
-            ...     ]
+            ...     [-122.4, 37.75],
+            ...     [-122.4, 37.76],
+            ...     [-122.39, 37.76],
+            ...     [-122.39, 37.75]
             ... ])
             False
         """
         if not InputValidator.validate_coordinates(coordinates)[0]:
-            return False
-
-        if len(coordinates) <= 1:
             return False
 
         for linestring in coordinates:
@@ -366,13 +371,14 @@ class InputValidator:
         if not InputValidator.validate_coordinates(coordinates)[0]:
             return False
 
-        return (len(coordinates) >= 2
-                and all(
-                    isinstance(pair, list)
-                    and len(pair) == 2
-                    and all(isinstance(coord, float) for coord in pair)
-                    for pair in coordinates
-        )
+        return (
+            len(coordinates) >= 2
+            and all(
+                isinstance(pair, list)
+                and len(pair) == 2
+                and all(isinstance(coord, float) for coord in pair)
+                for pair in coordinates
+            )
             and coordinates[0] == coordinates[-1]
         )
 
@@ -414,19 +420,14 @@ class InputValidator:
             True
 
             >>> InputValidator.is_multipolygon([
-            ...     [
-            ...         [-122.4, 37.75],
-            ...         [-122.4, 37.76],
-            ...         [-122.39, 37.76],
-            ...         [-122.39, 37.75]
-            ...     ]
+            ...     [-122.4, 37.75],
+            ...     [-122.4, 37.76],
+            ...     [-122.39, 37.76],
+            ...     [-122.39, 37.75]
             ... ])
             False
         """
         if not InputValidator.validate_coordinates(coordinates)[0]:
-            return False
-
-        if len(coordinates) <= 1:
             return False
 
         for polygon in coordinates:
@@ -464,8 +465,7 @@ class InputValidator:
             False
         """
         valid_exts = ('.jpg', '.jpeg', '.png', '.bmp')
-        return os.path.isfile(filepath) and filepath.lower().endswith(
-            valid_exts)
+        return os.path.isfile(filepath) and filepath.lower().endswith(valid_exts)
 
     @staticmethod
     def is_box(geometry: Polygon) -> bool:
@@ -519,4 +519,4 @@ class InputValidator:
         (x1, y1), (x2, y2), (x3, y3), (x4, y4), _ = coords
 
         # Check if opposite sides are equal (box property):
-        return (x1 == x4 and x2 == x3 and y1 == y2 and y3 == y4)
+        return x1 == x4 and x2 == x3 and y1 == y2 and y3 == y4

@@ -30,3 +30,9 @@
 #
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
+
+from .usa_footprint_scraper.usa_footprint_scraper import USA_FootprintScraper
+from .osm_footprint_scraper.osm_footprint_scraper import OSM_FootprintScraper
+from .overture_maps_scraper.overture_maps_footprint_scraper import OvertureMapsFootprintScraper
+from .nsi_parser.nsi_parser import NSI_Parser
+from .us_census_scrapers.census_tract_scraper import CensusTractScraper

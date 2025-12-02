@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright (c) 2025 The Regents of the University of California
+# Copyright (c) 2024 The Regents of the University of California
 #
 # This file is part of BRAILS++.
 #

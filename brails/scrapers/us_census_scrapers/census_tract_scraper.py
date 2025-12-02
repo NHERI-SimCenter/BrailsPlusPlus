@@ -46,7 +46,7 @@ This module defines classes associated with scraping US Census data.
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any
 
 import geopandas as gpd
 import requests
@@ -58,8 +58,8 @@ from brails.types.asset_inventory import AssetInventory
 CENSUS_TRACT_QUERY_URL = 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/6/query'
 
 
-class CensusScraper:
-    """A class to get data from the US Census."""
+class CensusTractScraper:
+    """A class to get census tract data from the US Census."""
 
     def __init__(self) -> None:
         """Initialize an instance of the class."""
@@ -71,7 +71,7 @@ class CensusScraper:
         retries: int = 3,
         timeout: int = 10,
         delay: float = 1,
-    ) -> Dict:
+    ) -> dict:
         """
         Fetches a Census Tract GeoJSON from the TIGERweb API.
 
@@ -175,7 +175,7 @@ class CensusScraper:
         )
         raise exceptions.ConnectionError(msg)
 
-    def get_census_tracts(self, asset_inventory: AssetInventory) -> Dict[str, Any]:
+    def get_census_tracts(self, asset_inventory: AssetInventory) -> dict[str, Any]:
         """
         Identify the census tract corresponding to each asset.
 
@@ -218,7 +218,7 @@ class CensusScraper:
 
         # Initialize error state
         error_occurred = False
-        error_details: Optional[BaseException] = None
+        error_details: BaseException | None = None
 
         try:
             while not asset_gdf_to_do.empty:

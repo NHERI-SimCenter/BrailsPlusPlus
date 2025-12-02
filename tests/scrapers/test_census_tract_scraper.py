@@ -1,24 +1,52 @@
-"""Tests for CensusScraper.
+# Copyright (c) 2025 The Regents of the University of California
+#
+# This file is part of BRAILS++.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# You should have received a copy of the BSD 3-Clause License along with
+# BRAILS. If not, see <http://www.opensource.org/licenses/>.
 
-This module includes:
-- Unit/contract tests for _fetch_tract_geometry.
-- Integration tests for get_census_tracts.
-
-All tests follow the guidelines in .junie/testing_guidelines.md.
-"""
+"""Tests for CensusScraper in brails.scrapers.us_census_scrapers."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import geopandas as gpd
 import pytest
 from requests import Response, exceptions
 from shapely.geometry import Polygon, mapping
 
-from brails.scrapers.census_scraper.census_scraper import CensusScraper
+from brails.scrapers.us_census_scrapers.census_tract_scraper import (
+    CensusTractScraper,
+)
 from brails.types.asset_inventory import Asset, AssetInventory
 
 # Use a local alias to avoid a hard dependency on pytest-mock at import time
@@ -32,7 +60,7 @@ def census_api_fixture_path() -> Path:
 
 
 @pytest.fixture
-def census_api_response(census_api_fixture_path: Path) -> Dict[str, Any]:
+def census_api_response(census_api_fixture_path: Path) -> dict[str, Any]:
     """Load and return the JSON content of the TIGERweb fixture file."""
     text = census_api_fixture_path.read_text(encoding='utf-8')
     return json.loads(text)
@@ -53,7 +81,7 @@ def _make_http_error(status_code: int) -> exceptions.HTTPError:
 
 
 def test_fetch_success_contract(
-    mocker: MockerFixture, census_api_response: Dict[str, Any]
+    mocker: MockerFixture, census_api_response: dict[str, Any]
 ) -> None:
     """Verify method parses a known, canned API response correctly.
 
@@ -61,7 +89,7 @@ def test_fetch_success_contract(
     Act: call _fetch_tract_geometry with dummy coords.
     Assert: first feature dict is returned and requests.get was called once.
     """
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     mock_response = mocker.Mock()
     mock_response.raise_for_status.return_value = None
@@ -91,19 +119,19 @@ def test_fetch_success_contract(
 def test_fetch_retries_on_transient_errors(
     mocker: MockerFixture,
     side_effect_factory: Any,
-    census_api_response: Dict[str, Any],
+    census_api_response: dict[str, Any],
 ) -> None:
     """Ensure transient errors are retried and succeed on the second attempt.
 
     The first call raises the transient error; the second returns success.
     """
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     class _OK:
         def raise_for_status(self) -> None:
             return None
 
-        def json(self) -> Dict[str, Any]:
+        def json(self) -> dict[str, Any]:
             return census_api_response
 
     # First call: raise transient error; second: success
@@ -113,7 +141,8 @@ def test_fetch_retries_on_transient_errors(
     )
     # Avoid real sleep during retries
     mocker.patch(
-        'brails.scrapers.census_scraper.census_scraper.time.sleep', return_value=None
+        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep',
+        return_value=None,
     )
 
     feature = scraper._fetch_tract_geometry(
@@ -142,7 +171,7 @@ def test_fetch_fails_fast_on_permanent_errors(
     - 4xx HTTPError raised on first call -> should propagate immediately.
     - 2xx response with empty features -> should raise ValueError without retry.
     """
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     if side_effect is not None:
         # Simulate 4xx client error
@@ -160,7 +189,8 @@ def test_fetch_fails_fast_on_permanent_errors(
 
     # Avoid real sleep even though we do not expect retries
     mocker.patch(
-        'brails.scrapers.census_scraper.census_scraper.time.sleep', return_value=None
+        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep',
+        return_value=None,
     )
 
     with pytest.raises(expected_exception):
@@ -178,14 +208,15 @@ def test_fetch_exhausts_retries(mocker: MockerFixture) -> None:
     Mock requests.get to always raise ConnectionError; assert it is called
     exactly `retries` times and that a final ConnectionError is raised.
     """
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     mock_get = mocker.patch(
         'requests.get',
         side_effect=exceptions.ConnectionError('dns failure'),
     )
     mocker.patch(
-        'brails.scrapers.census_scraper.census_scraper.time.sleep', return_value=None
+        'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep',
+        return_value=None,
     )
 
     with pytest.raises(exceptions.ConnectionError):
@@ -237,8 +268,8 @@ def single_tract_inventory() -> AssetInventory:
 
 
 @pytest.fixture
-def two_tracts_inventory() -> Tuple[
-    AssetInventory, List[Tuple[str, Tuple[float, float]]]
+def two_tracts_inventory() -> tuple[
+    AssetInventory, list[tuple[str, tuple[float, float]]]
 ]:
     """Inventory with assets placed in two distinct tracts.
 
@@ -250,7 +281,7 @@ def two_tracts_inventory() -> Tuple[
     inv.add_asset_coordinates('t1_a1', [[-120.0, 35.0]])  # tract T1
     inv.add_asset_coordinates('t1_a2', [[-120.002, 35.001]])  # tract T1
     inv.add_asset_coordinates('t2_a1', [[-77.0, 39.0]])  # tract T2
-    asset_coords: List[Tuple[str, Tuple[float, float]]] = [
+    asset_coords: list[tuple[str, tuple[float, float]]] = [
         ('t1_a1', (-120.0, 35.0)),
         ('t1_a2', (-120.002, 35.001)),
         ('t2_a1', (-77.0, 39.0)),
@@ -258,7 +289,7 @@ def two_tracts_inventory() -> Tuple[
     return inv, asset_coords
 
 
-def _feature_for_polygon(geoid: str, poly: Polygon) -> Dict[str, Any]:
+def _feature_for_polygon(geoid: str, poly: Polygon) -> dict[str, Any]:
     """Create a TIGER-like feature dict for a given GEOID and polygon."""
     return {
         'type': 'Feature',
@@ -269,7 +300,7 @@ def _feature_for_polygon(geoid: str, poly: Polygon) -> Dict[str, Any]:
 
 def test_get_tracts_input_validation() -> None:
     """get_census_tracts should raise TypeError for invalid input types."""
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
     with pytest.raises(TypeError):
         scraper.get_census_tracts(asset_inventory=None)  # type: ignore[arg-type]
     with pytest.raises(TypeError):
@@ -278,8 +309,8 @@ def test_get_tracts_input_validation() -> None:
 
 def test_get_tracts_happy_path(
     mocker: MockerFixture,
-    two_tracts_inventory: Tuple[
-        AssetInventory, List[Tuple[str, Tuple[float, float]]]
+    two_tracts_inventory: tuple[
+        AssetInventory, list[tuple[str, tuple[float, float]]]
     ],
 ) -> None:
     """End-to-end success: assets across two tracts are updated and cached.
@@ -301,12 +332,12 @@ def test_get_tracts_happy_path(
     # Side effects: first call returns T1 (covers first two points),
     # second call returns T2 (covers the remaining point)
     mock_fetch = mocker.patch.object(
-        CensusScraper,
+        CensusTractScraper,
         '_fetch_tract_geometry',
         side_effect=[feature_t1, feature_t2],
     )
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
     downloaded = scraper.get_census_tracts(inv)
 
     # 1. Called once per unique tract
@@ -337,12 +368,12 @@ def test_get_tracts_uses_cache_correctly(
     feature = _feature_for_polygon('06001400100', poly)
 
     mock_fetch = mocker.patch.object(
-        CensusScraper,
+        CensusTractScraper,
         '_fetch_tract_geometry',
         return_value=feature,
     )
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
     inv = single_tract_inventory
     _ = scraper.get_census_tracts(inv)
 
@@ -366,12 +397,12 @@ def test_get_tracts_handles_api_failure_gracefully(
     Also verify that the new failure-path messages are printed to stdout.
     """
     mocker.patch.object(
-        CensusScraper,
+        CensusTractScraper,
         '_fetch_tract_geometry',
         side_effect=ValueError('no features for point'),
     )
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     # Snapshot original features (should be empty dicts) to compare after call
     before = {
@@ -404,10 +435,10 @@ def test_get_tracts_with_empty_inventory(
 ) -> None:
     """Empty inventory should result in zero API calls and an empty cache."""
     mock_fetch = mocker.patch.object(
-        CensusScraper, '_fetch_tract_geometry', autospec=True
+        CensusTractScraper, '_fetch_tract_geometry', autospec=True
     )
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
     downloaded = scraper.get_census_tracts(empty_inventory)
 
     assert mock_fetch.call_count == 0
@@ -430,7 +461,7 @@ def test_get_tracts_live_api_call() -> None:
     # UC Berkeley: (lon, lat)
     inv.add_asset_coordinates('live1', [[-122.2585, 37.8719]])
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
 
     # Act: perform a real API call
     _ = scraper.get_census_tracts(inv)
@@ -544,9 +575,11 @@ def test_get_census_tracts_handles_various_geometries(
     geoid = '12345678901'  # Dummy 11-digit GEOID
     feature = _feature_for_polygon(geoid, covering_poly)
 
-    mocker.patch.object(CensusScraper, '_fetch_tract_geometry', return_value=feature)
+    mocker.patch.object(
+        CensusTractScraper, '_fetch_tract_geometry', return_value=feature
+    )
 
-    scraper = CensusScraper()
+    scraper = CensusTractScraper()
     _ = scraper.get_census_tracts(inv)
 
     # Assert every asset received the mocked GEOID

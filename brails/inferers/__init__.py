@@ -30,3 +30,7 @@
 #
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
+
+from .hazus_inferer_wind.hazus_inferer_wind import HazusInfererWind
+from .hazus_inferer_earthquake.hazus_inferer_earthquake import HazusInfererEarthquake
+from .hazus_inferer_flood.hazus_inferer_flood import HazusInfererFlood

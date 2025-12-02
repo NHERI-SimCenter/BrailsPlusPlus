@@ -58,22 +58,17 @@ from collections.abc import Hashable, Iterable
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
-try:
-    # Python 3.8+
-    from importlib.metadata import PackageNotFoundError, version
-except ImportError:
-    # For Python <3.8, use the backport
-    from importlib_metadata import PackageNotFoundError, version
+from importlib.metadata import PackageNotFoundError, version
 
 import pandas as pd
 from shapely import box
-from shapely.geometry import LineString, Polygon, shape
+from shapely.geometry import GeometryCollection, mapping
 from shapely.geometry.base import BaseGeometry  # noqa: TC002
 
 from brails.utils.clean_floats import clean_floats
-from brails.types.household_inventory import HouseholdInventory
+from brails.types.housing_unit_inventory import HousingUnitInventory
 from brails.utils.geo_tools import GeoTools
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
@@ -92,18 +87,20 @@ class Asset:
     Attributes:
         asset_id (str or int):
             Unique identifier for the asset.
-        coordinates (list[list[float]]):
-            Geometry coordinates of the asset, typically as a list of [x, y]
-            pairs.
+        coordinates (list[list[float]] | list[list[list[float]]]):
+            The geometry of the asset. Supports:
+            - ``[[x, y]]`` (Point)
+            - ``[[x, y], [x, y], ...]`` (LineString, Polygon)
+            - ``[[[x, y], ...], ...]`` (MultiLineString, MultiPolygon)
         features (dict[str, Any], optional):
             Additional attributes/features of the asset. Defaults to ``None``.
     """
 
     def __init__(
         self,
-        asset_id: Union[str, int],
-        coordinates: List[List[float]],
-        features: Optional[Dict[str, Any]] = None,
+        asset_id: str | int,
+        coordinates: list[list[float]],
+        features: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize an Asset with an asset ID, coordinates, and features.
@@ -128,11 +125,11 @@ class Asset:
 
     def add_features(
         self,
-        additional_features: Dict[str, Any],
-        vector_features: Optional[List[str]] = None,
+        additional_features: dict[str, Any],
+        vector_features: list[str] | None = None,
         *,
         overwrite: bool = True,
-    ) -> Tuple[bool, int]:
+    ) -> tuple[bool, int]:
         """
         Update the existing features in the asset.
 
@@ -240,7 +237,27 @@ class Asset:
 
         return updated, n_pw
 
-    def get_centroid(self) -> List[List[Optional[float]]]:
+    def get_geometry(self) -> BaseGeometry | None:
+        """
+        Convert coordinates into a robust Shapely geometry object.
+
+        Wraps `GeoTools.list_of_lists_to_geometry` to handle errors gracefully.
+
+        Returns:
+            BaseGeometry | None: A valid Shapely geometry, or None if the
+            coordinates are malformed or invalid.
+        """
+        if not self.coordinates:
+            return None
+
+        try:
+            return GeoTools.list_of_lists_to_geometry(self.coordinates)
+
+        except ValueError as e:
+            print(f'WARNING: Asset geometry invalid. {e}')
+            return None
+
+    def get_centroid(self) -> list[list[float | None]]:
         """
         Get the centroid of the asset geometry.
 
@@ -255,32 +272,20 @@ class Asset:
             ...     coordinates=[[-122.4194, 37.7749], [-122.4190, 37.7750]]
             ... )
             >>> asset.get_centroid()
-            [[-122.41919999999999, 37.774950000000004]]
+            [[-122.4192, 37.77495]]
 
             >>> empty_asset = Asset(asset_id='empty', coordinates=[])
             Coordinates input is empty for empty; defaulting to an empty list.
             >>> empty_asset.get_centroid()
             [[None, None]]
         """
-        coords = self.coordinates
-        if not coords:
-            return [[None, None]]
+        geometry = self.get_geometry()
 
-        try:
-            if InputValidator.is_point(coords):
-                return coords
-            if InputValidator.is_linestring(coords):
-                geometry = LineString(coords)
-            elif InputValidator.is_polygon(coords):
-                geometry = Polygon(coords)
-            else:
-                return [[None, None]]
-
+        if geometry:
             centroid = geometry.centroid
             return [[centroid.x, centroid.y]]
 
-        except Exception:
-            return [[None, None]]
+        return [[None, None]]
 
     def hash_asset(self) -> str:
         """
@@ -399,12 +404,12 @@ class AssetInventory:
 
     def __init__(self) -> None:
         """Initialize AssetInventory with an empty inventory dictionary."""
-        self.inventory: Dict = {}
-        self.household_inventory: Optional[HouseholdInventory] = None
+        self.inventory: dict = {}
+        self.housing_unit_inventory: HousingUnitInventory | None = None
         self.n_pw = 1
-        self.vector_features: List[str] = ['Households']
+        self.vector_features: list[str] = ['HousingUnits']
 
-    def add_asset(self, asset_id: Union[str, int], asset: Asset) -> bool:
+    def add_asset(self, asset_id: str | int, asset: Asset) -> bool:
         """
         Add an Asset to the inventory.
 
@@ -448,7 +453,9 @@ class AssetInventory:
         return True
 
     def add_asset_coordinates(
-        self, asset_id: Union[str, int], coordinates: List[List[float]]
+        self,
+        asset_id: str | int,
+        coordinates: list[list[float]] | list[list[list[float]]],
     ) -> bool:
         """
         Add an ``Asset`` to the inventory by adding its coordinate information.
@@ -456,10 +463,9 @@ class AssetInventory:
         Args:
             asset_id(str or int):
                 The unique identifier for the asset.
-            coordinates(list[list[float]]):
-                A two-dimensional list
-                representing the geometry in ``[[lon1, lat1], [lon2, lat2],
-                ..., [lonN, latN]]`` format.
+            coordinates (list[list[float]] | list[list[list[float]]]):
+                A nested list of floats representing the geometry.
+                Accepts Points, LineStrings, Polygons, and Multi-geometries.
 
         Returns:
             bool: ``True`` if the asset was added successfully, ``False``
@@ -494,8 +500,8 @@ class AssetInventory:
 
     def add_asset_features(
         self,
-        asset_id: Union[str, int],
-        new_features: Dict[str, Any],
+        asset_id: str | int,
+        new_features: dict[str, Any],
         *,
         overwrite: bool = True,
     ) -> bool:
@@ -550,9 +556,7 @@ class AssetInventory:
             return False
 
         status, n_pw = asset.add_features(
-            new_features,
-            vector_features=self.vector_features,
-            overwrite=overwrite
+            new_features, vector_features=self.vector_features, overwrite=overwrite
         )
         if n_pw == 1:
             # The new feature is deterministic.
@@ -578,7 +582,7 @@ class AssetInventory:
         return status
 
     def add_model_predictions(
-        self, predictions: Dict[Any, Any], feature_key: str
+        self, predictions: dict[Any, Any], feature_key: str
     ) -> None:
         """
         Add model predictions to the inventory.
@@ -642,7 +646,7 @@ class AssetInventory:
                     asset_id, {feature_key: predictions.get(asset_id)}
                 )
 
-    def change_feature_names(self, feature_name_mapping: Dict[str, str]) -> None:
+    def change_feature_names(self, feature_name_mapping: dict[str, str]) -> None:
         """
         Rename feature names in ``AssetInventory`` via user-specified mapping.
 
@@ -715,8 +719,8 @@ class AssetInventory:
     def combine(
         self,
         other_inventory: AssetInventory,
-        asset_id_map: Optional[Dict[Union[str, int], Union[str, int]]] = None,
-    ) -> Dict[Union[str, int], Union[str, int]]:
+        asset_id_map: dict[str | int, str | int] | None = None,
+    ) -> dict[str | int, str | int]:
         """
         Merge another AssetInventory into this one, handling conflicts.
 
@@ -730,22 +734,22 @@ class AssetInventory:
           You can provide an `asset_id_map` to suggest new IDs. If a
           suggested ID (or an original ID) already exists, a new
           sequential numeric ID will be assigned.
-        - **Household Merging:** If both inventories have linked household
+        - **Housing Unit Merging:** If both inventories have linked housing unit
           data, this method validates both, then merges the incoming
-          `HouseholdInventory`, re-indexes all new household IDs to
-          prevent conflicts, and updates the `Households` feature
+          `HousingUnitInventory`, re-indexes all new housing unit IDs to
+          prevent conflicts, and updates the `HousingUnits` feature
           on all newly-added assets.
 
         Args:
             other_inventory (AssetInventory):
                 The secondary inventory to merge into this one.
-            asset_id_map (Dict, optional):
+            asset_id_map (dict, optional):
                 A dictionary mapping {original_asset_id: suggested_asset_id}.
                 Use this to rename asset IDs from `other_inventory` during
                 the merge.
 
         Returns:
-            Dict[Union[str, int], Union[str, int]]:
+            dict[str | int, str | int]:
                 A `final_id_map` dictionary, which acts as a "receipt"
                 mapping {original_asset_id: final_asset_id}. This is
                 critical for data traceability, as it reports the
@@ -754,7 +758,7 @@ class AssetInventory:
         Raises:
             ValueError, LookupError, TypeError:
                 If either `self` or `other_inventory` has an invalid
-                household state (e.g., orphan IDs, invalid data types)
+                housing unit state (e.g., orphan IDs, invalid data types)
                 before the merge.
         """
         # --- 1. Asset Merging ---
@@ -791,93 +795,93 @@ class AssetInventory:
                 final_id  # Add hash to prevent duplicates from within other_inventory
             )
 
-        # --- 2. Household Inventory Merging ---
-        hh_id_remap = {}
+        # --- 2. Housing Unit Inventory Merging ---
+        hu_id_remap = {}
 
         # Case 1: We have no inventory, but the incoming one does.
         if (
-            self.household_inventory is None
-            and other_inventory.household_inventory is not None
+            self.housing_unit_inventory is None
+            and other_inventory.housing_unit_inventory is not None
         ):
             # First, validate the incoming inventory to prevent merging bad data
-            print('Validating incoming household inventory...')
-            other_inventory.validate_household_assignments()
+            print('Validating incoming housing unit inventory...')
+            other_inventory.validate_housing_unit_assignments()
 
             # Use deepcopy to avoid two AssetInventory objects pointing to
-            # the same mutable HouseholdInventory object.
-            self.household_inventory = deepcopy(other_inventory.household_inventory)
+            # the same mutable HousingUnitInventory object.
+            self.housing_unit_inventory = deepcopy(
+                other_inventory.housing_unit_inventory
+            )
             # No ID remapping is needed; the new assets' links are already correct.
 
-        # Case 2: Both inventories have household data.
+        # Case 2: Both inventories have housing unit data.
         elif (
-            self.household_inventory is not None
-            and other_inventory.household_inventory is not None
+            self.housing_unit_inventory is not None
+            and other_inventory.housing_unit_inventory is not None
         ):
             # Validate both inventories before attempting to merge.
-            print('Validating current household inventory...')
-            self.validate_household_assignments()
-            print('Validating incoming household inventory...')
-            other_inventory.validate_household_assignments()
+            print('Validating current housing unit inventory...')
+            self.validate_housing_unit_assignments()
+            print('Validating incoming housing unit inventory...')
+            other_inventory.validate_housing_unit_assignments()
 
             # Merge the incoming inventory into our own. This returns a
-            # map of {old_hh_id: new_hh_id} for all merged households.
-            print('Merging household inventories... Re-indexing incoming data.')
-            hh_id_remap = self.household_inventory.merge_inventory(
-                other_inventory.household_inventory
+            # map of {old_hu_id: new_hu_id} for all merged housing units.
+            print('Merging housing unit inventories... Re-indexing incoming data.')
+            hu_id_remap = self.housing_unit_inventory.merge_inventory(
+                other_inventory.housing_unit_inventory
             )
 
         # Case 3 (both are None) -> do nothing.
         # Case 4 (self has one, other is None) -> do nothing.
 
-        # --- 3. Asset Household-Link Fixing ---
+        # --- 3. Asset Housing-Unit Link Fixing ---
 
-        # If we remapped household IDs (Case 2), we must update the
-        # 'Households' feature on all newly-added assets.
-        if hh_id_remap:
-            print('Updating household links for merged assets...')
+        # If we remapped housing unit IDs (Case 2), we must update the
+        # 'HousingUnits' feature on all newly-added assets.
+        if hu_id_remap:
+            print('Updating housing unit links for merged assets...')
 
             # We only need to check the assets we *just added*.
             for final_id in final_id_map.values():
                 asset = self.inventory[final_id]
-                old_hh_id_list = asset.features.get('Households')
+                old_hu_id_list = asset.features.get('HousingUnits')
 
-                if old_hh_id_list:
+                if old_hu_id_list:
                     # Rebuild the list using the re-map.
-                    remapped_hh_id_list = [
-                        hh_id_remap[old_hh_id] for old_hh_id in old_hh_id_list
+                    remapped_hu_id_list = [
+                        hu_id_remap[old_hu_id] for old_hu_id in old_hu_id_list
                     ]
 
                     self.add_asset_features(
-                        final_id, {'Households': remapped_hh_id_list}, overwrite=True
+                        final_id,
+                        {'HousingUnits': remapped_hu_id_list},
+                        overwrite=True,
                     )
 
         return final_id_map
 
     def convert_polygons_to_centroids(self) -> None:
         """
-        Convert polygon geometries in the inventory to their centroid points.
+        Convert geometries in the inventory to their centroid points.
 
         Iterates through the asset inventory and replaces the coordinates of
-        each polygon or linestring geometry with the coordinates of its
-        centroid. Point geometries are left unchanged.
+        each geometry with the coordinates of its centroid using the
+        logic defined in `Asset.get_centroid()`.
 
-        This function is useful for spatial operations that require point
-        representations of larger geometries(e.g., matching, distance
-        calculations).
-
-        Note:
-            - Polygon coordinates are wrapped in a list to ensure proper
-              GeoJSON structure.
-            - Linestrings are converted to points at their centroid unless the
-              geometry is invalid or ambiguous.
+        Notes:
+            - Points are left unchanged.
+            - Polygons, LineStrings, and Multi-geometries are converted to their centroid.
+            - Invalid or malformed geometries will be replaced with ``[[None, None]]``
+              and a warning will be printed by the Asset class.
 
         Modifies:
             self.inventory (dict):
-                Updates the ``coordinates`` field of each asset in-place by
-                replacing polygons and linestrings with their centroid.
+                Updates the ``coordinates`` field of each asset in-place.
 
         Example:
             >>> inventory = AssetInventory()
+            >>> # 1. Polygon
             >>> inventory.add_asset_coordinates(
             ...     'asset1',
             ...     [
@@ -886,42 +890,42 @@ class AssetInventory:
             ...         [-122.4094, 37.7849],
             ...         [-122.4094, 37.7749],
             ...         [-122.4194, 37.7749]
-            ...     ]  # Polygon
+            ...     ]
             ... )
+            >>> # 2. LineString
             >>> inventory.add_asset_coordinates(
             ...     'asset2',
             ...     [
             ...         [-122.4194, 37.7749],
             ...         [-122.4094, 37.7849]
-            ...     ]  # LineString
+            ...     ]
+            ... )
+            >>> # 3. MultiPolygon
+            >>> inventory.add_asset_coordinates(
+            ...     'asset3',
+            ...     [
+            ...         [
+            ...             [-122.4194, 37.7749], [-122.4194, 37.7849],
+            ...             [-122.4094, 37.7849], [-122.4094, 37.7749],
+            ...             [-122.4194, 37.7749]
+            ...         ],
+            ...         [
+            ...             [-122.3000, 37.8000], [-122.3000, 37.8100],
+            ...             [-122.2900, 37.8100], [-122.2900, 37.8000],
+            ...             [-122.3000, 37.8000]
+            ...         ]
+            ...     ]
             ... )
             >>> inventory.convert_polygons_to_centroids()
-            >>> inventory.get_asset_coordiates('asset1')
+            >>> inventory.get_asset_coordinates('asset1')
             [[-122.4144, 37.7799]]
-            >>> inventory.get_asset_coordiates('asset2')
+            >>> inventory.get_asset_coordinates('asset2')
             [[-122.4144, 37.7799]]
         """
-        for key, asset in self.inventory.items():
-            if InputValidator.is_point(asset.coordinates):
-                continue
+        for asset in self.inventory.values():
+            asset.coordinates = asset.get_centroid()
 
-            if InputValidator.is_linestring(asset.coordinates):
-                geometry = {'type': 'LineString', 'coordinates': asset.coordinates}
-            elif InputValidator.is_polygon(asset.coordinates):
-                geometry = {
-                    'type': 'Polygon',
-                    'coordinates': [asset.coordinates],
-                }
-            else:
-                geometry = {
-                    'type': 'LineString',
-                    'coordinates': asset.coordinates,
-                }
-
-            centroid = shape(geometry).centroid
-            asset.coordinates = [[centroid.x, centroid.y]]
-
-    def get_asset_coordinates(self, asset_id: Union[str, int]) -> Tuple[bool, List]:
+    def get_asset_coordinates(self, asset_id: str | int) -> tuple[bool, list]:
         """
         Get the coordinates of a particular asset.
 
@@ -956,9 +960,7 @@ class AssetInventory:
 
         return True, asset.coordinates
 
-    def get_asset_features(
-        self, asset_id: Union[str, int]
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def get_asset_features(self, asset_id: str | int) -> tuple[bool, dict[str, Any]]:
         """
         Get features of a particular asset.
 
@@ -967,7 +969,7 @@ class AssetInventory:
                 The unique identifier for the asset.
 
         Returns:
-            tuple[bool, Dict]:
+            tuple[bool, dict]:
                 A tuple where the first element is a boolean indicating whether
                 the asset was found, and the second element is a dictionary
                 containing the asset's features if the asset is present.
@@ -1000,7 +1002,23 @@ class AssetInventory:
 
         return True, asset.features
 
-    def get_asset_ids(self) -> List[Union[str, int]]:
+    def get_all_asset_features(self) -> set[str]:
+        """
+        Retrieves a set of unique feature keys present across all assets.
+
+        Iterates through every asset and collects the keys from their 'features'
+        dictionaries. This operation handles deduplication automatically.
+
+        Returns:
+            set[str]: A collection of unique feature names found in the inventory.
+        """
+        return {
+            feature
+            for asset in self.inventory.values()
+            for feature in asset.features
+        }
+
+    def get_asset_ids(self) -> list[str | int]:
         """
         Retrieve the IDs of all assets in the inventory.
 
@@ -1087,29 +1105,39 @@ class AssetInventory:
         if not bpoly.is_valid:
             bpoly = bpoly.buffer(0)
 
-        # Build asset geometries:
-        geometries = {
-            key: GeoTools.list_of_lists_to_geometry(asset.coordinates)
-            for key, asset in self.inventory.items()
-        }
+        valid_geometries = {}
+        keys_to_remove = set()
 
-        keys_remove = GeoTools.compare_geometries(bpoly, geometries, 'intersects')
+        for key, asset in self.inventory.items():
+            geom = asset.get_geometry()
 
-        for key in keys_remove:
+            if geom and not geom.is_empty and geom.is_valid:
+                valid_geometries[key] = geom
+            else:
+                keys_to_remove.add(key)
+
+        if valid_geometries:
+            non_intersecting_keys = GeoTools.compare_geometries(
+                bpoly, valid_geometries, 'intersects'
+            )
+            keys_to_remove.update(non_intersecting_keys)
+
+        for key in keys_to_remove:
             self.remove_asset(key)
 
     def get_coordinates(
         self,
-    ) -> Tuple[List[List[List[float]]], List[Union[str, int]]]:
+    ) -> tuple[list[list[list[float]] | list[list[list[float]]]], list[str | int]]:
         """
         Get geometry(coordinates) and keys of all assets in the inventory.
 
         Returns:
-            tuple[list[list[list[float, float]]], list[str or int]]:
+            tuple:
                 A tuple containing:
-
-                - A list of coordinates for each asset, where each coordinate
-                  is represented as a list of [longitude, latitude] pairs.
+                - A list of coordinates for each asset. Depending on the geometry
+                  type, this will be:
+                  - Depth 2: ``[[lon, lat], ...]`` (Point, LineString, Polygon)
+                  - Depth 3: ``[[[lon, lat], ...], ...]`` (MultiLineString, MultiPolygon)
                 - A list of asset keys corresponding to each asset.
 
         Example:
@@ -1137,7 +1165,7 @@ class AssetInventory:
     def get_random_sample(
         self,
         nsamples: int,
-        seed: Optional[Union[int, float, str, bytes, bytearray]] = None,
+        seed: int | float | str | bytes | bytearray | None = None,
     ) -> AssetInventory:
         """
         Generate a smaller asset inventory with a random selection of assets.
@@ -1211,7 +1239,7 @@ class AssetInventory:
 
         return result
 
-    def get_extent(self, buffer: Union[str, List[float]] = 'default') -> box:
+    def get_extent(self, buffer: str | list[float] = 'default') -> box:
         """
         Calculate the geographical extent of the inventory.
 
@@ -1284,22 +1312,24 @@ class AssetInventory:
         else:
             raise ValueError(error_msg)
 
-        # Determine the geographical extent of the inventory:
-        minlon, maxlon, minlat, maxlat = 180, -180, 90, -90
-        for asset in self.inventory.values():
-            for lon, lat in asset.coordinates:
-                minlon, maxlon = min(minlon, lon), max(maxlon, lon)
-                minlat, maxlat = min(minlat, lat), max(maxlat, lat)
+        # Determine the geographical extent of the inventory
+        valid_geoms = [asset.get_geometry() for asset in self.inventory.values()]
+        valid_geoms = [g for g in valid_geoms if g and not g.is_empty]
 
-        # Create a Shapely polygon from the determined extent:
+        if not valid_geoms:
+            return box(0, 0, 0, 0)
+
+        min_x, min_y, max_x, max_y = GeometryCollection(valid_geoms).bounds
+
+        # Return a Shapely polygon of the bounding box:
         return box(
-            minlon - buffer_levels[0],
-            minlat - buffer_levels[1],
-            maxlon + buffer_levels[2],
-            maxlat + buffer_levels[3],
+            min_x - buffer_levels[0],
+            min_y - buffer_levels[1],
+            max_x + buffer_levels[2],
+            max_y + buffer_levels[3],
         )
 
-    def get_geojson(self) -> Dict[str, Any]:
+    def get_geojson(self) -> dict[str, Any]:
         """
         Generate a GeoJSON representation of the assets in the inventory.
 
@@ -1371,25 +1401,33 @@ class AssetInventory:
             'features': [],
         }
 
-        for key, asset in self.inventory.items():
-            geometry = None
-            if InputValidator.is_point(asset.coordinates):
-                geometry = {'type': 'Point', 'coordinates': asset.coordinates[0]}
-            elif InputValidator.is_linestring(asset.coordinates):
-                geometry = {'type': 'LineString', 'coordinates': asset.coordinates}
-            elif InputValidator.is_polygon(asset.coordinates):
-                geometry = {'type': 'Polygon', 'coordinates': [asset.coordinates]}
+        # Initialize list to track assets with invalid geometries
+        failed_ids = []
 
-            if geometry:
+        for key, asset in self.inventory.items():
+            geometry_obj = asset.get_geometry()
+
+            # Only store valid geometries
+            if geometry_obj and not geometry_obj.is_empty:
                 properties = asset.features | {'id': key}
 
                 geojson['features'].append(
                     {
                         'type': 'Feature',
                         'properties': properties,
-                        'geometry': geometry,
+                        'geometry': mapping(geometry_obj),
                     }
                 )
+            else:
+                # Track failures
+                failed_ids.append(str(key))
+
+        # Report Failures
+        if failed_ids:
+            print(
+                f'\nWarning: {len(failed_ids)} assets were skipped due to invalid or unknown geometry.'
+            )
+            print(f'Skipped IDs: {", ".join(failed_ids)}')
 
         return geojson
 
@@ -1553,7 +1591,7 @@ class AssetInventory:
         self,
         file_path: str,
         asset_type: str = 'building',
-        id_column: Optional[str] = None,
+        id_column: str | None = None,
     ) -> bool:
         """
         Reads a GeoJSON file and imports assets into the asset inventory.
@@ -1765,7 +1803,7 @@ class AssetInventory:
 
         return True
 
-    def remove_asset(self, asset_id: Union[str, int]) -> bool:
+    def remove_asset(self, asset_id: str | int) -> bool:
         """
         Remove an asset from the inventory.
 
@@ -1944,7 +1982,7 @@ class AssetInventory:
                 f'{sorted(missing_keys)}'
             )
 
-    def write_to_geojson(self, output_file: str = '') -> Dict:
+    def write_to_geojson(self, output_file: str = '') -> dict:
         """
         Write inventory to a GeoJSON file and return the GeoJSON dictionary.
 
@@ -1957,7 +1995,7 @@ class AssetInventory:
                 Path to the output GeoJSON file. If empty, no file is written.
 
         Returns:
-            Dict:
+            dict:
                 A dictionary containing the GeoJSON ``FeatureCollection``.
 
         Examples:
@@ -2020,7 +2058,7 @@ class AssetInventory:
         file_path: str,
         keep_existing: bool,
         str_type: str = 'building',
-        id_column: Optional[str] = None,
+        id_column: str | None = None,
     ) -> bool:
         """
         Read inventory data from a CSV file and add it to the inventory.
@@ -2068,7 +2106,7 @@ class AssetInventory:
         # Attempt to open the file
         try:
             with open(file_path) as csvfile:
-                csv_reader = csv.DictReader(csvfile)
+                csv_reader = csv.dictReader(csvfile)
                 rows = list(csv_reader)
         except FileNotFoundError:
             raise Exception(f'The file {file_path} does not exist.')
@@ -2135,7 +2173,7 @@ class AssetInventory:
         return True
 
     def add_asset_features_from_csv(
-        self, file_path: str, id_column: Union[str, None]
+        self, file_path: str, id_column: str | None
     ) -> bool:
         """
         Read inventory data from a CSV file and add it to the inventory.
@@ -2152,7 +2190,7 @@ class AssetInventory:
         """
         try:  # Attempt to open the file
             with open(file_path) as csvfile:
-                csv_reader = csv.DictReader(csvfile)
+                csv_reader = csv.dictReader(csvfile)
                 rows = list(csv_reader)
         except FileNotFoundError:
             raise Exception(f'The file {csvfile} does not exist.')
@@ -2167,33 +2205,31 @@ class AssetInventory:
                     bldg_features[key] = float(val)
 
             if id_column not in bldg_features.keys():
-                raise Exception(
-                    f"The key '{id_column}' not found in {file_path}"
-                )
+                raise Exception(f"The key '{id_column}' not found in {file_path}")
             id = bldg_features[id_column]
 
             self.add_asset_features(id, bldg_features)
 
         return True
 
-    def get_dataframe(self) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
+    def get_dataframe(self) -> tuple[pd.DataFrame, pd.DataFrame, int]:
         """
         Convert the asset inventory into two structured DataFrames and count.
 
         This method processes the internal asset inventory and returns:
 
         - A ``DataFrame`` containing the features of each asset, with support
-          for multiple possible worlds(realizations).
-        - A ``DataFrame`` containing centroid coordinates(longitude and
+          for multiple possible worlds (realizations).
+        - A ``DataFrame`` containing centroid coordinates (longitude and
           latitude) for spatial operations.
         - The total number of assets in the inventory.
 
         The method flattens feature lists into separate columns if multiple
         possible worlds exist. It also derives centroid coordinates from the
-        GeoJSON geometry for each asset.
+        geometry for each asset.
 
         Returns:
-            Tuple[pd.DataFrame, pd.DataFrame, int]:
+            tuple[pd.DataFrame, pd.DataFrame, int]:
 
                 - Asset feature ``DataFrame`` (indexed by asset ID).
                 - Asset geometry ``DataFrame`` with 'Lat' and 'Lon' columns.
@@ -2206,91 +2242,85 @@ class AssetInventory:
         """
         n_possible_worlds = self.get_n_pw()
 
-        asset_json = self.get_geojson()
-        features_json = asset_json['features']
-        bldg_properties = [
-            {**self.inventory[i].features, 'index': i}
-            for dummy, i in enumerate(self.inventory)
-        ]
+        # Lists to hold data for DataFrame construction
+        ids = []
+        lats = []
+        lons = []
+        feature_rows = []
 
-        # [bldg_features['properties'] for bldg_features in features_json]
+        # Single pass through the inventory to collect all data
+        for asset_id, asset in self.inventory.items():
+            ids.append(asset_id)
 
-        nbldg = len(bldg_properties)
+            # Geometry: Reuse the robust logic in Asset.get_centroid()
+            centroid_data = asset.get_centroid()[0]
+            lons.append(centroid_data[0])
+            lats.append(centroid_data[1])
 
+            # Features: Collect for processing below
+            features = asset.features.copy()
+            features['index'] = asset_id
+            feature_rows.append(features)
+
+        nbldg = len(ids)
+
+        # Process Features considering Possible Worlds
         if n_possible_worlds == 1:
-            bldg_properties_df = pd.DataFrame(bldg_properties)
-
+            bldg_properties_df = pd.DataFrame(feature_rows)
         else:
-            # First enumerate assets to see which columns have multiple worlds
-
+            # Identify columns that are lists (vector columns) in ANY asset
+            # These are the ones with multiple worlds
             vector_columns = set()
-            for entry in bldg_properties:
+            for entry in feature_rows:
                 vector_columns.update(
-                    [key for key, value in entry.items() if isinstance(value, list)]
+                    key for key, value in entry.items() if isinstance(value, list)
                 )
 
             flat_data = []
-            for entry in bldg_properties:
+            for entry in feature_rows:
+                # Base row with scalar values
                 row = {
                     key: value
                     for key, value in entry.items()
-                    if (key not in vector_columns)
-                }  # stays the same
-                for key in vector_columns:
-                    value = entry[key]
-                    if isinstance(value, list):
-                        if not len(value) == n_possible_worlds:
-                            raise ValueError(
-                                'The specified # of possible worlds are '
-                                f'{n_possible_worlds} but {key} contains '
-                                f'{len(value)} realizations in {entry}'
-                            )
+                    if key not in vector_columns
+                }
 
+                # Expand vector columns
+                for col in vector_columns:
+                    val = entry.get(col)
+
+                    # Safety Check: Handle mixed types.
+                    # If this asset has a scalar for a column that is a vector
+                    # elsewhere, we replicate that scalar across all worlds.
+                    if not isinstance(val, list):
                         for i in range(n_possible_worlds):
-                            row[f'{key}_{i + 1}'] = value[i]
-                    else:
-                        for i in range(n_possible_worlds):
-                            row[f'{key}_{i + 1}'] = value
+                            row[f'{col}_{i + 1}'] = val
+                        continue
+
+                    # Validate length
+                    if len(val) != n_possible_worlds:
+                        raise ValueError(
+                            f'Asset {entry["index"]}: The specified # of '
+                            f'possible worlds is {n_possible_worlds} but '
+                            f"'{col}' contains {len(val)} realizations."
+                        )
+
+                    # Flatten
+                    for i in range(n_possible_worlds):
+                        row[f'{col}_{i + 1}'] = val[i]
 
                 flat_data.append(row)
 
             bldg_properties_df = pd.DataFrame(flat_data)
 
+        # Cleanup Feature DataFrame
         if 'type' in bldg_properties_df.columns:
-            bldg_properties_df.drop(columns=['type'], inplace=True)
-
-        #  get centoried
-        lat_values = [None] * nbldg
-        lon_values = [None] * nbldg
-
-        for idx in range(nbldg):
-            polygon_coordinate = features_json[idx]['geometry']['coordinates']
-
-            if isinstance(polygon_coordinate[0], list):
-                if isinstance(polygon_coordinate[0][0], list):
-                    # multipolygon
-                    latitudes = [coord[0][1] for coord in polygon_coordinate]
-                    longitudes = [coord[0][0] for coord in polygon_coordinate]
-                else:
-                    # polygon or point
-                    latitudes = [coord[1] for coord in polygon_coordinate]
-                    longitudes = [coord[0] for coord in polygon_coordinate]
-            else:
-                # point?
-                latitudes = [polygon_coordinate[1]]
-                longitudes = [polygon_coordinate[0]]
-            lat_values[idx] = sum(latitudes) / len(latitudes)
-            lon_values[idx] = sum(longitudes) / len(longitudes)
-
-        # to be used for spatial interpolation
-        # lat_values = [features_json[idx]['geometry']['coordinates'][0][0] for idx in range(nbldg)]
-        # lon_values = [features_json[idx]['geometry']['coordinates'][0][1] for idx in range(nbldg)]
-        bldg_geometries_df = pd.DataFrame()
-        bldg_geometries_df['Lat'] = lat_values
-        bldg_geometries_df['Lon'] = lon_values
-        bldg_geometries_df['index'] = bldg_properties_df['index']
+            bldg_properties_df = bldg_properties_df.drop(columns=['type'])
 
         bldg_properties_df = bldg_properties_df.set_index('index')
+
+        # --- Construct Geometry DataFrame ---
+        bldg_geometries_df = pd.DataFrame({'Lat': lats, 'Lon': lons, 'index': ids})
         bldg_geometries_df = bldg_geometries_df.set_index('index')
 
         return bldg_properties_df, bldg_geometries_df, nbldg
@@ -2439,7 +2469,7 @@ class AssetInventory:
         """
         return self.n_pw
 
-    def get_multi_keys(self) -> Tuple[List[str], List[str]]:  # move to Asset
+    def get_multi_keys(self) -> tuple[list[str], list[str]]:  # move to Asset
         """
         Identify features that contain multiple realizations across assets.
 
@@ -2449,7 +2479,7 @@ class AssetInventory:
         - All unique feature keys present in the inventory.
 
         Returns:
-            Tuple[List[str], List[str]]:
+            tuple[list[str], list[str]]:
                 - A list of keys corresponding to multi-realization features.
                 - A complete list of all unique feature keys in the inventory.
         """
@@ -2484,67 +2514,67 @@ class AssetInventory:
         numeric_ids = [int(k) for k in self.inventory if str(k).isdigit()]
         return (max(numeric_ids) + 1) if numeric_ids else 0
 
-    def set_household_inventory(
+    def set_housing_unit_inventory(
         self,
-        hh_inventory: HouseholdInventory,
-        hh_assignment: Optional[Dict[Union[str, int], List]] = None,
+        hu_inventory: HousingUnitInventory,
+        hu_assignment: dict[str | int, list] | None = None,
         *,
         validate: bool = True,
     ) -> None:
         """
-        Set the household inventory and optionally assign households to assets.
+        Set the housing unit inventory and optionally assign housing units to assets.
 
-        This method links a HouseholdInventory object to the AssetInventory.
-        It can also be used to assign household ID lists to individual assets
-        using the `hh_assignment` dictionary.
+        This method links a HousingUnitInventory object to the AssetInventory.
+        It can also be used to assign housing unit ID lists to individual assets
+        using the `hu_assignment` dictionary.
 
         This enables two primary workflows:
-        1.  **Assigning New Households:** Pass both `hh_inventory` and
-            `hh_assignment`. The function will link the inventory and add
-            the 'Households' feature to each asset in the assignment dict.
-        2.  **Linking a Loaded Inventory:** After loading an AssetInventory
-            (e.g., from GeoJSON) that already has 'Households' features,
-            pass only the `hh_inventory` object. The function will link it
+        1.  Assigning new housing units: Pass both `hu_inventory` and
+            `hu_assignment`. The function will link the inventory and add
+            the 'HousingUnits' feature to each asset in the assignment dict.
+        2.  Linking a loaded inventory: After loading an AssetInventory
+            (e.g., from GeoJSON) that already has 'HousingUnits' features,
+            pass only the `hu_inventory` object. The function will link it
             and can optionally validate the existing assignments.
 
         Args:
-            hh_inventory (HouseholdInventory):
-                The `HouseholdInventory` object to link to this
+            hu_inventory (HousingUnitInventory):
+                The `HousingUnitInventory` object to link to this
                 `AssetInventory`.
-            hh_assignment (Dict[Union[str, int], List], optional):
-                A dictionary mapping `asset_id` to a list of household IDs.
-                If provided, this list will be added as the 'Households'
+            hu_assignment (dict[str | int, list], optional):
+                A dictionary mapping `asset_id` to a list of housing unit IDs.
+                If provided, this list will be added as the 'HousingUnits'
                 feature for each corresponding asset, overwriting any
-                existing 'Households' feature. Defaults to `None`.
+                existing 'HousingUnits' feature. Defaults to `None`.
             validate (bool, optional):
-                If `True`, run `validate_household_assignments()` after
+                If `True`, run `validate_housing_unit_assignments()` after
                 linking to check for mismatches. Defaults to `True`.
 
         Raises:
-            TypeError: If `hh_inventory` is not an instance of
-                       `HouseholdInventory` or if `hh_assignment` is
+            TypeError: If `hu_inventory` is not an instance of
+                       `HousingUnitInventory` or if `hu_assignment` is
                        provided and is not a `dict`.
         """
-        if not isinstance(hh_inventory, HouseholdInventory):
+        if not isinstance(hu_inventory, HousingUnitInventory):
             raise TypeError(
-                f'hh_inventory must be an instance of HouseholdInventory, '
-                f'not {type(hh_inventory)}.'
+                f'hu_inventory must be an instance of HousingUnitInventory, '
+                f'not {type(hu_inventory)}.'
             )
 
-        self.household_inventory = hh_inventory
+        self.housing_unit_inventory = hu_inventory
 
-        if hh_assignment is not None:
-            if not isinstance(hh_assignment, dict):
+        if hu_assignment is not None:
+            if not isinstance(hu_assignment, dict):
                 raise TypeError(
-                    f'hh_assignment must be a dictionary or None, '
-                    f'not {type(hh_assignment)}.'
+                    f'hu_assignment must be a dictionary or None, '
+                    f'not {type(hu_assignment)}.'
                 )
 
-            print(f'Assigning households to {len(hh_assignment)} assets...')
+            print(f'Assigning housing units to {len(hu_assignment)} assets...')
             assets_not_found = 0
-            for asset_id, hh_list in hh_assignment.items():
+            for asset_id, hu_list in hu_assignment.items():
                 success = self.add_asset_features(
-                    asset_id, {'Households': hh_list}, overwrite=True
+                    asset_id, {'HousingUnits': hu_list}, overwrite=True
                 )
                 if not success:
                     assets_not_found += 1
@@ -2552,24 +2582,24 @@ class AssetInventory:
             if assets_not_found > 0:
                 print(
                     f'Warning: {assets_not_found} asset(s) listed in '
-                    f'hh_assignment were not found in the inventory.'
+                    f'hu_assignment were not found in the inventory.'
                 )
 
         if validate:
-            print('Validating household assignments...')
-            self.validate_household_assignments()
+            print('Validating housing unit assignments...')
+            self.validate_housing_unit_assignments()
             print('Validation successful.')
 
-    def validate_household_assignments(self) -> bool:
+    def validate_housing_unit_assignments(self) -> bool:
         """
-        Check the integrity of household assignments.
+        Check the integrity of housing unit assignments.
 
         This function performs two main checks:
-        1.  If any assets have a 'Households' feature, it checks that
-            `self.household_inventory` is not `None`.
-        2.  If `self.household_inventory` is set, it checks that every
-            household ID in every asset's 'Households' list exists in the
-            `self.household_inventory`.
+        1.  If any assets have a 'HousingUnits' feature, it checks that
+            `self.housing_unit_inventory` is not `None`.
+        2.  If `self.housing_unit_inventory` is set, it checks that every
+            housing unit ID in every asset's 'HousingUnits' list exists in the
+            `self.housing_unit_inventory`.
 
         Returns:
             bool:
@@ -2578,32 +2608,32 @@ class AssetInventory:
 
         Raises:
             TypeError:
-                If an asset's 'Households' feature is not a `list`.
+                If an asset's 'HousingUnits' feature is not a `list`.
             LookupError:
-                If assets have 'Households' assignments but
-                `self.household_inventory` is `None`.
+                If assets have 'HousingUnits' assignments but
+                `self.housing_unit_inventory` is `None`.
             ValueError:
-                If any household IDs assigned to assets are not found
-                in the `self.household_inventory`.
+                If any housing unit IDs assigned to assets are not found
+                in the `self.housing_unit_inventory`.
         """
-        all_asset_hh_ids = set()
+        all_asset_hu_ids = set()
         found_assignments = False
         assets_with_bad_data = []
 
-        # First, collect all household IDs from assets
+        # First, collect all housing unit IDs from assets
         for asset_id, asset in self.inventory.items():
-            hh_data = asset.features.get('Households')
-            if hh_data is not None:
+            hu_data = asset.features.get('HousingUnits')
+            if hu_data is not None:
                 found_assignments = True
-                if not isinstance(hh_data, list):
+                if not isinstance(hu_data, list):
                     assets_with_bad_data.append(asset_id)
                 else:
-                    all_asset_hh_ids.update(hh_data)
+                    all_asset_hu_ids.update(hu_data)
 
-        # Check for non-list 'Households' features
+        # Check for non-list 'HousingUnits' features
         if assets_with_bad_data:
             raise TypeError(
-                f"The 'Households' feature must be a list. Found invalid "
+                f"The 'HousingUnits' feature must be a list. Found invalid "
                 f'data in assets: {assets_with_bad_data}'
             )
 
@@ -2612,36 +2642,38 @@ class AssetInventory:
             return True
 
         # If we have assignments, we MUST have an inventory linked.
-        if self.household_inventory is None:
+        if self.housing_unit_inventory is None:
             raise LookupError(
-                'Assets have household assignments, but no '
-                'HouseholdInventory is linked. Call '
-                'set_household_inventory() first.'
+                'Assets have housing unit assignments, but no '
+                'HousingUnitInventory is linked. Call '
+                'set_housing_unit_inventory() first.'
             )
 
         # Check for orphan IDs
-        valid_hh_ids = set(self.household_inventory.get_household_ids())
-        missing_ids = all_asset_hh_ids - valid_hh_ids
+        valid_hu_ids = set(self.housing_unit_inventory.get_housing_unit_ids())
+        missing_ids = all_asset_hu_ids - valid_hu_ids
 
         if missing_ids:
             sample = list(missing_ids)[:10]
             raise ValueError(
-                f'Found {len(missing_ids)} orphan household IDs assigned to '
-                f'assets that are not in the HouseholdInventory. '
+                f'Found {len(missing_ids)} orphan housing unit IDs assigned to '
+                f'assets that are not in the HousingUnitInventory. '
                 f'Example orphans: {sample}'
             )
 
         # All checks passed
         return True
 
-    def remove_household_inventory(self, *, clear_assignments: bool = True) -> None:
+    def remove_housing_unit_inventory(
+        self, *, clear_assignments: bool = True
+    ) -> None:
         """
-        Remove the linked household inventory and clear all assignments.
+        Remove the linked housing unit inventory and clear all assignments.
 
-        This method removes the `HouseholdInventory` object from the
-        `AssetInventory` by setting `self.household_inventory` to `None`.
+        This method removes the `HousingUnitInventory` object from the
+        `AssetInventory` by setting `self.housing_unit_inventory` to `None`.
 
-        By default, it also removes the 'Households' feature from all
+        By default, it also removes the 'HousingUnits' feature from all
         assets in the inventory, as the assignments are specific to the
         inventory being removed. This ensures the `AssetInventory`
         remains in a valid state.
@@ -2649,21 +2681,21 @@ class AssetInventory:
         Args:
             clear_assignments (bool, optional):
                 If `True` (the default), this method will iterate through
-                all assets and remove the 'Households' feature from them.
-                If set to `False`, only the main `household_inventory`
+                all assets and remove the 'HousingUnits' feature from them.
+                If set to `False`, only the main `housing_unit_inventory`
                 attribute will be removed, which will likely result
                 in an invalid state that fails validation.
         """
-        self.household_inventory = None
-        print('HouseholdInventory removed.')
+        self.housing_unit_inventory = None
+        print('HousingUnitInventory removed.')
 
         if clear_assignments:
-            print("Removing 'Households' feature from all assets...")
+            print("Removing 'HousingUnits' feature from all assets...")
             # Use the existing remove_features method
-            self.remove_features(['Households'])
+            self.remove_features(['HousingUnits'])
             print('Asset assignments cleared.')
         else:
             print(
-                "Warning: Asset 'Households' features were not cleared. "
+                "Warning: Asset 'HousingUnits' features were not cleared. "
                 'The inventory is likely in an invalid state.'
             )

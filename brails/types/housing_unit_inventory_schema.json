@@ -1,13 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "HouseholdInventory",
+  "title": "HousingUnitInventory",
   "description": "Schema for validating HouseholdInventory JSON data",
   "type": "object",
-  "required": ["households"],
+  "required": ["housing_units"],
   "properties": {
     "type": {
       "type": "string",
-      "const": "HouseholdInventory"
+      "const": "HousingUnitInventory"
     },
     "generated": {
       "type": "string",
@@ -17,12 +17,12 @@
       "type": "string",
       "description": "Version of BRAILS used to generate the inventory"
     },
-    "households": {
+    "housing_units": {
       "type": "object",
-      "description": "Dictionary of households with household IDs as keys",
+      "description": "Dictionary of housing units with housing unit IDs as keys",
       "additionalProperties": {
         "type": "object",
-        "description": "Household features",
+        "description": "HousingUnit features",
         "additionalProperties": {
           "oneOf": [
             { "type": "string" },
