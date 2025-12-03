@@ -69,7 +69,14 @@ cd ..
 
 echo "TESTING IMPUTATION"
 cd imputation
+rm *out
 run_python_script imputation.py OSM_FootprintScraper "Tiburon, CA" 
+cd ..
+
+echo "TESTING HOUSING ALLOCATION"
+cd housing_units
+rm *out
+run_python_script housing_unit_example.py "Tiburon, CA" 
 cd ..
 
 cd ..
