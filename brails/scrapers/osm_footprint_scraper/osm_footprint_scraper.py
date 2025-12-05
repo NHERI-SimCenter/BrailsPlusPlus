@@ -45,12 +45,13 @@ This module defines the class scraping building data from OSM.
     OSM_FootprintScraper
 """
 
-import requests
+#import requests
 
 from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import AssetInventory
 from brails.utils import InputValidator
+from brails.utils.safe_get_json import safe_get_json
 
 
 class OSM_FootprintScraper(FootprintScraper):
@@ -137,9 +138,21 @@ class OSM_FootprintScraper(FootprintScraper):
             """
 
         url = "http://overpass-api.de/api/interpreter"
-        r = requests.get(url, params={"data": query})
 
-        datalist = r.json()["elements"]
+        
+        # r = requests.get(url, params={"data": query})
+        # datalist = r.json()["elements"]
+
+        data = safe_get_json(url,
+                             params={"data":query},
+                             headers=None,
+                             timeout=10,
+                             retries=3,
+                             backoff_factor=2.,
+                             valid_key="elements")
+        
+        datalist = data["elements"]        
+        
         nodedict = {}
         for data in datalist:
             if data["type"] == "node":

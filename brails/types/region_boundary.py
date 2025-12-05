@@ -56,7 +56,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.ops import linemerge, polygonize, unary_union
 
 from brails.utils import GeoTools
-
+from brails.utils.safe_get_json import safe_get_json
 
 class RegionInput:
     """
@@ -368,9 +368,25 @@ class RegionBoundary:
                    'Connection': 'keep-alive'
                    }
 
+        '''
         r = requests.get(nominatim_endpoint, params=params, headers=headers)
-        datalist = r.json()
+        # datalist = r.json()
 
+        # fmk - adding checks we have json returned - instead of just
+        # datalist = r.json()
+        
+        try:
+            datalist = r.json()
+        except ValueError as e:  # or requests.JSONDecodeError
+            # JSON parse failed — maybe server responded with plain text
+            text = r.text.strip()
+            raise RuntimeError(f"Failed to parse JSON response. Body was: {text!r}") from e
+        if not datalist:
+            raise RuntimeError(f"Empty JSON response from {url!r}")        
+        '''        
+
+        datalist = safe_get_json(nominatim_endpoint, params=params, headers=headers)
+        
         areafound = False
         for data in datalist:
             queryarea_osmid = data["osm_id"]
@@ -406,9 +422,22 @@ class RegionBoundary:
         out geom;
         """
 
+        '''
         r = requests.get(url, params={"data": query})
-
         datastruct = r.json()["elements"][0]
+        
+        '''
+
+        data = safe_get_json(url,
+                             params={"data":query},
+                             headers=None,
+                             timeout=10,
+                             retries=3,
+                             backoff_factor=2.,
+                             valid_key="elements")
+        
+        datastruct=data["elements"][0]        
+        
         if datastruct["tags"]["type"] in ["boundary", "multipolygon"]:
             lss = []
             for coorddict in datastruct["members"]:
