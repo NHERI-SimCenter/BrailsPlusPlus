@@ -11,7 +11,7 @@ authors = [
   { name = "NHERI SimCenter", email = "nheri-simcenter@berkeley.edu" }
 ]
 license = { text = "BSD-3-Clause" }
-requires-python = ">=3.9"
+requires-python = ">=3.9,<=3.12"
 classifiers = [
     "Programming Language :: Python",
     "Development Status :: 5 - Production/Stable",
