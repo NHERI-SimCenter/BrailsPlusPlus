@@ -51,7 +51,7 @@ dependencies = [
     "shapely",
     "simcenter-pyncoda-fork==3.0.0.post1",
     "supervision",
-    "numpy<2.0",
+    "numpy",
     "timm",
     "tensorboard",
     "tensorboardX",
