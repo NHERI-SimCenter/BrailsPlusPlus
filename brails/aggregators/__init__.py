@@ -32,5 +32,8 @@
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 
-from .housing_units.pyncoda.pyncoda_housing_units import PyncodaHousingUnitAllocator
+from .housing_units.pyncoda.pyncoda_housing_units import (
+    PyncodaHousingUnitAllocator,
+    PyncodaHousingUnitSummarizer,
+)
 from .points_to_polygons.basic.basic_points_to_polygons import BasicPointsToPolygonsAllocator

@@ -237,7 +237,22 @@ def main(location: str):
     ).allocate()
 
     """
-    ## 7. Export Results
+    ## 7. Summarize Household Data
+    Aggregate household stats (Population, Income, etc.) back to the building assets.
+    This flattens the detailed data into scalar building attributes to facilitate visualization.
+    """
+    from brails.aggregators import PyncodaHousingUnitSummarizer
+    
+    PyncodaHousingUnitSummarizer(bldg_inventory_imputed).summarize()
+    
+    # Verify: print Population for a sample asset (if exists)
+    sample_id = bldg_inventory_imputed.get_asset_ids()[0]
+    sample_feat = bldg_inventory_imputed.get_asset_features(sample_id)[1]
+    if 'Population' in sample_feat:
+        print(f"Sample Building {sample_id} Population: {sample_feat['Population']}")
+
+    """
+    ## 8. Export Results
 
     Finally, we save our work to local files:
     - **`bldg_inventory.geojson`**: The physical building inventory. Buildings with
