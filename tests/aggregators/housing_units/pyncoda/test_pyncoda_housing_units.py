@@ -1166,6 +1166,7 @@ def test_assign_housing_units_end_to_end_mocked(  # noqa: C901
     3) Housing Unit Linking (0 < linked <= residential assets)
     4) Housing Unit Count sanity bounds
     5) Data Transformation Spot Check on one non-vacant, non-GQ housing unit
+    6) Summarizer Integration
     """
     # Arrange: load AssetInventory from the Loving County fixture
     fixture_geojson = (
@@ -1327,6 +1328,28 @@ def test_assign_housing_units_end_to_end_mocked(  # noqa: C901
         assert candidate_features['VacancyStatus'] in readable_vacancy
     if 'GroupQuartersType' in candidate_features:
         assert candidate_features['GroupQuartersType'] in readable_gq
+
+    # Assert 6: Summarizer Integration
+    summarizer = ah.PyncodaHousingUnitSummarizer(inv)
+    summarizer.summarize()
+
+    # Verify a populated building has summary stats
+    found_populated = False
+    for aid in asset_ids:
+        found, features = inv.get_asset_features(aid)
+        if (
+            isinstance(features.get('HousingUnits'), list)
+            and len(features['HousingUnits']) > 0
+        ):
+            assert 'Population' in features, f'Asset {aid} missing Population'
+            assert features['Population'] >= 0
+            assert 'MeanIncome' in features
+            found_populated = True
+            break
+
+    assert found_populated, (
+        'No assets with housing units found to verify summarizer.'
+    )
 
 
 # -----------------------------
@@ -1492,3 +1515,354 @@ def test_init_raises_if_work_dir_is_a_file(tmp_path: Path) -> None:
             key_features={},
             work_dir=file_path,
         )
+
+
+# -----------------------------------------
+# Part 3: Test PyncodaHousingUnitSummarizer
+# -----------------------------------------
+
+
+@pytest.fixture
+def inventory_with_households() -> AssetInventory:
+    """Create an inventory with buildings and attached housing units."""
+    inv = AssetInventory()
+    inv.add_asset(
+        1, Asset(1, coordinates=[(0, 0)], features={'Stories': 1})
+    )  # Bldg 1: Normal, mixed households
+    inv.add_asset(
+        2, Asset(2, coordinates=[(0, 0)], features={'Stories': 1})
+    )  # Bldg 2: Empty (no households)
+    inv.add_asset(
+        3, Asset(3, coordinates=[(0, 0)], features={'Stories': 1})
+    )  # Bldg 3: All vacant
+
+    # Housing Units for Bldg 1
+    # HU1: 2 people, White, Owner, Income 50k, Occupied
+    # HU2: 3 people, Asian, Renter, Income 25k, Occupied
+    # HU3: 0 people, Vacant
+    # HU5: 1 person, Black, Renter, Income 100k, Occupied
+    hu1 = ah.HousingUnit(
+        {
+            'NumberOfPersons': 2,
+            'Race': 'White',
+            'Ownership': 'Owner occupied',
+            'IncomeSample': 50000.0,
+            'VacancyStatus': 'Occupied',
+            'Hispanic': False,
+            'Family': True,
+            'Poverty': False,
+            'GroupQuartersType': 'Not a group quarters building',
+        }
+    )
+    hu2 = ah.HousingUnit(
+        {
+            'NumberOfPersons': 3,
+            'Race': 'Asian',
+            'Ownership': 'Renter occupied',
+            'IncomeSample': 25000.0,
+            'VacancyStatus': 'Occupied',
+            'Hispanic': True,
+            'Family': False,
+            'Poverty': True,
+            'GroupQuartersType': 'Not a group quarters building',
+        }
+    )
+    hu3 = ah.HousingUnit(
+        {
+            'NumberOfPersons': 0,
+            'VacancyStatus': 'For Rent',
+            # Demographics for vacant units should rely on being strict about exclusions
+            'GroupQuartersType': 'Not a group quarters building',
+        }
+    )
+    hu5 = ah.HousingUnit(
+        {
+            'NumberOfPersons': 1,
+            'Race': 'Black',
+            'Ownership': 'Renter occupied',
+            'IncomeSample': 100000.0,
+            'VacancyStatus': 'Occupied',
+            'Hispanic': False,
+            'Family': False,
+            'Poverty': False,
+            'GroupQuartersType': 'Not a group quarters building',
+        }
+    )
+
+    # Housing Units for Bldg 3 (All Vacant)
+    hu4 = ah.HousingUnit(
+        {
+            'VacancyStatus': 'For Rent',
+            'GroupQuartersType': 'Not a group quarters building',
+        }
+    )
+
+    hu_inv = HousingUnitInventory()
+    hu_inv.add_housing_unit('HU1', hu1)
+    hu_inv.add_housing_unit('HU2', hu2)
+    hu_inv.add_housing_unit('HU3', hu3)
+    hu_inv.add_housing_unit('HU4', hu4)
+    hu_inv.add_housing_unit('HU5', hu5)
+
+    # Assignments
+    # Bldg 1 has HU1, HU2, HU3, HU5
+    assignments = {1: ['HU1', 'HU2', 'HU3', 'HU5'], 2: [], 3: ['HU4']}
+
+    inv.set_housing_unit_inventory(hu_inv, assignments, validate=False)
+    return inv
+
+
+def test_pyncoda_summarizer_basic_aggregation(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Verify basic counts and stats for a populated building.
+
+    Bldg 1 has:
+    - HU1: Pop 2, Inc 50k, Occupied
+    - HU2: Pop 3, Inc 25k, Occupied
+    - HU3: Pop 0, Vacant
+    - HU5: Pop 1, Inc 100k, Occupied
+    """
+    summarizer = ah.PyncodaHousingUnitSummarizer(inventory_with_households)
+    summarizer.summarize()
+    bldg = inventory_with_households.inventory[1]
+
+    # Population: 2 + 3 + 0 + 1 = 6
+    assert bldg.features['Population'] == 6
+
+    # Counts
+    # Owner: HU1 (1)
+    # Renter: HU2, HU5 (2)
+    # Vacant: HU3 (1)
+    assert bldg.features['OwnerOccupiedUnits'] == 1
+    assert bldg.features['RenterOccupiedUnits'] == 2
+    assert bldg.features['VacantUnits'] == 1
+
+    # Income Stats (Occupied only: 50k, 25k, 100k)
+    # Mean: (50 + 25 + 100) / 3 = 175 / 3 = 58333.33...
+    assert bldg.features['MeanIncome'] == pytest.approx(58333.333333)
+    # Median: Sorted [25, 50, 100] -> 50k
+    assert bldg.features['MedianIncome'] == pytest.approx(50000.0)
+
+
+def test_pyncoda_summarizer_demographics_race_mixed(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Verify Race aggregation.
+
+    Logic: If the building contains households of different races,
+    aggregation should result in 'Two or More Races'.
+    """
+    summarizer = ah.PyncodaHousingUnitSummarizer(inventory_with_households)
+    summarizer.summarize()
+    bldg = inventory_with_households.inventory[1]
+    # HU1 White, HU2 Asian, HU5 Black. Distinct.
+    assert bldg.features['Race'] == 'Two or More Races'
+
+
+def test_pyncoda_summarizer_demographics_boolean_mixed(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Verify boolean maps (Hispanic/Family/Poverty).
+
+    HU1: Hispanic=False, Family=True, Poverty=False
+    HU2: Hispanic=True, Family=False, Poverty=True
+    HU5: Hispanic=False, Family=False, Poverty=False
+    """
+    summarizer = ah.PyncodaHousingUnitSummarizer(inventory_with_households)
+    summarizer.summarize()
+    bldg = inventory_with_households.inventory[1]
+
+    # Hispanic: False, True, False -> Mixed
+    assert bldg.features['Hispanic'] == 'Mixed'
+    # Family: True, False, False -> Mixed
+    assert bldg.features['Family'] == 'Mixed'
+    # Poverty: False, True, False -> Mixed
+    assert bldg.features['Poverty'] == 'Mixed'
+
+
+def test_pyncoda_summarizer_empty_building(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Bldg 2 has 0 households."""
+    summarizer = ah.PyncodaHousingUnitSummarizer(inventory_with_households)
+    summarizer.summarize()
+    bldg = inventory_with_households.inventory[2]
+
+    assert bldg.features.get('Population') == 0
+    assert bldg.features.get('VacantUnits') == 0
+    # Mean stats should be "N/A"
+    assert bldg.features.get('MeanIncome', 'N/A') == 'N/A'
+
+
+def test_pyncoda_summarizer_vacant_only_building(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Bldg 3 has 1 household but it is Vacant."""
+    summarizer = ah.PyncodaHousingUnitSummarizer(inventory_with_households)
+    summarizer.summarize()
+    bldg = inventory_with_households.inventory[3]
+
+    assert bldg.features['VacantUnits'] == 1
+    assert bldg.features['Population'] == 0
+    # Income should ignore vacant units, so "N/A"
+    assert bldg.features.get('MeanIncome', 'N/A') == 'N/A'
+
+
+def test_pyncoda_summarizer_overwrite_protection(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Verify overwrite=False preserves existing data."""
+    bldg = inventory_with_households.inventory[1]
+    bldg.features['Population'] = 999
+    summarizer = ah.PyncodaHousingUnitSummarizer(inventory_with_households)
+    summarizer.summarize(overwrite=False)
+    assert bldg.features['Population'] == 999
+
+
+def test_pyncoda_summarizer_feature_filtering(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Test selected_features limits output."""
+    summarizer = ah.PyncodaHousingUnitSummarizer(inventory_with_households)
+    summarizer.summarize(selected_features=['Population'])
+    bldg = inventory_with_households.inventory[1]
+
+    assert 'Population' in bldg.features
+    assert 'MeanIncome' not in bldg.features
+
+
+def test_pyncoda_summarizer_invalid_feature(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Test that requesting an invalid feature raises ValueError."""
+    summarizer = ah.PyncodaHousingUnitSummarizer(inventory_with_households)
+    with pytest.raises(ValueError, match='Invalid features requested'):
+        summarizer.summarize(selected_features=['InvalidFeature'])
+
+
+def test_pyncoda_summarizer_missing_inventory() -> None:
+    """Test ValueError is raised when HousingUnitInventory is missing."""
+    # Create inventory but DO NOT attach housing units
+    inv = AssetInventory()
+    inv.add_asset(1, Asset(1, coordinates=[(0, 0)]))
+
+    summarizer = ah.PyncodaHousingUnitSummarizer(inv)
+    with pytest.raises(ValueError, match='no HousingUnitInventory attached'):
+        summarizer.summarize()
+
+
+def test_pyncoda_summarizer_missing_uid(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Test ValueError is raised when an asset links to a non-existent HU ID."""
+    # Manually inject a bad ID into Bldg 1
+    bldg = inventory_with_households.inventory[1]
+    # Current 'HousingUnits' list exists. Append a bad one.
+    if 'HousingUnits' not in bldg.features:
+        bldg.features['HousingUnits'] = []
+    bldg.features['HousingUnits'].append('NON_EXISTENT_ID')
+
+    summarizer = ah.PyncodaHousingUnitSummarizer(inventory_with_households)
+    with pytest.raises(ValueError, match='not found in HousingUnitInventory'):
+        summarizer.summarize()
+
+
+def test_pyncoda_summarizer_group_quarters(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Verify Group Quarters are excluded from household stats but counted in Population."""
+    # Arrange: Create a new building (ID=4) with only Group Quarters units
+    inv = inventory_with_households
+    inv.add_asset(4, Asset(4, coordinates=[(0, 0)], features={'Stories': 1}))
+
+    # GQ1: Nursing home, 10 people, Occupied
+    gq1 = ah.HousingUnit(
+        {
+            'NumberOfPersons': 10,
+            'VacancyStatus': 'Occupied',
+            'GroupQuartersType': 'Nursing facilities/Skilled-nursing facilities',
+        }
+    )
+
+    hu_inv = inv.housing_unit_inventory
+    hu_inv.add_housing_unit('GQ1', gq1)
+
+    # Assign GQ1 to Bldg 4
+    # Note: We need to manually update the internal assignment logic or re-set it.
+    # For this test helper, we can just manually attach features since the summarizer
+    # reads 'HousingUnits' list feature on the asset.
+    inv.inventory[4].features['HousingUnits'] = ['GQ1']
+
+    # Act
+    summarizer = ah.PyncodaHousingUnitSummarizer(inv)
+    summarizer.summarize()
+    bldg = inv.inventory[4]
+
+    # Assert
+    # Population should include GQ: 10
+    assert bldg.features['Population'] == 10
+
+    # Household stats should be Empty/N/A
+    assert bldg.features.get('MeanIncome', 'N/A') == 'N/A'
+    assert bldg.features.get('Race', 'N/A') == 'N/A'
+
+    # Counts
+    assert bldg.features['GroupQuarters'] == 1
+    assert bldg.features['VacantUnits'] == 0
+
+
+def test_pyncoda_summarizer_demographics_boolean_uniform(
+    inventory_with_households: AssetInventory,
+) -> None:
+    """Verify boolean maps (Hispanic/Family/Poverty) return 'Yes' or 'No' when uniform."""
+    # Arrange: Create a building with households that are uniformly Hispanic=True
+    inv = inventory_with_households
+    inv.add_asset(5, Asset(5, coordinates=[(0, 0)], features={'Stories': 1}))
+
+    hu_yes = ah.HousingUnit(
+        {
+            'NumberOfPersons': 2,
+            'VacancyStatus': 'Occupied',
+            'Hispanic': True,
+            'Family': True,
+            'Poverty': True,
+            'GroupQuartersType': 'Not a group quarters building',
+        }
+    )
+
+    hu_inv = inv.housing_unit_inventory
+    hu_inv.add_housing_unit('HU_YES', hu_yes)
+    inv.inventory[5].features['HousingUnits'] = ['HU_YES']
+
+    # Act
+    summarizer = ah.PyncodaHousingUnitSummarizer(inv)
+    summarizer.summarize()
+    bldg = inv.inventory[5]
+
+    # Assert
+    assert bldg.features['Hispanic'] == 'Yes'
+    assert bldg.features['Family'] == 'Yes'
+    assert bldg.features['Poverty'] == 'Yes'
+
+    # Test 'No' case
+    inv.add_asset(6, Asset(6, coordinates=[(0, 0)], features={'Stories': 1}))
+    hu_no = ah.HousingUnit(
+        {
+            'NumberOfPersons': 2,
+            'VacancyStatus': 'Occupied',
+            'Hispanic': False,
+            'Family': False,
+            'Poverty': False,
+            'GroupQuartersType': 'Not a group quarters building',
+        }
+    )
+    hu_inv.add_housing_unit('HU_NO', hu_no)
+    inv.inventory[6].features['HousingUnits'] = ['HU_NO']
+
+    summarizer.summarize()
+    bldg_no = inv.inventory[6]
+
+    assert bldg_no.features['Hispanic'] == 'No'
+    assert bldg_no.features['Family'] == 'No'
+    assert bldg_no.features['Poverty'] == 'No'
