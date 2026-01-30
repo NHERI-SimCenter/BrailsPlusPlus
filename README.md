@@ -1,7 +1,7 @@
 # BRAILS++: Building Regional Asset Inventories for Large Scale Simulation
 
 [![Tests](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/tests.yml/badge.svg)](https://github.com/NHERI-SimCenter/BrailsPlusPlus/actions/workflows/tests.yml/badge.svg)
-[![DOI](https://zenodo.org/badge/184673734.svg)](https://zenodo.org/badge/latestdoi/184673734)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17797364.svg)](https://doi.org/10.5281/zenodo.17797364)
 [![PyPi version](https://badgen.net/pypi/v/BRAILS/)](https://pypi.org/project/BRAILS/)
 [![PyPI download month](https://img.shields.io/pypi/dm/BRAILS.svg)](https://pypi.python.org/pypi/BRAILS/)
 

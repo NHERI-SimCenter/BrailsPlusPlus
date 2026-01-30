@@ -704,3 +704,180 @@ class PyncodaHousingUnitAllocator:
             hu_assignment=housing_units_by_bldg_id['housing_unit_ids'].to_dict(),
             validate=True,
         )
+
+
+class PyncodaHousingUnitSummarizer:
+    """
+    Summarizes housing unit information at the building level.
+
+    Attributes:
+        inventory (AssetInventory): The inventory containing buildings and housing units.
+    """
+
+    def __init__(self, inventory: AssetInventory) -> None:
+        """
+        Initialize the summarizer.
+
+        Args:
+            inventory (AssetInventory): The asset inventory to summarize.
+        """
+        self.inventory = inventory
+
+    def summarize(  # noqa: C901
+        self,
+        overwrite: bool = True,  # noqa: FBT001, FBT002
+        selected_features: list[str] | None = None,
+    ) -> None:
+        """
+        Aggregate housing unit statistics and attach them to building assets.
+
+        Args:
+            overwrite (bool): If True, overwrite existing building features.
+            selected_features (list[str] | None): List of features to calculate.
+                If None, all available statistics are calculated.
+
+        Raises:
+            NotImplementedError: This method is not yet implemented.
+        """
+        all_features = [
+            'Population',
+            'OwnerOccupiedUnits',
+            'RenterOccupiedUnits',
+            'VacantUnits',
+            'GroupQuarters',
+            'MeanIncome',
+            'MedianIncome',
+            'Race',
+            'Hispanic',
+            'Family',
+            'Poverty',
+        ]
+
+        # Validate selected_features
+        if selected_features is not None:
+            invalid_features = set(selected_features) - set(all_features)
+            if invalid_features:
+                raise ValueError(
+                    f'Invalid features requested: {invalid_features}. '
+                    f'Available features: {all_features}'
+                )
+            features_to_calc = selected_features
+        else:
+            features_to_calc = all_features
+
+        # Check if housing unit inventory exists
+        if not hasattr(self.inventory, 'housing_unit_inventory') or (
+            self.inventory.housing_unit_inventory is None
+        ):
+            raise ValueError(
+                'AssetInventory has no HousingUnitInventory attached. '
+                'Cannot summarize.'
+            )
+
+        hu_inv_lookup = self.inventory.housing_unit_inventory.inventory
+
+        for asset_id, asset in self.inventory.inventory.items():
+            # Retrieve linked housing units
+            hu_ids = asset.features.get('HousingUnits', [])
+            units = []
+            for uid in hu_ids:
+                if uid not in hu_inv_lookup:
+                    raise ValueError(
+                        f'HousingUnit ID {uid} linked to Asset {asset_id} '
+                        'not found in HousingUnitInventory.'
+                    )
+                units.append(hu_inv_lookup[uid])
+
+            # Prepare stats dictionary
+            stats = {}
+
+            # --- Counts ---
+            # Population (Sum of NumberOfPersons)
+            stats['Population'] = int(
+                sum(u.features.get('NumberOfPersons', 0) for u in units)
+            )
+
+            # Occupancy Counts
+            stats['OwnerOccupiedUnits'] = int(
+                sum(
+                    1
+                    for u in units
+                    if u.features.get('Ownership') == 'Owner occupied'
+                )
+            )
+            stats['RenterOccupiedUnits'] = int(
+                sum(
+                    1
+                    for u in units
+                    if u.features.get('Ownership') == 'Renter occupied'
+                )
+            )
+            stats['VacantUnits'] = int(
+                sum(
+                    1
+                    for u in units
+                    if u.features.get('VacancyStatus', '') != 'Occupied'
+                )
+            )
+            stats['GroupQuarters'] = int(
+                sum(
+                    1
+                    for u in units
+                    if u.features.get('GroupQuartersType', '')
+                    != 'Not a group quarters building'
+                )
+            )
+
+            # --- Demographics (Households Only) ---
+            # Households are Occupied AND Not Group Quarters
+            households = [
+                u
+                for u in units
+                if u.features.get('VacancyStatus') == 'Occupied'
+                and u.features.get('GroupQuartersType')
+                == 'Not a group quarters building'
+            ]
+
+            # Income
+            if not households:
+                stats['MeanIncome'] = 'N/A'
+                stats['MedianIncome'] = 'N/A'
+                stats['Race'] = 'N/A'
+                stats['Hispanic'] = 'N/A'
+                stats['Family'] = 'N/A'
+                stats['Poverty'] = 'N/A'
+            else:
+                # Mean/Median Income
+                incomes = [
+                    u.features.get('IncomeSample')
+                    for u in households
+                    if u.features.get('IncomeSample') is not None
+                ]
+                stats['MeanIncome'] = float(np.mean(incomes))
+                stats['MedianIncome'] = float(np.median(incomes))
+
+                # Race
+                # Logic: If all consistent -> use value. If mixed -> "Two or More Races"
+                races = {u.features.get('Race') for u in households}
+                if len(races) == 1:
+                    stats['Race'] = races.pop()
+                elif len(races) > 1:
+                    stats['Race'] = 'Two or More Races'
+
+                # Boolean Maps (Hispanic, Family, Poverty) -> "Mixed" if not uniform
+                for key in ['Hispanic', 'Family', 'Poverty']:
+                    vals = {u.features.get(key) for u in households}
+                    if len(vals) == 1:
+                        val = vals.pop()
+                        stats[key] = 'Yes' if val else 'No'
+                    elif len(vals) > 1:
+                        stats[key] = 'Mixed'
+
+            # --- Assignment ---
+            # Filter stats to only include selected features
+            final_stats = {k: v for k, v in stats.items() if k in features_to_calc}
+
+            if final_stats:
+                self.inventory.add_asset_features(
+                    asset_id, final_stats, overwrite=overwrite
+                )

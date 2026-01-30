@@ -115,8 +115,10 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper):
             - An empty :class:AssetInventory` is created upon initialization.
             - If ``input_dict`` is not provided, all defaults will be used.
         """
+        input_dict = input_dict or {}
+        
         # Parse units from input_dict or fall back to default units:
-        self.units = UnitConverter.parse_units(input_dict or {}, DEFAULT_UNITS)
+        self.units = UnitConverter.parse_units(input_dict, DEFAULT_UNITS)
         self.inventory = AssetInventory()
 
         # Parse Overture Maps release from input dict or fall back to latest:

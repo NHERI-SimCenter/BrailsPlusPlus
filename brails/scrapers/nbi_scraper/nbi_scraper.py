@@ -238,7 +238,7 @@ class NBIScraper:
                 data_to_filter.extend(results.get(cell, []))
 
         # Filter the data within the cells that are not contained in the
-        # bounding polygon such that only the points within the bounding
+        # bounding polygon such that only the points withing the bounding
         # polygon are retained:
         for item in data_to_filter:
             if boundary_polygon.contains(Point(item['geometry']['x'],
