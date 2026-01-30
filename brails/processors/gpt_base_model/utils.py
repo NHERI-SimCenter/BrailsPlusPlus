@@ -71,8 +71,10 @@ def load_predictions_from_json(json_contents, img_keys, options):
             image_preds[img_key] = pred
         else:
             image_preds[img_key] = 'none'
-    if(image_preds[img_key] == 'none'):
-        print(f'pred = none for key = {key}, response -> {content}')
+            
+        if(image_preds[img_key] == 'none'):
+            print(f'pred = none for key = {img_key}, response -> {content}')
+        
     return image_preds
 
 
