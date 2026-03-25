@@ -42,7 +42,6 @@
 
 # Imports:
 from .utils.importer import Importer
-
 # Package metadata:
 name = 'brails'
 __version__ = '4.2.0'

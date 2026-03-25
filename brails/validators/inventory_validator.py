@@ -36,6 +36,8 @@
 #
 # Last updated:
 # 08-18-2025
+# 03-2026 fmk
+
 
 """
 This module provides a utility class for validating AssetInventory objects.
@@ -44,79 +46,86 @@ This module provides a utility class for validating AssetInventory objects.
 
       InventoryValidator
 """
+
+from __future__ import annotations
+
+from abc import ABC
 from typing import Any
+import pandas as pd
 
 
-class InventoryValidator:
+class InventoryValidator(ABC):
     """
-    A utility class for validating AssetInventory objects.
+    Base class for validating AssetInventory objects.
 
-    This class provides static methods for checking whether a given object is a
-    valid  instance of `AssetInventory`, and for enforcing that validation with
-    clear error reporting.
-
-    The :class:`InventoryValidator` class can be imported using:
-
-    .. code-block:: python
-
-        from brails.utils import InventoryValidator
+    This class can be subclassed to customize validation and repair logic for
+    inventory-like inputs.
     """
 
-    @staticmethod
-    def is_inventory(inventory: Any) -> bool:
+    def is_inventory(self, inventory: Any) -> bool:
         """
-        Check if the given object is an instance of AssetInventory.
+        Check whether the given object is a valid AssetInventory.
 
         Args:
-            inventory (Any):
+            inventory:
                 The object to check.
 
         Returns:
-            bool:
-                ``True`` if the object is an instance of
-                :class:`~brails.types.asset_inventory.AssetInventory`,
-                ``False`` otherwise.
-
-        Examples:
-            >>> from brails.types.asset_inventory import AssetInventory
-            >>> from brails.utils import InventoryValidator
-            >>> inv = AssetInventory()
-            >>> InventoryValidator.is_inventory(inv)
-            True
-
-            >>> InventoryValidator.is_inventory("not an inventory")
-            False
+            True if the object is an instance of AssetInventory, False otherwise.
         """
-        # Lazy import to avoid circular importing of AssetInventory:
+        # Lazy import to avoid circular import issues
         from brails.types.asset_inventory import AssetInventory
         return isinstance(inventory, AssetInventory)
 
-    @staticmethod
-    def validate_inventory(inventory: Any) -> None:
+    def fix_inventory(self, inventory: Any) -> tuple[Any, pd.DataFrame | None]:
         """
-        Validate that the input is an instance of AssetInventory.
+        Attempt to convert the input into a valid inventory.
+
+        The default implementation does not modify the input. Subclasses may
+        override this method to apply corrections and report issues.
 
         Args:
-            inventory (Any):
+            inventory:
+                The object to repair.
+
+        Returns:
+            A tuple containing:
+                - fixed_inventory: the repaired or unchanged inventory
+                - issues_df: a DataFrame describing any issues found or fixed,
+                  or None if no issue report is produced
+        """
+        return inventory, None
+
+    def validate_inventory(
+        self, inventory: Any, fix_it: bool = False
+    ) -> tuple[Any, pd.DataFrame | None]:
+        """
+        Validate that the input is a valid inventory.
+
+        Args:
+            inventory:
                 The object to validate.
+            fix_it:
+                If True, attempt to repair invalid input before raising an error.
+
+        Returns:
+            A tuple containing:
+                - valid_inventory: the validated or repaired inventory
+                - issues_df: a DataFrame of issues/fixes, or None
 
         Raises:
             TypeError:
-                If the input is not an instance of
-                :class:`~brails.types.asset_inventory.AssetInventory`.
-
-        Examples:
-            >>> from brails.types.asset_inventory import AssetInventory
-            >>> from brails.utils import InventoryValidator
-            >>> inv = AssetInventory()
-            >>> InventoryValidator.validate_inventory(inv)
-
-            Invalid input raises an error:
-
-                >>> InventoryValidator.validate_inventory("wrong type")
-                TypeError: Expected an instance of AssetInventory for
-                inventory input.
+                If the input is invalid and cannot be repaired.
         """
-        if not InventoryValidator.is_inventory(inventory):
-            raise TypeError('Expected an instance of AssetInventory for '
-                            'inventory input.')
+        if fix_it:
+            fixed_inventory, issues_df = self.fix_inventory(inventory)
+            if self.is_inventory(fixed_inventory):
+                return fixed_inventory, issues_df
+
+        if self.is_inventory(inventory):
+            return inventory, None
+
+        raise TypeError(
+            "Expected an instance of AssetInventory for inventory input."
+        )
+    
