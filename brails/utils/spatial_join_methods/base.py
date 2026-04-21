@@ -48,7 +48,7 @@ This module defines abstract SpatialJoinMethods class.
 from abc import ABC, abstractmethod
 from typing import Union, List, Dict, TYPE_CHECKING
 from brails.utils.input_validator import InputValidator
-from brails.utils.inventory_validator import InventoryValidator
+from brails.validators.inventory_validator import InventoryValidator
 
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory

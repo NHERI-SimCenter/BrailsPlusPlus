@@ -45,8 +45,6 @@ Available classes:
     - :class:`UnitConverter`: Class for converting between different units of
       length, area, and weight.
     - :class:`InputValidator`: Class for validating BRAILS input data.
-    - :class:`InventoryValidator`: Class for validating BRAILS
-      ``AssetInventory`` objects.
     - :class:`SpatialJoinMethods`: Methods to spatially merge
       ``AssetInventory`` objects.
     - :class:`ModelUtils`: Utility class for computer vision models in BRAILS.
@@ -61,7 +59,6 @@ from .arcgisapi_service_helper import ArcgisAPIServiceHelper
 from .plot_tools import PlotTools
 from .unit_converter import UnitConverter
 from .input_validator import InputValidator
-from .inventory_validator import InventoryValidator
 from .spatial_join_methods.base import SpatialJoinMethods
 from .model_utils import ModelUtils
 from .rapid_utils import RAPIDUtils
