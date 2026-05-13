@@ -62,7 +62,8 @@ class InventoryValidator(ABC):
     inventory-like inputs.
     """
 
-    def is_inventory(self, inventory: Any) -> bool:
+    @staticmethod
+    def is_inventory(inventory: Any) -> bool:
         """
         Check whether the given object is a valid AssetInventory.
 

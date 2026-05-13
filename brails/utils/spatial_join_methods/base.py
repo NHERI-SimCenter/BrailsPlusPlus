@@ -192,7 +192,8 @@ class SpatialJoinMethods(ABC):
             TypeError:
                 If the provided inventory is not an instance of AssetInventory.
         """
-        InventoryValidator.validate_inventory(inventory)
+        if not InventoryValidator.is_inventory(inventory):
+            raise TypeError('Expected an instance of AssetInventory for inventory input.')
 
         return [key for key, asset in inventory.inventory.items()
                 if InputValidator.is_point(asset.coordinates)]
@@ -216,7 +217,8 @@ class SpatialJoinMethods(ABC):
             TypeError:
                 If the provided inventory is not an instance of AssetInventory.
         """
-        InventoryValidator.validate_inventory(inventory)
+        if not InventoryValidator.is_inventory(inventory):
+            raise TypeError('Expected an instance of AssetInventory for inventory input.')
 
         return [key for key, asset in inventory.inventory.items()
                 if InputValidator.is_linestring(asset.coordinates)]
@@ -240,7 +242,8 @@ class SpatialJoinMethods(ABC):
             TypeError:
                 If the provided inventory is not an instance of AssetInventory.
         """
-        InventoryValidator.validate_inventory(inventory)
+        if not InventoryValidator.is_inventory(inventory):
+            raise TypeError('Expected an instance of AssetInventory for inventory input.')
 
         return [key for key, asset in inventory.inventory.items()
                 if InputValidator.is_polygon(asset.coordinates)]
