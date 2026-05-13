@@ -430,7 +430,7 @@ class RegionBoundary:
 
         data = safe_get_json(url,
                              params={"data":query},
-                             headers=None,
+                             headers=headers,
                              timeout=10,
                              retries=3,
                              backoff_factor=2.,
