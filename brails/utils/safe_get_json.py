@@ -41,10 +41,68 @@ import requests
 from requests import exceptions
 from json import JSONDecodeError
 
+_OVERPASS_ENDPOINTS = [
+    "http://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://overpass.osm.ch/api/interpreter",
+]
+
+_OVERPASS_HEADERS = {
+    'User-Agent': 'BRAILSv2/1.0 (https://github.com/NHERI-SimCenter/BRAILSv2)'
+}
+
+
+def safe_overpass_json(
+    query: str,
+    timeout: float = 10.0,
+    retries: int = 3,
+    backoff_factor: float = 2.0,
+):
+    """
+    Query the Overpass API, automatically trying fallback mirrors on failure.
+
+    Args:
+        query (str): The Overpass QL query string.
+        timeout (float): Per-request timeout in seconds.
+        retries (int): Retry attempts per endpoint before moving to the next.
+        backoff_factor (float): Exponential backoff multiplier between retries.
+
+    Returns:
+        dict: Parsed JSON response.
+
+    Raises:
+        RuntimeError or HTTPError if all endpoints fail.
+    """
+    last_exc = None
+    for i, url in enumerate(_OVERPASS_ENDPOINTS):
+        print(f"Trying Overpass endpoint: {url}", file=sys.stderr)
+        try:
+            return safe_get_json(url,
+                                 data={"data": query},
+                                 headers=_OVERPASS_HEADERS,
+                                 method="POST",
+                                 timeout=timeout,
+                                 retries=retries,
+                                 backoff_factor=backoff_factor)
+        except (exceptions.HTTPError, RuntimeError) as e:
+            next_url = _OVERPASS_ENDPOINTS[i + 1] if i + 1 < len(_OVERPASS_ENDPOINTS) else None
+            if next_url:
+                print(f"WARNING: {url} failed ({type(e).__name__}). "
+                      f"Trying next mirror: {next_url}", file=sys.stderr)
+            else:
+                print(f"WARNING: {url} failed ({type(e).__name__}). "
+                      f"No more mirrors to try.", file=sys.stderr)
+            last_exc = e
+            continue
+    raise last_exc
+
+
 def safe_get_json(
     url: str,
     params: dict = None,
+    data: dict = None,
     headers: dict = None,
+    method: str = "GET",
     timeout: float = 10.0,
     retries: int = 3,
     backoff_factor: float = 2.0,
@@ -56,15 +114,17 @@ def safe_get_json(
 
     Args:
         URL (str): the url
-        params (dict): params to call
+        params (dict): query string params (GET)
+        data (dict): request body params (POST)
         headers (dict): header to pass
+        method (str): HTTP method, 'GET' or 'POST' (default 'GET')
         timeout (float): timeout
         retries (int): retry attempts before failure return
         backoff_factor (float): change retry delay each time by this factor
         valid_key: (str): a valid key to look for in response, default None
-    
+
     Returns:
-       JSON - 
+       JSON -
 
     Raises:
        RuntimeError or HTTPError (or RequestException) on unrecoverable failure.
@@ -72,7 +132,10 @@ def safe_get_json(
     delay = 1.0  # initial delay in seconds
     for attempt in range(1, retries + 1):
         try:
-            response = requests.get(url, params=params, headers=headers, timeout=timeout)
+            if method.upper() == "POST":
+                response = requests.post(url, data=data, headers=headers, timeout=timeout)
+            else:
+                response = requests.get(url, params=params, headers=headers, timeout=timeout)
             response.raise_for_status()
             raw = response.text.strip()
             if not raw:

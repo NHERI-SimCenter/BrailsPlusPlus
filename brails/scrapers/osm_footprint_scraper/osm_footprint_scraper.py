@@ -51,7 +51,7 @@ from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.types.region_boundary import RegionBoundary
 from brails.types.asset_inventory import AssetInventory
 from brails.utils import InputValidator
-from brails.utils.safe_get_json import safe_get_json
+from brails.utils.safe_get_json import safe_get_json, safe_overpass_json
 
 
 class OSM_FootprintScraper(FootprintScraper):
@@ -137,19 +137,13 @@ class OSM_FootprintScraper(FootprintScraper):
             out skel qt;
             """
 
-        url = "http://overpass-api.de/api/interpreter"
-
-        
         # r = requests.get(url, params={"data": query})
         # datalist = r.json()["elements"]
 
-        data = safe_get_json(url,
-                             params={"data":query},
-                             headers=None,
-                             timeout=10,
-                             retries=3,
-                             backoff_factor=2.,
-                             valid_key="elements")
+        data = safe_overpass_json(query,
+                                  timeout=60,
+                                  retries=3,
+                                  backoff_factor=2.)
         
         datalist = data["elements"]        
         
@@ -217,6 +211,13 @@ class OSM_FootprintScraper(FootprintScraper):
 
         print(f'\nFound a total of {fpcount} building footprints in '
               f'{queryarea_printname}')
+        if fpcount == 0:
+            print('WARNING: No building footprints were found. Possible '
+                  'causes: (1) OpenStreetMap has no building data for this '
+                  'area -- check coverage at https://www.openstreetmap.org; '
+                  '(2) the Overpass API request timed out -- if your region '
+                  'is large, try splitting it into smaller areas; (3) '
+                  ' Overpass changed the API')
 
         return self._create_asset_inventory(footprints,
                                             attributes,

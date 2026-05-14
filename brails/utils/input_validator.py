@@ -49,7 +49,7 @@ from __future__ import annotations
 
 import os
 from typing import Any, List, Tuple
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, box as shapely_box
 
 
 class InputValidator:
@@ -515,8 +515,6 @@ class InputValidator:
         if len(coords) != 5:
             return False
 
-        # Extract points:
-        (x1, y1), (x2, y2), (x3, y3), (x4, y4), _ = coords
-
-        # Check if opposite sides are equal (box property):
-        return x1 == x4 and x2 == x3 and y1 == y2 and y3 == y4
+        # Compare against its own axis-aligned bounding box, regardless of
+        # vertex order (shapely.box and manual construction use different orders)
+        return geometry.equals(shapely_box(*geometry.bounds))

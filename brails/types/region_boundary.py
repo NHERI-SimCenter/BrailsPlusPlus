@@ -56,7 +56,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.ops import linemerge, polygonize, unary_union
 
 from brails.utils import GeoTools
-from brails.utils.safe_get_json import safe_get_json
+from brails.utils.safe_get_json import safe_get_json, safe_overpass_json
 
 class RegionInput:
     """
@@ -413,8 +413,6 @@ class RegionBoundary:
 
         queryarea_printname = queryarea_name.split(",")[0]
 
-        url = "http://overpass-api.de/api/interpreter"
-
         # Get the polygon boundary for the query area:
         query = f"""
         [out:json][timeout:5000];
@@ -425,16 +423,13 @@ class RegionBoundary:
         '''
         r = requests.get(url, params={"data": query})
         datastruct = r.json()["elements"][0]
-        
+
         '''
 
-        data = safe_get_json(url,
-                             params={"data":query},
-                             headers=headers,
-                             timeout=10,
-                             retries=3,
-                             backoff_factor=2.,
-                             valid_key="elements")
+        data = safe_overpass_json(query,
+                                  timeout=60,
+                                  retries=3,
+                                  backoff_factor=2.)
         
         datastruct=data["elements"][0]        
         
