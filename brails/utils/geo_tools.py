@@ -790,21 +790,27 @@ class GeoTools:
        
         gtype = geometry['type']
         coords = geometry['coordinates']
-       
+
+        # Drop altitude/extra dimensions; downstream BRAILS geometry is 2D.
         if gtype == 'Point':
-            return [coords]
-       
-        elif gtype in ['LineString', 'MultiLineString']:
-            return coords
-              
+            return [coords[:2]]
+
+        elif gtype == 'LineString':
+            return [p[:2] for p in coords]
+
+        elif gtype == 'MultiLineString':
+            return [[p[:2] for p in line] for line in coords]
+
         elif gtype == 'Polygon':
             # Exterior ring only
-            return coords[0]
-       
+            return [p[:2] for p in coords[0]]
+
         elif gtype == 'MultiPolygon':
             # Flatten all exterior rings:
-            multipolygons = [poly[0] for poly in coords if poly]
-            
+            multipolygons = [
+                [p[:2] for p in poly[0]] for poly in coords if poly
+            ]
+
             # Return a single polygon if only one exists, otherwise return the
             # full list:
             return multipolygons[0] if len(multipolygons) == 1 else multipolygons
