@@ -49,7 +49,7 @@ dependencies = [
     "scikit-learn",
     "seaborn",
     "shapely",
-    "simcenter-pyncoda-fork==3.0.0.post1",
+    "simcenter-pyncoda-fork==3.0.0.post2",
     "supervision",
     "numpy",
     "timm",
