@@ -414,6 +414,23 @@ class PyncodaHousingUnitAllocator:
             buildings_gdf[plan_area_col] * buildings_gdf[story_count_col]
         )
 
+        # Optionally carry a user-provided per-building housing unit count.
+        # When 'unit_count_col' is supplied in key_features, pyncoda uses these
+        # values directly instead of inferring unit counts from occupancy type.
+        # The fixed internal column name 'residential_units' is what we set as
+        # pyncoda's residential_unit_var in allocate().
+        unit_count_col = key_features.get('unit_count_col')
+        if unit_count_col:
+            if unit_count_col not in buildings_gdf.columns:
+                raise ValueError(
+                    f"unit_count_col '{unit_count_col}' was requested but is "
+                    'not a feature in the inventory. Available columns: '
+                    f'{sorted(buildings_gdf.columns)}'
+                )
+            lean_buildings_gdf['residential_units'] = pd.to_numeric(
+                buildings_gdf[unit_count_col], errors='coerce'
+            )
+
         return lean_buildings_gdf.set_index('building_id')
 
     def _validate_pyncoda_output(self, output_df: pd.DataFrame) -> None:
@@ -648,6 +665,15 @@ class PyncodaHousingUnitAllocator:
                 }
             }
 
+            # If the user supplied a per-building unit count, tell pyncoda to
+            # use it directly (via residential_unit_var) instead of inferring
+            # unit counts from occupancy type. The column name must match the
+            # one written in _prepare_inventory().
+            if self.key_features.get('unit_count_col'):
+                community_info['BRAILS Community']['building_inventory'][
+                    'residential_unit_var'
+                ] = 'residential_units'
+
             workflow = process_community_workflow(
                 community_info,
                 seed=self.seed,
@@ -660,6 +686,10 @@ class PyncodaHousingUnitAllocator:
                     output_dir / 'housing_unit_inventory_filtered.csv'
                 ),
                 force_hua_rerun=True,
+                # BRAILS only needs the raw building-household assignment, so
+                # skip pyncoda's IN-CORE figure and PDF codebook generation.
+                generate_figures=False,
+                generate_codebook=False,
             )
             assigned_housing_units = workflow.process_communities()
         except (OSError, ValueError, TypeError, KeyError, FileNotFoundError) as e:
