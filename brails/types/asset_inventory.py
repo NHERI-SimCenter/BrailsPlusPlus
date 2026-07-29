@@ -74,8 +74,8 @@ from brails.utils.geo_tools import GeoTools
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 
-# Features whose values are vectors rather than scalars. A plain list is
-# one value of such a feature, not one realization per possible world.
+# Features whose values are vectors. A plain list is one value of such
+# a feature, not one realization per possible world.
 DEFAULT_VECTOR_FEATURES: tuple[str, ...] = ('HousingUnits',)
 
 # Upper bound on the number of offending features named in the error
@@ -449,9 +449,9 @@ class AssetInventory:
 
         Args:
             vector_features (list[str], optional):
-                Names of the features whose values are vectors rather
-                than scalars, so that a plain list is a single value
-                rather than one entry per possible world. Defaults to
+                Names of the features whose values are vectors. For
+                these, a plain list is a single value, not one entry
+                per possible world. Defaults to
                 :data:`DEFAULT_VECTOR_FEATURES`.
         """
         self.inventory: dict = {}

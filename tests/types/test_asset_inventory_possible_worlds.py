@@ -35,7 +35,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -50,37 +50,8 @@ from brails.types.asset_inventory import (
 
 VECTOR = 'HousingUnits'
 
-
-def build_inventory(
-    features_by_asset: dict[str, dict[str, Any]],
-    n_pw: int = 1,
-    vector_features: list[str] | None = None,
-) -> AssetInventory:
-    """
-    Build an inventory with the given features and number of worlds.
-
-    Assets are added directly so that ``n_pw`` can be set explicitly,
-    rather than being inferred from whichever feature was added last.
-
-    Args:
-        features_by_asset (dict[str, dict[str, Any]]):
-            Features keyed by asset id.
-        n_pw (int):
-            The number of possible worlds to declare.
-        vector_features (list[str], optional):
-            Vector feature names to pass to the inventory.
-
-    Returns:
-        AssetInventory:
-            The populated inventory.
-    """
-    inventory = AssetInventory(vector_features=vector_features)
-    for asset_id, features in features_by_asset.items():
-        inventory.add_asset(
-            asset_id, Asset(asset_id, [[-122.4, 37.8]], dict(features))
-        )
-    inventory.n_pw = n_pw
-    return inventory
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 # ---------------------------------------------------------------------
@@ -152,7 +123,7 @@ def test_asset_add_features_honors_default_vector_features() -> None:
 # ---------------------------------------------------------------------
 
 
-def test_validate_accepts_scalars() -> None:
+def test_validate_accepts_scalars(build_inventory: Callable[..., AssetInventory]) -> None:
     """Scalar features are shared by every world."""
     inventory = build_inventory(
         {'A1': {'StructureType': 'C1'}, 'A2': {'StructureType': 'W1'}},
@@ -161,7 +132,7 @@ def test_validate_accepts_scalars() -> None:
     inventory.validate_possible_worlds()
 
 
-def test_validate_accepts_matching_list_lengths() -> None:
+def test_validate_accepts_matching_list_lengths(build_inventory: Callable[..., AssetInventory]) -> None:
     """Lists of exactly n_pw realizations are accepted."""
     inventory = build_inventory(
         {
@@ -173,7 +144,7 @@ def test_validate_accepts_matching_list_lengths() -> None:
     inventory.validate_possible_worlds()
 
 
-def test_validate_rejects_wrong_length() -> None:
+def test_validate_rejects_wrong_length(build_inventory: Callable[..., AssetInventory]) -> None:
     """A feature with the wrong number of realizations is rejected."""
     inventory = build_inventory(
         {'A1': {'StructureType': ['C1', 'C2', 'C3']}}, n_pw=2
@@ -187,26 +158,26 @@ def test_validate_rejects_wrong_length() -> None:
     assert '3 realizations' in message
 
 
-def test_validate_rejects_single_element_list() -> None:
+def test_validate_rejects_single_element_list(build_inventory: Callable[..., AssetInventory]) -> None:
     """A length-one list is an error when the inventory has many worlds."""
     inventory = build_inventory({'A1': {'StructureType': ['C1']}}, n_pw=3)
     with pytest.raises(BrailsError, match='StructureType'):
         inventory.validate_possible_worlds()
 
 
-def test_validate_accepts_single_element_list_when_one_world() -> None:
+def test_validate_accepts_single_element_list_when_one_world(build_inventory: Callable[..., AssetInventory]) -> None:
     """A length-one list is fine when there is only one world."""
     inventory = build_inventory({'A1': {'StructureType': ['C1']}}, n_pw=1)
     inventory.validate_possible_worlds()
 
 
-def test_validate_exempts_vector_features() -> None:
+def test_validate_exempts_vector_features(build_inventory: Callable[..., AssetInventory]) -> None:
     """A plain list on a vector feature is one value, not many worlds."""
     inventory = build_inventory({'A1': {VECTOR: [1, 2, 3, 4, 5]}}, n_pw=2)
     inventory.validate_possible_worlds()
 
 
-def test_validate_checks_vector_features_of_lists() -> None:
+def test_validate_checks_vector_features_of_lists(build_inventory: Callable[..., AssetInventory]) -> None:
     """A vector feature given per world must still supply n_pw entries."""
     inventory = build_inventory(
         {'A1': {VECTOR: [[1, 2], [3, 4], [5, 6]]}}, n_pw=2
@@ -215,7 +186,7 @@ def test_validate_checks_vector_features_of_lists() -> None:
         inventory.validate_possible_worlds()
 
 
-def test_validate_reports_every_offender_and_truncates() -> None:
+def test_validate_reports_every_offender_and_truncates(build_inventory: Callable[..., AssetInventory]) -> None:
     """All problems are counted; the listing itself is bounded."""
     offenders = MAX_REPORTED_WORLD_PROBLEMS + 5
     inventory = build_inventory(
@@ -243,7 +214,7 @@ def test_validate_passes_on_empty_inventory() -> None:
 # ---------------------------------------------------------------------
 
 
-def test_get_multi_keys_excludes_vector_features() -> None:
+def test_get_multi_keys_excludes_vector_features(build_inventory: Callable[..., AssetInventory]) -> None:
     """A plain list on a vector feature is not a multi-world feature."""
     inventory = build_inventory(
         {
@@ -261,7 +232,7 @@ def test_get_multi_keys_excludes_vector_features() -> None:
     assert set(all_keys) == {'StructureType', VECTOR, 'DesignLevel'}
 
 
-def test_get_multi_keys_includes_vector_features_of_lists() -> None:
+def test_get_multi_keys_includes_vector_features_of_lists(build_inventory: Callable[..., AssetInventory]) -> None:
     """A vector feature supplied per world is a multi-world feature."""
     inventory = build_inventory(
         {'A1': {VECTOR: [[1, 2], [3, 4]]}}, n_pw=2
@@ -276,7 +247,7 @@ def test_get_multi_keys_includes_vector_features_of_lists() -> None:
 # ---------------------------------------------------------------------
 
 
-def test_get_world_realization_preserves_vector_features() -> None:
+def test_get_world_realization_preserves_vector_features(build_inventory: Callable[..., AssetInventory]) -> None:
     """A vector feature is carried across whole, not indexed into."""
     inventory = build_inventory(
         {'A1': {'StructureType': ['C1', 'C2'], VECTOR: [1, 2]}}, n_pw=2
@@ -288,7 +259,7 @@ def test_get_world_realization_preserves_vector_features() -> None:
     assert features[VECTOR] == [1, 2]
 
 
-def test_get_world_realization_indexes_vector_features_of_lists() -> None:
+def test_get_world_realization_indexes_vector_features_of_lists(build_inventory: Callable[..., AssetInventory]) -> None:
     """A vector feature given per world is indexed like any other."""
     inventory = build_inventory(
         {'A1': {VECTOR: [[1, 2], [3, 4]]}}, n_pw=2

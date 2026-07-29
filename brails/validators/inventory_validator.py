@@ -30,89 +30,61 @@
 #
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
-#
-# Contributors:
-# Barbaros Cetiner
-#
-# Last updated:
-# 08-18-2025
-# 03-2026 fmk
-
 
 """
-This module provides a utility class for validating AssetInventory objects.
+This module defines the base class for AssetInventory validators.
 
 .. autosummary::
 
-      InventoryValidator
+    InventoryValidator
 """
 
 from __future__ import annotations
 
-from abc import ABC
-from typing import Any
-import pandas as pd
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from brails.utils.input_validator import InputValidator
+if TYPE_CHECKING:
+    from brails.types.asset_inventory import AssetInventory
+    from brails.validators.validation_report import ValidationReport
 
 
 class InventoryValidator(ABC):
     """
     Base class for validating AssetInventory objects.
 
-    This class can be subclassed to customize validation and repair logic for
-    inventory-like inputs.
+    A validator answers one question: does this inventory satisfy the
+    input requirements of a simulation method? It reports what is
+    wrong and changes nothing.
+
+    Subclasses implement :meth:`validate`, which must not mutate the
+    inventory it is given.
+
+    To import the :class:`InventoryValidator` class, use:
+
+    .. code-block:: python
+
+        from brails.validators import InventoryValidator
     """
 
-    def fix_inventory(self, inventory: Any) -> tuple[Any, pd.DataFrame | None]:
+    @abstractmethod
+    def validate(self, inventory: AssetInventory) -> ValidationReport:
         """
-        Attempt to convert the input into a valid inventory.
+        Check an inventory against this validator's requirements.
 
-        The default implementation does not modify the input. Subclasses may
-        override this method to apply corrections and report issues.
+        Implementations must treat ``inventory`` as read-only.
 
         Args:
-            inventory:
-                The object to repair.
+            inventory (AssetInventory):
+                The inventory to check.
 
         Returns:
-            A tuple containing:
-                - fixed_inventory: the repaired or unchanged inventory
-                - issues_df: a DataFrame describing any issues found or fixed,
-                  or None if no issue report is produced
-        """
-        return inventory, None
-
-    def validate_inventory(
-        self, inventory: Any, fix_it: bool = False
-    ) -> tuple[Any, pd.DataFrame | None]:
-        """
-        Validate that the input is a valid inventory.
-
-        Args:
-            inventory:
-                The object to validate.
-            fix_it:
-                If True, attempt to repair invalid input before raising an error.
-
-        Returns:
-            A tuple containing:
-                - valid_inventory: the validated or repaired inventory
-                - issues_df: a DataFrame of issues/fixes, or None
+            ValidationReport:
+                The violations that were found. An empty report means the
+                inventory satisfies the requirements.
 
         Raises:
             TypeError:
-                If the input is invalid and cannot be repaired.
+                If ``inventory`` is not an
+                :class:`~brails.types.asset_inventory.AssetInventory`.
         """
-        if fix_it:
-            fixed_inventory, issues_df = self.fix_inventory(inventory)
-            if InputValidator.is_inventory(fixed_inventory):
-                return fixed_inventory, issues_df
-
-        if InputValidator.is_inventory(inventory):
-            return inventory, None
-
-        raise TypeError(
-            "Expected an instance of AssetInventory for inventory input."
-        )
-    

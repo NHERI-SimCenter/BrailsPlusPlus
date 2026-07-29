@@ -112,6 +112,7 @@ include = [
     "tests/types/test_housing_unit_inventory.py",
     "tests/types/test_asset_inventory_possible_worlds.py",
     "tests/utils/test_input_validator.py",
+    "tests/conftest.py",
 
     "brails/aggregators/points_to_polygons/basic/basic_points_to_polygons.py",
     "tests/aggregators/points_to_polygons/basic/test_basic_points_to_polygons.py",
