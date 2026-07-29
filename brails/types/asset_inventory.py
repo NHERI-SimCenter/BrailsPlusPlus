@@ -67,11 +67,66 @@ from shapely import box
 from shapely.geometry import GeometryCollection, mapping
 from shapely.geometry.base import BaseGeometry  # noqa: TC002
 
+from brails.exceptions import BrailsError
 from brails.utils.clean_floats import clean_floats
 from brails.types.housing_unit_inventory import HousingUnitInventory
 from brails.utils.geo_tools import GeoTools
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
+
+# Features whose values are vectors rather than scalars. A plain list is
+# one value of such a feature, not one realization per possible world.
+DEFAULT_VECTOR_FEATURES: tuple[str, ...] = ('HousingUnits',)
+
+# Upper bound on the number of offending features named in the error
+# raised by AssetInventory.validate_possible_worlds.
+MAX_REPORTED_WORLD_PROBLEMS = 10
+
+
+def is_probabilistic_feature(
+    key: str, value: Any, vector_features: Iterable[str]
+) -> bool:
+    """
+    Check whether a feature value holds multiple possible worlds.
+
+    An ordinary feature holds one value per possible world, so a list
+    means the feature is probabilistic. A vector feature is list-valued
+    already, so a plain list is a single value and only a list of lists
+    means the feature is probabilistic.
+
+    Args:
+        key (str):
+            The name of the feature.
+        value (Any):
+            The value of the feature.
+        vector_features (Iterable[str]):
+            Names of the features whose values are vectors.
+
+    Returns:
+        bool:
+            ``True`` if the value holds one entry per possible world,
+            ``False`` if it is a single value shared by every world.
+
+    Examples:
+        >>> is_probabilistic_feature('StructureType', ['C1', 'C2'], [])
+        True
+        >>> is_probabilistic_feature('StructureType', 'C1', [])
+        False
+        >>> is_probabilistic_feature('HousingUnits', [1, 2], ['HousingUnits'])
+        False
+        >>> is_probabilistic_feature(
+        ...     'HousingUnits', [[1, 2], [3, 4]], ['HousingUnits']
+        ... )
+        True
+    """
+    if not isinstance(value, list):
+        return False
+
+    if key in vector_features:
+        # These are only probabilistic if they are a list of lists.
+        return len(value) > 0 and isinstance(value[0], list)
+
+    return True
 
 
 class Asset:
@@ -182,35 +237,21 @@ class Asset:
             'color': 'red'}
         """
         if vector_features is None:
-            vector_features = []
+            vector_features = list(DEFAULT_VECTOR_FEATURES)
 
         def update_possible_worlds(n_pw: int, key: str, val: Any) -> int:  # noqa: ANN401
             """Check a feature and update the number of possible worlds."""
-            is_probabilistic = False
+            if not is_probabilistic_feature(key, val, vector_features):
+                # The feature is a single value shared by every world, so
+                # it says nothing about how many worlds there are.
+                return n_pw
 
-            if key in vector_features:
-                # These are only probabilistic if they are a list of lists.
-                if (
-                    isinstance(val, list)
-                    and len(val) > 0
-                    and isinstance(val[0], list)
-                ):
-                    is_probabilistic = True
-
-            elif isinstance(val, list):
-                is_probabilistic = True
-
-            # If the feature is probabilistic, update n_pw
-            if is_probabilistic:
-                if (n_pw != 1) and (n_pw != len(val)):
-                    print(
-                        f'WARNING: # possible worlds was {n_pw} but now '
-                        f'is {len(val)}. Something went wrong.'
-                    )
-                return len(val)
-
-            # Otherwise, return the existing n_pw
-            return n_pw
+            if (n_pw != 1) and (n_pw != len(val)):
+                print(
+                    f'WARNING: # possible worlds was {n_pw} but now '
+                    f'is {len(val)}. Something went wrong.'
+                )
+            return len(val)
 
         n_pw: int = 1
 
@@ -402,12 +443,25 @@ class AssetInventory:
         from brails.types.asset_inventory import AssetInventory
     """
 
-    def __init__(self) -> None:
-        """Initialize AssetInventory with an empty inventory dictionary."""
+    def __init__(self, vector_features: list[str] | None = None) -> None:
+        """
+        Initialize AssetInventory with an empty inventory dictionary.
+
+        Args:
+            vector_features (list[str], optional):
+                Names of the features whose values are vectors rather
+                than scalars, so that a plain list is a single value
+                rather than one entry per possible world. Defaults to
+                :data:`DEFAULT_VECTOR_FEATURES`.
+        """
         self.inventory: dict = {}
         self.housing_unit_inventory: HousingUnitInventory | None = None
         self.n_pw = 1
-        self.vector_features: list[str] = ['HousingUnits']
+        self.vector_features: list[str] = (
+            list(DEFAULT_VECTOR_FEATURES)
+            if vector_features is None
+            else list(vector_features)
+        )
 
     def add_asset(self, asset_id: str | int, asset: Asset) -> bool:
         """
@@ -2360,7 +2414,7 @@ class AssetInventory:
         for i in self.get_asset_ids():
             flag, features = self.get_asset_features(i)
             for key, val in features.items():
-                if isinstance(val, list):
+                if is_probabilistic_feature(key, val, self.vector_features):
                     if len(val) > id:
                         new_inventory.add_asset_features(
                             i, {key: val[id]}, overwrite=True
@@ -2459,6 +2513,70 @@ class AssetInventory:
                 # overwrite existing ones.
                 self.add_asset_features(i, {key: new_value}, overwrite=True)
 
+    def validate_possible_worlds(self) -> None:
+        """
+        Check every feature against the inventory's number of worlds.
+
+        A feature value must be either a scalar, meaning one value shared
+        by every possible world, or a list holding exactly
+        :attr:`n_pw` realizations. Vector features are exempt unless they are
+        lists of lists, since a plain list is a single value for those.
+
+        Raises:
+            BrailsError:
+                If any feature holds a number of realizations other than
+                :attr:`n_pw`. The message names the offending assets and
+                features, up to
+                :data:`MAX_REPORTED_WORLD_PROBLEMS` of them.
+
+        Examples:
+            >>> inventory = AssetInventory()
+            >>> inventory.add_asset_coordinates('A1', [[-122.4, 37.8]])
+            True
+            >>> _ = inventory.add_asset_features(
+            ...     'A1', {'StructureType': ['C1', 'C2']}
+            ... )
+            >>> inventory.validate_possible_worlds()
+
+            A feature with too few realizations is rejected:
+
+            >>> _ = inventory.add_asset_features('A1', {'DesignLevel': ['H']})
+            >>> inventory.validate_possible_worlds()
+            Traceback (most recent call last):
+            brails.exceptions.BrailsError: ...
+        """
+        problems = []
+
+        for asset_id in self.get_asset_ids():
+            flag, features = self.get_asset_features(asset_id)
+
+            for key, value in features.items():
+                if not is_probabilistic_feature(
+                    key, value, self.vector_features
+                ):
+                    continue
+                if len(value) != self.n_pw:
+                    problems.append((asset_id, key, len(value)))
+
+        if not problems:
+            return
+
+        reported = problems[:MAX_REPORTED_WORLD_PROBLEMS]
+        details = '\n'.join(
+            f'  asset {asset_id}, feature {key!r}: '
+            f'{count} realizations'
+            for asset_id, key, count in reported
+        )
+        if len(problems) > len(reported):
+            details += f'\n  ... and {len(problems) - len(reported)} more.'
+
+        raise BrailsError(
+            f'The inventory has {self.n_pw} possible worlds, but '
+            f'{len(problems)} feature value(s) provide a different '
+            'number of realizations. Every feature must be a scalar, '
+            f'or a list of exactly {self.n_pw} realizations.\n{details}'
+        )
+
     def get_n_pw(self) -> int:  # move to Asset
         """
         Get the number of possible worlds (realizations) in the inventory.
@@ -2490,7 +2608,12 @@ class AssetInventory:
             flag, features = self.get_asset_features(i)
 
             for key, val in features.items():
-                if isinstance(val, list) and key not in multi_keys:
+                if (
+                    key not in multi_keys
+                    and is_probabilistic_feature(
+                        key, val, self.vector_features
+                    )
+                ):
                     multi_keys.append(key)
                 if key not in all_keys:
                     all_keys.append(key)
