@@ -47,8 +47,7 @@ This module defines the class object for downloading ASCE Hazard data.
 
 from typing import Dict, Any, TYPE_CHECKING
 from shapely.geometry import box
-from brails.utils.api import ArcgisAPIServiceHelper
-from brails.validators.inventory_validator import InventoryValidator
+from brails.utils import ArcgisAPIServiceHelper, InputValidator
 
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
@@ -104,7 +103,7 @@ class ASCE_HAZARD_DATA_SCRAPER:
                 If the 'inventory' argument is not an instance of
                 AssetInventory.
         """
-        if not InventoryValidator.is_inventory(inventory):
+        if not InputValidator.is_inventory(inventory):
             raise TypeError(
                 "The 'inventory' argument must be an instance of "
                 "'AssetInventory'.")

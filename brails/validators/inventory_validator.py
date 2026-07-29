@@ -53,6 +53,8 @@ from abc import ABC
 from typing import Any
 import pandas as pd
 
+from brails.utils.input_validator import InputValidator
+
 
 class InventoryValidator(ABC):
     """
@@ -61,22 +63,6 @@ class InventoryValidator(ABC):
     This class can be subclassed to customize validation and repair logic for
     inventory-like inputs.
     """
-
-    @staticmethod
-    def is_inventory(inventory: Any) -> bool:
-        """
-        Check whether the given object is a valid AssetInventory.
-
-        Args:
-            inventory:
-                The object to check.
-
-        Returns:
-            True if the object is an instance of AssetInventory, False otherwise.
-        """
-        # Lazy import to avoid circular import issues
-        from brails.types.asset_inventory import AssetInventory
-        return isinstance(inventory, AssetInventory)
 
     def fix_inventory(self, inventory: Any) -> tuple[Any, pd.DataFrame | None]:
         """
@@ -120,10 +106,10 @@ class InventoryValidator(ABC):
         """
         if fix_it:
             fixed_inventory, issues_df = self.fix_inventory(inventory)
-            if self.is_inventory(fixed_inventory):
+            if InputValidator.is_inventory(fixed_inventory):
                 return fixed_inventory, issues_df
 
-        if self.is_inventory(inventory):
+        if InputValidator.is_inventory(inventory):
             return inventory, None
 
         raise TypeError(

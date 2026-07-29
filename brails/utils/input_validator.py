@@ -518,3 +518,33 @@ class InputValidator:
         # Compare against its own axis-aligned bounding box, regardless of
         # vertex order (shapely.box and manual construction use different orders)
         return geometry.equals(shapely_box(*geometry.bounds))
+
+    @staticmethod
+    def is_inventory(inventory: Any) -> bool:
+        """
+        Check whether the given object is an AssetInventory.
+
+        Args:
+            inventory (Any):
+                The object to check.
+
+        Returns:
+            bool:
+                ``True`` if the object is an instance of
+                :class:`~brails.types.asset_inventory.AssetInventory`,
+                ``False`` otherwise.
+
+        Examples:
+            >>> from brails.types.asset_inventory import AssetInventory
+            >>> from brails.utils import InputValidator
+            >>> InputValidator.is_inventory(AssetInventory())
+            True
+
+            >>> InputValidator.is_inventory('not an inventory')
+            False
+        """
+        # Imported here rather than at module scope because
+        # AssetInventory imports this module:
+        from brails.types.asset_inventory import AssetInventory
+
+        return isinstance(inventory, AssetInventory)

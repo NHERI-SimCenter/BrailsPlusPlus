@@ -31,10 +31,7 @@
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 
-"""
-Tests for possible-worlds handling in brails.types.asset_inventory.
-
-"""
+"""Tests for possible-worlds handling in brails.types.asset_inventory."""
 
 from __future__ import annotations
 
