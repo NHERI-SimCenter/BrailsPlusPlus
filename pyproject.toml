@@ -49,6 +49,7 @@ dependencies = [
     "scikit-learn",
     "seaborn",
     "shapely",
+    "simcenter-dlml>=3.1,<4",
     "simcenter-pyncoda-fork==3.0.0.post2",
     "supervision",
     "numpy",
@@ -119,6 +120,12 @@ include = [
 
     "brails/scrapers/us_census_scrapers/census_tract_scraper.py",
     "tests/scrapers/test_census_tract_scraper.py",
+
+    "brails/validators/**/*.py",
+    "tests/validators/**/*.py",
+
+    "brails/fixers/**/*.py",
+    "tests/fixers/**/*.py",
 ]
 
 [tool.ruff.lint]
