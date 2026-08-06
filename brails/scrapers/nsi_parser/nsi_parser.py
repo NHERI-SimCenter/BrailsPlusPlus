@@ -369,8 +369,8 @@ class NSI_Parser:
                 fp = loads(fp_wkt)
                 # Get the coordinates back in list format for the attributes
                 # dict. This handles both simple polygons and those with holes:
-                fp_coords = [list(poly_obj.exterior.coords)] + \
-                    [list(ring.coords) for ring in poly_obj.interiors]
+                fp_coords = [list(fp.exterior.coords)] + \
+                    [list(ring.coords) for ring in fp.interiors]
                 pt = fp2ptmap[fp_wkt]
                 ptres = datadict[pt]
                 attributes['fp'].append(fp_coords)
