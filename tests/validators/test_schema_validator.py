@@ -130,11 +130,16 @@ def test_accepts_a_conformant_inventory(build_inventory: Callable[..., AssetInve
     """An inventory that satisfies the schema yields an empty report."""
     inventory = build_inventory(
         {
-            'A1': {'StructureType': 'W1', 'DesignLevel': 'High-Code'},
+            'A1': {
+                'StructureType': 'W1',
+                'DesignLevel': 'High-Code',
+                'OccupancyClass': 'RES1',
+            },
             'A2': {
                 'StructureType': 'C1',
                 'DesignLevel': 'Low-Code',
                 'HeightClass': 'Mid-Rise',
+                'OccupancyClass': 'COM1',
             },
         }
     )
@@ -241,6 +246,7 @@ def test_validates_every_world(build_inventory: Callable[..., AssetInventory], v
                 # requires one, so only the second world is invalid.
                 'StructureType': ['W1', 'URM'],
                 'DesignLevel': 'High-Code',
+                'OccupancyClass': 'RES1',
             }
         },
         n_pw=2,
