@@ -301,9 +301,9 @@ class NSI_Parser:
                 base = 'NA'
                 if 'RES1' in occtype:
                     if 'NB' in occtype:
-                        base = 'Yes'
-                    elif 'WB' in occtype:
                         base = 'No'
+                    elif 'WB' in occtype:
+                        base = 'Yes'
 
                 return base
 
