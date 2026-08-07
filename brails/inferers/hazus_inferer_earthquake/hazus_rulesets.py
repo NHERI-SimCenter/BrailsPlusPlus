@@ -1182,7 +1182,7 @@ def get_hazus_state_region_mapping() -> dict[str, dict[str, str]]:
             "CensusDivision": "South Atlantic",
             "RegionGroup": "East Coast",
         },
-        "Virgin Islands": {
+        "U.S. Virgin Islands": {
             "CensusRegion": "South",
             "CensusDivision": "South Atlantic",
             "RegionGroup": "East Coast",
@@ -1298,6 +1298,16 @@ def get_hazus_state_region_mapping() -> dict[str, dict[str, str]]:
             "RegionGroup": "West Coast",
         },
         "Hawaii": {
+            "CensusRegion": "West",
+            "CensusDivision": "Pacific",
+            "RegionGroup": "West Coast",
+        },
+        "Northern Mariana Islands": {
+            "CensusRegion": "West",
+            "CensusDivision": "Pacific",
+            "RegionGroup": "West Coast",
+        },
+        "Washington": {
             "CensusRegion": "West",
             "CensusDivision": "Pacific",
             "RegionGroup": "West Coast",

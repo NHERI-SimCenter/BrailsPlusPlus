@@ -42,6 +42,7 @@ from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_height_classes_by_type,
     get_hazus_occ_type_mapping,
     get_hazus_sampling_height_bands,
+    get_hazus_state_region_mapping,
 )
 
 if TYPE_CHECKING:
@@ -213,3 +214,20 @@ def test_type_lists_stay_within_the_structure_types() -> None:
     for region_lists in type_lists.values():
         for row in region_lists.values():
             assert set(row) <= set(STRUCTURE_TYPES)
+
+# ---------------------------------------------------------------------
+# get_hazus_state_region_mapping
+
+
+def test_res1_weight_states_have_region_mappings() -> None:
+    """Every state in the RES1 weight tables has a region mapping."""
+    _, type_weights = get_hazus_occ_type_mapping()
+    mapped = set(get_hazus_state_region_mapping())
+    for region, occupancies in type_weights.items():
+        res1 = occupancies['RES1']
+        if region == 'West Coast':
+            states = {name for era in res1.values() for name in era}
+        else:
+            states = set(res1)
+        missing = states - mapped
+        assert not missing, (region, sorted(missing))
