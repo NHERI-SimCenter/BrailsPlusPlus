@@ -86,7 +86,8 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper):
             Stores the assets retrieved by the scraper.
         overture_release (str):
             The specific Overture Maps release being used. Falls back to the
-            latest release if not specified in ``input_dict``.
+            newest release the S3 bucket holds if not specified in
+            ``input_dict``.
     """
 
     def __init__(self, input_dict: Dict[str, Any] = None):
@@ -105,9 +106,10 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper):
                   Defaults to the unit defined in ``DEFAULT_UNITS`` if not
                   provided.
                 - 'overtureRelease' (str): Specific Overture Maps release name
-                  to use. If omitted, the latest available release from
-                  meth:`~brails.scrapers.overture_maps_scraper.overture_maps__scraper.OvertureMapsScraper.fetch_release_names` 
-                  will be selected, with a warning.
+                  to use, checked against the releases the S3 bucket holds. If
+                  omitted, the newest available release is selected, with a
+                  notice. See
+                  :meth:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OvertureMapsScraper.resolve_release`.
 
         Notes:
             - Units are parsed and validated through
@@ -121,15 +123,11 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper):
         self.units = UnitConverter.parse_units(input_dict, DEFAULT_UNITS)
         self.inventory = AssetInventory()
 
-        # Parse Overture Maps release from input dict or fall back to latest:
-        overture_maps_releases = self.fetch_release_names()
-        self.overture_release = input_dict.get('overtureRelease')
-        if not self.overture_release:
-            print(
-                "'overtureRelease' not defined in input. Falling back to "
-                f'latest release: {overture_maps_releases[0]}'
-            )
-            self.overture_release = overture_maps_releases[0]
+        # Parse Overture Maps release from input dict or fall back to the
+        # newest release the S3 bucket holds:
+        self.overture_release = self.resolve_release(
+            input_dict.get('overtureRelease')
+        )
 
     def get_footprints(self, region: RegionBoundary) -> AssetInventory:
         """

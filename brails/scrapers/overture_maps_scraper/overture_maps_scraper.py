@@ -113,10 +113,18 @@ class OvertureMapsScraper(ABC):
     - Formatting source metadata from NumPy arrays or lists of dictionaries.
     """
 
+    # Releases the S3 bucket holds, cached after the first listing.
+    _available_releases: Optional[List[str]] = None
+
     @staticmethod
     def fetch_release_names(print_releases: bool = False) -> List[str]:
         """
         Fetch the list of release names from the OvertureMaps releases YAML.
+
+        These are the releases Overture has published, which is not the same
+        set as the releases that can be read: the S3 bucket retains only the
+        most recent few, and the YAML can lag behind the bucket. Use
+        :meth:`fetch_available_releases` to find out what is readable.
 
         Args:
             print_releases (bool, optional):
@@ -136,6 +144,107 @@ class OvertureMapsScraper(ABC):
                 print(f"  - {release}")
 
         return releases
+
+    @staticmethod
+    def fetch_available_releases(refresh: bool = False) -> List[str]:
+        """
+        List the releases the OvertureMaps S3 bucket currently holds.
+
+        The bucket is the authority on what can be read: it retains only the
+        most recent few releases.
+
+        Args:
+            refresh (bool, optional):
+                List the bucket again instead of reusing the cached result.
+                Defaults to ``False``.
+
+        Returns:
+            List[str]:
+                Release names, newest first.
+        """
+        if OvertureMapsScraper._available_releases is not None and not refresh:
+            return list(OvertureMapsScraper._available_releases)
+
+        filesystem = fs.S3FileSystem(anonymous=True, region="us-west-2")
+        entries = filesystem.get_file_info(
+            fs.FileSelector(S3_BASE_PATH, recursive=False)
+        )
+        releases = sorted(
+            (
+                entry.base_name
+                for entry in entries
+                if entry.type == fs.FileType.Directory and entry.base_name
+            ),
+            reverse=True,
+        )
+
+        OvertureMapsScraper._available_releases = releases
+        return list(releases)
+
+    @staticmethod
+    def resolve_release(requested: Optional[str] = None) -> str:
+        """
+        Determine which release to read, checking it against the bucket.
+
+        A release that is no longer in the bucket is rejected, because a
+        named release is a claim about which data was used and substituting
+        another one invalidates it.
+
+        Args:
+            requested (str, optional):
+                The release the caller asked for. When omitted, the newest
+                release in the bucket is used.
+
+        Returns:
+            str:
+                The release name to read from.
+
+        Raises:
+            ValueError:
+                If ``requested`` names a release the bucket does not hold, or
+                if no release can be determined at all.
+        """
+        listing_error = None
+        try:
+            available = OvertureMapsScraper.fetch_available_releases()
+        except Exception as error:  # noqa: BLE001 - any failure falls back
+            available, listing_error = [], error
+
+        if available:
+            if requested and requested not in available:
+                raise ValueError(
+                    f"Overture release '{requested}' is not available. "
+                    f"s3://{S3_BASE_PATH} currently holds: "
+                    f"{', '.join(available)}. Only the most recent releases "
+                    "are retained, so a release that worked before may have "
+                    "been removed."
+                )
+            if requested:
+                return requested
+            print(
+                "'overtureRelease' not defined in input. Falling back to the "
+                f"newest available release: {available[0]}"
+            )
+            return available[0]
+
+        # The bucket could not be listed, so nothing here can be confirmed
+        # readable. Fall back to the published list.
+        print(
+            f"WARNING: could not list s3://{S3_BASE_PATH} ({listing_error}). "
+            "Falling back to the published release list, which may name "
+            "releases that are no longer readable."
+        )
+        if requested:
+            return requested
+
+        published = OvertureMapsScraper.fetch_release_names()
+        if not published:
+            raise ValueError(
+                "No Overture release could be determined: the S3 bucket "
+                "could not be listed and the published release list is empty."
+            )
+        print(f"Falling back to published release: {published[0]}")
+        return published[0]
 
     @staticmethod
     def normalize_bbox_order(

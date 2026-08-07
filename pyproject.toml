@@ -128,6 +128,8 @@ include = [
     "tests/scrapers/test_nsi_parser.py",
     "tests/scrapers/data/nsi_fixture_generator.py",
 
+    "tests/scrapers/test_overture_release_resolution.py",
+
     "brails/inferers/hazus_inferer_earthquake/hazus_eq_design_level_inferer.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py",
     "tests/inferers/**/*.py",
