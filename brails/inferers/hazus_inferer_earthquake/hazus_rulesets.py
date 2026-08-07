@@ -1,3 +1,36 @@
+# Copyright (c) 2024 The Regents of the University of California
+#
+# This file is part of BRAILS++.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# You should have received a copy of the BSD 3-Clause License along with
+# BRAILS++. If not, see <http://www.opensource.org/licenses/>.
+
 """
 Hazus rulesets transcribed from the FEMA Hazus Inventory Technical Manual.
 
@@ -47,10 +80,7 @@ def get_hazus_occ_type_mapping() -> tuple[dict, dict]:
     longer prints these weights; see the module docstring):
 
     - West Coast non-RES1: Tables A-2 (low-rise) to A-10 (high-rise).
-    - West Coast RES1: Tables A-17 to A-19, one per era. The printed
-      A-17 (pre-1950) is a misprint that duplicates an East Coast
-      high-rise table, so the pre-1950 weights here have no verifiable
-      printed source.
+    - West Coast RES1: Tables A-17 to A-19, one per era.
     - Mid-West non-RES1: Tables A-11 to A-13; RES1: Table A-20.
     - East Coast non-RES1: Tables A-14 to A-16; RES1: Table A-21.
 
