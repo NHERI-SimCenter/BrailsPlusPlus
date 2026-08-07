@@ -125,6 +125,8 @@ include = [
     "tests/scrapers/test_census_tract_scraper.py",
 
     "brails/scrapers/nsi_parser/nsi_conventions.py",
+    "tests/scrapers/test_nsi_parser.py",
+    "tests/scrapers/data/nsi_fixture_generator.py",
 
     "brails/validators/**/*.py",
     "tests/validators/**/*.py",
