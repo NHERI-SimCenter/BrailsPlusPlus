@@ -45,6 +45,7 @@ from __future__ import annotations
 from typing import Any
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 from brails.types import AssetInventory
@@ -167,13 +168,25 @@ class BasicPointsToPolygonsAllocator:
         Compute injective polygon-to-point matches using spatial joins.
 
         Optionally applies convex hulls to polygons before matching and performs
-        a second pass using buffered polygons (meters) to capture near misses.
+        a second pass using buffered polygons to capture near misses.
+
+        Matching is one point per polygon and one polygon per point. Candidates
+        are ranked before they are taken, so the outcome does not depend on the
+        order the spatial join returned: containment candidates are ranked by
+        polygon area and then by the point's distance from the polygon centroid,
+        and near-miss candidates by the point's true distance to the footprint.
+
+        The second pass considers only polygons left unmatched by the first, so
+        raising `buffer_dist` cannot recover additional points inside a polygon
+        that already holds one.
 
         Args:
             use_convex_hull (bool): If True, replace polygon geometries with
                 their convex hulls prior to matching.
             buffer_dist (float): Buffer distance in meters for a second-pass
                 match of previously unmatched polygons against unused points.
+                Measured in a projected CRS estimated from the polygons, so the
+                distance is meters on the ground.
 
         Returns:
             pandas.DataFrame: A tidy DataFrame with columns `polygon_id` and
@@ -194,71 +207,170 @@ class BasicPointsToPolygonsAllocator:
             poly_gdf = poly_gdf.copy()
             poly_gdf.geometry = poly_gdf.geometry.convex_hull
 
+        # Projected CRS for areas, distances, and buffering. Estimated from the
+        # polygons so distances are true meters at the data's own location.
+        metric_crs = poly_gdf.estimate_utm_crs()
+        poly_metric = poly_gdf.to_crs(metric_crs)
+        point_metric = point_gdf.to_crs(metric_crs)
+
         pass1 = gpd.sjoin(poly_gdf, point_gdf, how='inner', predicate='contains')
+        right_join_col = self._right_id_column(pass1)
 
-        # Determine the right-side id column name produced by sjoin
-        if 'index_right' in pass1.columns:
-            right_join_col = 'index_right'
-        elif 'asset_id_right' in pass1.columns:
-            right_join_col = 'asset_id_right'
-        else:
-            raise KeyError(
-                'Could not determine right index column in sjoin output; looked for '
-                "'index_right' or 'asset_id_right'. Found columns: "
-                + str(list(pass1.columns))
-            )
+        candidates = pass1[[right_join_col]].reset_index()
+        candidates.columns = ['polygon_id', 'point_id']
 
-        matches = pass1[[right_join_col]].copy()
-
-        # Conflict Resolution
-        # Rule 1: A polygon accepts max 1 point (keep first occurrence)
-        matches = matches[~matches.index.duplicated(keep='first')]
-        # Rule 2: A point belongs to max 1 polygon (keep first)
-        matches = matches.drop_duplicates(subset=right_join_col, keep='first')
+        # Rank containment candidates by how specific the containing polygon is,
+        # then by how central the point sits in it. A point inside overlapping
+        # footprints belongs to the smallest one that holds it, and a polygon
+        # holding several points keeps the most central. Ids break remaining
+        # ties so the result does not depend on the order sjoin returned.
+        candidates['rank_area'] = (
+            poly_metric.geometry.area.reindex(candidates['polygon_id']).to_numpy()
+        )
+        candidates['rank_distance'] = self._pairwise_distance(
+            poly_metric.geometry.centroid,
+            point_metric.geometry,
+            candidates['polygon_id'],
+            candidates['point_id'],
+        )
+        candidates = candidates.sort_values(
+            ['rank_area', 'rank_distance', 'polygon_id', 'point_id'],
+            kind='mergesort',
+        )
+        matches = self._assign_injectively(candidates)
 
         if buffer_dist and buffer_dist > 0:
-            unmatched_polys = poly_gdf.loc[~poly_gdf.index.isin(matches.index)]
-            unused_points = point_gdf.loc[
-                ~point_gdf.index.isin(matches[right_join_col])
+            matched_polygons = set(matches['polygon_id'])
+            matched_points = set(matches['point_id'])
+            unmatched_polys = poly_metric.loc[
+                ~poly_metric.index.isin(matched_polygons)
             ]
+            unused_points = point_gdf.loc[~point_gdf.index.isin(matched_points)]
 
             if not unmatched_polys.empty and not unused_points.empty:
-                # Buffer unmatched polygons in meters: project to EPSG:3857, buffer, back to 4326
-                buffered = unmatched_polys.to_crs(3857).copy()
+                buffered = unmatched_polys.copy()
                 buffered['geometry'] = buffered.geometry.buffer(buffer_dist)
                 buffered = buffered.to_crs(4326)
 
                 pass2 = gpd.sjoin(
                     buffered, unused_points, how='inner', predicate='contains'
                 )
-                # Determine right join col for pass2 as well
-                if 'index_right' in pass2.columns:
-                    pass2_right_join_col = 'index_right'
-                elif 'asset_id_right' in pass2.columns:
-                    pass2_right_join_col = 'asset_id_right'
-                else:
-                    raise KeyError(
-                        'Could not determine right index column in pass2 sjoin output.'
-                    )
-                extra = pass2[[pass2_right_join_col]].copy()
-                # Apply Rule 1 and Rule 2 again on the new matches
-                extra = extra[~extra.index.duplicated(keep='first')]
-                extra = extra.drop_duplicates(
-                    subset=pass2_right_join_col, keep='first'
+                pass2_right_join_col = self._right_id_column(pass2, stage='pass2')
+
+                extra = pass2[[pass2_right_join_col]].reset_index()
+                extra.columns = ['polygon_id', 'point_id']
+
+                # Near misses are ranked by true distance from the point to the
+                # unbuffered footprint, so the closest claim wins.
+                extra['rank_distance'] = self._pairwise_distance(
+                    poly_metric.geometry,
+                    point_metric.geometry,
+                    extra['polygon_id'],
+                    extra['point_id'],
+                )
+                extra = extra.sort_values(
+                    ['rank_distance', 'polygon_id', 'point_id'], kind='mergesort'
+                )
+                extra = self._assign_injectively(
+                    extra, used_polygons=matched_polygons, used_points=matched_points
                 )
 
                 if not extra.empty:
-                    # Normalize the right join column name for concatenation
-                    extra = extra.rename(
-                        columns={pass2_right_join_col: right_join_col}
-                    )
-                    matches = pd.concat([matches, extra], axis=0)
+                    matches = pd.concat([matches, extra], axis=0, ignore_index=True)
 
-        idx_name = matches.index.name if matches.index.name is not None else 'index'
-        out = matches.reset_index().rename(
-            columns={idx_name: 'polygon_id', right_join_col: 'point_id'}
+        return matches[['polygon_id', 'point_id']].reset_index(drop=True)
+
+    @staticmethod
+    def _right_id_column(joined: pd.DataFrame, stage: str = 'sjoin') -> str:
+        """
+        Find the column holding right-side ids in a spatial join result.
+
+        Args:
+            joined (pandas.DataFrame): The spatial join output.
+            stage (str): Matching stage, named in the error message.
+
+        Returns:
+            str: The column name.
+
+        Raises:
+            KeyError: If neither expected column is present.
+        """
+        if 'index_right' in joined.columns:
+            return 'index_right'
+        if 'asset_id_right' in joined.columns:
+            return 'asset_id_right'
+        if stage == 'pass2':
+            raise KeyError(
+                'Could not determine right index column in pass2 sjoin output.'
+            )
+        raise KeyError(
+            'Could not determine right index column in sjoin output; looked for '
+            "'index_right' or 'asset_id_right'. Found columns: "
+            + str(list(joined.columns))
         )
-        return out[['polygon_id', 'point_id']]
+
+    @staticmethod
+    def _pairwise_distance(
+        polygon_geometry: gpd.GeoSeries,
+        point_geometry: gpd.GeoSeries,
+        polygon_ids: pd.Series,
+        point_ids: pd.Series,
+    ) -> np.ndarray:
+        """
+        Measure the distance of each candidate pair, in the given CRS's units.
+
+        Args:
+            polygon_geometry (geopandas.GeoSeries): Polygon geometries by id.
+            point_geometry (geopandas.GeoSeries): Point geometries by id.
+            polygon_ids (pandas.Series): Polygon id of each pair.
+            point_ids (pandas.Series): Point id of each pair.
+
+        Returns:
+            numpy.ndarray: Distance for each pair.
+        """
+        if len(polygon_ids) == 0:
+            return np.empty(0)
+
+        crs = polygon_geometry.crs
+        left = gpd.GeoSeries(
+            polygon_geometry.reindex(polygon_ids).to_numpy(), crs=crs
+        )
+        right = gpd.GeoSeries(point_geometry.reindex(point_ids).to_numpy(), crs=crs)
+        return left.distance(right, align=False).to_numpy()
+
+    @staticmethod
+    def _assign_injectively(
+        candidates: pd.DataFrame,
+        used_polygons: set | None = None,
+        used_points: set | None = None,
+    ) -> pd.DataFrame:
+        """
+        Take candidate pairs in order, keeping the first claim on each side.
+
+        Args:
+            candidates (pandas.DataFrame): Ranked pairs, best first, with
+                `polygon_id` and `point_id` columns.
+            used_polygons (set | None): Polygons already spoken for.
+            used_points (set | None): Points already spoken for.
+
+        Returns:
+            pandas.DataFrame: The accepted pairs, with `polygon_id` and
+                `point_id` columns.
+        """
+        taken_polygons = set() if used_polygons is None else set(used_polygons)
+        taken_points = set() if used_points is None else set(used_points)
+
+        accepted = []
+        for polygon_id, point_id in zip(
+            candidates['polygon_id'], candidates['point_id']
+        ):
+            if polygon_id in taken_polygons or point_id in taken_points:
+                continue
+            taken_polygons.add(polygon_id)
+            taken_points.add(point_id)
+            accepted.append((polygon_id, point_id))
+
+        return pd.DataFrame(accepted, columns=['polygon_id', 'point_id'])
 
     def allocate(
         self,

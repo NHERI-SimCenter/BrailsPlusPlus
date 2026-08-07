@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING, Callable
 import geopandas as gpd
 import pandas as pd
 import pytest
-from shapely.geometry import Point
+from shapely.geometry import Point, box
 
 from brails.aggregators.points_to_polygons.basic.basic_points_to_polygons import (
     BasicPointsToPolygonsAllocator,
@@ -570,3 +570,169 @@ def test_filtering_invalid_geoms(
         "Warning: 1 assets with invalid geometry types (expected ['Point', 'MultiPoint']) were ignored."
         in captured.out
     )
+
+
+# -----------------------------------------------------------------------------
+# Ranking, determinism, and buffer unit tests
+# -----------------------------------------------------------------------------
+
+# A real-world location, so buffer distances can be checked against ground
+# truth. San Francisco sits in UTM zone 10N.
+SF_UTM = 'EPSG:32610'
+SF_ORIGIN_EASTING = 550000.0
+SF_ORIGIN_NORTHING = 4180000.0
+
+
+def _wgs84_coords(geometry: object) -> list[list[float]]:
+    """
+    Convert a UTM geometry to the lon/lat coordinate list Asset expects.
+
+    Args:
+        geometry (object): A shapely geometry in SF_UTM.
+
+    Returns:
+        list[list[float]]: Coordinates in EPSG:4326.
+    """
+    projected = gpd.GeoSeries([geometry], crs=SF_UTM).to_crs('EPSG:4326').iloc[0]
+    if projected.geom_type == 'Point':
+        return [[projected.x, projected.y]]
+    return [list(coord) for coord in projected.exterior.coords]
+
+
+def _square(east_offset: float, size: float = 10.0) -> object:
+    """
+    Build a square in SF_UTM, offset east of the origin.
+
+    Args:
+        east_offset (float): Meters east of the origin.
+        size (float): Side length in meters.
+
+    Returns:
+        object: A shapely box.
+    """
+    left = SF_ORIGIN_EASTING + east_offset
+    return box(left, SF_ORIGIN_NORTHING, left + size, SF_ORIGIN_NORTHING + size)
+
+
+def _point(east_offset: float, north_offset: float = 5.0) -> object:
+    """
+    Build a point in SF_UTM, offset from the origin.
+
+    Args:
+        east_offset (float): Meters east of the origin.
+        north_offset (float): Meters north of the origin.
+
+    Returns:
+        object: A shapely Point.
+    """
+    return Point(
+        SF_ORIGIN_EASTING + east_offset, SF_ORIGIN_NORTHING + north_offset
+    )
+
+
+def test_buffer_distance_is_ground_meters(
+    make_inventory: Callable[[list[Asset]], AssetInventory],
+) -> None:
+    """A 9 m near miss is caught by a 10 m buffer and missed by an 8 m one.
+
+    Buffering in EPSG:3857 would shrink the reach by cos(latitude), about 21%
+    at San Francisco, so a nominal 10 m would fall short of 9 m.
+    """
+    polygon = Asset('poly', _wgs84_coords(_square(0.0)), features={'id': 'poly'})
+    # 9 m east of the square's eastern edge.
+    point = Asset('pt', _wgs84_coords(_point(19.0)), features={'id': 'pt'})
+
+    allocator = BasicPointsToPolygonsAllocator(
+        make_inventory([polygon]), make_inventory([point])
+    )
+
+    assert len(allocator._compute_matches(buffer_dist=10.0)) == 1
+    assert allocator._compute_matches(buffer_dist=8.0).empty
+
+
+def test_near_miss_goes_to_the_nearest_polygon(
+    make_inventory: Callable[[list[Asset]], AssetInventory],
+) -> None:
+    """The closer of two empty footprints claims a near-miss point."""
+    near = Asset('near', _wgs84_coords(_square(0.0)), features={'id': 'near'})
+    far = Asset('far', _wgs84_coords(_square(30.0)), features={'id': 'far'})
+    # 5 m from `near`'s east edge, 15 m from `far`'s west edge.
+    point = Asset('pt', _wgs84_coords(_point(15.0)), features={'id': 'pt'})
+
+    allocator = BasicPointsToPolygonsAllocator(
+        make_inventory([far, near]), make_inventory([point])
+    )
+    matches = allocator._compute_matches(buffer_dist=20.0)
+
+    assert len(matches) == 1
+    assert matches.iloc[0]['polygon_id'] == 'near'
+
+
+def test_overlapping_containment_prefers_the_smaller_polygon(
+    make_inventory: Callable[[list[Asset]], AssetInventory],
+) -> None:
+    """A point inside two footprints belongs to the smaller one."""
+    big = Asset('big', _wgs84_coords(_square(0.0, size=40.0)), features={'id': 'big'})
+    small = Asset(
+        'small', _wgs84_coords(_square(0.0, size=12.0)), features={'id': 'small'}
+    )
+    point = Asset('pt', _wgs84_coords(_point(6.0, 6.0)), features={'id': 'pt'})
+
+    allocator = BasicPointsToPolygonsAllocator(
+        make_inventory([big, small]), make_inventory([point])
+    )
+    matches = allocator._compute_matches()
+
+    assert len(matches) == 1
+    assert matches.iloc[0]['polygon_id'] == 'small'
+
+
+def test_polygon_keeps_the_most_central_point(
+    make_inventory: Callable[[list[Asset]], AssetInventory],
+) -> None:
+    """When a footprint holds two points, the central one is kept."""
+    polygon = Asset(
+        'poly', _wgs84_coords(_square(0.0, size=20.0)), features={'id': 'poly'}
+    )
+    central = Asset(
+        'central', _wgs84_coords(_point(10.0, 10.0)), features={'id': 'central'}
+    )
+    corner = Asset(
+        'corner', _wgs84_coords(_point(1.5, 1.5)), features={'id': 'corner'}
+    )
+
+    allocator = BasicPointsToPolygonsAllocator(
+        make_inventory([polygon]), make_inventory([corner, central])
+    )
+    matches = allocator._compute_matches()
+
+    assert len(matches) == 1
+    assert matches.iloc[0]['point_id'] == 'central'
+
+
+def test_matching_is_deterministic_under_reordering(
+    make_inventory: Callable[[list[Asset]], AssetInventory],
+) -> None:
+    """Insertion order does not change which pairs are matched."""
+    polygons = [
+        Asset(f'poly_{i}', _wgs84_coords(_square(30.0 * i)), features={'id': f'poly_{i}'})
+        for i in range(4)
+    ]
+    points = [
+        Asset(f'pt_{i}', _wgs84_coords(_point(30.0 * i + 14.0)), features={'id': f'pt_{i}'})
+        for i in range(4)
+    ]
+
+    forward = BasicPointsToPolygonsAllocator(
+        make_inventory(polygons), make_inventory(points)
+    )._compute_matches(buffer_dist=6.0)
+    reversed_order = BasicPointsToPolygonsAllocator(
+        make_inventory(polygons[::-1]), make_inventory(points[::-1])
+    )._compute_matches(buffer_dist=6.0)
+
+    forward_pairs = set(zip(forward['polygon_id'], forward['point_id']))
+    reversed_pairs = set(
+        zip(reversed_order['polygon_id'], reversed_order['point_id'])
+    )
+    assert forward_pairs == reversed_pairs
+    assert forward_pairs
