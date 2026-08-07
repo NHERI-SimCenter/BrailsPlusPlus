@@ -46,13 +46,13 @@ import pandas as pd
 
 from brails.types.asset_inventory import AssetInventory
 from brails.inferers.inference_engine import InferenceEngine
-from brails.inferers.hazus_inferer.hazus_rulesets import (
+from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_occ_type_mapping,
     get_hazus_state_region_mapping,
     get_hazus_height_classes,
     get_hazus_year_classes,
 )
-from brails.inferers.hazus_inferer.hazus_rulesets import (
+from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_region_to_garage,
     get_hazus_income_to_const_class,
     get_hazus_height_classes_RES1,
