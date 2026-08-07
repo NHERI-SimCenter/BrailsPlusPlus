@@ -1,8 +1,66 @@
-# TODO: Check - what is all-zero row? What should we do for the case that does not exist?
-# TODO: Check - use multiple possible worlds samples if available.
+"""
+Hazus rulesets transcribed from the FEMA Hazus Inventory Technical Manual.
+
+Structure type distributions, region groupings, and replacement cost
+data, each returned by a getter whose docstring names the manual tables
+it transcribes. The Appendix A structure type weights come from the 6.0
+edition:
+https://www.fema.gov/sites/default/files/documents/fema_hazus-6-inventory-technical-manual.pdf
+The 6.1 edition (August 2024) renumbered that appendix and replaced the
+state-level weight tables with distributions conditioned on the general
+building type, so the weights here appear in print only in 6.0. The
+cost, garage, and income tables match the 6.1 edition and cite its
+numbering.
+
+.. autosummary::
+
+      get_hazus_occ_type_mapping
+      get_hazus_state_region_mapping
+      get_hazus_height_classes
+      get_hazus_year_classes
+      get_hazus_base_replacement_cost
+      get_hazus_region_to_garage
+      get_hazus_income_to_const_class
+      get_hazus_height_classes_RES1
+"""
+
+from __future__ import annotations
+
+# TODO(sy): Check - what is all-zero row? What should we do for the case that does not exist?
+# TODO(sy): Check - use multiple possible worlds samples if available.
 
 
-def get_hazus_occ_type_mapping():
+def get_hazus_occ_type_mapping() -> tuple[dict, dict]:
+    """
+    Return the Appendix A structure type lists and sampling weights.
+
+    The weights give the percentage of each structure type by occupancy
+    class and height band. West Coast tables are further stratified by
+    building era, and RES1 tables are organized by state instead of
+    height band. Each weight vector aligns position by position with the
+    type list of its band.
+
+    Sources, all in Appendix A of the 6.0 edition (the 6.1 appendix no
+    longer prints these weights; see the module docstring):
+
+    - West Coast non-RES1: Tables A-2 (low-rise) to A-10 (high-rise).
+    - West Coast RES1: Tables A-17 to A-19, one per era. The printed
+      A-17 (pre-1950) is a misprint that duplicates an East Coast
+      high-rise table, so the pre-1950 weights here have no verifiable
+      printed source.
+    - Mid-West non-RES1: Tables A-11 to A-13; RES1: Table A-20.
+    - East Coast non-RES1: Tables A-14 to A-16; RES1: Table A-21.
+
+    An empty weight list means the manual table has no row for that
+    occupancy and band, so no such stock was observed in the region.
+
+    Returns:
+        tuple[dict, dict]:
+            (type_lists, type_weights), each keyed by region group
+            ('West Coast', 'Mid-West', 'East Coast'). type_lists maps
+            height bands to structure type rows; type_weights maps
+            occupancy classes to percentage vectors over those rows.
+    """
     #
     # The global hierarchy of json components are REGION - OCC_CLASS - (HEIGHT_CLASS) - (YEAR_CLASS) - (STATE)
     #
@@ -13,9 +71,6 @@ def get_hazus_occ_type_mapping():
     #
     # WEST COAST
     #
-
-    # FROM TABLE A-2 to A-10 (nonRES1) and A-17 to A-19 (RES1) in Appendix A of Hazus Inventory Technical Manual 6
-    # https://www.fema.gov/sites/default/files/documents/fema_hazus-6-inventory-technical-manual.pdf
 
     # json hierarchy for nonRES1 buildings is OCC_CLASS - HEIGHT_CLASS - YEAR_CLASS
     # json hierarchy for RES1 buildings is    OCC_CLASS - YEAR_CLASS - STATE
@@ -520,9 +575,6 @@ def get_hazus_occ_type_mapping():
     # hierarchy for nonRES1 buildings is OCC_CLASS - HEIGHT_CLASS
     # hierarchy for RES1 buildings is    OCC_CLASS - STATE
 
-    # FROM TABLE A-11 to A-13 (nonRES1) and A-20 (RES1) in Appendix A of Hazus Inventory Technical Manual 6
-    # https://www.fema.gov/sites/default/files/documents/fema_hazus-6-inventory-technical-manual.pdf
-
     type_lists_mid = {
         "low_rise": [
             "W1",
@@ -732,9 +784,6 @@ def get_hazus_occ_type_mapping():
 
     # hierarchy for nonRES1 buildings is OCC_CLASS - HEIGHT_CLASS
     # hierarchy for RES1 buildings is    OCC_CLASS - STATE
-
-    # FROM TABLE A-14 to A-16 (nonRES1) and A-21 (RES1) in Appendix A of Hazus Inventory Technical Manual 6
-    # https://www.fema.gov/sites/default/files/documents/fema_hazus-6-inventory-technical-manual.pdf
 
     type_lists_east = {
         "low_rise": [
@@ -965,13 +1014,21 @@ def get_hazus_occ_type_mapping():
     return type_lists, type_weights
 
 
-def get_hazus_state_region_mapping():
-    # mapping
-    # "CensusRegion" See Table 3-1   (used for evaluating building value)
-    # "CensusDivision" See Table 3-1 (used for evaluating building value)
-    # "RegionGroup" See Table A-22 (used for determining structural type from occupancy type)
+def get_hazus_state_region_mapping() -> dict[str, dict[str, str]]:
+    """
+    Return the census region, division, and Hazus region group by state.
 
-    states_to_region = {
+    CensusRegion and CensusDivision transcribe Table 3-1 of the manual
+    and feed the building value tables. RegionGroup transcribes Table
+    A-22 of the 6.0 edition (A-21 in 6.1) and selects the Appendix A
+    structure type tables.
+
+    Returns:
+        dict[str, dict[str, str]]:
+            State name to a dict with keys 'CensusRegion',
+            'CensusDivision', and 'RegionGroup'.
+    """
+    return {
         "Connecticut": {
             "CensusRegion": "Northeast",
             "CensusDivision": "New England",
@@ -1231,7 +1288,7 @@ def get_hazus_state_region_mapping():
             "CensusRegion": "West",
             "CensusDivision": "Pacific",
             "RegionGroup": "West Coast",
-        },        
+        },
         "Guam": {
             "CensusRegion": "West",
             "CensusDivision": "Pacific",
@@ -1244,27 +1301,43 @@ def get_hazus_state_region_mapping():
         },
     }
 
-    return states_to_region
 
+def get_hazus_height_classes() -> dict[str, list[int]]:
+    """
+    Return the legacy story bands used to pick Appendix A weight rows.
 
-def get_hazus_height_classes():
-    # provide the rules
-    height_classes = {
+    These bands (1-3, 4-6, 7 and up) do not match the manual, whose
+    tables split at 1-3, 4-7, and 8 and up (Table 4-2 in 6.1). They are kept
+    unchanged for the legacy HazusInferer. Buildings over 199 stories
+    fall outside every band.
+
+    Returns:
+        dict[str, list[int]]:
+            Band name to the list of story counts it covers.
+    """
+    return {
         "low_rise": [1, 2, 3],
         "mid_rise": [4, 5, 6],
         "high_rise": list(range(7, 200)),
     }
 
-    return height_classes
 
+def get_hazus_year_classes() -> dict[str, list[int]]:
+    """
+    Return the building era bands of the West Coast Appendix A tables.
 
-def get_hazus_year_classes():
-    year_classes = {
+    The eras (pre-1950, 1950-1970, post 1970) stratify the West Coast
+    structure type tables. Years from 2030 on fall outside every band.
+
+    Returns:
+        dict[str, list[int]]:
+            Era name to the list of construction years it covers.
+    """
+    return {
         "pre_1950": list(range(1, 1950)),
         "1950_to_1970": list(range(1950, 1970)),
         "post_1970": list(range(1970, 2030)),
     }
-    return year_classes
 
 
 #
@@ -1272,8 +1345,26 @@ def get_hazus_year_classes():
 #
 
 
-def get_hazus_base_replacement_cost():
-    replacement_cost_per_ft2_RES1 = {
+def get_hazus_base_replacement_cost() -> tuple[dict, dict]:
+    """
+    Return base replacement costs per square foot and garage costs.
+
+    Transcribed from the 6.1 edition. RES1 costs by construction class,
+    story count, and basement finish come from Table 6-3; the single
+    costs for the other occupancies from Table 6-2; the RES2 costs by
+    census region from Table 6-6, in 2020 dollars where the other
+    tables are 2022; and the garage costs per residence from Table 6-4,
+    whose Carport and None zeros are implied by the manual rather than
+    printed.
+
+    Returns:
+        tuple[dict, dict]:
+            (replacement_cost_per_ft2, garage_cost_per_residence). The
+            first maps occupancy class to cost, with nested dicts for
+            RES1 and RES2. The second maps construction class to cost by
+            garage type.
+    """
+    replacement_cost_per_ft2_res1 = {
         "Economy": {
             "One-story": {"none": 114.63, "finished": 148.48, "unfinished": 125.03},
             "Two-story": {"none": 121.00, "finished": 139.95, "unfinished": 127.75},
@@ -1301,7 +1392,7 @@ def get_hazus_base_replacement_cost():
     }
 
     replacement_cost_per_ft2 = {
-        "RES1": replacement_cost_per_ft2_RES1,
+        "RES1": replacement_cost_per_ft2_res1,
         "RES2": {"Northeast": 68.65, "Midwest": 59.14, "South": 55.97, "West": 73.92},
         "RES3A": 134.57,
         "RES3B": 118.30,
@@ -1336,8 +1427,8 @@ def get_hazus_base_replacement_cost():
         "EDU2": 197.10,
     }
 
-    # TODO-ADAM: what does per residence mean here?
-    # 6-4
+    # TODO(adam): what does per residence mean here?
+    # Table 6-4
     garage_cost_per_residence = {
         "Economy": {
             "One-car": 19394,
@@ -1372,8 +1463,18 @@ def get_hazus_base_replacement_cost():
     return replacement_cost_per_ft2, garage_cost_per_residence
 
 
-def get_hazus_region_to_garage():
-    # census region
+def get_hazus_region_to_garage() -> tuple[list[str], dict[str, list[int]]]:
+    """
+    Return garage type shares by census region.
+
+    Transcribed from Table 5-5 of the 6.1 edition. The weights are percentages
+    aligned with the garage type list.
+
+    Returns:
+        tuple[list[str], dict[str, list[int]]]:
+            (garage_type_list, census_to_garage_weight), the latter
+            keyed by census region.
+    """
     garage_type_list = ["One-car", "Two-car", "Three-car", "Carport", "None"]
     census_to_garage_weight = {
         "Northeast": [29, 31, 5, 2, 33],
@@ -1385,8 +1486,24 @@ def get_hazus_region_to_garage():
     return garage_type_list, census_to_garage_weight
 
 
-def get_hazus_income_to_const_class():
-    # Table 6-5 (Hazus 6)
+def get_hazus_income_to_const_class() -> tuple[
+    list[float], list[str], list[str], dict[str, list[int]], dict[str, int]
+]:
+    """
+    Return the income group definitions and construction class weights.
+
+    The income ratio thresholds and the weights mapping income groups to
+    RES1 construction classes transcribe Table 6-5 of the 6.1 edition;
+    the final threshold is a sentinel for the manual's open-ended top
+    band. The state median household incomes transcribe Table 5-39.
+
+    Returns:
+        tuple[list[float], list[str], list[str], dict, dict]:
+            (income_ratio_thres, income_group_list, const_class_list,
+            income_to_const_class_weight, state_average_income). The
+            weights are percentages aligned with const_class_list.
+    """
+    # Table 6-5
     income_ratio_thres = [0, 0.5, 0.85, 1.25, 2.0, 1.0e15]
     income_group_list = ["Group1", "Group2", "Group3", "Group4", "Group5"]
     const_class_list = ["Luxury", "Custom", "Average", "Economy"]
@@ -1398,7 +1515,7 @@ def get_hazus_income_to_const_class():
         "Group5": [100, 0, 0, 0],
     }
 
-    # Table 5-26 (Hazus 6)
+    # Table 5-39
     state_average_income = {
         "Alabama": 52035,
         "Alaska": 77790,
@@ -1463,12 +1580,21 @@ def get_hazus_income_to_const_class():
     )
 
 
-def get_hazus_height_classes_RES1():
-    # provide the rules
-    res1_height_classes = {
+def get_hazus_height_classes_RES1() -> dict[str, list[int]]:  # noqa: N802
+    """
+    Return story bands for the RES1 replacement cost table rows.
+
+    The bands map story counts onto the RES1 replacement cost rows of
+    the manual. Three or more stories fall into the Three-story row, and
+    the Split level row cannot be reached from a story count. The name
+    keeps its legacy capitalization for the legacy HazusInferer.
+
+    Returns:
+        dict[str, list[int]]:
+            RES1 cost row name to the list of story counts it covers.
+    """
+    return {
         "One-story": [1],
         "Two-story": [2],
-        "Three-story": list(range(3, 1000)),  # TODO-ADAM: double check
+        "Three-story": list(range(3, 1000)),  # TODO(adam): double check
     }
-
-    return res1_height_classes
