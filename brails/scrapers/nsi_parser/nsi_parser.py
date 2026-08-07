@@ -56,6 +56,7 @@ import logging
 from brails.utils import GeoTools
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.types.region_boundary import RegionBoundary
+from brails.scrapers.nsi_parser.nsi_conventions import to_simcenter
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
@@ -478,13 +479,24 @@ class NSI_Parser:
 
         return geojson, points_keep_footprint_index
 
-    def get_raw_data(self, region: RegionBoundary) -> AssetInventory:
+    def get_raw_data(
+        self,
+        region: RegionBoundary,
+        *,
+        simcenter_format: bool = False,
+    ) -> AssetInventory:
         """
         Retrieve raw NSI data for a specified region.
 
         Args:
             region (RegionBoundary):
                 The region boundary object defining the area of interest.
+            simcenter_format (bool):
+                When True, each record's fields are renamed to SimCenter
+                conventions and its packed occupancy code is decoded; see
+                :func:`brails.scrapers.nsi_parser.nsi_conventions.to_simcenter`.
+                Defaults to False, which keeps the NSI names and values
+                untouched.
 
         Returns:
             AssetInventory:
@@ -528,6 +540,8 @@ class NSI_Parser:
         # Save the results in the inventory:
         inventory = AssetInventory()
         for geometry, features in datadict.items():
+            if simcenter_format:
+                features = to_simcenter(features)
             index = features['fd_id']
             coordinates = [[geometry.x, geometry.y]]
             features['type'] = ASSET_TYPE

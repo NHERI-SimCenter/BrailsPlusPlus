@@ -399,11 +399,11 @@ class HazusInfererFlood(InferenceEngine):
         #         basement_type = 'bw' # Default
 
         elif self.is_ready_to_infer(available_features, ['SplitLevel', 'Basement'], 'BasementType'):
-            if BIM['SplitLevel'] == 'Yes' and (BIM['Basement'] == 'Yes'):
+            if BIM['SplitLevel'] is True and (BIM['Basement'] is True):
                 basement_type = 'spt'  # Split-Level Basement
-            elif BIM['Basement'] == 'No':
+            elif BIM['Basement'] is False:
                 basement_type = 'bn'  # No Basement
-            elif (BIM['SplitLevel'] == 'No') and (BIM['Basement'] == 'Yes'):
+            elif (BIM['SplitLevel'] is False) and (BIM['Basement'] is True):
                 basement_type = 'bw'  # Basement
             else:
                 logger.warning(
