@@ -18,6 +18,9 @@ numbering.
       get_hazus_state_region_mapping
       get_hazus_height_classes
       get_hazus_year_classes
+      get_hazus_sampling_height_bands
+      get_hazus_height_classes_by_type
+      get_hazus_general_type_membership
       get_hazus_base_replacement_cost
       get_hazus_region_to_garage
       get_hazus_income_to_const_class
@@ -1308,8 +1311,9 @@ def get_hazus_height_classes() -> dict[str, list[int]]:
 
     These bands (1-3, 4-6, 7 and up) do not match the manual, whose
     tables split at 1-3, 4-7, and 8 and up (Table 4-2 in 6.1). They are kept
-    unchanged for the legacy HazusInferer. Buildings over 199 stories
-    fall outside every band.
+    unchanged for the legacy HazusInferer; new code uses
+    get_hazus_sampling_height_bands. Buildings over 199 stories fall
+    outside every band.
 
     Returns:
         dict[str, list[int]]:
@@ -1337,6 +1341,98 @@ def get_hazus_year_classes() -> dict[str, list[int]]:
         "pre_1950": list(range(1, 1950)),
         "1950_to_1970": list(range(1950, 1970)),
         "post_1970": list(range(1970, 2030)),
+    }
+
+
+def get_hazus_sampling_height_bands() -> dict[str, tuple[int, int | None]]:
+    """
+    Return the story bands of the Appendix A structure type tables.
+
+    These are the bands the manual uses to split the non-RES1 tables:
+    low-rise 1-3, mid-rise 4-7, high-rise 8 and up (Table 4-2 of the 6.1
+    edition, matching the Appendix A table captions). They pick the
+    Appendix A weight row for a story count and are distinct from
+    the Table 5-1 height classes assigned to a drawn structure type
+    (see get_hazus_height_classes_by_type).
+
+    Returns:
+        dict[str, tuple[int, int | None]]:
+            Band name to an inclusive (lowest, highest) story range,
+            with None for no upper bound.
+    """
+    return {
+        "low_rise": (1, 3),
+        "mid_rise": (4, 7),
+        "high_rise": (8, None),
+    }
+
+
+def get_hazus_height_classes_by_type() -> (
+    dict[str, dict[str, tuple[int, int | None]] | None]
+):
+    """
+    Return the Hazus height class of each structure type by story count.
+
+    Transcribed from Table 5-1 of the FEMA Hazus Earthquake Model
+    Technical Manual 6.1. Height class is a function of structure type
+    and story count, and its bands differ from the sampling bands of
+    the Appendix A tables. URM splits at two stories, the mid-rise
+    classes of RM1 and URM absorb every taller building, and W1, W2,
+    S3, PC1, and MH carry no height class at all (None; the damage
+    models for these types ignore height).
+
+    Returns:
+        dict[str, dict[str, tuple[int, int | None]] | None]:
+            Structure type to either None or a dict mapping height
+            class ('Low-Rise', 'Mid-Rise', 'High-Rise') to an inclusive
+            (lowest, highest) story range, with None for no upper
+            bound.
+    """
+    full_grid = {
+        "Low-Rise": (1, 3),
+        "Mid-Rise": (4, 7),
+        "High-Rise": (8, None),
+    }
+    return {
+        "W1": None,
+        "W2": None,
+        "S1": dict(full_grid),
+        "S2": dict(full_grid),
+        "S3": None,
+        "S4": dict(full_grid),
+        "S5": dict(full_grid),
+        "C1": dict(full_grid),
+        "C2": dict(full_grid),
+        "C3": dict(full_grid),
+        "PC1": None,
+        "PC2": dict(full_grid),
+        "RM1": {"Low-Rise": (1, 3), "Mid-Rise": (4, None)},
+        "RM2": dict(full_grid),
+        "URM": {"Low-Rise": (1, 2), "Mid-Rise": (3, None)},
+        "MH": None,
+    }
+
+
+def get_hazus_general_type_membership() -> dict[str, list[str]]:
+    """
+    Return the Hazus specific types under each general building type.
+
+    The keys follow the NSI BuildingType letters (NSI's H arrives as MH
+    after the conventions rename): W wood, S steel, C concrete
+    including precast, M masonry both reinforced and unreinforced, MH
+    manufactured housing. An observed general type restricts the
+    structure type draw to its members.
+
+    Returns:
+        dict[str, list[str]]:
+            General building type letter to its Hazus structure types.
+    """
+    return {
+        "W": ["W1", "W2"],
+        "S": ["S1", "S2", "S3", "S4", "S5"],
+        "C": ["C1", "C2", "C3", "PC1", "PC2"],
+        "M": ["RM1", "RM2", "URM"],
+        "MH": ["MH"],
     }
 
 
