@@ -473,7 +473,7 @@ class NSI_Parser:
                     # else:
                     keyout = key
                     feature['properties'][keyout] = 'NA' if attr is None else attr
-            feature['properties']['type'] = 'Building'
+            feature['properties']['type'] = 'building'
             geojson['features'].append(feature)
 
         return geojson, points_keep_footprint_index
@@ -585,7 +585,7 @@ class NSI_Parser:
         for index, feature in enumerate(geojson['features']):
             # Access geometry and properties
             properties = feature['properties']
-            properties['type'] = 'Building'
+            properties['type'] = 'building'
             asset_id = asset_keys[footprints_index[index]]
             inventory.add_asset_features(asset_id, properties)
             # print(asset_id, properties)
