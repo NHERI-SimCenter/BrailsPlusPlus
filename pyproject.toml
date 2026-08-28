@@ -134,6 +134,9 @@ include = [
     "brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py",
     "tests/inferers/**/*.py",
 
+    "brails/utils/deterministic_sampling.py",
+    "tests/utils/test_deterministic_sampling.py",
+
     "brails/validators/**/*.py",
     "tests/validators/**/*.py",
 
