@@ -23,7 +23,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 ### Changed
 - **`med_yr_blt` from NSI now maps to `YearBuiltTractMedian`.** It is the median year built of the structures in a Census tract, so every building in a tract carries the same value. The converted path no longer emits `YearBuilt` at all. The legacy `nsi2brailsmap` path is unchanged and still maps `med_yr_blt` to `YearBuilt`, so the two conventions coexist for now.
 - The Hazus earthquake rulesets moved into `brails/inferers/hazus_inferer_earthquake/`. Legacy callers keep working through updated imports.
-- `is_inventory` moved to `InputValidator`, joining the family of checks it belongs to.
+- **`is_inventory` moved to `InputValidator`** and is no longer available on `InventoryValidator`, which published it as a public static method in 4.3.0. Call sites need updating to `InputValidator.is_inventory`.
 - `scipy` is now a declared dependency. It was arriving only transitively through scikit-learn.
 
 ### Fixed

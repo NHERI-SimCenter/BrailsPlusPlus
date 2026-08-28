@@ -108,6 +108,46 @@ def _preview(asset_ids: list) -> str:
     return shown
 
 
+def _aligned_bounds(
+    bounds: pd.Series | None,
+    index: pd.Index,
+    default: int,
+    name: str,
+) -> np.ndarray:
+    """
+    Line per-asset bounds up with the assets they belong to.
+
+    Args:
+        bounds (pd.Series | None):
+            Per-asset bounds, or None to use the shared default.
+        index (pd.Index):
+            The asset ids the draw is for.
+        default (int):
+            The bound to use for every asset when none are given.
+        name (str):
+            The parameter name, for the error message.
+
+    Returns:
+        np.ndarray:
+            One bound per asset, ordered as the index.
+
+    Raises:
+        ValueError:
+            If an asset has no bound.
+    """
+    if bounds is None:
+        return np.full(len(index), float(default))
+    aligned = bounds.reindex(index)
+    if aligned.isna().any():
+        unbounded = list(index[aligned.isna().to_numpy()])
+        raise ValueError(
+            f'{name} carries no bound for every asset being drawn for. '
+            f'Bounds are matched by asset id, not by position. Missing '
+            f'on: {_preview(unbounded)}.'
+        )
+    return aligned.to_numpy(dtype=float)
+
+
 def sample_years(
     medians: pd.Series,
     *,
@@ -133,8 +173,9 @@ def sample_years(
 
     Args:
         medians (pd.Series):
-            Tract median years, indexed by asset id. Every value must be
-            usable: run :meth:`YearBuiltSampler.check` first.
+            Tract median years, indexed by asset id. Every value must
+            be one :meth:`YearBuiltSampler.check` accepts; the same
+            conditions are enforced here.
         sigma (float):
             Standard deviation of the year deviation, in years.
         seed (int):
@@ -150,9 +191,11 @@ def sample_years(
             Newest year that can be drawn, unless overridden per asset.
         lower (pd.Series | None):
             Per-asset lower bounds overriding the floor, for draws
-            restricted to a legal era.
+            restricted to a legal era. Matched to the medians by asset
+            id, so the order they arrive in does not matter.
         upper (pd.Series | None):
-            Per-asset upper bounds overriding the cap.
+            Per-asset upper bounds overriding the cap, matched the same
+            way.
         world (int):
             Possible-world index.
         iteration (int):
@@ -164,28 +207,23 @@ def sample_years(
 
     Raises:
         ValueError:
-            If a median is missing or non-numeric, which means check()
-            was skipped, or if the supplied keys do not align with the
-            medians.
+            If any median is one check() would refuse, which means
+            check() was skipped, or if the supplied bounds or keys do
+            not cover the assets being drawn for.
     """
     centers = pd.to_numeric(medians, errors='coerce').to_numpy(dtype=float)
-    if not np.all(np.isfinite(centers)):
-        unusable = list(medians.index[~np.isfinite(centers)])
+    usable = (
+        np.isfinite(centers) & (centers >= floor) & (centers <= cap)
+    )
+    if not np.all(usable):
+        unusable = list(medians.index[~usable])
         raise ValueError(
-            'sample_years needs a usable median for every asset. Run '
-            f'check() and drop the failures first. Unusable on: '
-            f'{_preview(unusable)}.'
+            'sample_years needs a usable median for every asset: a number '
+            f'inside [{floor}, {cap}]. Run check() and drop the failures '
+            f'first. Unusable on: {_preview(unusable)}.'
         )
-    low = (
-        np.full(centers.shape, float(floor))
-        if lower is None
-        else lower.to_numpy(dtype=float)
-    )
-    high = (
-        np.full(centers.shape, float(cap))
-        if upper is None
-        else upper.to_numpy(dtype=float)
-    )
+    low = _aligned_bounds(lower, medians.index, floor, 'lower')
+    high = _aligned_bounds(upper, medians.index, cap, 'upper')
     if asset_keys is None:
         keys = asset_key_digest(medians.index)
     else:

@@ -377,7 +377,13 @@ def test_no_mass_accumulates_on_a_nearby_bound() -> None:
 
 
 def test_odd_bounds_are_respected() -> None:
-    """Rounding half to even reaches past an odd bound; the clip catches it."""
+    """Odd bounds hold, which is where rounding half to even could bite.
+
+    The final clip is what would catch a draw landing exactly on a half
+    year next to an odd bound. That is unreachable in practice, so this
+    is a statement about the bounds holding end to end rather than a
+    test of the clip.
+    """
     drawn = sample_years(
         pd.Series({str(i): 1801.0 for i in range(2000)}),
         sigma=15.0,
@@ -426,6 +432,41 @@ def test_misaligned_keys_are_refused() -> None:
             seed=7,
             asset_keys=asset_key_digest(['a', 'b', 'c']),
         )
+
+
+def test_bounds_are_matched_by_asset_id() -> None:
+    """Bounds arriving in another order must still land on their assets.
+
+    A caller that builds bounds from a diagnosis table has no reason to
+    produce them in the medians' order. Taking them positionally gives
+    every asset another asset's restriction: no error and plausible years.
+    """
+    medians = pd.Series({'a': 1962, 'b': 1962})
+    drawn = sample_years(
+        medians,
+        sigma=15.0,
+        seed=7,
+        lower=pd.Series({'b': 1950, 'a': 1900}),
+        upper=pd.Series({'b': 2000, 'a': 1940}),
+    )
+    assert 1900 <= drawn['a'] <= 1940
+    assert 1950 <= drawn['b'] <= 2000
+
+
+def test_bounds_missing_an_asset_are_refused() -> None:
+    """Silently defaulting the gap would hide the caller's mistake."""
+    medians = pd.Series({'a': 1962, 'b': 1962})
+    with pytest.raises(ValueError, match='lower carries no bound'):
+        sample_years(
+            medians, sigma=15.0, seed=7, lower=pd.Series({'a': 1900})
+        )
+
+
+def test_sample_years_refuses_a_median_outside_the_bounds() -> None:
+    """Every median check() rejects, and draw() rejects."""
+    for median in (0, 2050):
+        with pytest.raises(ValueError, match=r'usable median.*\[1800, 2026\]'):
+            sample_years(pd.Series({'a': median}), sigma=15.0, seed=7)
 
 
 def test_sample_years_refuses_an_unusable_median() -> None:

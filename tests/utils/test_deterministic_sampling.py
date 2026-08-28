@@ -145,13 +145,27 @@ def test_inversion_is_exact() -> None:
 
 
 def test_draws_stay_inside_the_bounds() -> None:
-    """Including the uniform of exactly zero, which inverts to -inf."""
+    """The ends of the uniform range land on the bounds, not past them."""
     uniforms = np.array([0.0, 0.5, np.nextafter(1.0, 0.0)])
     drawn = truncated_normal(
         uniforms, mean=1962.0, sigma=25.0, lower=1799.5, upper=2026.5
     )
     assert drawn.min() >= 1799.5
     assert drawn.max() <= 2026.5
+
+
+def test_a_bound_whose_probability_underflows_still_draws() -> None:
+    """A window so wide that its lower CDF is exactly zero.
+
+    Here the inversion really would reach negative infinity, which is
+    what the probability floor exists for. The draw has to come back
+    finite and inside the bounds.
+    """
+    drawn = truncated_normal(
+        np.array([0.0]), mean=1962.0, sigma=1.0, lower=1800.0, upper=2026.0
+    )
+    assert np.isfinite(drawn).all()
+    assert 1800.0 <= drawn[0] <= 2026.0
 
 
 def test_per_asset_bounds_apply() -> None:
