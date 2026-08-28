@@ -132,7 +132,9 @@ def test_to_simcenter_renames_and_unpacks() -> None:
     assert converted['Basement'] is True
     assert converted['SplitLevel'] is False
     assert converted['NumberOfStories'] == 2
-    assert converted['YearBuilt'] == 1955
+    assert converted['YearBuiltTractMedian'] == 1955
+    # A tract median must not reach the inventory as an observed year.
+    assert 'YearBuilt' not in converted
     assert converted['PlanArea'] == 1800.0
     assert converted['ReplacementCost'] == 500000.0
     # The general class passes through; nothing invents a specific type.

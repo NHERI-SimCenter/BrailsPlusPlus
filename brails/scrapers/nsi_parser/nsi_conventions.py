@@ -42,15 +42,18 @@ Map raw NSI records to SimCenter feature conventions.
 from __future__ import annotations
 
 # NSI field names and the SimCenter feature names assigned to them. Fields
-# that are not listed pass through with their NSI names. YearBuilt comes
-# from med_yr_blt, which NSI reports as a census block median, not a
-# per-building value; its reliability should be judged accordingly.
+# that are not listed pass through with their NSI names.
+#
+# med_yr_blt becomes YearBuiltTractMedian: NSI reports it as the median year
+# built of the structures in the Census tract, so every building in a tract
+# carries the same value and none of them was observed. Use the
+# YearBuiltSampler to draw a per-building year from it.
 NSI_TO_SIMCENTER = {
     'x': 'Longitude',
     'y': 'Latitude',
     'sqft': 'PlanArea',
     'num_story': 'NumberOfStories',
-    'med_yr_blt': 'YearBuilt',
+    'med_yr_blt': 'YearBuiltTractMedian',
     'val_struct': 'ReplacementCost',
     'bldgtype': 'BuildingType',
     'occtype': 'OccupancyClass',
