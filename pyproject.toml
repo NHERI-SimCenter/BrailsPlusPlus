@@ -47,6 +47,7 @@ dependencies = [
     "reverse-geocode",
     "requests",
     "scikit-learn",
+    "scipy",
     "seaborn",
     "shapely",
     "simcenter-dlml>=3.1,<4",

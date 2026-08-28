@@ -133,8 +133,8 @@ def asset_key_digest(asset_ids: Iterable[str | int]) -> np.ndarray:
 
     Ids are canonicalized to strings before hashing, so an inventory keeps
     its draws when integer ids return as strings from a GeoJSON round
-    trip. Digest once and reuse the result: the resolution loop redraws
-    the same assets many times, and hashing dominates the cost.
+    trip. Digest once and reuse the result: hashing dominates the cost
+    of a draw, and callers commonly redraw the same assets many times.
 
     Args:
         asset_ids (Iterable[str | int]):
@@ -163,8 +163,8 @@ def keyed_uniforms(
     The seed, key, world, purpose, and iteration are folded through the
     mixer one at a time. Combining them arithmetically instead — a seed
     plus an iteration counter, say — would leave neighboring draws
-    related, which matters because the resolution loop asks the same
-    asset for a fresh year on every attempt.
+    related, which matters when a caller asks the same asset for a
+    fresh value on one attempt after another.
 
     Args:
         asset_keys (np.ndarray):
