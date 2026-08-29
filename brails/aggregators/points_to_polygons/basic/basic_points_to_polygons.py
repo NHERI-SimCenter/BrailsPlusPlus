@@ -397,6 +397,18 @@ class BasicPointsToPolygonsAllocator:
 
         Raises:
             KeyError: If a matched point cannot be found in the point inventory.
+
+        Notes:
+            A polygon receives at most one point. Where a footprint covers
+            several structures, as with attached houses dissolved into a
+            single outline or a group of buildings mapped as one polygon,
+            only the highest ranked point is transferred. With `buffer_dist`
+            set, the points it outranked stay available to the second pass,
+            so each may be placed on a neighboring footprint that holds no
+            point of its own; the rest are left out of the inventory
+            altogether. Splitting such footprints before allocation is the
+            way to keep those records with their own structures when using
+            this allocator.
         """
         matches_df = self._compute_matches(
             use_convex_hull=use_convex_hull, buffer_dist=buffer_dist
