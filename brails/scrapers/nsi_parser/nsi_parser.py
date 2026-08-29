@@ -519,34 +519,32 @@ class NSI_Parser:
         bpoly, _, _ = region.get_boundary()
         bbox = bpoly.bounds
 
-        # Get NBI data for the computed bounding box:
+        # Get NSI data for the computed bounding box:
         datadict = self._get_nsi_data(bbox)
 
-        points = list(datadict.keys())
+        # Keep the records whose point falls inside bpoly:
+        datadict = {
+            fd_id: record
+            for fd_id, record in datadict.items()
+            if bpoly.contains(record[0])
+        }
 
-        # Find the NBI points contained in bpoly:
-        points_to_keep = set()
-        for pt in points:
-            if bpoly.contains(pt):
-                points_to_keep.add(pt)
-        datadict = {pt: datadict[pt] for pt in points_to_keep}
-
-        # Display the number of NSI points that are within roi:
+        # Display the number of NSI records that are within roi:
         print(
-            f'\nFound a total of {len(points_to_keep)} building points in'
+            f'\nFound a total of {len(datadict)} building points in'
             ' NSI that are within the entered region of interest'
         )
 
         # Save the results in the inventory:
         inventory = AssetInventory()
-        for geometry, features in datadict.items():
-            if simcenter_format:
-                features = to_simcenter(features)
-            index = features['fd_id']
+        for fd_id, (geometry, properties) in datadict.items():
+            features = (
+                to_simcenter(properties) if simcenter_format else properties
+            )
             coordinates = [[geometry.x, geometry.y]]
             features['type'] = ASSET_TYPE
-            asset = Asset(index, coordinates, features)
-            inventory.add_asset(index, asset)
+            asset = Asset(fd_id, coordinates, features)
+            inventory.add_asset(fd_id, asset)
 
         return inventory
 
@@ -616,8 +614,11 @@ class NSI_Parser:
             bbox (tuple) Tuple containing the minimum and maximum latitude and
                 longitude values.
         Returns:
-            dict: Dictionary containing extracted NBI data keyed using the
-                NBI point coordinates
+            dict: Dictionary containing extracted NSI data keyed using the
+                fd_id of each record, with the record's point geometry and
+                its properties as the value. NSI serves one record per
+                occupancy of a mixed-use structure, all of them on the same
+                coordinate; keying by record id keeps every record.
         """
         # Unpack the bounding box coordinates:
         (minlon, minlat, maxlon, maxlat) = bbox
@@ -666,9 +667,12 @@ class NSI_Parser:
 
             data = response.json().get('features', [])
 
-            # Convert GeoJSON features to a dictionary with (lon, lat) as keys
+            # Convert GeoJSON features to a dictionary keyed by record id
             return {
-                Point(feat['geometry']['coordinates']): feat['properties']
+                feat['properties']['fd_id']: (
+                    Point(feat['geometry']['coordinates']),
+                    feat['properties'],
+                )
                 for feat in data
             }
 

@@ -107,7 +107,7 @@ def canned_fetch(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
 
     def install(records: list[dict]) -> None:
         data = {
-            Point(record['x'], record['y']): dict(record)
+            record['fd_id']: (Point(record['x'], record['y']), dict(record))
             for record in records
         }
         monkeypatch.setattr(
@@ -230,6 +230,26 @@ def test_get_raw_data_applies_simcenter_format(canned_fetch: Callable[..., None]
     assert features['OccupancyClass'] == 'COM4'
     assert features['BuildingType'] == 'S'
     assert 'Basement' not in features
+
+
+def test_records_sharing_a_coordinate_all_survive(
+    canned_fetch: Callable[..., None],
+) -> None:
+    """NSI serves one record per occupancy of a mixed-use structure."""
+    canned_fetch(
+        [
+            make_record(11, 0.0005, 0.0005),
+            make_record(22, 0.0005, 0.0005, occtype='COM1', bldgtype='S'),
+            make_record(33, 0.0005, 0.0005, occtype='COM4', sqft=900.0),
+        ]
+    )
+
+    inventory = NSI_Parser().get_raw_data(Region())
+
+    assert sorted(inventory.get_asset_ids()) == [11, 22, 33]
+    assert inventory.get_asset_coordinates(11)[1] == [[0.0005, 0.0005]]
+    assert inventory.get_asset_coordinates(33)[1] == [[0.0005, 0.0005]]
+    assert inventory.get_asset_features(33)[1]['sqft'] == 900.0
 
 
 # ---------------------------------------------------------------------
