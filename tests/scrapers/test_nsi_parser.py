@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+import requests
 from shapely.geometry import Point, box
 
 from brails.scrapers.nsi_parser.nsi_conventions import (
@@ -187,6 +188,122 @@ def test_manufactured_housing_code_maps_to_mh() -> None:
     )
 
     assert converted['BuildingType'] == 'MH'
+
+
+class FakeResponse:
+    """A canned NSI API response."""
+
+    def __init__(self, payload: dict) -> None:
+        """
+        Hold the payload the fake request returns.
+
+        Args:
+            payload (dict):
+                The GeoJSON body `json()` serves.
+        """
+        self._payload = payload
+        self.headers = {'Content-Type': 'application/json'}
+        self.text = ''
+
+    def raise_for_status(self) -> None:
+        """Accept the response, as a 200 would."""
+
+    def json(self) -> dict:
+        """Return the canned payload."""
+        return self._payload
+
+
+def as_feature(record: dict) -> dict:
+    """
+    Wrap a property record in the GeoJSON shape the API serves.
+
+    Args:
+        record (dict):
+            Raw NSI properties.
+
+    Returns:
+        dict:
+            A GeoJSON feature carrying them.
+    """
+    return {
+        'geometry': {'type': 'Point', 'coordinates': [record['x'], record['y']]},
+        'properties': record,
+    }
+
+
+def canned_response(
+    monkeypatch: pytest.MonkeyPatch, records: list[dict]
+) -> None:
+    """
+    Serve these records from the NSI endpoint.
+
+    Args:
+        monkeypatch (pytest.MonkeyPatch):
+            The patcher.
+        records (list[dict]):
+            Raw NSI property records.
+    """
+    payload = {'features': [as_feature(record) for record in records]}
+    monkeypatch.setattr(
+        requests.Session,
+        'get',
+        lambda *_args, **_kwargs: FakeResponse(payload),
+    )
+
+
+BBOX = (-0.01, -0.01, 0.01, 0.01)
+
+
+# ---------------------------------------------------------------------
+# the download itself
+# ---------------------------------------------------------------------
+
+
+def test_the_download_keys_records_by_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Records sharing a coordinate survive the download itself."""
+    canned_response(
+        monkeypatch,
+        [
+            make_record(11, 0.0005, 0.0005),
+            make_record(22, 0.0005, 0.0005, occtype='COM1'),
+            make_record(33, 0.0015, 0.0015, occtype='COM4'),
+        ],
+    )
+
+    records = NSI_Parser._get_nsi_data(BBOX)
+
+    assert sorted(records) == [11, 22, 33]
+    geometry, properties = records[11]
+    assert (geometry.x, geometry.y) == (0.0005, 0.0005)
+    assert properties['occtype'] == 'RES1-2SWB'
+    assert records[22][0].equals(geometry)
+
+
+def test_repeated_record_ids_are_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two records under one id would silently lose one of them."""
+    canned_response(
+        monkeypatch,
+        [make_record(11, 0.0005, 0.0005), make_record(11, 0.0015, 0.0015)],
+    )
+
+    with pytest.raises(ValueError, match='records would be lost'):
+        NSI_Parser._get_nsi_data(BBOX)
+
+
+def test_a_record_without_an_id_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A malformed record must not be reported as a failed download."""
+    record = make_record(11, 0.0005, 0.0005)
+    del record['fd_id']
+    canned_response(monkeypatch, [record])
+
+    with pytest.raises(KeyError):
+        NSI_Parser._get_nsi_data(BBOX)
 
 
 # ---------------------------------------------------------------------

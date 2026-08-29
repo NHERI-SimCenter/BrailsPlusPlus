@@ -667,15 +667,6 @@ class NSI_Parser:
 
             data = response.json().get('features', [])
 
-            # Convert GeoJSON features to a dictionary keyed by record id
-            return {
-                feat['properties']['fd_id']: (
-                    Point(feat['geometry']['coordinates']),
-                    feat['properties'],
-                )
-                for feat in data
-            }
-
         except requests.exceptions.RequestException as e:
             logging.error(f'NSI Network Request failed: {e}')
             return {}
@@ -688,3 +679,21 @@ class NSI_Parser:
                 f'Failed to parse NSI JSON: {e}. \nResponse snippet: {snippet}'
             )
             return {}
+
+        # Keyed by record id, and built outside the request handling so that a
+        # record NSI serves without one raises here rather than being reported
+        # as a failed download and returned as an empty pull.
+        records = {
+            feat['properties']['fd_id']: (
+                Point(feat['geometry']['coordinates']),
+                feat['properties'],
+            )
+            for feat in data
+        }
+        if len(records) != len(data):
+            message = (
+                f'NSI served {len(data)} records under {len(records)} distinct '
+                'fd_id values, so records would be lost'
+            )
+            raise ValueError(message)
+        return records
