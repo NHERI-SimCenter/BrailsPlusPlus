@@ -41,6 +41,7 @@ from scipy.special import ndtr
 
 from brails.utils.deterministic_sampling import (
     asset_key_digest,
+    grouped_categorical,
     keyed_uniforms,
     truncated_normal,
 )
@@ -208,3 +209,168 @@ def test_an_interval_with_no_mass_is_refused() -> None:
             lower=100.0,
             upper=200.0,
         )
+
+
+# ---------------------------------------------------------------------
+# categorical draws
+
+
+def test_weights_need_not_sum_to_one_hundred() -> None:
+    """A printed row summing to 101 draws like one summing to 100."""
+    uniforms = np.linspace(0.0, 1.0, 101, endpoint=False)
+    printed = grouped_categorical(
+        uniforms, weights=[[50.0, 51.0]], groups=np.zeros(101, dtype=int)
+    )
+    exact = grouped_categorical(
+        uniforms,
+        weights=[[50.0 / 101.0, 51.0 / 101.0]],
+        groups=np.zeros(101, dtype=int),
+    )
+    assert printed.tolist() == exact.tolist()
+
+
+def test_a_zero_weight_category_is_never_drawn() -> None:
+    """A category with no share cannot come out of the draw."""
+    uniforms = np.linspace(0.0, 1.0, 1000, endpoint=False)
+    positions = grouped_categorical(
+        uniforms,
+        weights=[[30.0, 0.0, 70.0]],
+        groups=np.zeros(1000, dtype=int),
+    )
+    assert set(positions.tolist()) == {0, 2}
+
+
+def test_a_uniform_on_a_cumulative_edge_takes_the_upper_category() -> None:
+    """Cells are half-open, so an edge belongs to the category above it."""
+    below = np.nextafter(0.25, 0.0)
+    positions = grouped_categorical(
+        np.array([0.0, below, 0.25, 0.75]),
+        weights=[[25.0, 50.0, 25.0]],
+        groups=np.zeros(4, dtype=int),
+    )
+    assert positions.tolist() == [0, 0, 1, 2]
+
+
+def test_the_largest_uniform_stays_inside_its_own_categories() -> None:
+    """
+    The top of a row is where a draw would spill past its last category.
+
+    Rows of different widths sit in one padded array, so the widest one
+    decides how much padding the others carry. The largest uniform a
+    keyed draw can produce has to land on the last real category of each
+    of them, but never on the padding.
+    """
+    largest = np.nextafter(1.0, 0.0)
+    weights = [[1.0], [1.0, 1.0], [3.0, 0.0, 1.0], [1.0] * 16]
+    positions = grouped_categorical(
+        np.full(len(weights), largest),
+        weights=weights,
+        groups=np.arange(len(weights)),
+    )
+    assert positions.tolist() == [len(row) - 1 for row in weights]
+
+
+def test_a_row_that_cannot_sum_to_one_still_draws_inside_itself() -> None:
+    """Ten tenths normalize to just under one, and the top cell absorbs it."""
+    row = [0.1] * 10
+    assert np.cumsum(row)[-1] / sum(row) < 1.0
+    positions = grouped_categorical(
+        np.array([np.nextafter(1.0, 0.0)]),
+        weights=[row],
+        groups=np.array([0]),
+    )
+    assert positions.tolist() == [9]
+
+
+def test_frequencies_follow_the_weights() -> None:
+    """Draws land in each category about as often as its weight says."""
+    sample = 20000
+    expected = np.array([0.2, 0.3, 0.5])
+    tolerance = 4 * np.sqrt(0.25 / sample)
+    keys = asset_key_digest([f'asset_{index}' for index in range(sample)])
+    uniforms = keyed_uniforms(keys, seed=11, purpose='structure_type')
+    positions = grouped_categorical(
+        uniforms,
+        weights=[[20.0, 30.0, 50.0]],
+        groups=np.zeros(uniforms.size, dtype=int),
+    )
+    shares = np.bincount(positions, minlength=3) / positions.size
+    assert np.allclose(shares, expected, atol=tolerance)
+
+
+def test_group_codes_must_have_weight_vectors() -> None:
+    """A code with no distribution behind it is refused."""
+    with pytest.raises(ValueError, match='Group codes must index'):
+        grouped_categorical(
+            np.array([0.5]), weights=[[1.0]], groups=np.array([1])
+        )
+
+
+def test_uniforms_and_codes_must_line_up() -> None:
+    """One group code per uniform, or the draw is not defined."""
+    with pytest.raises(ValueError, match='one group code per uniform'):
+        grouped_categorical(
+            np.array([0.5, 0.5]), weights=[[1.0]], groups=np.array([0])
+        )
+
+
+def test_an_empty_weight_vector_is_refused() -> None:
+    """Empty weights cannot be used to draw from."""
+    with pytest.raises(ValueError, match='is empty'):
+        grouped_categorical(
+            np.array([0.5]), weights=[[]], groups=np.array([0])
+        )
+
+
+def test_a_vector_of_zeros_is_refused() -> None:
+    """Restricting a cell down to nothing must not draw silently."""
+    with pytest.raises(ValueError, match='sums to'):
+        grouped_categorical(
+            np.array([0.5]), weights=[[0.0, 0.0]], groups=np.array([0])
+        )
+
+
+def test_a_negative_weight_is_refused() -> None:
+    """Negative shares are a transcription error."""
+    with pytest.raises(ValueError, match='non-negative'):
+        grouped_categorical(
+            np.array([0.5]), weights=[[1.0, -1.0]], groups=np.array([0])
+        )
+
+
+def test_an_empty_draw_returns_an_empty_result() -> None:
+    """No assets is a valid input and not an error."""
+    positions = grouped_categorical(
+        np.zeros(0), weights=[[1.0]], groups=np.zeros(0, dtype=int)
+    )
+    assert positions.size == 0
+
+
+def test_a_draw_with_no_distributions_returns_an_empty_result() -> None:
+    """A caller that filtered every asset out has nothing to draw from."""
+    positions = grouped_categorical(
+        np.zeros(0), weights=[], groups=np.zeros(0, dtype=int)
+    )
+    assert positions.size == 0
+
+
+def test_each_asset_is_compared_against_its_own_row() -> None:
+    """
+    A draw must read the distribution its group code names.
+
+    Neighboring rows here are opposites, so a code that lands one row off
+    draws the other category every time.
+    """
+    group_count = 50
+    weights = [
+        [100.0, 0.0] if code % 2 else [0.0, 100.0]
+        for code in range(group_count)
+    ]
+    positions = grouped_categorical(
+        np.full(group_count, 0.5),
+        weights=weights,
+        groups=np.arange(group_count),
+    )
+    assert positions.tolist() == [
+        0 if code % 2 else 1 for code in range(group_count)
+    ]

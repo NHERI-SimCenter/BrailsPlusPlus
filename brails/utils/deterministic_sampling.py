@@ -46,6 +46,7 @@ or as part of a large inventory.
       asset_key_digest
       keyed_uniforms
       truncated_normal
+      grouped_categorical
 """
 
 from __future__ import annotations
@@ -57,7 +58,7 @@ import numpy as np
 from scipy.special import ndtr, ndtri
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Sequence
 
 # SplitMix64, used as a finalizer: the scrambling is what is wanted here,
 # not the sequence. The algorithm and its golden-ratio additive constant are
@@ -252,3 +253,113 @@ def truncated_normal(
     return np.clip(
         center + sigma * ndtri(probability), lower_bound, upper_bound
     )
+
+
+def grouped_categorical(
+    uniforms: np.ndarray,
+    *,
+    weights: Sequence[Sequence[float]],
+    groups: np.ndarray,
+) -> np.ndarray:
+    """
+    Invert uniforms through per-group categorical distributions.
+
+    Assets drawing from the same distribution share a group. Each group
+    carries its own weight vector, which need not sum to anything in
+    particular: the weights are normalized here, so a manual table that
+    prints 101 draws the same as one that prints 100. A category of
+    weight zero is never drawn.
+
+    Args:
+        uniforms (np.ndarray):
+            Uniforms in [0, 1), one per asset.
+        weights (Sequence[Sequence[float]]):
+            One weight vector per group, indexed by group code.
+        groups (np.ndarray):
+            Group code per asset, indexing into ``weights``.
+
+    Returns:
+        np.ndarray:
+            The position drawn within each asset's own weight vector.
+
+    Raises:
+        ValueError:
+            If the uniforms and group codes disagree in shape, if a code
+            has no weight vector, or if a vector is empty, negative, or
+            sums to zero.
+    """
+    uniform_values = np.asarray(uniforms, dtype=np.float64)
+    group_codes = np.asarray(groups, dtype=np.int64)
+    if uniform_values.shape != group_codes.shape:
+        raise ValueError(
+            f'Expected one group code per uniform, got '
+            f'{uniform_values.shape} uniforms and {group_codes.shape} codes.'
+        )
+    if group_codes.size and (
+        group_codes.min() < 0 or group_codes.max() >= len(weights)
+    ):
+        raise ValueError(
+            f'Group codes must index the {len(weights)} weight vectors '
+            f'given, got codes in [{group_codes.min()}, '
+            f'{group_codes.max()}].'
+        )
+    cumulative_rows = [
+        _cumulative_weights(row, code) for code, row in enumerate(weights)
+    ]
+    if not cumulative_rows:
+        return np.zeros(group_codes.shape, dtype=np.int64)
+    # The distributions are laid out as one rectangular array, padded with
+    # ones, so every asset is compared against its own row and nothing it
+    # draws depends on the codes around it. Padding of one is never at or
+    # below a uniform, so a draw stays inside its own categories.
+    width = max(row.size for row in cumulative_rows)
+    grid = np.ones((len(cumulative_rows), width), dtype=np.float64)
+    for code, cumulative in enumerate(cumulative_rows):
+        grid[code, : cumulative.size] = cumulative
+    return (
+        grid[group_codes] <= uniform_values[:, np.newaxis]
+    ).sum(axis=1).astype(np.int64)
+
+
+def _cumulative_weights(row: Sequence[float], code: int) -> np.ndarray:
+    """
+    Normalize one weight vector into a cumulative distribution.
+
+    Args:
+        row (Sequence[float]):
+            The weights of one group.
+        code (int):
+            Its group code, named in any error raised.
+
+    Returns:
+        np.ndarray:
+            Cumulative probabilities ending at exactly one.
+
+    Raises:
+        ValueError:
+            If the vector is empty, holds a negative or non-finite
+            weight, or sums to zero.
+    """
+    values = np.asarray(row, dtype=np.float64)
+    if values.size == 0:
+        raise ValueError(
+            f'Weight vector {code} is empty, so there is nothing to draw.'
+        )
+    if not np.all(np.isfinite(values)) or np.any(values < 0):
+        raise ValueError(
+            f'Weight vector {code} must hold finite, non-negative weights, '
+            f'got {values.tolist()}.'
+        )
+    total = values.sum()
+    if total <= 0:
+        raise ValueError(
+            f'Weight vector {code} sums to {total}, so no category can be '
+            'drawn.'
+        )
+    cumulative = np.cumsum(values) / total
+    # The last entry is pinned to one. A cumulative sum of normalized
+    # weights can land a fraction below it, and a uniform above that would
+    # then be counted against the padding and draw a category that is not
+    # there.
+    cumulative[-1] = 1.0
+    return cumulative
