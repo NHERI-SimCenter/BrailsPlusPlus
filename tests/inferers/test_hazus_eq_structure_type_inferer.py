@@ -424,6 +424,164 @@ def test_a_type_absent_only_from_this_era_names_the_year(
     assert row['conflict'] == 'BuildingType|YearBuilt'
 
 
+def test_a_partner_is_named_only_where_changing_it_would_help(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """
+    Every dimension of the cell lookup is tried before one is named.
+
+    A general type absent from an asset's band but present in another
+    band names the story count; absent from every band of the
+    occupancy but present under another occupancy names the occupancy.
+    """
+    inventory = build_inventory(
+        {
+            'other_band': dict(WOOD_TOWER),
+            'other_occupancy': {
+                'OccupancyClass': 'COM1',
+                'NumberOfStories': 2,
+                'YearBuilt': 1960,
+                'DesignLevel': 'Moderate-Code',
+                'BuildingType': 'MH',
+            },
+        }
+    )
+    verdicts = _inferer().check(inventory)
+    assert verdicts.loc['other_band', 'conflict'] == (
+        'BuildingType|NumberOfStories'
+    )
+    assert verdicts.loc['other_occupancy', 'conflict'] == (
+        'BuildingType|OccupancyClass'
+    )
+
+
+def _row(region: str, occupancy: str, band: str, era: str) -> list:
+    """
+    Read one weight row straight from the tables.
+
+    Args:
+        region (str):
+            Region group.
+        occupancy (str):
+            Occupancy class as the tables key it.
+        band (str):
+            Story band.
+        era (str):
+            Construction era, empty outside the West Coast.
+
+    Returns:
+        list:
+            The weights of that cell.
+    """
+    cell = get_hazus_occ_type_mapping()[1][region][occupancy][band]
+    return cell[era] if era else cell
+
+
+def _admits(region: str, band: str, row: list, members: list[str]) -> bool:
+    """
+    Say whether a row carries any member of a general type.
+
+    Args:
+        region (str):
+            Region group.
+        band (str):
+            Band whose type list the row aligns with.
+        row (list):
+            The weights.
+        members (list[str]):
+            The Hazus types the general type allows.
+
+    Returns:
+        bool:
+            True where at least one member carries weight.
+    """
+    types = get_hazus_occ_type_mapping()[0][region][band]
+    return bool(row) and any(
+        weight > 0
+        for structure_type, weight in zip(types, row)
+        if structure_type in members
+    )
+
+
+def test_every_named_partner_would_admit_the_type_on_its_own() -> None:
+    """
+    A partner the caller can change without effect should not be named.
+
+    Sweeps every cell of every region against every general type, and
+    for whichever feature the diagnosis names, changes that feature
+    alone and checks the type is admitted. Where no pair is named,
+    checks that no single change would have helped.
+    """
+    type_lists, type_weights = get_hazus_occ_type_mapping()
+    membership = get_hazus_general_type_membership()
+    for region, state in (
+        ('West Coast', 'California'),
+        ('Mid-West', 'Iowa'),
+        ('East Coast', 'Alabama'),
+    ):
+        inferer = _inferer(state=state)
+        eras = (
+            tuple(type_weights[region]['RES1'])
+            if region == 'West Coast'
+            else ('',)
+        )
+        bands = tuple(
+            band for band in type_lists[region] if band != 'RES1'
+        )
+        occupancies = [
+            occupancy
+            for occupancy in type_weights[region]
+            if occupancy != 'RES1'
+        ]
+        for occupancy in occupancies:
+            for band in bands:
+                for era in eras:
+                    for members in membership.values():
+                        partner = inferer._blocking_partner(
+                            occupancy, band, era, members
+                        )
+                        by_year = any(
+                            _admits(
+                                region,
+                                band,
+                                _row(region, occupancy, band, other),
+                                members,
+                            )
+                            for other in eras
+                            if other != era
+                        )
+                        by_stories = any(
+                            _admits(
+                                region,
+                                other,
+                                _row(region, occupancy, other, era),
+                                members,
+                            )
+                            for other in bands
+                            if other != band
+                        )
+                        by_occupancy = any(
+                            _admits(
+                                region,
+                                band,
+                                _row(region, other, band, era),
+                                members,
+                            )
+                            for other in occupancies
+                            if other != occupancy
+                        )
+                        if partner == inferer.year_built_key:
+                            assert by_year
+                        elif partner == inferer.stories_key:
+                            assert by_stories
+                        elif partner == inferer.occupancy_key:
+                            assert by_occupancy
+                        else:
+                            assert not by_year
+                            assert not by_stories
+                            assert not by_occupancy
+
+
 def test_a_wood_high_rise_is_diagnosed(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:

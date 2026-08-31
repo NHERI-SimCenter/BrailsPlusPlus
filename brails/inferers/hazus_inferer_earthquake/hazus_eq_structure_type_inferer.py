@@ -705,7 +705,9 @@ class HazusEQStructureTypeInferer(InferenceEngine):
                         f'{self.building_type_key} {general_type} has no '
                         'structure type in this cell',
                         RESTRICTION_BUILDING_TYPE,
-                        f'{self.building_type_key}|{partner}',
+                        f'{self.building_type_key}|{partner}'
+                        if partner
+                        else '',
                     )
                 candidates = kept
         if design_level not in self._unreinforced_design_levels:
@@ -741,9 +743,11 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         """
         Name the feature that stands between a building type and a cell.
 
-        A general building type absent from an asset's cell may be present
-        in the same cell in another era, in which case the year is what
-        put the asset where it is and the story count cannot move it.
+        The cell is selected by occupancy, story band and, on the West
+        Coast, era. Each is tried in turn with the others held where the
+        asset has them, so the feature named is one whose change on its
+        own would admit the observed general type. Where no value of any
+        of them would, there is no pair to name.
 
         Args:
             table_occupancy (str):
@@ -757,24 +761,124 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Returns:
             str:
-                The feature key that pairs with the building type.
+                The feature key that pairs with the building type, or an
+                empty string where changing none of them would help.
         """
         if not band:
+            # RES1 is tabulated without a story band, so a change of
+            # occupancy carries the asset into whichever band its story
+            # count gives it, and any band that admits the type counts.
+            if any(
+                self._admits(other_band, row, members)
+                for other_occupancy in self._weights
+                if other_occupancy != 'RES1'
+                for other_band, row in self._occupancy_rows(other_occupancy)
+            ):
+                return self.occupancy_key
+            return ''
+        if self._needs_era and any(
+            self._admits(band, self._row(table_occupancy, band, other), members)
+            for other in self._eras()
+            if other != era
+        ):
+            return self.year_built_key
+        if any(
+            self._admits(other, self._row(table_occupancy, other, era), members)
+            for other in self._band_names()
+            if other != band
+        ):
+            return self.stories_key
+        if any(
+            self._admits(band, self._row(other, band, era), members)
+            for other in self._weights
+            if other not in (table_occupancy, 'RES1')
+        ):
             return self.occupancy_key
-        if self._needs_era:
-            rows = self._weights[table_occupancy][band]
-            for other_era, weights in rows.items():
-                if other_era == era or not weights:
-                    continue
-                if any(
-                    weight > 0
-                    for structure_type, weight in zip(
-                        self._type_lists[band], weights
-                    )
-                    if structure_type in members
-                ):
-                    return self.year_built_key
-        return self.stories_key
+        return ''
+
+    def _eras(self) -> tuple:
+        """
+        Return the construction eras the region's tables carry.
+
+        Returns:
+            tuple:
+                Era names on the West Coast, a single empty name
+                elsewhere.
+        """
+        if not self._needs_era:
+            return ('',)
+        return tuple(self._weights['RES1'])
+
+    def _band_names(self) -> tuple:
+        """
+        Return the story bands the non-RES1 tables carry.
+
+        Returns:
+            tuple:
+                Band names.
+        """
+        return tuple(band for band in self._type_lists if band != 'RES1')
+
+    def _row(self, table_occupancy: str, band: str, era: str) -> list:
+        """
+        Return one weight row by occupancy, band, and era.
+
+        Args:
+            table_occupancy (str):
+                Occupancy class as the tables key it.
+            band (str):
+                Story band.
+            era (str):
+                Construction era, empty outside the West Coast.
+
+        Returns:
+            list:
+                The weights of that cell.
+        """
+        cell = self._weights[table_occupancy][band]
+        return cell[era] if self._needs_era else cell
+
+    def _occupancy_rows(self, table_occupancy: str) -> list:
+        """
+        Return every band and weight row of one occupancy.
+
+        Args:
+            table_occupancy (str):
+                Occupancy class as the tables key it.
+
+        Returns:
+            list:
+                Pairs of the band the row belongs to and the row.
+        """
+        return [
+            (band, self._row(table_occupancy, band, era))
+            for band in self._weights[table_occupancy]
+            for era in self._eras()
+        ]
+
+    def _admits(self, band: str, weights: list, members: list[str]) -> bool:
+        """
+        Say whether a weight row carries any of a general type's members.
+
+        Args:
+            band (str):
+                Band whose type list the row aligns with.
+            weights (list):
+                The row.
+            members (list[str]):
+                The Hazus types the observed general type allows.
+
+        Returns:
+            bool:
+                True where at least one member carries weight.
+        """
+        if not weights:
+            return False
+        return any(
+            weight > 0
+            for structure_type, weight in zip(self._type_lists[band], weights)
+            if structure_type in members
+        )
 
     @staticmethod
     def _drawable(candidates: list[tuple[str, float]]) -> bool:
