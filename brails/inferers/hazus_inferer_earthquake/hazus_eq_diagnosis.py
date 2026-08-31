@@ -35,23 +35,19 @@
 """
 Report what an earthquake inferer can and cannot do with an asset.
 
-An inferer that fails on individual assets says so per asset rather than
-raising on the first one, so a caller can screen an inventory, keep the
-reasons, and act on the assets that pass. These are the shared pieces of
-that vocabulary.
+The vocabulary every inferer shares lives in
+:mod:`brails.inferers.inference_diagnosis`. These are the pieces the
+earthquake inferers add: the columns their diagnoses carry, and the
+restrictions that can leave an asset with nothing to draw.
 
 .. autosummary::
 
       diagnosis_frame
-      preview_failures
 """
 
 from __future__ import annotations
 
 import pandas as pd
-
-# The verdict for an asset the inferer can process.
-DIAGNOSIS_OK = 'OK'
 
 # The columns of a diagnosis frame. 'restriction' names the restriction
 # that emptied an asset's candidate set, and 'conflict' the pair of
@@ -61,9 +57,6 @@ DIAGNOSIS_COLUMNS = ('diagnosis', 'restriction', 'conflict')
 
 RESTRICTION_BUILDING_TYPE = 'building_type'
 RESTRICTION_DESIGN_LEVEL = 'design_level'
-
-# How many failing assets an error message names before counting the rest.
-PREVIEW_LIMIT = 10
 
 
 def diagnosis_frame(rows: dict[object, tuple[str, str, str]]) -> pd.DataFrame:
@@ -84,26 +77,3 @@ def diagnosis_frame(rows: dict[object, tuple[str, str, str]]) -> pd.DataFrame:
     return pd.DataFrame.from_dict(
         rows, orient='index', columns=list(DIAGNOSIS_COLUMNS)
     )
-
-
-def preview_failures(failures: pd.Series) -> str:
-    """
-    Format failing assets and their diagnoses for an error message.
-
-    Args:
-        failures (pd.Series):
-            Diagnoses indexed by asset id.
-
-    Returns:
-        str:
-            A comma-separated preview with a count of any remainder.
-    """
-    entries = [
-        f'{asset_id} ({diagnosis})'
-        for asset_id, diagnosis in list(failures.items())[:PREVIEW_LIMIT]
-    ]
-    shown = ', '.join(entries)
-    extra = len(failures) - PREVIEW_LIMIT
-    if extra > 0:
-        shown += f' and {extra} more'
-    return shown

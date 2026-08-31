@@ -50,11 +50,9 @@ import numpy as np
 import pandas as pd
 
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_diagnosis import (
-    DIAGNOSIS_OK,
     RESTRICTION_BUILDING_TYPE,
     RESTRICTION_DESIGN_LEVEL,
     diagnosis_frame,
-    preview_failures,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_general_type_membership,
@@ -62,6 +60,10 @@ from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_sampling_height_bands,
     get_hazus_state_region_mapping,
     get_hazus_year_classes,
+)
+from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_OK,
+    preview_failures,
 )
 from brails.inferers.inference_engine import InferenceEngine
 from brails.types.asset_inventory import is_probabilistic_feature

@@ -49,6 +49,11 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
+from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_OK,
+    preview_failures,
+    preview_ids,
+)
 from brails.inferers.inference_engine import InferenceEngine
 from brails.types.asset_inventory import is_probabilistic_feature
 from brails.utils.deterministic_sampling import (
@@ -81,31 +86,10 @@ YEAR_PURPOSE = 'year_built'
 # passes the seed they were given.
 _SEED_BITS = 64
 
-# The verdict check() returns for an asset the sampler can draw for.
-DIAGNOSIS_OK = 'OK'
-
 # Rounding a draw taken on the half-open-widened interval keeps every
 # integer cell the same width, including the two at the bounds.
 _HALF_YEAR = 0.5
 
-
-def _preview(asset_ids: list) -> str:
-    """
-    Format up to ten asset ids for an error message.
-
-    Args:
-        asset_ids (list):
-            The asset ids to show.
-
-    Returns:
-        str:
-            A comma-separated preview with a count of any remainder.
-    """
-    shown = ', '.join(str(asset_id) for asset_id in asset_ids[:10])
-    extra = len(asset_ids) - 10
-    if extra > 0:
-        shown += f' and {extra} more'
-    return shown
 
 
 def _aligned_bounds(
@@ -143,7 +127,7 @@ def _aligned_bounds(
         raise ValueError(
             f'{name} carries no bound for every asset being drawn for. '
             f'Bounds are matched by asset id, not by position. Missing '
-            f'on: {_preview(unbounded)}.'
+            f'on: {preview_ids(unbounded)}.'
         )
     return aligned.to_numpy(dtype=float)
 
@@ -220,7 +204,7 @@ def sample_years(
         raise ValueError(
             'sample_years needs a usable median for every asset: a number '
             f'inside [{floor}, {cap}]. Run check() and drop the failures '
-            f'first. Unusable on: {_preview(unusable)}.'
+            f'first. Unusable on: {preview_ids(unusable)}.'
         )
     low = _aligned_bounds(lower, medians.index, floor, 'lower')
     high = _aligned_bounds(upper, medians.index, cap, 'upper')
@@ -448,13 +432,7 @@ class YearBuiltSampler(InferenceEngine):
         verdicts = self.check(input_inventory)
         failed = verdicts[verdicts != DIAGNOSIS_OK]
         if not failed.empty:
-            reasons = ', '.join(
-                f'{asset_id} ({reason})'
-                for asset_id, reason in list(failed.items())[:10]
-            )
-            extra = len(failed) - 10
-            if extra > 0:
-                reasons += f' and {extra} more'
+            reasons = preview_failures(failed)
             raise ValueError(
                 f'Cannot sample {self.year_built_key} for {len(failed)} of '
                 f'{len(verdicts)} assets: {reasons}. Remove them or supply '

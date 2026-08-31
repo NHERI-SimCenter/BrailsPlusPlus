@@ -43,7 +43,6 @@ import pytest
 
 import brails.inferers
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_diagnosis import (
-    DIAGNOSIS_OK,
     RESTRICTION_BUILDING_TYPE,
     RESTRICTION_DESIGN_LEVEL,
 )
@@ -55,6 +54,7 @@ from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_general_type_membership,
     get_hazus_occ_type_mapping,
 )
+from brails.inferers.inference_diagnosis import DIAGNOSIS_OK
 from brails.utils import Importer
 from brails.utils.deterministic_sampling import asset_key_digest
 

@@ -49,12 +49,14 @@ import numpy as np
 import pandas as pd
 
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_diagnosis import (
-    DIAGNOSIS_OK,
     diagnosis_frame,
-    preview_failures,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_height_classes_by_type,
+)
+from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_OK,
+    preview_failures,
 )
 from brails.inferers.inference_engine import InferenceEngine
 from brails.types.asset_inventory import is_probabilistic_feature

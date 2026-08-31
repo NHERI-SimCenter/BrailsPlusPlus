@@ -41,15 +41,13 @@ from typing import TYPE_CHECKING
 import pytest
 
 import brails.inferers
-from brails.inferers.hazus_inferer_earthquake.hazus_eq_diagnosis import (
-    DIAGNOSIS_OK,
-)
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_height_class_inferer import (
     HazusEQHeightClassInferer,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_height_classes_by_type,
 )
+from brails.inferers.inference_diagnosis import DIAGNOSIS_OK
 from brails.utils import Importer
 
 if TYPE_CHECKING:

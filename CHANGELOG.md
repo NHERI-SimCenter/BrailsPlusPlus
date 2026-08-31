@@ -21,7 +21,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **`YearBuiltSampler`** (`brails/inferers/year_built_sampler/`), which draws a per-building construction year around a tract median. Each sampler generates its own seed unless given one and records it, so runs differ but any run can be repeated.
 - **`HazusEQStructureTypeInferer`** (`brails/inferers/hazus_inferer_earthquake/`), which draws a Hazus structure type from the Inventory Manual Appendix A distributions. An observed general building type and a design level above Low-Code narrow the candidate types before the draw, and the remaining weights are renormalized.
 - **`HazusEQHeightClassInferer`**, which assigns the Table 5-1 height class of a structure type and story count. W1, W2, S3, PC1 and MH are written with a null height class, since their damage models ignore height.
-- **Per-asset diagnoses for the earthquake inferers** (`hazus_eq_diagnosis.py`). `check()` reports what stands in the way of each asset, and where a restriction empties an asset's candidates it names the restriction and the two features that disagree, so a caller can decide which of the two to give up.
+- **Per-asset diagnoses** (`brails/inferers/inference_diagnosis.py`, with the earthquake columns and restrictions in `hazus_eq_diagnosis.py`). `check()` reports what stands in the way of each asset, and where a restriction empties an asset's candidates it names the restriction and the two features that disagree, so a caller can decide which of the two to give up.
 - **Grouped categorical draws** (`grouped_categorical` in `brails/utils/deterministic_sampling.py`), which invert keyed uniforms through per-group weight vectors in one pass.
 
 ### Changed

@@ -44,8 +44,8 @@ from scipy.special import ndtr
 from scipy.stats import truncnorm
 
 import brails.inferers
+from brails.inferers.inference_diagnosis import DIAGNOSIS_OK
 from brails.inferers.year_built_sampler.year_built_sampler import (
-    DIAGNOSIS_OK,
     YearBuiltSampler,
     sample_years,
 )
@@ -142,6 +142,17 @@ def test_infer_names_every_asset_it_cannot_draw_for(
         }
     )
     with pytest.raises(ValueError, match=r'Cannot sample YearBuilt for 2 of 3'):
+        YearBuiltSampler(sigma=15).infer(inventory)
+
+
+def test_infer_previews_ten_failures_and_counts_the_rest(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """A city-wide failure must not print a city-wide message."""
+    inventory = build_inventory(
+        {f'asset_{index}': {'OccupancyClass': 'RES1'} for index in range(12)}
+    )
+    with pytest.raises(ValueError, match='and 2 more'):
         YearBuiltSampler(sigma=15).infer(inventory)
 
 
