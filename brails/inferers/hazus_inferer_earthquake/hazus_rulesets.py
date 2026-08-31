@@ -53,6 +53,7 @@ numbering.
       get_hazus_year_classes
       get_hazus_sampling_height_bands
       get_hazus_height_classes_by_type
+      get_hazus_unreinforced_design_levels
       get_hazus_general_type_membership
       get_hazus_base_replacement_cost
       get_hazus_region_to_garage
@@ -1450,6 +1451,50 @@ def get_hazus_height_classes_by_type() -> (
         "RM2": dict(full_grid),
         "URM": {"Low-Rise": (1, 2), "Mid-Rise": (3, None)},
         "MH": None,
+    }
+
+
+def get_hazus_unreinforced_design_levels() -> dict[str, tuple[str, ...]]:
+    """
+    Return the design levels each region allows for URM, C3 and S5.
+
+    Transcribed from the footnote under the Appendix A structure type
+    tables of the FEMA Hazus Inventory Technical Manual 7.0:
+    "Unreinforced SBTs URM, C3 and S5 are not allowed in West Coast
+    Region where Design Levels are higher than Pre-Code", with Low-Code
+    in place of Pre-Code for the other two regions. The 6.1 edition
+    carries the same footnote; the 6.0 edition carries none. Page
+    numbers rather than table captions throughout Appendix A: both
+    editions print two tables captioned A-1, so every caption after the
+    first sits one below the number the manual's own cross-references
+    use.
+
+    The regional split is worth reading before relying on it. The
+    condition is the region group, which selects a table set rather than
+    measuring seismicity, and the West Coast group spans UBC zone 4 on
+    the California coast to zones 0 and 1 across the interior. The
+    structural population it governs is also nearly empty: these three
+    types carry 28.18% of West Coast printed weight before 1950, 1.90%
+    from 1950 to 1970 and 0.08% after 1970, while every Low-Code year in
+    the generic design level table falls after 1976.
+    `HazusEQStructureTypeInferer` takes an override for callers who would
+    rather apply the nationwide bound the fragility library carries, that is,
+    allow Low-Code Design Levels for the above three structure types nationwide.
+
+    This governs what the sampled building stock may contain. It is the
+    tighter of the two rules that bear on these types: the Earthquake
+    Model Technical Manual 6.1 Table 5-7 (p. 5-27) parameterizes them
+    under Pre-Code and Low-Code only, nationwide, which is what the
+    fragility library ships.
+
+    Returns:
+        dict[str, tuple[str, ...]]:
+            Region group to the design levels that admit these types.
+    """
+    return {
+        "West Coast": ("Pre-Code",),
+        "Mid-West": ("Pre-Code", "Low-Code"),
+        "East Coast": ("Pre-Code", "Low-Code"),
     }
 
 

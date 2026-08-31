@@ -59,6 +59,7 @@ from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_occ_type_mapping,
     get_hazus_sampling_height_bands,
     get_hazus_state_region_mapping,
+    get_hazus_unreinforced_design_levels,
     get_hazus_year_classes,
 )
 from brails.inferers.inference_diagnosis import (
@@ -81,14 +82,10 @@ if TYPE_CHECKING:
 # Part of the reproducibility contract; see keyed_uniforms.
 STRUCTURE_TYPE_PURPOSE = 'structure_type'
 
-# Types with no archetype above Low-Code. The Hazus Earthquake Model
-# Technical Manual 6.1 prints design strength for them under Pre-Code and
-# Low-Code only, marking the rest as "types that are not permitted by
-# current seismic codes" (Table 5-7), and the fragility library carries
-# curves for no other level. The restriction is a property of the damage
-# models, so it holds in every region.
+# The types the Appendix A footnote calls unreinforced. Which design
+# levels admit them depends on the region; see
+# get_hazus_unreinforced_design_levels.
 UNREINFORCED_MASONRY_TYPES = ('S5', 'C3', 'URM')
-UNREINFORCED_MASONRY_DESIGN_LEVELS = ('Pre-Code', 'Low-Code')
 
 # Design levels the Hazus earthquake models define, in increasing order
 # of seismic design strength.
@@ -161,6 +158,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         seed: int | None = None,
         *,
         use_building_type: bool = True,
+        unreinforced_design_levels: tuple[str, ...] | None = None,
         occupancy_key: str = 'OccupancyClass',
         stories_key: str = 'NumberOfStories',
         year_built_key: str = 'YearBuilt',
@@ -184,6 +182,11 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             use_building_type (bool):
                 Whether an observed general building type restricts the
                 draw to its own Hazus types.
+            unreinforced_design_levels (tuple[str, ...] | None):
+                Design levels that admit URM, C3 and S5, overriding the
+                manual's set for this inferer's region. Left out, the
+                manual governs: Pre-Code alone on the West Coast,
+                Pre-Code and Low-Code elsewhere.
             occupancy_key (str):
                 Feature name the occupancy class is read from.
             stories_key (str):
@@ -228,6 +231,11 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         self._weights = type_weights[self.region]
         self._bands = get_hazus_sampling_height_bands()
         self._membership = get_hazus_general_type_membership()
+        self._unreinforced_design_levels = (
+            get_hazus_unreinforced_design_levels()[self.region]
+            if unreinforced_design_levels is None
+            else tuple(unreinforced_design_levels)
+        )
         self._era_by_year = {
             year: era
             for era, years in get_hazus_year_classes().items()
@@ -700,7 +708,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
                         f'{self.building_type_key}|{partner}',
                     )
                 candidates = kept
-        if design_level not in UNREINFORCED_MASONRY_DESIGN_LEVELS:
+        if design_level not in self._unreinforced_design_levels:
             kept = [
                 (structure_type, weight)
                 for structure_type, weight in candidates

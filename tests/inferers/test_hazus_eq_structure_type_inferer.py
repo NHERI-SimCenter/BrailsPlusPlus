@@ -53,6 +53,7 @@ from brails.inferers.hazus_inferer_earthquake.hazus_eq_structure_type_inferer im
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_general_type_membership,
     get_hazus_occ_type_mapping,
+    get_hazus_unreinforced_design_levels,
 )
 from brails.inferers.inference_diagnosis import DIAGNOSIS_OK
 from brails.utils import Importer
@@ -320,6 +321,63 @@ def test_pre_code_keeps_the_masonry_infill_types(
         )
     )
     assert drawn & set(UNREINFORCED_MASONRY_TYPES)
+
+
+def test_the_west_coast_allows_the_unreinforced_types_at_pre_code_only(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """
+    The Appendix A footnote is stricter on the West Coast than elsewhere.
+
+    Low-Code admits URM, C3 and S5 in the Mid-West and on the East
+    Coast, and does not on the West Coast. California cannot show it:
+    its own design level table has no Low-Code era, so the fixture is a
+    generic-zone West Coast state.
+    """
+    masonry = {
+        'OccupancyClass': 'COM8',
+        'NumberOfStories': 5,
+        'YearBuilt': 1945,
+        'DesignLevel': 'Low-Code',
+        'BuildingType': 'M',
+    }
+    inventory = build_inventory({'a': dict(masonry)})
+    west = _inferer(state='Washington').check(inventory).loc['a']
+    assert west['restriction'] == RESTRICTION_DESIGN_LEVEL
+    midwest = _inferer(state='Iowa').check(inventory).loc['a']
+    assert midwest['diagnosis'] == DIAGNOSIS_OK
+    drawn = set(_spread(build_inventory, masonry, count=200, state='Iowa'))
+    assert 'URM' in drawn
+
+
+def test_the_legality_set_can_be_overridden(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """A user who wants their own judgment applied is not locked out."""
+    masonry = {
+        'OccupancyClass': 'COM8',
+        'NumberOfStories': 5,
+        'YearBuilt': 1945,
+        'DesignLevel': 'Low-Code',
+        'BuildingType': 'M',
+    }
+    inventory = build_inventory({'a': dict(masonry)})
+    strict = _inferer(state='Washington').check(inventory).loc['a']
+    assert strict['restriction'] == RESTRICTION_DESIGN_LEVEL
+    relaxed = _inferer(
+        state='Washington',
+        unreinforced_design_levels=('Pre-Code', 'Low-Code'),
+    )
+    assert relaxed.check(inventory).loc['a', 'diagnosis'] == DIAGNOSIS_OK
+    assert relaxed.draw(inventory)['a'] == 'URM'
+
+
+def test_the_legality_sets_come_from_the_tables() -> None:
+    """The inferer reads the footnote rather than restating it."""
+    levels = get_hazus_unreinforced_design_levels()
+    assert levels['West Coast'] == ('Pre-Code',)
+    assert set(levels['Mid-West']) == {'Pre-Code', 'Low-Code'}
+    assert set(levels['East Coast']) == {'Pre-Code', 'Low-Code'}
 
 
 def test_a_restriction_down_to_one_type_draws_it_every_time(
