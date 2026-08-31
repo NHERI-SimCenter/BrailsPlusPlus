@@ -132,6 +132,8 @@ include = [
     "tests/scrapers/test_overture_release_resolution.py",
 
     "brails/inferers/hazus_inferer_earthquake/hazus_eq_design_level_inferer.py",
+    "brails/inferers/hazus_inferer_earthquake/hazus_eq_diagnosis.py",
+    "brails/inferers/hazus_inferer_earthquake/hazus_eq_structure_type_inferer.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py",
     "brails/inferers/year_built_sampler/year_built_sampler.py",
     "tests/inferers/**/*.py",

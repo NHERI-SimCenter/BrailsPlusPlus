@@ -1,0 +1,109 @@
+# Copyright (c) 2025 The Regents of the University of California
+#
+# This file is part of BRAILS++.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# You should have received a copy of the BSD 3-Clause License along with
+# BRAILS++. If not, see <http://www.opensource.org/licenses/>.
+
+
+"""
+Report what an earthquake inferer can and cannot do with an asset.
+
+An inferer that fails on individual assets says so per asset rather than
+raising on the first one, so a caller can screen an inventory, keep the
+reasons, and act on the assets that pass. These are the shared pieces of
+that vocabulary.
+
+.. autosummary::
+
+      diagnosis_frame
+      preview_failures
+"""
+
+from __future__ import annotations
+
+import pandas as pd
+
+# The verdict for an asset the inferer can process.
+DIAGNOSIS_OK = 'OK'
+
+# The columns of a diagnosis frame. 'restriction' names the restriction
+# that emptied an asset's candidate set, and 'conflict' the pair of
+# features that disagree, so a caller resolving a conflict knows which of
+# the two it can give up. Both are empty where they do not apply.
+DIAGNOSIS_COLUMNS = ('diagnosis', 'restriction', 'conflict')
+
+RESTRICTION_BUILDING_TYPE = 'building_type'
+RESTRICTION_DESIGN_LEVEL = 'design_level'
+
+# How many failing assets an error message names before counting the rest.
+PREVIEW_LIMIT = 10
+
+
+def diagnosis_frame(rows: dict[object, tuple[str, str, str]]) -> pd.DataFrame:
+    """
+    Build a diagnosis frame from per-asset verdicts.
+
+    Args:
+        rows (dict[object, tuple[str, str, str]]):
+            Asset id to its diagnosis, restriction, and conflict.
+
+    Returns:
+        pd.DataFrame:
+            One row per asset id, with the columns of
+            :data:`DIAGNOSIS_COLUMNS`.
+    """
+    if not rows:
+        return pd.DataFrame(columns=list(DIAGNOSIS_COLUMNS), dtype=object)
+    return pd.DataFrame.from_dict(
+        rows, orient='index', columns=list(DIAGNOSIS_COLUMNS)
+    )
+
+
+def preview_failures(failures: pd.Series) -> str:
+    """
+    Format failing assets and their diagnoses for an error message.
+
+    Args:
+        failures (pd.Series):
+            Diagnoses indexed by asset id.
+
+    Returns:
+        str:
+            A comma-separated preview with a count of any remainder.
+    """
+    entries = [
+        f'{asset_id} ({diagnosis})'
+        for asset_id, diagnosis in list(failures.items())[:PREVIEW_LIMIT]
+    ]
+    shown = ', '.join(entries)
+    extra = len(failures) - PREVIEW_LIMIT
+    if extra > 0:
+        shown += f' and {extra} more'
+    return shown
