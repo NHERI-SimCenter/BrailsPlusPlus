@@ -38,4 +38,7 @@ from .hazus_inferer_earthquake.hazus_eq_design_level_inferer import HazusEQDesig
 from .hazus_inferer_earthquake.hazus_eq_structure_type_inferer import (
     HazusEQStructureTypeInferer,
 )
+from .hazus_inferer_earthquake.hazus_eq_height_class_inferer import (
+    HazusEQHeightClassInferer,
+)
 from .year_built_sampler.year_built_sampler import YearBuiltSampler
