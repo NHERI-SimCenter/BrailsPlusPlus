@@ -39,12 +39,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 import pytest
 
 import brails.inferers
-from brails.inferers.hazus_inferer_earthquake.hazus_eq_diagnosis import (
-    RESTRICTION_BUILDING_TYPE,
-    RESTRICTION_DESIGN_LEVEL,
+from brails.inferers.hazus_inferer_earthquake.hazus_eq_design_level_inferer import (
+    CA_DESIGN_LEVELS,
+    GENERIC_DESIGN_LEVELS,
+    assign_design_levels,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_structure_type_inferer import (
     UNREINFORCED_MASONRY_TYPES,
@@ -55,7 +57,12 @@ from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_occ_type_mapping,
     get_hazus_unreinforced_design_levels,
 )
-from brails.inferers.inference_diagnosis import DIAGNOSIS_OK
+from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_INFEASIBLE,
+    DIAGNOSIS_INVALID,
+    DIAGNOSIS_OK,
+    DIAGNOSIS_UNSUPPORTED,
+)
 from brails.utils import Importer
 from brails.utils.deterministic_sampling import asset_key_digest
 
@@ -343,7 +350,7 @@ def test_the_west_coast_allows_the_unreinforced_types_at_pre_code_only(
     }
     inventory = build_inventory({'a': dict(masonry)})
     west = _inferer(state='Washington').check(inventory).loc['a']
-    assert west['restriction'] == RESTRICTION_DESIGN_LEVEL
+    assert west['diagnosis'] == DIAGNOSIS_INFEASIBLE
     midwest = _inferer(state='Iowa').check(inventory).loc['a']
     assert midwest['diagnosis'] == DIAGNOSIS_OK
     drawn = set(_spread(build_inventory, masonry, count=200, state='Iowa'))
@@ -363,7 +370,7 @@ def test_the_legality_set_can_be_overridden(
     }
     inventory = build_inventory({'a': dict(masonry)})
     strict = _inferer(state='Washington').check(inventory).loc['a']
-    assert strict['restriction'] == RESTRICTION_DESIGN_LEVEL
+    assert strict['diagnosis'] == DIAGNOSIS_INFEASIBLE
     relaxed = _inferer(
         state='Washington',
         unreinforced_design_levels=('Pre-Code', 'Low-Code'),
@@ -400,8 +407,10 @@ def test_a_masonry_walkup_above_low_code_is_diagnosed(
     """The cell holds URM as its only masonry, and the level removes it."""
     inventory = build_inventory({'a': dict(MASONRY_WALKUP)})
     row = _inferer().check(inventory).loc['a']
-    assert row['restriction'] == RESTRICTION_DESIGN_LEVEL
-    assert row['conflict'] == 'BuildingType|YearBuilt'
+    assert row['diagnosis'] == DIAGNOSIS_INFEASIBLE
+    assert row['resolvable_by'] == (
+        'OccupancyClass', 'NumberOfStories', 'YearBuilt', 'BuildingType'
+    )
 
 
 def test_a_type_absent_only_from_this_era_names_the_year(
@@ -420,19 +429,99 @@ def test_a_type_absent_only_from_this_era_names_the_year(
         }
     )
     row = _inferer().check(inventory).loc['a']
-    assert row['restriction'] == RESTRICTION_BUILDING_TYPE
-    assert row['conflict'] == 'BuildingType|YearBuilt'
+    assert 'YearBuilt' in row['resolvable_by']
 
 
-def test_a_partner_is_named_only_where_changing_it_would_help(
+def test_an_occupancy_the_tables_do_not_know_is_invalid(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """A lookup that cannot run is not a lookup that returned nothing."""
+    inventory = build_inventory(
+        {
+            'unknown': dict(STORE, OccupancyClass='CAFE'),
+            'subtype_typo': dict(STORE, OccupancyClass='RES3Z'),
+        }
+    )
+    verdicts = _inferer().check(inventory)
+    assert all(verdicts['diagnosis'] == DIAGNOSIS_INVALID)
+    assert all(verdicts['resolvable_by'] == ())
+
+
+def test_a_legality_set_the_year_cannot_reach_is_refused() -> None:
+    """
+    The year is offered on the strength of the earliest design level.
+
+    A set that leaves it out would make that offer false, so the
+    constructor refuses one rather than reporting years that resolve
+    nothing.
+    """
+    with pytest.raises(ValueError, match='must admit Pre-Code'):
+        _inferer(unreinforced_design_levels=('Low-Code',))
+    with pytest.raises(ValueError, match='not Hazus design levels'):
+        _inferer(unreinforced_design_levels=('PreCode',))
+
+
+def test_nothing_is_offered_where_the_lookup_could_not_run(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """A feature cannot be relaxed into an invalid or unsupported lookup."""
+    inventory = build_inventory(
+        {
+            'no_driver': {'NumberOfStories': 2, 'YearBuilt': 1960,
+                          'DesignLevel': 'Moderate-Code'},
+            'unusable': dict(STORE, NumberOfStories=0),
+            'unsupported': dict(STORE, OccupancyClass=['COM1', 'COM1']),
+        },
+        n_pw=2,
+    )
+    verdicts = _inferer().check(inventory)
+    assert verdicts.loc['no_driver', 'diagnosis'] == DIAGNOSIS_INVALID
+    assert verdicts.loc['unusable', 'diagnosis'] == DIAGNOSIS_INVALID
+    assert verdicts.loc['unsupported', 'diagnosis'] == DIAGNOSIS_UNSUPPORTED
+    assert all(verdicts['resolvable_by'] == ())
+
+
+def test_a_real_value_in_an_unread_shape_is_not_called_invalid(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
     """
-    Every dimension of the cell lookup is tried before one is named.
+    Imputing over real data would replace it with data unnecessarily.
 
-    A general type absent from an asset's band but present in another
-    band names the story count; absent from every band of the
-    occupancy but present under another occupancy names the occupancy.
+    The category is what keeps a caller from treating a per-world value
+    as a missing one and filling it in.
+    """
+    features = dict(STORE)
+    features['NumberOfStories'] = [2, 3]
+    inventory = build_inventory({'a': features}, n_pw=2)
+    assert (
+        _inferer().check(inventory).loc['a', 'diagnosis']
+        == DIAGNOSIS_UNSUPPORTED
+    )
+
+
+def test_every_design_level_table_starts_at_an_admitting_level() -> None:
+    """
+    The year is offered as resolvable on the strength of this.
+
+    An early enough year reaches the oldest design level of whatever
+    table governs the site, and the inferer relies on that level
+    admitting the unreinforced types in every region.
+    """
+    tables = dict(CA_DESIGN_LEVELS)
+    tables.update(GENERIC_DESIGN_LEVELS)
+    legality = get_hazus_unreinforced_design_levels()
+    for _breaks, levels in tables.values():
+        assert all(levels[0] in allowed for allowed in legality.values())
+
+
+def test_the_offered_features_differ_with_what_blocks_the_asset(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """
+    Each asset is offered what would work for it, and nothing else.
+
+    A general type absent from every band of the occupancy cannot be
+    resolved by the story count; one absent only from this band can.
     """
     inventory = build_inventory(
         {
@@ -447,139 +536,125 @@ def test_a_partner_is_named_only_where_changing_it_would_help(
         }
     )
     verdicts = _inferer().check(inventory)
-    assert verdicts.loc['other_band', 'conflict'] == (
-        'BuildingType|NumberOfStories'
+    assert 'NumberOfStories' in verdicts.loc['other_band', 'resolvable_by']
+    assert (
+        'NumberOfStories'
+        not in verdicts.loc['other_occupancy', 'resolvable_by']
     )
-    assert verdicts.loc['other_occupancy', 'conflict'] == (
-        'BuildingType|OccupancyClass'
-    )
+    assert 'OccupancyClass' in verdicts.loc['other_occupancy', 'resolvable_by']
 
 
-def _row(region: str, occupancy: str, band: str, era: str) -> list:
+def _design_level(year: int) -> str:
     """
-    Read one weight row straight from the tables.
+    Derive the design level a year implies, as the compiler would.
 
     Args:
-        region (str):
-            Region group.
-        occupancy (str):
-            Occupancy class as the tables key it.
-        band (str):
-            Story band.
-        era (str):
-            Construction era, empty outside the West Coast.
+        year (int):
+            Construction year.
 
     Returns:
-        list:
-            The weights of that cell.
+        str:
+            The design level for California, UBC zone 4.
     """
-    cell = get_hazus_occ_type_mapping()[1][region][occupancy][band]
-    return cell[era] if era else cell
+    return assign_design_levels(
+        pd.Series({'a': year}), state='CA', seismic_zone='4'
+    )['a']
 
 
-def _admits(region: str, band: str, row: list, members: list[str]) -> bool:
+def _any_value_works(
+    build_inventory: Callable[..., AssetInventory],
+    inferer: HazusEQStructureTypeInferer,
+    features: dict,
+    key: str,
+    values: list,
+) -> bool:
     """
-    Say whether a row carries any member of a general type.
+    Say whether any value of one feature makes an asset drawable.
 
     Args:
-        region (str):
-            Region group.
-        band (str):
-            Band whose type list the row aligns with.
-        row (list):
-            The weights.
-        members (list[str]):
-            The Hazus types the general type allows.
+        build_inventory (Callable[..., AssetInventory]):
+            The inventory factory fixture.
+        inferer (HazusEQStructureTypeInferer):
+            The inferer to ask.
+        features (dict):
+            The asset's features.
+        key (str):
+            The feature to vary. None among the values means removing it.
+        values (list):
+            The values to try.
 
     Returns:
         bool:
-            True where at least one member carries weight.
+            True where some value leaves the asset drawable.
     """
-    types = get_hazus_occ_type_mapping()[0][region][band]
-    return bool(row) and any(
-        weight > 0
-        for structure_type, weight in zip(types, row)
-        if structure_type in members
-    )
+    for value in values:
+        varied = dict(features)
+        if value is None:
+            varied.pop(key)
+        else:
+            varied[key] = value
+        if key == 'YearBuilt':
+            # The design level is derived from the year, so a change of
+            # year carries it along, as it would in the compiler.
+            varied['DesignLevel'] = _design_level(value)
+        if varied == features:
+            continue
+        inventory = build_inventory({'a': varied})
+        if inferer.check(inventory).loc['a', 'diagnosis'] == DIAGNOSIS_OK:
+            return True
+    return False
 
 
-def test_every_named_partner_would_admit_the_type_on_its_own() -> None:
+def test_every_resolvable_feature_admits_the_asset_on_its_own(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
     """
-    A partner the caller can change without effect should not be named.
+    A feature the caller can change without effect should not be named.
 
-    Sweeps every cell of every region against every general type, and
-    for whichever feature the diagnosis names, changes that feature
-    alone and checks the type is admitted. Where no pair is named,
-    checks that no single change would have helped.
+    Sweeps every cell of the region against every general type and, for
+    each feature the diagnosis offers, changes that feature alone and
+    checks the asset becomes drawable. Then changes each feature the
+    diagnosis withholds and checks it does not.
     """
     type_lists, type_weights = get_hazus_occ_type_mapping()
     membership = get_hazus_general_type_membership()
-    for region, state in (
-        ('West Coast', 'California'),
-        ('Mid-West', 'Iowa'),
-        ('East Coast', 'Alabama'),
-    ):
-        inferer = _inferer(state=state)
-        eras = (
-            tuple(type_weights[region]['RES1'])
-            if region == 'West Coast'
-            else ('',)
-        )
-        bands = tuple(
-            band for band in type_lists[region] if band != 'RES1'
-        )
-        occupancies = [
-            occupancy
-            for occupancy in type_weights[region]
-            if occupancy != 'RES1'
-        ]
-        for occupancy in occupancies:
-            for band in bands:
-                for era in eras:
-                    for members in membership.values():
-                        partner = inferer._blocking_partner(
-                            occupancy, band, era, members
+    inferer = _inferer()
+    bands = tuple(inferer._bands)
+    eras = tuple(type_weights['West Coast']['RES1'])
+    occupancies = list(type_weights['West Coast'])
+    stories_of = {'low_rise': 2, 'mid_rise': 5, 'high_rise': 9}
+    year_of = {'pre_1950': 1930, '1950_to_1970': 1960, 'post_1970': 1990}
+    checked = 0
+    for occupancy in occupancies:
+        for band in bands:
+            for era in eras:
+                for letter in membership:
+                    features = {
+                        'OccupancyClass': occupancy,
+                        'NumberOfStories': stories_of[band],
+                        'YearBuilt': year_of[era],
+                        'DesignLevel': _design_level(year_of[era]),
+                        'BuildingType': letter,
+                    }
+                    inventory = build_inventory({'a': features})
+                    row = inferer.check(inventory).loc['a']
+                    if row['diagnosis'] != DIAGNOSIS_INFEASIBLE:
+                        continue
+                    checked += 1
+                    offered = set(row['resolvable_by'])
+                    for key, values in (
+                        ('OccupancyClass', occupancies),
+                        ('NumberOfStories', list(stories_of.values())),
+                        ('YearBuilt', list(year_of.values())),
+                        ('BuildingType', [None]),
+                    ):
+                        works = _any_value_works(
+                            build_inventory, inferer, features, key, values
                         )
-                        by_year = any(
-                            _admits(
-                                region,
-                                band,
-                                _row(region, occupancy, band, other),
-                                members,
-                            )
-                            for other in eras
-                            if other != era
+                        assert works == (key in offered), (
+                            occupancy, band, era, letter, key
                         )
-                        by_stories = any(
-                            _admits(
-                                region,
-                                other,
-                                _row(region, occupancy, other, era),
-                                members,
-                            )
-                            for other in bands
-                            if other != band
-                        )
-                        by_occupancy = any(
-                            _admits(
-                                region,
-                                band,
-                                _row(region, other, band, era),
-                                members,
-                            )
-                            for other in occupancies
-                            if other != occupancy
-                        )
-                        if partner == inferer.year_built_key:
-                            assert by_year
-                        elif partner == inferer.stories_key:
-                            assert by_stories
-                        elif partner == inferer.occupancy_key:
-                            assert by_occupancy
-                        else:
-                            assert not by_year
-                            assert not by_stories
-                            assert not by_occupancy
+    assert checked > 100
 
 
 def test_a_wood_high_rise_is_diagnosed(
@@ -588,18 +663,33 @@ def test_a_wood_high_rise_is_diagnosed(
     """The tables carry no wood above seven stories."""
     inventory = build_inventory({'a': dict(WOOD_TOWER)})
     row = _inferer().check(inventory).loc['a']
-    assert row['restriction'] == RESTRICTION_BUILDING_TYPE
-    assert row['conflict'] == 'BuildingType|NumberOfStories'
+    assert row['diagnosis'] == DIAGNOSIS_INFEASIBLE
+    assert row['resolvable_by'] == (
+        'OccupancyClass', 'NumberOfStories', 'BuildingType'
+    )
+    assert 'YearBuilt' not in row['resolvable_by']
 
 
-def test_a_restricted_home_names_its_occupancy(
+def test_a_home_without_a_story_count_cannot_change_occupancy(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
-    """RES1 has no story band, so the pair is the occupancy instead."""
-    inventory = build_inventory({'a': dict(HOME, BuildingType='S')})
-    row = _inferer().check(inventory).loc['a']
-    assert row['restriction'] == RESTRICTION_BUILDING_TYPE
-    assert row['conflict'] == 'BuildingType|OccupancyClass'
+    """
+    RES1 is drawn without a story band, and every other class needs one.
+
+    So a change of occupancy resolves nothing for a home that carries no
+    story count, while for one that does it opens the other tables.
+    """
+    inventory = build_inventory(
+        {
+            'no_stories': dict(HOME, BuildingType='S'),
+            'with_stories': dict(HOME, BuildingType='S', NumberOfStories=2),
+        }
+    )
+    verdicts = _inferer().check(inventory)
+    assert verdicts.loc['no_stories', 'resolvable_by'] == ('BuildingType',)
+    assert verdicts.loc['with_stories', 'resolvable_by'] == (
+        'OccupancyClass', 'BuildingType'
+    )
 
 
 def test_a_cell_the_tables_leave_empty_is_diagnosed(
@@ -608,18 +698,24 @@ def test_a_cell_the_tables_leave_empty_is_diagnosed(
     """An eight-story retail building has no row, before any restriction."""
     inventory = build_inventory({'a': dict(STORE, NumberOfStories=8)})
     row = _inferer().check(inventory).loc['a']
-    assert 'no structure type' in row['diagnosis']
-    assert row['restriction'] == ''
-    assert row['conflict'] == ''
+    assert row['diagnosis'] == DIAGNOSIS_INFEASIBLE
+    assert 'no structure type' in row['detail']
+    assert row['resolvable_by'] == ('OccupancyClass', 'NumberOfStories')
 
 
-def test_a_state_without_a_home_row_is_diagnosed(
-    build_inventory: Callable[..., AssetInventory],
-) -> None:
-    """Guam is a West Coast state with no RES1 row in the tables."""
-    inventory = build_inventory({'a': dict(HOME)})
-    row = _inferer(state='Guam').check(inventory).loc['a']
-    assert 'has no RES1 row' in row['diagnosis']
+@pytest.mark.parametrize(
+    'state', ['American Samoa', 'Guam', 'Northern Mariana Islands']
+)
+def test_a_state_without_a_home_row_is_refused(state: str) -> None:
+    """
+    A state whose homes cannot be drawn is not one we can serve.
+
+    These three sit in the West Coast group and the Appendix A RES1
+    tables carry no row for any of them, so an inventory built for one
+    would silently hold no single-family homes.
+    """
+    with pytest.raises(ValueError, match='no RES1 distribution'):
+        _inferer(state=state)
 
 
 @pytest.mark.parametrize(
@@ -650,7 +746,7 @@ def test_unusable_drivers_are_diagnosed(
 ) -> None:
     """A driver that is present but unusable is named, not coerced."""
     inventory = build_inventory({'a': features})
-    assert expected in _inferer().check(inventory).loc['a', 'diagnosis']
+    assert expected in _inferer().check(inventory).loc['a', 'detail']
 
 
 @pytest.mark.parametrize(
@@ -664,8 +760,9 @@ def test_a_per_world_driver_is_diagnosed(
     features = dict(STORE, BuildingType='C')
     features[key] = [features[key], features[key]]
     inventory = build_inventory({'a': features}, n_pw=2)
-    assert 'per-world list' in _inferer().check(inventory).loc['a',
-                                                               'diagnosis']
+    row = _inferer().check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_UNSUPPORTED
+    assert 'one value per world' in row['detail']
 
 
 def _weight_rows(cell: object) -> list[list[float]]:
@@ -735,7 +832,7 @@ def test_the_low_rise_band_ends_at_three_stories(
     )
     verdicts = _inferer().check(inventory)
     assert verdicts.loc['low', 'diagnosis'] == DIAGNOSIS_OK
-    assert verdicts.loc['mid', 'restriction'] == RESTRICTION_BUILDING_TYPE
+    assert verdicts.loc['mid', 'diagnosis'] == DIAGNOSIS_INFEASIBLE
 
 
 def test_the_mid_rise_band_ends_at_seven_stories(
@@ -758,7 +855,7 @@ def test_the_mid_rise_band_ends_at_seven_stories(
     )
     verdicts = _inferer().check(inventory)
     assert verdicts.loc['mid', 'diagnosis'] == DIAGNOSIS_OK
-    assert 'at 8 stories' in verdicts.loc['high', 'diagnosis']
+    assert verdicts.loc['high', 'diagnosis'] == DIAGNOSIS_INFEASIBLE
     assert verdicts.loc['office', 'diagnosis'] == DIAGNOSIS_OK
 
 

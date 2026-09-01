@@ -47,7 +47,11 @@ from brails.inferers.hazus_inferer_earthquake.hazus_eq_height_class_inferer impo
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_height_classes_by_type,
 )
-from brails.inferers.inference_diagnosis import DIAGNOSIS_OK
+from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_INVALID,
+    DIAGNOSIS_OK,
+    DIAGNOSIS_UNSUPPORTED,
+)
 from brails.utils import Importer
 
 if TYPE_CHECKING:
@@ -155,9 +159,9 @@ def test_the_diagnosis_frame_carries_the_shared_columns(
         {'a': {'StructureType': 'C1', 'NumberOfStories': 2}}
     )
     verdicts = HazusEQHeightClassInferer().check(inventory)
-    assert list(verdicts.columns) == ['diagnosis', 'restriction', 'conflict']
-    assert verdicts.loc['a', 'restriction'] == ''
-    assert verdicts.loc['a', 'conflict'] == ''
+    assert list(verdicts.columns) == ['diagnosis', 'detail', 'resolvable_by']
+    assert verdicts.loc['a', 'detail'] == ''
+    assert verdicts.loc['a', 'resolvable_by'] == ()
 
 
 @pytest.mark.parametrize(
@@ -180,7 +184,8 @@ def test_unusable_drivers_are_diagnosed(
     """A missing or unusable driver produces a diagnosis of its own."""
     inventory = build_inventory({'a': features})
     verdicts = HazusEQHeightClassInferer().check(inventory)
-    assert expected in verdicts.loc['a', 'diagnosis']
+    assert verdicts.loc['a', 'diagnosis'] == DIAGNOSIS_INVALID
+    assert expected in verdicts.loc['a', 'detail']
 
 
 @pytest.mark.parametrize('key', ['StructureType', 'NumberOfStories'])
@@ -192,7 +197,8 @@ def test_a_per_world_driver_is_diagnosed(
     features[key] = [features[key], features[key]]
     inventory = build_inventory({'a': features}, n_pw=2)
     verdicts = HazusEQHeightClassInferer().check(inventory)
-    assert 'per-world list' in verdicts.loc['a', 'diagnosis']
+    assert verdicts.loc['a', 'diagnosis'] == DIAGNOSIS_UNSUPPORTED
+    assert 'one value per world' in verdicts.loc['a', 'detail']
 
 
 def test_infer_writes_the_height_class(

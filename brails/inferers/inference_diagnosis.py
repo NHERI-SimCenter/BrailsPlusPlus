@@ -42,6 +42,7 @@ vocabulary that no peril owns.
 
 .. autosummary::
 
+      diagnosis_frame
       preview_failures
       preview_ids
 """
@@ -50,17 +51,56 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pandas as pd
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
-
-    import pandas as pd
 
 # The verdict for an asset the inferer can process.
 DIAGNOSIS_OK = 'OK'
 
+# A driver is absent, or present with a value the inferer cannot use. The
+# caller obtains the data, corrects it, or imputes a replacement.
+DIAGNOSIS_INVALID = 'invalid'
+
+# A driver is present and real, in a shape the inferer does not handle yet.
+# The caller excludes the asset. Imputing over it would replace data the
+# inventory holds with data the inferer preferred.
+DIAGNOSIS_UNSUPPORTED = 'unsupported'
+
+# Every driver is usable and the inferer still has nothing to produce. The
+# caller relaxes one of the features in ``resolvable_by``.
+DIAGNOSIS_INFEASIBLE = 'infeasible'
+
+# The columns of a diagnosis frame. ``diagnosis`` is one of the four
+# verdicts above, ``detail`` says what happened in words, and
+# ``resolvable_by`` names the features that would each, alone, let the
+# inferer produce a value. Only an infeasible asset has any.
+DIAGNOSIS_COLUMNS = ('diagnosis', 'detail', 'resolvable_by')
+
 # How many failing assets an error message names before counting the rest.
 # An inventory-wide failure would otherwise print an inventory-wide message.
 PREVIEW_LIMIT = 10
+
+
+def diagnosis_frame(rows: dict) -> pd.DataFrame:
+    """
+    Build a diagnosis frame from per-asset verdicts.
+
+    Args:
+        rows (dict):
+            Asset id to its diagnosis, detail, and resolvable features.
+
+    Returns:
+        pd.DataFrame:
+            One row per asset id, with the columns of
+            :data:`DIAGNOSIS_COLUMNS`.
+    """
+    if not rows:
+        return pd.DataFrame(columns=list(DIAGNOSIS_COLUMNS), dtype=object)
+    return pd.DataFrame.from_dict(
+        rows, orient='index', columns=list(DIAGNOSIS_COLUMNS)
+    )
 
 
 def _truncate(entries: list[str], total: int) -> str:

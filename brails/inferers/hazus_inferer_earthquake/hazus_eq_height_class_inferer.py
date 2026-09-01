@@ -48,14 +48,14 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
-from brails.inferers.hazus_inferer_earthquake.hazus_eq_diagnosis import (
-    diagnosis_frame,
-)
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_height_classes_by_type,
 )
 from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_INVALID,
     DIAGNOSIS_OK,
+    DIAGNOSIS_UNSUPPORTED,
+    diagnosis_frame,
     preview_failures,
 )
 from brails.inferers.inference_engine import InferenceEngine
@@ -114,18 +114,18 @@ class HazusEQHeightClassInferer(InferenceEngine):
         Returns:
             pd.DataFrame:
                 One row per asset id, with the columns of
-                ``DIAGNOSIS_COLUMNS``. Height class follows from the
-                structure type and the story count with nothing to
-                restrict, so the restriction and conflict columns are
-                always empty here.
+                ``DIAGNOSIS_COLUMNS``. A height class follows from any
+                structure type and story count the map covers, so no
+                asset here is infeasible and none carries a resolvable
+                feature.
         """
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
             _, features = input_inventory.get_asset_features(asset_id)
-            diagnosis, _ = self._resolve(
+            diagnosis, detail, _ = self._resolve(
                 features, input_inventory.vector_features
             )
-            rows[asset_id] = (diagnosis, '', '')
+            rows[asset_id] = (diagnosis, detail, ())
         return diagnosis_frame(rows)
 
     def draw(self, input_inventory: AssetInventory) -> pd.Series:
@@ -149,13 +149,13 @@ class HazusEQHeightClassInferer(InferenceEngine):
         classes = {}
         for asset_id in input_inventory.get_asset_ids():
             _, features = input_inventory.get_asset_features(asset_id)
-            diagnosis, height_class = self._resolve(
+            diagnosis, detail, height_class = self._resolve(
                 features, input_inventory.vector_features
             )
             if diagnosis != DIAGNOSIS_OK:
                 raise ValueError(
                     f'Cannot assign {self.height_class_key} for asset '
-                    f'{asset_id}: {diagnosis}. Screen the inventory with '
+                    f'{asset_id}: {detail}. Screen the inventory with '
                     'check() before calling draw().'
                 )
             classes[asset_id] = height_class
@@ -185,7 +185,7 @@ class HazusEQHeightClassInferer(InferenceEngine):
         verdicts = self.check(input_inventory)
         failed = verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK]
         if not failed.empty:
-            reasons = preview_failures(failed['diagnosis'])
+            reasons = preview_failures(failed['detail'])
             raise ValueError(
                 f'Cannot assign {self.height_class_key} for {len(failed)} of '
                 f'{len(verdicts)} assets: {reasons}. Remove them or supply '
@@ -201,7 +201,7 @@ class HazusEQHeightClassInferer(InferenceEngine):
 
     def _resolve(
         self, features: dict, vector_features: set
-    ) -> tuple[str, str | None]:
+    ) -> tuple[str, str, str | None]:
         """
         Work out an asset's height class, or why it has none.
 
@@ -213,57 +213,71 @@ class HazusEQHeightClassInferer(InferenceEngine):
                 list is one value and not one value per world.
 
         Returns:
-            tuple[str, str | None]:
-                The diagnosis and the height class, which is None both
-                for a type that carries no height class and for an asset
-                that cannot be classified.
+            tuple[str, str, str | None]:
+                The diagnosis, what happened in words, and the height
+                class, which is None both for a type that carries no
+                height class and for an asset that cannot be classified.
         """
         structure_type = features.get(self.structure_type_key)
         if structure_type is None:
-            return f'no {self.structure_type_key}', None
+            return DIAGNOSIS_INVALID, f'no {self.structure_type_key}', None
         if is_probabilistic_feature(
             self.structure_type_key, structure_type, vector_features
         ):
             return (
-                f'{self.structure_type_key} is a per-world list; multi-world '
-                'assignment is planned and not supported yet'
-            ), None
+                DIAGNOSIS_UNSUPPORTED,
+                f'{self.structure_type_key} holds one value per world; '
+                'multi-world assignment is planned and not supported yet',
+                None,
+            )
         structure_type = str(structure_type)
         if structure_type not in self._classes_by_type:
             return (
+                DIAGNOSIS_INVALID,
                 f'{self.structure_type_key} {structure_type!r} is not a '
-                'Hazus structure type'
-            ), None
+                'Hazus structure type',
+                None,
+            )
         bands = self._classes_by_type[structure_type]
         if bands is None:
-            return DIAGNOSIS_OK, None
+            return DIAGNOSIS_OK, '', None
         stories = features.get(self.stories_key)
         if stories is None:
             return (
+                DIAGNOSIS_INVALID,
                 f'no {self.stories_key}, which {structure_type} needs for its '
-                'height class'
-            ), None
+                'height class',
+                None,
+            )
         if is_probabilistic_feature(
             self.stories_key, stories, vector_features
         ):
             return (
-                f'{self.stories_key} is a per-world list; multi-world '
-                'assignment is planned and not supported yet'
-            ), None
+                DIAGNOSIS_UNSUPPORTED,
+                f'{self.stories_key} holds one value per world; multi-world '
+                'assignment is planned and not supported yet',
+                None,
+            )
         try:
             story_count = float(stories)
         except (TypeError, ValueError):
-            return f'{self.stories_key} is not a number: {stories!r}', None
+            return (
+                DIAGNOSIS_INVALID,
+                f'{self.stories_key} is not a number: {stories!r}',
+                None,
+            )
         if (
             not np.isfinite(story_count)
             or story_count != int(story_count)
             or story_count < 1
         ):
             return (
+                DIAGNOSIS_INVALID,
                 f'{self.stories_key} of {stories!r} is not a whole number of '
-                'stories of one or more'
-            ), None
-        return DIAGNOSIS_OK, self._class_of(bands, int(story_count))
+                'stories of one or more',
+                None,
+            )
+        return DIAGNOSIS_OK, '', self._class_of(bands, int(story_count))
 
     @staticmethod
     def _class_of(

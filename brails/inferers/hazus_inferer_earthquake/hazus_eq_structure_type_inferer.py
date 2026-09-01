@@ -49,11 +49,6 @@ from typing import TYPE_CHECKING, NamedTuple
 import numpy as np
 import pandas as pd
 
-from brails.inferers.hazus_inferer_earthquake.hazus_eq_diagnosis import (
-    RESTRICTION_BUILDING_TYPE,
-    RESTRICTION_DESIGN_LEVEL,
-    diagnosis_frame,
-)
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_general_type_membership,
     get_hazus_occ_type_mapping,
@@ -63,7 +58,11 @@ from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_year_classes,
 )
 from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_INFEASIBLE,
+    DIAGNOSIS_INVALID,
     DIAGNOSIS_OK,
+    DIAGNOSIS_UNSUPPORTED,
+    diagnosis_frame,
     preview_failures,
 )
 from brails.inferers.inference_engine import InferenceEngine
@@ -82,13 +81,18 @@ if TYPE_CHECKING:
 # Part of the reproducibility contract; see keyed_uniforms.
 STRUCTURE_TYPE_PURPOSE = 'structure_type'
 
-# The types the Appendix A footnote calls unreinforced. Which design
-# levels admit them depends on the region; see
-# get_hazus_unreinforced_design_levels.
+# The types the Appendix A footnote of the FEMA Hazus Inventory Technical
+# Manual 7.0 calls unreinforced: "Unreinforced SBTs URM, C3 and S5 are not
+# allowed in West Coast Region where Design Levels are higher than Pre-Code"
+# (West Coast tables pp. A-2 to A-12), with Low-Code in place of Pre-Code
+# elsewhere. Which levels admit them by region comes from
+# get_hazus_unreinforced_design_levels, whose docstring carries the rest.
 UNREINFORCED_MASONRY_TYPES = ('S5', 'C3', 'URM')
 
-# Design levels the Hazus earthquake models define, in increasing order
-# of seismic design strength.
+# Design levels the Hazus earthquake models define, in increasing order of
+# seismic design strength. Every design level table starts at Pre-Code, so
+# an early enough year always reaches a level that admits the unreinforced
+# types.
 DESIGN_LEVELS = (
     'Pre-Code',
     'Low-Code',
@@ -97,21 +101,35 @@ DESIGN_LEVELS = (
     'Very High-Code',
     'Severe-Code',
 )
+EARLIEST_DESIGN_LEVEL = DESIGN_LEVELS[0]
+
+# The multifamily classes the earthquake tables carry one RES3 row for. The
+# replacement cost tables are keyed by subtype, so the fold is local to the
+# structure type lookup and the asset keeps the class it arrived with.
+MULTIFAMILY_OCCUPANCIES = (
+    'RES3',
+    'RES3A',
+    'RES3B',
+    'RES3C',
+    'RES3D',
+    'RES3E',
+    'RES3F',
+)
 
 _SEED_BITS = 64
 
 
-class _Cell(NamedTuple):
+class _Verdict(NamedTuple):
     """
-    The outcome of resolving one asset against the Appendix A tables.
+    What the inferer can do with one asset, and why.
 
     Attributes:
         diagnosis (str):
-            ``'OK'`` or what stands in the way of a draw.
-        restriction (str):
-            Which restriction emptied the candidate set, if one did.
-        conflict (str):
-            The two features that disagree, if a pair does.
+            One of the four verdicts of the shared vocabulary.
+        detail (str):
+            What happened, in words.
+        resolvable_by (tuple):
+            Features that would each, alone, make the asset drawable.
         types (tuple):
             The structure types left to draw from.
         weights (tuple):
@@ -119,12 +137,34 @@ class _Cell(NamedTuple):
     """
 
     diagnosis: str
-    restriction: str = ''
-    conflict: str = ''
+    detail: str = ''
+    resolvable_by: tuple = ()
     types: tuple = ()
     weights: tuple = ()
 
 
+class _Frame(NamedTuple):
+    """
+    The feature values that select a cell of the Appendix A tables.
+
+    Attributes:
+        occupancy (str):
+            Occupancy class as the tables key it.
+        band (str):
+            Story band, empty for RES1, which has no height dimension.
+        era (str):
+            Construction era, empty outside the West Coast.
+        general_type (str):
+            Observed general building type, empty where none was read.
+        design_level (str):
+            The asset's design level.
+    """
+
+    occupancy: str
+    band: str
+    era: str
+    general_type: str
+    design_level: str
 
 
 class HazusEQStructureTypeInferer(InferenceEngine):
@@ -138,18 +178,23 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
     Two restrictions narrow that cell before the draw. An observed
     general building type keeps only the Hazus types belonging to it, and
-    a design level above Low-Code removes S5, C3 and URM, which have no
-    archetype there. The remaining weights are renormalized, so a cell reduced
-    to one type draws that type with certainty.
+    a design level outside the region's legality set removes S5, C3 and
+    URM. What remains is renormalized, so a cell reduced to one type
+    draws that type with certainty.
 
-    The draw belongs to the asset, and it is not influenced by its position. An
-    inventory drawn in pieces and an inventory drawn whole with the same seed
-    give the same types. Each inferer draws its own seed unless given one; read
+    Where the cell comes out empty, ``check`` reports which features
+    would each, on their own, give the asset something to draw. It does
+    not rank them: which of them to give up is the caller's decision,
+    made against whatever trust ranking the caller holds.
+
+    The draw belongs to the asset rather than to its position, so an
+    inventory drawn in pieces and an inventory drawn whole give the same
+    types. Each inferer draws its own seed unless given one; read
     ``self.seed`` to learn the value a run used, and pass it back to
     repeat that run.
 
-    The current implementation is limited to one state per inferer. An
-    inventory spanning several states needs one inferer per state.
+    One state per inferer. An inventory spanning several states needs one
+    inferer per state, each given the assets in it.
     """
 
     def __init__(
@@ -186,7 +231,13 @@ class HazusEQStructureTypeInferer(InferenceEngine):
                 Design levels that admit URM, C3 and S5, overriding the
                 manual's set for this inferer's region. Left out, the
                 manual governs: Pre-Code alone on the West Coast,
-                Pre-Code and Low-Code elsewhere.
+                Pre-Code and Low-Code elsewhere. Passing
+                ``('Pre-Code', 'Low-Code')`` on the West Coast applies
+                instead the nationwide bound the fragility library
+                carries. What bears on that choice, including how much
+                of the West Coast stock the regional clause reaches, is
+                in the docstring of
+                :func:`get_hazus_unreinforced_design_levels`.
             occupancy_key (str):
                 Feature name the occupancy class is read from.
             stories_key (str):
@@ -206,7 +257,13 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Raises:
             ValueError:
-                If the state is not one the Hazus region table names.
+                If the state is not one the Hazus region table names, if
+                the tables carry no RES1 distribution for it, or if the
+                legality set given is one no year could reach.
+
+                A state without a RES1 distribution is refused here because
+                an inventory compiled that way would silently hold no
+                single-family homes at all.
         """
         regions = get_hazus_state_region_mapping()
         if state not in regions:
@@ -218,6 +275,11 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         type_lists, type_weights = get_hazus_occ_type_mapping()
         self.state = state
         self.region = regions[state]['RegionGroup']
+        self._type_lists = type_lists[self.region]
+        self._weights = type_weights[self.region]
+        # Only the West Coast tables are stratified by era.
+        self._needs_era = self.region == 'West Coast'
+        self._check_single_family_coverage()
         self.seed = secrets.randbits(_SEED_BITS) if seed is None else int(seed)
         self.use_building_type = bool(use_building_type)
         self.occupancy_key = occupancy_key
@@ -227,22 +289,76 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         self.building_type_key = building_type_key
         self.structure_type_key = structure_type_key
         self.world = int(world)
-        self._type_lists = type_lists[self.region]
-        self._weights = type_weights[self.region]
+        self._unreinforced_design_levels = self._legality_set(
+            unreinforced_design_levels
+        )
         self._bands = get_hazus_sampling_height_bands()
         self._membership = get_hazus_general_type_membership()
-        self._unreinforced_design_levels = (
-            get_hazus_unreinforced_design_levels()[self.region]
-            if unreinforced_design_levels is None
-            else tuple(unreinforced_design_levels)
-        )
         self._era_by_year = {
             year: era
             for era, years in get_hazus_year_classes().items()
             for year in years
         }
-        # Only the West Coast tables are stratified by era.
-        self._needs_era = self.region == 'West Coast'
+
+    def _legality_set(self, override: tuple[str, ...] | None) -> tuple:
+        """
+        Settle which design levels admit the unreinforced types.
+
+        Args:
+            override (tuple[str, ...] | None):
+                The caller's set, or None to take the manual's.
+
+        Returns:
+            tuple:
+                The design levels that admit them in this region.
+
+        Raises:
+            ValueError:
+                If the override names something that is not a design
+                level, or leaves out the earliest one.
+        """
+        if override is None:
+            return get_hazus_unreinforced_design_levels()[self.region]
+        levels = tuple(override)
+        unknown = [level for level in levels if level not in DESIGN_LEVELS]
+        if unknown:
+            raise ValueError(
+                f'{unknown} are not Hazus design levels. Valid levels: '
+                f'{list(DESIGN_LEVELS)}.'
+            )
+        if EARLIEST_DESIGN_LEVEL not in levels:
+            raise ValueError(
+                f'A legality set must admit {EARLIEST_DESIGN_LEVEL}, which '
+                f'{levels} does not. Every design level table begins there, '
+                'so a set without it leaves buildings whose year can be '
+                'moved no design level that admits the unreinforced types, '
+                'and no year would resolve them.'
+            )
+        return levels
+
+    def _check_single_family_coverage(self) -> None:
+        """
+        Refuse a state the tables cannot produce single-family homes for.
+
+        Raises:
+            ValueError:
+                If any era's RES1 table lacks a row for the state.
+        """
+        rows = self._weights['RES1']
+        by_era = list(rows.values()) if self._needs_era else [rows]
+        if all(self.state in row for row in by_era):
+            return
+        served = set.intersection(*(set(row) for row in by_era))
+        missing = sorted(
+            state
+            for state, entry in get_hazus_state_region_mapping().items()
+            if entry['RegionGroup'] == self.region and state not in served
+        )
+        raise ValueError(
+            f'The Appendix A tables carry no RES1 distribution for '
+            f'{self.state}, so no single-family home there can be drawn. '
+            f'The states this affects: {missing}.'
+        )
 
     def check(self, input_inventory: AssetInventory) -> pd.DataFrame:
         """
@@ -255,19 +371,21 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         Returns:
             pd.DataFrame:
                 One row per asset id, with the columns of
-                ``DIAGNOSIS_COLUMNS``. ``diagnosis`` is ``'OK'``
-                where a type can be drawn and otherwise says what stands
-                in the way. Where a restriction emptied the candidate
-                set, ``restriction`` names it and ``conflict`` names the
-                two features that disagree. The pair carries no order of
-                precedence; a caller resolving the conflict decides which
-                of the two to give up.
+                ``DIAGNOSIS_COLUMNS``. An infeasible asset carries in
+                ``resolvable_by`` every feature that would, on its own,
+                give it something to draw. Their order is fixed and
+                carries no preference: which feature to give up is the
+                caller's decision.
         """
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
             _, features = input_inventory.get_asset_features(asset_id)
-            cell = self._resolve(features, input_inventory.vector_features)
-            rows[asset_id] = (cell.diagnosis, cell.restriction, cell.conflict)
+            verdict = self._resolve(features, input_inventory.vector_features)
+            rows[asset_id] = (
+                verdict.diagnosis,
+                verdict.detail,
+                verdict.resolvable_by,
+            )
         return diagnosis_frame(rows)
 
     def draw(
@@ -310,14 +428,14 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         codes = []
         for asset_id in asset_ids:
             _, features = input_inventory.get_asset_features(asset_id)
-            cell = self._resolve(features, vector_features)
-            if cell.diagnosis != DIAGNOSIS_OK:
+            verdict = self._resolve(features, vector_features)
+            if verdict.diagnosis != DIAGNOSIS_OK:
                 raise ValueError(
                     f'Cannot draw {self.structure_type_key} for asset '
-                    f'{asset_id}: {cell.diagnosis}. Screen the inventory '
+                    f'{asset_id}: {verdict.detail}. Screen the inventory '
                     'with check() before calling draw().'
                 )
-            signature = (cell.types, cell.weights)
+            signature = (verdict.types, verdict.weights)
             codes.append(signatures.setdefault(signature, len(signatures)))
         if asset_keys is None:
             keys = asset_key_digest(asset_ids)
@@ -371,11 +489,11 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         verdicts = self.check(input_inventory)
         failed = verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK]
         if not failed.empty:
-            reasons = preview_failures(failed['diagnosis'])
             raise ValueError(
                 f'Cannot draw {self.structure_type_key} for {len(failed)} of '
-                f'{len(verdicts)} assets: {reasons}. Remove them or supply '
-                'the missing data, then call infer() again.'
+                f'{len(verdicts)} assets: {preview_failures(failed["detail"])}'
+                '. Remove them or supply the missing data, then call infer() '
+                'again.'
             )
         types = self.draw(input_inventory)
         output_inventory = deepcopy(input_inventory)
@@ -385,7 +503,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             )
         return output_inventory
 
-    def _resolve(self, features: dict, vector_features: set) -> _Cell:
+    def _resolve(self, features: dict, vector_features: set) -> _Verdict:
         """
         Work out what an asset can draw from, or why it cannot.
 
@@ -397,64 +515,96 @@ class HazusEQStructureTypeInferer(InferenceEngine):
                 list is one value and not one value per world.
 
         Returns:
-            _Cell:
+            _Verdict:
                 The candidate types and weights, or a diagnosis.
+        """
+        frame, failure = self._read_frame(features, vector_features)
+        if failure is not None:
+            return failure
+        types, weights = self._candidates(frame)
+        if sum(weights) > 0:
+            return _Verdict(
+                DIAGNOSIS_OK, types=tuple(types), weights=tuple(weights)
+            )
+        return _Verdict(
+            DIAGNOSIS_INFEASIBLE,
+            self._describe(frame),
+            self._resolvable_by(frame),
+        )
+
+    def _read_frame(
+        self, features: dict, vector_features: set
+    ) -> tuple[_Frame | None, _Verdict | None]:
+        """
+        Read the features that select a cell, refusing what cannot be used.
+
+        Args:
+            features (dict):
+                The asset's features.
+            vector_features (set):
+                Names of the features whose values are vectors.
+
+        Returns:
+            tuple[_Frame | None, _Verdict | None]:
+                The frame and None, or None and the verdict that refuses
+                the asset.
         """
         occupancy, failure = self._read(
             features, self.occupancy_key, vector_features
         )
-        if failure:
-            return _Cell(failure)
+        if failure is not None:
+            return None, failure
         occupancy = str(occupancy)
-        # The earthquake tables carry one RES3 row for all six multifamily
-        # subtypes, while the replacement cost tables are keyed by subtype,
-        # so the fold happens here and the asset keeps what it arrived with.
         table_occupancy = (
-            'RES3' if occupancy.startswith('RES3') else occupancy
+            'RES3' if occupancy in MULTIFAMILY_OCCUPANCIES else occupancy
         )
         if table_occupancy not in self._weights:
-            return _Cell(
+            return None, _Verdict(
+                DIAGNOSIS_INVALID,
                 f'{self.occupancy_key} {occupancy!r} has no row in the '
-                f'{self.region} tables'
+                f'{self.region} tables',
             )
         design_level, failure = self._read(
             features, self.design_level_key, vector_features
         )
-        if failure:
-            return _Cell(failure)
+        if failure is not None:
+            return None, failure
         design_level = str(design_level)
         if design_level not in DESIGN_LEVELS:
-            return _Cell(
+            return None, _Verdict(
+                DIAGNOSIS_INVALID,
                 f'{self.design_level_key} {design_level!r} is not a Hazus '
-                'design level'
+                'design level',
             )
         era = ''
         if self._needs_era:
-            era, failure = self._era(features, vector_features)
-            if failure:
-                return _Cell(failure)
+            era, failure = self._read_era(features, vector_features)
+            if failure is not None:
+                return None, failure
         band = ''
         if table_occupancy == 'RES1':
-            cell, failure = self._single_family_cell(era)
+            # RES1 is tabulated without a story band, so a count is not
+            # required here. It is still read, because a change of occupancy
+            # would carry the asset into whichever band the count gives it,
+            # and an unusable count simply leaves that path unavailable.
+            band, _ = self._read_band(features, vector_features)
         else:
-            cell, band, failure = self._general_cell(
-                table_occupancy, era, features, vector_features
-            )
-        if failure:
-            return _Cell(failure)
-        return self._restrict(
-            cell,
-            table_occupancy,
-            band,
-            era,
-            design_level,
-            features,
-            vector_features,
+            band, failure = self._read_band(features, vector_features)
+            if failure is not None:
+                return None, failure
+        general_type, failure = self._read_general_type(
+            features, vector_features
+        )
+        if failure is not None:
+            return None, failure
+        return (
+            _Frame(table_occupancy, band, era, general_type, design_level),
+            None,
         )
 
     def _read(
         self, features: dict, key: str, vector_features: set
-    ) -> tuple[object | None, str]:
+    ) -> tuple[object | None, _Verdict | None]:
         """
         Read one feature, refusing what cannot be used.
 
@@ -464,26 +614,26 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             key (str):
                 The feature name to read.
             vector_features (set):
-                Names of the features whose values are vectors, where a
-                list is one value and not one value per world.
+                Names of the features whose values are vectors.
 
         Returns:
-            tuple[object | None, str]:
-                The value and an empty string, or None and a diagnosis.
+            tuple[object | None, _Verdict | None]:
+                The value and None, or None and a verdict.
         """
         value = features.get(key)
         if value is None:
-            return None, f'no {key}'
+            return None, _Verdict(DIAGNOSIS_INVALID, f'no {key}')
         if is_probabilistic_feature(key, value, vector_features):
-            return None, (
-                f'{key} is a per-world list; multi-world drawing is not '
-                'supported yet'
+            return None, _Verdict(
+                DIAGNOSIS_UNSUPPORTED,
+                f'{key} holds one value per world; multi-world drawing is '
+                'planned and not supported yet',
             )
-        return value, ''
+        return value, None
 
-    def _era(
+    def _read_era(
         self, features: dict, vector_features: set
-    ) -> tuple[str, str]:
+    ) -> tuple[str, _Verdict | None]:
         """
         Select the construction era of an asset.
 
@@ -491,136 +641,118 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             features (dict):
                 The asset's features.
             vector_features (set):
-                Names of the features whose values are vectors, where a
-                list is one value and not one value per world.
+                Names of the features whose values are vectors.
 
         Returns:
-            tuple[str, str]:
-                The era and an empty string, or an empty string and a
-                diagnosis.
+            tuple[str, _Verdict | None]:
+                The era and None, or an empty string and a verdict.
         """
         year, failure = self._read(
             features, self.year_built_key, vector_features
         )
-        if failure:
+        if failure is not None:
             return '', failure
         try:
             year_value = float(year)
         except (TypeError, ValueError):
-            return '', f'{self.year_built_key} is not a number: {year!r}'
+            return '', _Verdict(
+                DIAGNOSIS_INVALID,
+                f'{self.year_built_key} is not a number: {year!r}',
+            )
         if not np.isfinite(year_value) or year_value != int(year_value):
-            return '', (
-                f'{self.year_built_key} of {year!r} is not a whole year'
+            return '', _Verdict(
+                DIAGNOSIS_INVALID,
+                f'{self.year_built_key} of {year!r} is not a whole year',
             )
         era = self._era_by_year.get(int(year_value))
         if era is None:
-            return '', (
+            return '', _Verdict(
+                DIAGNOSIS_INVALID,
                 f'{self.year_built_key} of {year!r} sits outside the years '
-                f'the {self.region} tables cover'
+                f'the {self.region} tables cover',
             )
-        return era, ''
+        return era, None
 
-    def _single_family_cell(self, era: str) -> tuple[_Cell, str]:
+    def _read_band(
+        self, features: dict, vector_features: set
+    ) -> tuple[str, _Verdict | None]:
         """
-        Select the RES1 row for this inferer's state.
-
-        Single-family homes are tabulated by state, with no story
-        dimension, and their rows carry their own structure type list.
+        Select the story band of an asset.
 
         Args:
-            era (str):
-                Construction era, empty outside the West Coast.
-
-        Returns:
-            tuple[_Cell, str]:
-                The unrestricted cell and an empty string, or an empty
-                cell and a diagnosis.
-        """
-        rows = self._weights['RES1']
-        if self._needs_era:
-            rows = rows[era]
-        weights = rows.get(self.state)
-        if weights is None:
-            return _Cell(''), (
-                f'{self.state} has no RES1 row in the {self.region} tables'
-            )
-        types = self._type_lists['RES1']
-        if sum(weights) <= 0:
-            return _Cell(''), (
-                f'the {self.region} tables give no structure type for RES1 '
-                f'in {self.state}'
-            )
-        return _Cell(DIAGNOSIS_OK, types=tuple(types),
-                     weights=tuple(float(weight) for weight in weights)), ''
-
-    def _general_cell(
-        self,
-        table_occupancy: str,
-        era: str,
-        features: dict,
-        vector_features: set,
-    ) -> tuple[_Cell, str, str]:
-        """
-        Select the occupancy and story band row for an asset.
-
-        Args:
-            table_occupancy (str):
-                Occupancy class as the tables key it.
-            era (str):
-                Construction era, empty outside the West Coast.
             features (dict):
                 The asset's features.
             vector_features (set):
-                Names of the features whose values are vectors, where a
-                list is one value and not one value per world.
+                Names of the features whose values are vectors.
 
         Returns:
-            tuple[_Cell, str, str]:
-                The unrestricted cell, the story band it came from, and
-                an empty string, or an empty cell and a diagnosis.
+            tuple[str, _Verdict | None]:
+                The band and None, or an empty string and a verdict.
         """
         stories, failure = self._read(
             features, self.stories_key, vector_features
         )
-        if failure:
-            return _Cell(''), '', failure
+        if failure is not None:
+            return '', failure
         try:
             story_count = float(stories)
         except (TypeError, ValueError):
-            return _Cell(''), '', (
-                f'{self.stories_key} is not a number: {stories!r}'
+            return '', _Verdict(
+                DIAGNOSIS_INVALID,
+                f'{self.stories_key} is not a number: {stories!r}',
             )
         if (
             not np.isfinite(story_count)
             or story_count != int(story_count)
             or story_count < 1
         ):
-            return _Cell(''), '', (
+            return '', _Verdict(
+                DIAGNOSIS_INVALID,
                 f'{self.stories_key} of {stories!r} is not a whole number of '
-                'stories of one or more'
+                'stories of one or more',
             )
-        band = self._band(int(story_count))
-        weights = self._weights[table_occupancy][band]
-        if self._needs_era:
-            weights = weights[era]
-        types = self._type_lists[band]
-        if not weights or sum(weights) <= 0:
-            return _Cell(''), band, (
-                f'the {self.region} tables give no structure type for '
-                f'{self.occupancy_key} {table_occupancy} at '
-                f'{int(story_count)} stories'
-            )
-        return (
-            _Cell(
-                DIAGNOSIS_OK,
-                types=tuple(types),
-                weights=tuple(float(weight) for weight in weights),
-            ),
-            band,
-            '',
-        )
+        return self._band_of(int(story_count)), None
 
-    def _band(self, stories: int) -> str:
+    def _read_general_type(
+        self, features: dict, vector_features: set
+    ) -> tuple[str, _Verdict | None]:
+        """
+        Read the observed general building type, which is optional.
+
+        Args:
+            features (dict):
+                The asset's features.
+            vector_features (set):
+                Names of the features whose values are vectors.
+
+        Returns:
+            tuple[str, _Verdict | None]:
+                The general type and None, empty where none was observed
+                or the inferer was told to ignore it, or a verdict.
+        """
+        if not self.use_building_type:
+            return '', None
+        value = features.get(self.building_type_key)
+        if value is None:
+            return '', None
+        if is_probabilistic_feature(
+            self.building_type_key, value, vector_features
+        ):
+            return '', _Verdict(
+                DIAGNOSIS_UNSUPPORTED,
+                f'{self.building_type_key} holds one value per world; '
+                'multi-world drawing is planned and not supported yet',
+            )
+        general_type = str(value)
+        if general_type not in self._membership:
+            return '', _Verdict(
+                DIAGNOSIS_INVALID,
+                f'{self.building_type_key} {general_type!r} is not a Hazus '
+                'general building type',
+            )
+        return general_type, None
+
+    def _band_of(self, stories: int) -> str:
         """
         Select the story band a building falls in.
 
@@ -637,164 +769,145 @@ class HazusEQStructureTypeInferer(InferenceEngine):
                 return band
         raise ValueError(f'No sampling band covers {stories} stories.')
 
-    def _restrict(
-        self,
-        cell: _Cell,
-        table_occupancy: str,
-        band: str,
-        era: str,
-        design_level: str,
-        features: dict,
-        vector_features: set,
-    ) -> _Cell:
+    def _candidates(self, frame: _Frame) -> tuple[tuple, tuple]:
         """
-        Narrow a cell by the observed type and the design level.
+        Return the types and weights a frame leaves to draw from.
 
         Args:
-            cell (_Cell):
-                The unrestricted cell.
-            table_occupancy (str):
-                Occupancy class as the tables key it.
-            band (str):
-                Story band the cell came from, empty for RES1.
-            era (str):
-                Construction era, empty outside the West Coast.
-            design_level (str):
-                The asset's design level.
-            features (dict):
-                The asset's features.
-            vector_features (set):
-                Names of the features whose values are vectors, where a
-                list is one value and not one value per world.
+            frame (_Frame):
+                The feature values that select the cell.
 
         Returns:
-            _Cell:
-                What is left to draw from, or a diagnosis naming the
-                restriction that emptied the cell and the features that
-                disagree.
+            tuple[tuple, tuple]:
+                Structure types and their weights, both empty where the
+                frame selects no row at all.
         """
-        candidates = list(zip(cell.types, cell.weights))
-        general_type = ''
-        if self.use_building_type:
-            value = features.get(self.building_type_key)
-            if value is not None:
-                if is_probabilistic_feature(
-                    self.building_type_key, value, vector_features
-                ):
-                    return _Cell(
-                        f'{self.building_type_key} is a per-world list; '
-                        'multi-world drawing is planned and not supported yet'
-                    )
-                general_type = str(value)
-                members = self._membership.get(general_type)
-                if members is None:
-                    return _Cell(
-                        f'{self.building_type_key} {general_type!r} is not a '
-                        'Hazus general building type'
-                    )
-                kept = [
-                    (structure_type, weight)
-                    for structure_type, weight in candidates
-                    if structure_type in members
-                ]
-                if not self._drawable(kept):
-                    partner = self._blocking_partner(
-                        table_occupancy, band, era, members
-                    )
-                    return _Cell(
-                        f'{self.building_type_key} {general_type} has no '
-                        'structure type in this cell',
-                        RESTRICTION_BUILDING_TYPE,
-                        f'{self.building_type_key}|{partner}'
-                        if partner
-                        else '',
-                    )
-                candidates = kept
-        if design_level not in self._unreinforced_design_levels:
-            kept = [
-                (structure_type, weight)
-                for structure_type, weight in candidates
-                if structure_type not in UNREINFORCED_MASONRY_TYPES
-            ]
-            if not self._drawable(kept):
-                # The design level is derived from the year, so the year is
-                # what a caller can give up; the design level holds no rank
-                # of its own.
-                partner = (
-                    self.building_type_key if general_type
-                    else self.occupancy_key
-                )
-                return _Cell(
-                    f'{self.design_level_key} {design_level} leaves no '
-                    'structure type in this cell',
-                    RESTRICTION_DESIGN_LEVEL,
-                    f'{partner}|{self.year_built_key}',
-                )
-            candidates = kept
-        return _Cell(
-            DIAGNOSIS_OK,
-            types=tuple(structure_type for structure_type, _ in candidates),
-            weights=tuple(weight for _, weight in candidates),
+        if frame.occupancy == 'RES1':
+            rows = self._weights['RES1']
+            row = (rows[frame.era] if self._needs_era else rows)[self.state]
+            types = self._type_lists['RES1']
+        else:
+            cell = self._weights[frame.occupancy][frame.band]
+            row = cell[frame.era] if self._needs_era else cell
+            types = self._type_lists[frame.band]
+        if not row:
+            return (), ()
+        members = self._membership.get(frame.general_type)
+        legal = frame.design_level in self._unreinforced_design_levels
+        kept = [
+            (structure_type, float(weight))
+            for structure_type, weight in zip(types, row)
+            if (members is None or structure_type in members)
+            and (legal or structure_type not in UNREINFORCED_MASONRY_TYPES)
+        ]
+        return (
+            tuple(structure_type for structure_type, _ in kept),
+            tuple(weight for _, weight in kept),
         )
 
-    def _blocking_partner(
-        self, table_occupancy: str, band: str, era: str, members: list[str]
-    ) -> str:
+    def _drawable(self, frame: _Frame) -> bool:
         """
-        Name the feature that stands between a building type and a cell.
-
-        The cell is selected by occupancy, story band and, on the West
-        Coast, era. Each is tried in turn with the others held where the
-        asset has them, so the feature named is one whose change on its
-        own would admit the observed general type. Where no value of any
-        of them would, there is no pair to name.
+        Say whether a frame would leave anything to draw.
 
         Args:
-            table_occupancy (str):
-                Occupancy class as the tables key it.
-            band (str):
-                Story band the cell came from, empty for RES1.
-            era (str):
-                Construction era, empty outside the West Coast.
-            members (list[str]):
-                The Hazus types the observed general type allows.
+            frame (_Frame):
+                The feature values that select the cell.
 
         Returns:
-            str:
-                The feature key that pairs with the building type, or an
-                empty string where changing none of them would help.
+            bool:
+                True where at least one type carries weight.
         """
-        if not band:
-            # RES1 is tabulated without a story band, so a change of
-            # occupancy carries the asset into whichever band its story
-            # count gives it, and any band that admits the type counts.
-            if any(
-                self._admits(other_band, row, members)
-                for other_occupancy in self._weights
-                if other_occupancy != 'RES1'
-                for other_band, row in self._occupancy_rows(other_occupancy)
-            ):
-                return self.occupancy_key
-            return ''
-        if self._needs_era and any(
-            self._admits(band, self._row(table_occupancy, band, other), members)
-            for other in self._eras()
-            if other != era
+        return sum(self._candidates(frame)[1]) > 0
+
+    def _resolvable_by(self, frame: _Frame) -> tuple:
+        """
+        Name the features that would each, alone, make an asset drawable.
+
+        Every feature is varied with the others held where the asset has
+        them, so a name here is one the caller can act on by itself. The
+        order is fixed and carries no preference.
+
+        Args:
+            frame (_Frame):
+                The feature values that select the cell.
+
+        Returns:
+            tuple:
+                Feature keys, empty where no single change would help.
+        """
+        resolvable = []
+        if self._occupancy_resolves(frame):
+            resolvable.append(self.occupancy_key)
+        if frame.band and any(
+            self._drawable(frame._replace(band=band))
+            for band in self._band_names()
+            if band != frame.band
         ):
-            return self.year_built_key
+            resolvable.append(self.stories_key)
+        if self._year_resolves(frame):
+            resolvable.append(self.year_built_key)
+        if frame.general_type and self._drawable(
+            frame._replace(general_type='')
+        ):
+            resolvable.append(self.building_type_key)
+        return tuple(resolvable)
+
+    def _occupancy_resolves(self, frame: _Frame) -> bool:
+        """
+        Say whether some other occupancy class would admit the asset.
+
+        A change of occupancy carries a RES1 asset into a story band, so
+        it resolves nothing where the asset has no usable story count.
+
+        Args:
+            frame (_Frame):
+                The feature values that select the cell.
+
+        Returns:
+            bool:
+                True where some other occupancy would leave a type.
+        """
+        if frame.occupancy != 'RES1' and self._drawable(
+            frame._replace(occupancy='RES1', band='')
+        ):
+            return True
+        if not frame.band:
+            return False
+        return any(
+            self._drawable(frame._replace(occupancy=occupancy))
+            for occupancy in self._weights
+            if occupancy not in (frame.occupancy, 'RES1')
+        )
+
+    def _year_resolves(self, frame: _Frame) -> bool:
+        """
+        Say whether some other construction year would admit the asset.
+
+        The year moves two things: on the West Coast it selects the era,
+        and everywhere it sets the design level. Every design level table
+        begins at Pre-Code, which every region admits, so an early enough
+        year always reaches an admitting design level; what it cannot
+        escape on the West Coast is that the same year lands the asset in
+        the earliest era.
+
+        Args:
+            frame (_Frame):
+                The feature values that select the cell.
+
+        Returns:
+            bool:
+                True where some year would leave a type.
+        """
         if any(
-            self._admits(other, self._row(table_occupancy, other, era), members)
-            for other in self._band_names()
-            if other != band
+            self._drawable(frame._replace(era=era))
+            for era in self._eras()
+            if era != frame.era
         ):
-            return self.stories_key
-        if any(
-            self._admits(band, self._row(other, band, era), members)
-            for other in self._weights
-            if other not in (table_occupancy, 'RES1')
-        ):
-            return self.occupancy_key
-        return ''
+            return True
+        earliest = self._eras()[0] if self._needs_era else ''
+        return self._drawable(
+            frame._replace(era=earliest, design_level=EARLIEST_DESIGN_LEVEL)
+        )
 
     def _eras(self) -> tuple:
         """
@@ -802,8 +915,8 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Returns:
             tuple:
-                Era names on the West Coast, a single empty name
-                elsewhere.
+                Era names on the West Coast, oldest first; a single empty
+                name elsewhere.
         """
         if not self._needs_era:
             return ('',)
@@ -817,82 +930,29 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             tuple:
                 Band names.
         """
-        return tuple(band for band in self._type_lists if band != 'RES1')
+        return tuple(self._bands)
 
-    def _row(self, table_occupancy: str, band: str, era: str) -> list:
+    def _describe(self, frame: _Frame) -> str:
         """
-        Return one weight row by occupancy, band, and era.
+        State which feature values selected an empty cell, blaming none.
 
         Args:
-            table_occupancy (str):
-                Occupancy class as the tables key it.
-            band (str):
-                Story band.
-            era (str):
-                Construction era, empty outside the West Coast.
+            frame (_Frame):
+                The feature values that select the cell.
 
         Returns:
-            list:
-                The weights of that cell.
+            str:
+                The message.
         """
-        cell = self._weights[table_occupancy][band]
-        return cell[era] if self._needs_era else cell
-
-    def _occupancy_rows(self, table_occupancy: str) -> list:
-        """
-        Return every band and weight row of one occupancy.
-
-        Args:
-            table_occupancy (str):
-                Occupancy class as the tables key it.
-
-        Returns:
-            list:
-                Pairs of the band the row belongs to and the row.
-        """
-        return [
-            (band, self._row(table_occupancy, band, era))
-            for band in self._weights[table_occupancy]
-            for era in self._eras()
-        ]
-
-    def _admits(self, band: str, weights: list, members: list[str]) -> bool:
-        """
-        Say whether a weight row carries any of a general type's members.
-
-        Args:
-            band (str):
-                Band whose type list the row aligns with.
-            weights (list):
-                The row.
-            members (list[str]):
-                The Hazus types the observed general type allows.
-
-        Returns:
-            bool:
-                True where at least one member carries weight.
-        """
-        if not weights:
-            return False
-        return any(
-            weight > 0
-            for structure_type, weight in zip(self._type_lists[band], weights)
-            if structure_type in members
+        stated = [f'{self.occupancy_key} {frame.occupancy}']
+        if frame.band:
+            stated.append(f'{self.stories_key} in the {frame.band} band')
+        if frame.era:
+            stated.append(f'{self.year_built_key} in the {frame.era} era')
+        if frame.general_type:
+            stated.append(f'{self.building_type_key} {frame.general_type}')
+        stated.append(f'{self.design_level_key} {frame.design_level}')
+        return (
+            f'the {self.region} tables give no structure type for '
+            + ', '.join(stated)
         )
-
-    @staticmethod
-    def _drawable(candidates: list[tuple[str, float]]) -> bool:
-        """
-        Say whether a restricted cell still holds a drawable type.
-
-        Args:
-            candidates (list[tuple[str, float]]):
-                Structure types and their weights.
-
-        Returns:
-            bool:
-                True where at least one type carries weight.
-        """
-        return bool(candidates) and sum(
-            weight for _, weight in candidates
-        ) > 0

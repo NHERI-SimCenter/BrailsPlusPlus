@@ -133,7 +133,6 @@ include = [
 
     "brails/inferers/inference_diagnosis.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_eq_design_level_inferer.py",
-    "brails/inferers/hazus_inferer_earthquake/hazus_eq_diagnosis.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_eq_height_class_inferer.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_eq_structure_type_inferer.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py",
