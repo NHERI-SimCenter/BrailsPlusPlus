@@ -46,7 +46,7 @@ This module define the base class for scraping OvertureMaps data.
 """
 
 from abc import ABC
-import re
+import json
 import urllib.request
 from typing import Optional, List, Tuple, Union
 from tqdm import tqdm
@@ -67,8 +67,7 @@ import numpy as np
 
 # Global constants for base paths, URLs, and type-theme mapping:
 S3_BASE_PATH = 'overturemaps-us-west-2/release'
-OVERTURE_RELEASES_URL = ('https://raw.githubusercontent.com/OvertureMaps/data/'
-                         'main/overture_releases.yaml')
+OVERTURE_RELEASES_URL = 'https://stac.overturemaps.org/catalog.json'
 
 TYPE_THEME_MAP = {
     "address": "addresses",
@@ -116,7 +115,7 @@ class OvertureMapsScraper(ABC):
     @staticmethod
     def fetch_release_names(print_releases: bool = False) -> List[str]:
         """
-        Fetch the list of release names from the OvertureMaps releases YAML.
+        Fetch the list of release names from the Overture Maps STAC catalog.
 
         Args:
             print_releases (bool, optional):
@@ -124,11 +123,20 @@ class OvertureMapsScraper(ABC):
 
         Returns:
             List[str]:
-                A list of release version strings.
+                A list of release version strings, latest release first.
         """
         with urllib.request.urlopen(OVERTURE_RELEASES_URL) as resp:
-            text = resp.read().decode("utf-8")
-            releases = re.findall(r'release:\s*"([^"]+)"', text)
+            catalog = json.loads(resp.read().decode("utf-8"))
+
+        releases = sorted(
+            (link["title"].split()[0] for link in catalog.get("links", [])
+             if link.get("rel") == "child" and link.get("title")),
+            reverse=True,
+        )
+        latest = catalog.get("latest")
+        if latest in releases:
+            releases.remove(latest)
+            releases.insert(0, latest)
 
         if print_releases:
             print("Available releases:")
