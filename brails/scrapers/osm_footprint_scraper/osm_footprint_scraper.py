@@ -82,9 +82,12 @@ class OSM_FootprintScraper(FootprintScraper):
         Args:
             input_dict (dict):
                 A dictionary specifying length units. If not provided, 'ft' is
-                assumed by default..
+                assumed by default. It may also set ``'id_scheme'`` and
+                ``'min_area'``, described in
+                :class:`~brails.scrapers.footprint_scraper.FootprintScraper`.
         """
         self.length_unit = input_dict.get('length', 'ft')
+        super().__init__('OSM_FootprintScraper', input_dict, self.length_unit)
 
     def get_footprints(self, region: RegionBoundary) -> AssetInventory:
         """
@@ -169,6 +172,7 @@ class OSM_FootprintScraper(FootprintScraper):
         attributes = {key: [] for key in attrkeys}
         fpcount = 0
         footprints = []
+        osm_ids = []
         for data in datalist:
             if data["type"] == "way":
                 nodes = data["nodes"]
@@ -176,6 +180,7 @@ class OSM_FootprintScraper(FootprintScraper):
                 for node in nodes:
                     footprint.append(nodedict[node])
                 footprints.append(footprint)
+                osm_ids.append(data["id"])
 
                 fpcount += 1
                 availableTags = set(data["tags"].keys()).intersection(datakeys)
@@ -209,6 +214,8 @@ class OSM_FootprintScraper(FootprintScraper):
             for nstories in attributes["numstories"]
         ]
 
+        attributes["osm_id"] = osm_ids
+
         print(f'\nFound a total of {fpcount} building footprints in '
               f'{queryarea_printname}')
         if fpcount == 0:
@@ -221,7 +228,8 @@ class OSM_FootprintScraper(FootprintScraper):
 
         return self._create_asset_inventory(footprints,
                                             attributes,
-                                            self.length_unit)
+                                            self.length_unit,
+                                            provider='osm')
 
     def _cleanstr(self, input_str: str) -> str:
         """

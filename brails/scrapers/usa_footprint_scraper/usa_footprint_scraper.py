@@ -89,9 +89,12 @@ class USA_FootprintScraper(FootprintScraper):
         Args
             input_dict:
                 A dictionary specifying length units; if "length" is not
-                provided, "ft" is used as the default.
+                provided, "ft" is used as the default. It may also set
+                ``'id_scheme'`` and ``'min_area'``, described in
+                :class:`~brails.scrapers.footprint_scraper.FootprintScraper`.
         """
         self.length_unit = input_dict.get('length', 'ft')
+        super().__init__('USA_FootprintScraper', input_dict, self.length_unit)
 
     def get_footprints(self, region: RegionBoundary) -> AssetInventory:
         """
@@ -180,7 +183,8 @@ class USA_FootprintScraper(FootprintScraper):
         # Create and return the building AssetInventory:
         return self._create_asset_inventory(footprints,
                                             attributes,
-                                            self.length_unit)
+                                            self.length_unit,
+                                            provider='usa_structures')
 
     def _get_usastruct_data_for_region(self,
                                        final_cells: list[Polygon],
@@ -204,9 +208,10 @@ class USA_FootprintScraper(FootprintScraper):
                 - footprints (list[list[float]]): A list of building
                   footprints, where each footprint is represented as a list of
                   coordinates.
-                - attributes (dict[str, list[float]]): A dictionary containing
+                - attributes (dict[str, list]): A dictionary containing
                   building attributes, with the key `"buildingheight"` mapped
-                  to a list of building heights.
+                  to a list of building heights, and `"usa_build_id"` and
+                  `"usa_uuid"` to the layer's `BUILD_ID` and `UUID`.
 
         Raises:
             Exception:
@@ -244,20 +249,21 @@ class USA_FootprintScraper(FootprintScraper):
                     logger.warning("%r generated an exception: %s", cell, exc)
         pbar.close()
 
-        # Parse the API results into building id, footprints and height
-        # information:
-        ids, footprints, bldgheight = [], [], []
+        # Parse the API results into building id, footprints, height and
+        # UUID information:
+        ids, footprints, bldgheight, uuids = [], [], [], []
         for cell in tqdm(final_cells):
             res = results[cell]
             ids += res[0]
             footprints += res[1]
             bldgheight += res[2]
+            uuids += res[3]
 
         # Remove the duplicate footprint data by recording the API
         # outputs to a dictionary:
         data = {}
         for ind, bldgid in enumerate(ids):
-            data[bldgid] = [footprints[ind], bldgheight[ind]]
+            data[bldgid] = [footprints[ind], bldgheight[ind], uuids[ind]]
 
         # Define length unit conversion factor:
         if self.length_unit == "ft":
@@ -268,9 +274,11 @@ class USA_FootprintScraper(FootprintScraper):
         # Calculate building centroids and save the API outputs into
         # their corresponding variables:
         footprints = []
-        attributes = {"buildingheight": []}
+        attributes = {"buildingheight": [], "usa_build_id": [], "usa_uuid": []}
         centroids = []
-        for value in data.values():
+        for bldgid, value in data.items():
+            attributes["usa_build_id"].append(bldgid)
+            attributes["usa_uuid"].append(value[2])
             fp = value[0]
             centroids.append(Polygon(fp).centroid)
             footprints.append(fp)
@@ -305,12 +313,13 @@ class USA_FootprintScraper(FootprintScraper):
         # Remove data corresponding to centroids that fall outside bpoly:
         for i in sorted(ind_remove, reverse=True):
             del footprints[i]
-            del attributes["buildingheight"][i]
+            for values in attributes.values():
+                del values[i]
 
         return footprints, attributes
 
     def _download_ustruct_bldgattr(self,
-                                   cell: Polygon) -> tuple[list, list, list]:
+                                   cell: Polygon) -> tuple[list, list, list, list]:
         """
         Download building attributes and footprints within a given polygon.
 
@@ -325,22 +334,26 @@ class USA_FootprintScraper(FootprintScraper):
                 attributes are requested.
 
         Returns:
-            tuple: A tuple containing three lists:
+            tuple: A tuple containing four lists:
                 - List of FEMA USA Structures building IDs (`ids`).
                 - List of building footprints (`footprints`), represented as
                   polygons.
                 - List of building heights (`bldgheight`), with `None` for
                   invalid or missing heights.
+                - List of FEMA USA Structures UUIDs (`uuids`), with `None`
+                  where a record has no UUID.
         """
         # Parse the response JSON and extract features:
         api_tools = ArcgisAPIServiceHelper(API_ENDPOINT)
         datalist = api_tools.download_attr_from_api(cell,
-                                                    ['BUILD_ID', 'HEIGHT'])
+                                                    ['BUILD_ID', 'HEIGHT',
+                                                     'UUID'])
 
         # Process each feature in the response:
         ids = []
         footprints = []
         bldgheight = []
+        uuids = []
         for data in datalist:
             footprint = data['geometry']['rings'][0]
             bldgid = data['attributes']['BUILD_ID']
@@ -358,5 +371,6 @@ class USA_FootprintScraper(FootprintScraper):
                     height = None
 
                 bldgheight.append(height)
+                uuids.append(data['attributes'].get('UUID'))
 
-        return ids, footprints, bldgheight
+        return ids, footprints, bldgheight, uuids

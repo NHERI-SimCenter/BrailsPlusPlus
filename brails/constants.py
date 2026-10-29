@@ -39,7 +39,7 @@
 
 """This defines the global constants used in BRAILS++."""
 
-from typing import Dict
+from typing import Dict, Tuple
 
 DEFAULT_UNITS: Dict[str, str] = {
     'length': 'ft',
@@ -47,3 +47,29 @@ DEFAULT_UNITS: Dict[str, str] = {
 }
 
 R_EARTH_KM = 6371
+
+# The provenance feature the footprint scrapers write, naming the provider
+# of each footprint.
+FOOTPRINT_PROVIDER_FEATURE = 'footprint_provider'
+
+# The features holding each footprint provider's own ids, by the value the
+# footprint scrapers record as FOOTPRINT_PROVIDER_FEATURE. The first of them
+# ranks footprints of equal geometry and identifies a dropped footprint.
+# Microsoft footprints carry no id.
+PROVIDER_ID_FEATURES: Dict[str, Tuple[str, ...]] = {
+    'usa_structures': ('usa_build_id', 'usa_uuid'),
+    'microsoft': (),
+    'osm': ('osm_id',),
+    'overture': ('overture_id',),
+}
+
+# The features that record a footprint's source: every provider id and the
+# provenance feature.
+PROVIDER_FEATURES: Tuple[str, ...] = (
+    *(
+        feature
+        for id_features in PROVIDER_ID_FEATURES.values()
+        for feature in id_features
+    ),
+    FOOTPRINT_PROVIDER_FEATURE,
+)

@@ -51,8 +51,9 @@ from shapely import wkb
 
 from brails.constants import DEFAULT_UNITS
 from brails.types.region_boundary import RegionBoundary
-from brails.types.asset_inventory import Asset, AssetInventory
+from brails.types.asset_inventory import AssetInventory
 from brails.utils import GeoTools, UnitConverter
+from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import \
     OvertureMapsScraper
 
@@ -67,13 +68,14 @@ DIMENSIONAL_ATTR = {'height': 'm',
                     'roof_height': 'm'}
 
 
-class OvertureMapsFootprintScraper(OvertureMapsScraper):
+class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
     """
     Scraper for extracting Overture Maps buildings and building-parts.
 
     This class extends
     :class:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OvertureMapsScraper`
-    and provides methods to load and filter Overture asset
+    and :class:`~brails.scrapers.footprint_scraper.FootprintScraper`, and
+    provides methods to load and filter Overture asset
     datasets based on a region boundary. Assets are stored in an
     :class:`~brails.types.asset_inventory.AssetInventory` and can be exported
     as GeoJSON.
@@ -110,6 +112,9 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper):
                   omitted, the newest available release is selected, with a
                   notice. See
                   :meth:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OvertureMapsScraper.resolve_release`.
+                - 'id_scheme' (str) and 'min_area' (float): how assets are
+                  keyed and the smallest plan area kept, described in
+                  :class:`~brails.scrapers.footprint_scraper.FootprintScraper`.
 
         Notes:
             - Units are parsed and validated through
@@ -121,6 +126,11 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper):
         
         # Parse units from input_dict or fall back to default units:
         self.units = UnitConverter.parse_units(input_dict, DEFAULT_UNITS)
+        super().__init__(
+            'OvertureMapsFootprintScraper',
+            input_dict,
+            self.units['length'],
+        )
         self.inventory = AssetInventory()
 
         # Parse Overture Maps release from input dict or fall back to the
@@ -234,10 +244,9 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper):
         intersecting_rows["overture_id"] = intersecting_rows["id"]
         intersecting_rows.reset_index(drop=True, inplace=True)
 
-        # Build inventory:
+        # Assemble the features of each footprint:
+        features = []
         for index, row in intersecting_rows.iterrows():
-            geometry = row["geometry_coords"]
-
             # Filter attributes:
             attributes = {
                 k: v for k, v in row.items()
@@ -262,13 +271,23 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper):
                             f"{index}: {e}"
                         )
 
-            # Merge with asset type
-            asset_features = {**attributes, "type": ASSET_TYPE}
+            # Merge with asset type:
+            features.append({**attributes, "type": ASSET_TYPE})
 
-            asset = Asset(index, geometry, asset_features)
-            self.inventory.add_asset(index, asset)
+        # Apply the area floor, key the footprints kept and build the
+        # inventory:
+        _, kept = self._build_keyed_inventory(
+            list(intersecting_rows["geometry_coords"]),
+            features,
+            self.units['length'],
+            provider='overture',
+            centroids=[
+                geometry.centroid for geometry in intersecting_rows["geometry"]
+            ],
+            inventory=self.inventory,
+        )
         print(
-            f'Found a total of {len(intersecting_rows)} assets within the '
+            f'Found a total of {len(kept)} assets within the '
             'specified area.'
         )
         return self.inventory

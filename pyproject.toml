@@ -142,6 +142,11 @@ include = [
     "brails/utils/deterministic_sampling.py",
     "tests/utils/test_deterministic_sampling.py",
 
+    "brails/utils/asset_id.py",
+    "tests/utils/test_asset_id.py",
+    "tests/scrapers/test_footprint_asset_ids.py",
+    "tests/imputers/**/*.py",
+
     "brails/validators/**/*.py",
     "tests/validators/**/*.py",
 
