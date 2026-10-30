@@ -32,7 +32,7 @@
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 
 """
-Map raw NSI records to SimCenter feature conventions.
+Declare the raw NSI fields and map NSI records to SimCenter conventions.
 
 .. autosummary::
 
@@ -40,6 +40,62 @@ Map raw NSI records to SimCenter feature conventions.
 """
 
 from __future__ import annotations
+
+import pyarrow as pa
+
+# The feature type written on every asset built from an NSI record.
+ASSET_TYPE = 'building'
+
+# The 42 fields the NSI 2026 API serves, in alphabetical order, and the type
+# each is stored under in a raw NSI parquet table. The integer fields are
+# those NSI serves only as integers. A float field may be served as an
+# integer, such as a sqft of 1800, and is stored as a float.
+NSI_RAW_SCHEMA = pa.schema(
+    [
+        ('bid', pa.string()),
+        ('bldgtype', pa.string()),
+        ('bldheight', pa.float64()),
+        ('cbfips', pa.string()),
+        ('creprcnt', pa.float64()),
+        ('crerank', pa.float64()),
+        ('depindex', pa.float64()),
+        ('fd_id', pa.int64()),
+        ('firmzone', pa.string()),
+        ('found_ht', pa.float64()),
+        ('found_type', pa.string()),
+        ('ftprntid', pa.string()),
+        ('ftprntsqft', pa.int64()),
+        ('ftprntsrc', pa.string()),
+        ('fullrep', pa.float64()),
+        ('grnd_elv_m', pa.float64()),
+        ('ground_elv', pa.float64()),
+        ('med_yr_blt', pa.int64()),
+        ('novehprob', pa.float64()),
+        ('num_story', pa.int64()),
+        ('o65disable', pa.float64()),
+        ('occtype', pa.string()),
+        ('pctlowclr', pa.float64()),
+        ('pop2amo65', pa.int64()),
+        ('pop2amu65', pa.int64()),
+        ('pop2pmo65', pa.int64()),
+        ('pop2pmu65', pa.int64()),
+        ('resunits', pa.int64()),
+        ('source', pa.string()),
+        ('sqft', pa.float64()),
+        ('st_damcat', pa.string()),
+        ('static_bfe', pa.float64()),
+        ('students', pa.int64()),
+        ('u65disable', pa.float64()),
+        ('usastrucid', pa.string()),
+        ('val_cont', pa.float64()),
+        ('val_struct', pa.float64()),
+        ('val_vehic', pa.float64()),
+        ('vehperunit', pa.float64()),
+        ('x', pa.float64()),
+        ('y', pa.float64()),
+        ('zone_sub', pa.string()),
+    ]
+)
 
 # NSI field names and the SimCenter feature names assigned to them. Fields
 # that are not listed pass through with their NSI names.

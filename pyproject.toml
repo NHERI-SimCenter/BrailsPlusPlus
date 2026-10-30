@@ -127,8 +127,12 @@ include = [
     "tests/scrapers/test_census_tract_scraper.py",
 
     "brails/scrapers/nsi_parser/nsi_conventions.py",
+    "brails/scrapers/nsi_parser/nsi_file_reader.py",
+    "tests/scrapers/conftest.py",
     "tests/scrapers/test_nsi_parser.py",
+    "tests/scrapers/test_nsi_file_reader.py",
     "tests/scrapers/data/nsi_fixture_generator.py",
+    "tests/scrapers/data/nsi_pooled_fixture_generator.py",
 
     "tests/scrapers/test_overture_release_resolution.py",
 

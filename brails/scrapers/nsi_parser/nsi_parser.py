@@ -52,11 +52,17 @@ import json
 from shapely.geometry import Point, Polygon
 from shapely.wkt import loads
 import logging
+from pathlib import Path
+from typing import Optional, Union
 
 from brails.utils import GeoTools
-from brails.types.asset_inventory import Asset, AssetInventory
+from brails.types.asset_inventory import AssetInventory
 from brails.types.region_boundary import RegionBoundary
-from brails.scrapers.nsi_parser.nsi_conventions import to_simcenter
+from brails.scrapers.nsi_parser.nsi_conventions import ASSET_TYPE  # noqa: F401
+from brails.scrapers.nsi_parser.nsi_file_reader import (
+    record_to_asset,
+    write_raw_records,
+)
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
@@ -64,7 +70,6 @@ logger = logging.getLogger(__name__)
 
 # Define global variables:
 API_ENDPOINT = 'https://nsi.sec.usace.army.mil/nsiapi/structures?bbox='
-ASSET_TYPE = 'building'
 
 
 class NSI_Parser:
@@ -484,6 +489,7 @@ class NSI_Parser:
         region: RegionBoundary,
         *,
         simcenter_format: bool = False,
+        raw_parquet_path: Optional[Union[str, Path]] = None,
     ) -> AssetInventory:
         """
         Retrieve raw NSI data for a specified region.
@@ -497,6 +503,14 @@ class NSI_Parser:
                 :func:`brails.scrapers.nsi_parser.nsi_conventions.to_simcenter`.
                 Defaults to False, which keeps the NSI names and values
                 untouched.
+            raw_parquet_path (str or Path, optional):
+                When given, the records inside the region are also written
+                to this parquet file under their NSI names, as served and
+                before any SimCenter conversion, in ascending ``fd_id``; see
+                :func:`~brails.scrapers.nsi_parser.nsi_file_reader.write_raw_records`.
+                :meth:`NSIFileReader.read
+                <brails.scrapers.nsi_parser.nsi_file_reader.NSIFileReader.read>`
+                can read the file back as the inventory returned.
 
         Returns:
             AssetInventory:
@@ -535,15 +549,22 @@ class NSI_Parser:
             ' NSI that are within the entered region of interest'
         )
 
-        # Save the results in the inventory:
+        # Write the records as served, under their NSI names:
+        if raw_parquet_path is not None:
+            write_raw_records(
+                (datadict[fd_id][1] for fd_id in sorted(datadict)),
+                raw_parquet_path,
+            )
+
+        # Save the results in the inventory, keeping a served null as None:
         inventory = AssetInventory()
         for fd_id, (geometry, properties) in datadict.items():
-            features = (
-                to_simcenter(properties) if simcenter_format else properties
+            asset = record_to_asset(
+                properties,
+                [[geometry.x, geometry.y]],
+                simcenter_format=simcenter_format,
+                omit_nulls=False,
             )
-            coordinates = [[geometry.x, geometry.y]]
-            features['type'] = ASSET_TYPE
-            asset = Asset(fd_id, coordinates, features)
             inventory.add_asset(fd_id, asset)
 
         return inventory

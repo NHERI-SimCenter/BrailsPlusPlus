@@ -31,7 +31,7 @@
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 
-"""Tests for the NSI SimCenter conventions and the raw data path."""
+"""Tests for the NSI SimCenter conventions, the raw data path and its file."""
 
 from __future__ import annotations
 
@@ -39,15 +39,16 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pyarrow.parquet as pq
 import pytest
-import requests
-from shapely.geometry import Point, box
 
 from brails.scrapers.nsi_parser.nsi_conventions import (
+    NSI_RAW_SCHEMA,
     NSI_TO_SIMCENTER,
     to_simcenter,
 )
 from brails.scrapers.nsi_parser.nsi_parser import NSI_Parser
+from tests.scrapers.conftest import Region, canned_response
 from tests.scrapers.data.nsi_fixture_generator import FIXTURE_PATH, fetch_sample
 
 if TYPE_CHECKING:
@@ -91,33 +92,6 @@ def make_record(fd_id: int, lon: float, lat: float, **overrides: object) -> dict
     }
     record.update(overrides)
     return record
-
-
-class Region:
-    """A minimal stand-in for RegionBoundary."""
-
-    @staticmethod
-    def get_boundary() -> tuple:
-        """Return a bounding polygon covering the canned points."""
-        return box(-0.01, -0.01, 0.01, 0.01), None, None
-
-
-@pytest.fixture
-def canned_fetch(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
-    """Patch the NSI download with a canned point set."""
-
-    def install(records: list[dict]) -> None:
-        data = {
-            record['fd_id']: (Point(record['x'], record['y']), dict(record))
-            for record in records
-        }
-        monkeypatch.setattr(
-            NSI_Parser,
-            '_get_nsi_data',
-            staticmethod(lambda _bbox: dict(data)),
-        )
-
-    return install
 
 
 # ---------------------------------------------------------------------
@@ -188,67 +162,6 @@ def test_manufactured_housing_code_maps_to_mh() -> None:
     )
 
     assert converted['BuildingType'] == 'MH'
-
-
-class FakeResponse:
-    """A canned NSI API response."""
-
-    def __init__(self, payload: dict) -> None:
-        """
-        Hold the payload the fake request returns.
-
-        Args:
-            payload (dict):
-                The GeoJSON body `json()` serves.
-        """
-        self._payload = payload
-        self.headers = {'Content-Type': 'application/json'}
-        self.text = ''
-
-    def raise_for_status(self) -> None:
-        """Accept the response, as a 200 would."""
-
-    def json(self) -> dict:
-        """Return the canned payload."""
-        return self._payload
-
-
-def as_feature(record: dict) -> dict:
-    """
-    Wrap a property record in the GeoJSON shape the API serves.
-
-    Args:
-        record (dict):
-            Raw NSI properties.
-
-    Returns:
-        dict:
-            A GeoJSON feature carrying them.
-    """
-    return {
-        'geometry': {'type': 'Point', 'coordinates': [record['x'], record['y']]},
-        'properties': record,
-    }
-
-
-def canned_response(
-    monkeypatch: pytest.MonkeyPatch, records: list[dict]
-) -> None:
-    """
-    Serve these records from the NSI endpoint.
-
-    Args:
-        monkeypatch (pytest.MonkeyPatch):
-            The patcher.
-        records (list[dict]):
-            Raw NSI property records.
-    """
-    payload = {'features': [as_feature(record) for record in records]}
-    monkeypatch.setattr(
-        requests.Session,
-        'get',
-        lambda *_args, **_kwargs: FakeResponse(payload),
-    )
 
 
 BBOX = (-0.01, -0.01, 0.01, 0.01)
@@ -367,6 +280,62 @@ def test_records_sharing_a_coordinate_all_survive(
     assert inventory.get_asset_coordinates(11)[1] == [[0.0005, 0.0005]]
     assert inventory.get_asset_coordinates(33)[1] == [[0.0005, 0.0005]]
     assert inventory.get_asset_features(33)[1]['sqft'] == 900.0
+
+
+# ---------------------------------------------------------------------
+# the raw-pull file
+# ---------------------------------------------------------------------
+
+
+def test_the_raw_file_holds_nsi_names_in_fd_id_order(
+    canned_fetch: Callable[..., None], tmp_path: Path
+) -> None:
+    """The file is the raw pull even when the inventory is converted."""
+    canned_fetch([make_record(22, 0.0015, 0.0015), make_record(11, 0.0005, 0.0005)])
+    path = tmp_path / 'pull.parquet'
+
+    NSI_Parser().get_raw_data(Region(), simcenter_format=True, raw_parquet_path=path)
+    table = pq.read_table(path)
+
+    assert table.column_names == NSI_RAW_SCHEMA.names
+    assert table['fd_id'].to_pylist() == [11, 22]
+    assert table['occtype'].to_pylist() == ['RES1-2SWB', 'RES1-2SWB']
+
+
+def test_only_records_inside_the_region_are_written(
+    canned_fetch: Callable[..., None], tmp_path: Path
+) -> None:
+    """The file holds what the inventory holds."""
+    canned_fetch([make_record(11, 0.0005, 0.0005), make_record(22, 0.5, 0.5)])
+    path = tmp_path / 'pull.parquet'
+
+    pulled = NSI_Parser().get_raw_data(Region(), raw_parquet_path=path)
+
+    assert pq.read_table(path)['fd_id'].to_pylist() == [11]
+    assert pulled.get_asset_ids() == [11]
+
+
+def test_no_raw_path_writes_nothing(
+    canned_fetch: Callable[..., None],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without ``raw_parquet_path``, no file is written."""
+    canned_fetch([make_record(11, 0.0005, 0.0005)])
+    monkeypatch.chdir(tmp_path)
+
+    NSI_Parser().get_raw_data(Region())
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_served_null_is_kept_as_none(canned_fetch: Callable[..., None]) -> None:
+    """The parser keeps a null NSI serves; the file reader omits it."""
+    canned_fetch([make_record(11, 0.0005, 0.0005, firmzone=None)])
+
+    inventory = NSI_Parser().get_raw_data(Region())
+
+    assert inventory.get_asset_features(11)[1]['firmzone'] is None
 
 
 # ---------------------------------------------------------------------
