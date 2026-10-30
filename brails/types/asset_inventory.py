@@ -45,6 +45,11 @@ This module defines classes associated with asset inventories.
 
     AssetInventory
     Asset
+
+It also defines the constants that :meth:`AssetInventory.merge` reads:
+:data:`SOURCE_CODES`, :data:`SOURCE_CODE_NONE`,
+:data:`SOURCE_STRING_FEATURE`, :data:`HAZUS_EQ_SOURCE_FEATURES`,
+:data:`MISSING_VALUE_MARKER` and :data:`MAX_REPORTED_WORLD_PROBLEMS`.
 """
 
 from __future__ import annotations
@@ -54,10 +59,13 @@ import hashlib
 import json
 import os
 import random
-from collections.abc import Hashable, Iterable
-from copy import deepcopy
+from collections import Counter
+from collections.abc import Hashable, Iterable, Mapping, Sequence
+from collections.abc import Set as AbstractSet
+from copy import copy, deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 from importlib.metadata import PackageNotFoundError, version
@@ -78,9 +86,139 @@ from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 # a feature, not one realization per possible world.
 DEFAULT_VECTOR_FEATURES: tuple[str, ...] = ('HousingUnits',)
 
-# Upper bound on the number of offending features named in the error
-# raised by AssetInventory.validate_possible_worlds.
+# Upper bound on the number of problems named in an error raised by
+# AssetInventory.validate_possible_worlds or AssetInventory.merge.
 MAX_REPORTED_WORLD_PROBLEMS = 10
+
+# Source labels that AssetInventory.merge accepts when it writes a source
+# string, and the code each label contributes: local records, footprint
+# data, NSI, values derived from source data rather than read from it,
+# imputed values and drawn values.
+SOURCE_CODES: Mapping[str, str] = MappingProxyType(
+    {
+        'local': 'L',
+        'footprint': 'F',
+        'nsi': 'N',
+        'derived': 'R',
+        'imputed': 'I',
+        'drawn': 'D',
+    }
+)
+
+# Character of the source string for a feature that no source holds.
+SOURCE_CODE_NONE = '-'
+
+# Feature that AssetInventory.merge writes the source string to.
+SOURCE_STRING_FEATURE = 'SourceString'
+
+# Features covered by the source string by default, one character each,
+# in the order a Hazus earthquake inventory is built.
+HAZUS_EQ_SOURCE_FEATURES: tuple[str, ...] = (
+    'OccupancyClass',
+    'NumberOfUnits',
+    'NumberOfStories',
+    'YearBuilt',
+    'DesignLevel',
+    'StructureType',
+    'HeightClass',
+    'ReplacementCost',
+)
+
+# String BRAILS readers, the footprint scrapers among them, write for an
+# absent provider value.
+MISSING_VALUE_MARKER = 'NA'
+
+
+def _is_missing_value(value: Any) -> bool:  # noqa: ANN401
+    """
+    Check whether a feature value is missing.
+
+    ``None``, any value :func:`pandas.isna` reports as missing (a float
+    NaN, ``pd.NA``, ``NaT``), :data:`MISSING_VALUE_MARKER` and the empty
+    string are missing. Any other value, including a list of per-world
+    values, is a value.
+
+    Args:
+        value (Any):
+            The feature value.
+
+    Returns:
+        bool:
+            ``True`` if the value is missing, ``False`` otherwise.
+    """
+    if isinstance(value, str):
+        return value in (MISSING_VALUE_MARKER, '')
+    if isinstance(value, (Sequence, Mapping, AbstractSet)):
+        return False
+    # pandas.isna returns an array for an array, which is a value.
+    return pd.isna(value) is True
+
+
+def _merge_id_order(asset_id: Hashable) -> tuple[str, str]:
+    """Sort key for asset ids: the id as a string, then its type name."""
+    return (str(asset_id), type(asset_id).__name__)
+
+
+def _check_source_features(source_features: Sequence[str], order: list[str]) -> None:
+    """
+    Check the features and labels of a source string requested from merge.
+
+    Args:
+        source_features (Sequence[str]):
+            The features the source string covers, in order.
+        order (list[str]):
+            The source labels in order of precedence.
+
+    Raises:
+        TypeError:
+            If ``source_features`` is a single string.
+        ValueError:
+            If ``source_features`` repeats a feature or names
+            :data:`SOURCE_STRING_FEATURE`, or a label has no code in
+            :data:`SOURCE_CODES`.
+    """
+    if isinstance(source_features, str):
+        raise TypeError(
+            'source_features must be a sequence of feature names, '
+            f'not the string {source_features!r}.'
+        )
+    repeated = sorted(
+        (f for f, count in Counter(source_features).items() if count > 1), key=str
+    )
+    if repeated:
+        raise ValueError(f'source_features repeats {repeated}.')
+    if SOURCE_STRING_FEATURE in source_features:
+        raise ValueError(
+            f'source_features cannot include {SOURCE_STRING_FEATURE!r}.'
+        )
+    uncoded = sorted(set(order) - set(SOURCE_CODES))
+    if uncoded:
+        raise ValueError(
+            f'No source code for the labels {uncoded}. A source '
+            f'string needs labels from {sorted(SOURCE_CODES)}.'
+        )
+
+
+def _report_first_problems(problems: list[str], separator: str) -> str:
+    """
+    Join up to MAX_REPORTED_WORLD_PROBLEMS problems, counting the rest.
+
+    Args:
+        problems (list[str]):
+            One description per problem.
+        separator (str):
+            The text placed between two descriptions and before the count.
+
+    Returns:
+        str:
+            The joined descriptions, followed by ``... and N more`` when
+            some were left out.
+    """
+    text = separator.join(problems[:MAX_REPORTED_WORLD_PROBLEMS])
+    left_out = len(problems) - MAX_REPORTED_WORLD_PROBLEMS
+    if left_out > 0:
+        text += f'{separator}... and {left_out} more'
+    return text
 
 
 def is_probabilistic_feature(
@@ -776,10 +914,10 @@ class AssetInventory:
         asset_id_map: dict[str | int, str | int] | None = None,
     ) -> dict[str | int, str | int]:
         """
-        Merge another AssetInventory into this one, handling conflicts.
+        Add another AssetInventory's assets to this one, handling conflicts.
 
-        This method merges all unique assets from `other_inventory` into
-        the current inventory (`self`).
+        This method adds all unique assets from `other_inventory` to the
+        current inventory (`self`).
 
         - **Asset De-duplication:** It automatically skips any incoming
           asset that is an exact duplicate of an existing one (based on
@@ -796,11 +934,11 @@ class AssetInventory:
 
         Args:
             other_inventory (AssetInventory):
-                The secondary inventory to merge into this one.
+                The secondary inventory whose assets are added to this one.
             asset_id_map (dict, optional):
                 A dictionary mapping {original_asset_id: suggested_asset_id}.
-                Use this to rename asset IDs from `other_inventory` during
-                the merge.
+                Use this to rename asset IDs from `other_inventory` as they
+                are added.
 
         Returns:
             dict[str | int, str | int]:
@@ -813,7 +951,7 @@ class AssetInventory:
             ValueError, LookupError, TypeError:
                 If either `self` or `other_inventory` has an invalid
                 housing unit state (e.g., orphan IDs, invalid data types)
-                before the merge.
+                before the assets are added.
         """
         # --- 1. Asset Merging ---
 
@@ -914,6 +1052,360 @@ class AssetInventory:
                     )
 
         return final_id_map
+
+    def merge(
+        self,
+        others: Mapping[str, AssetInventory],
+        precedence: Sequence[str],
+        *,
+        name: str,
+        source_features: Sequence[str] | None = HAZUS_EQ_SOURCE_FEATURES,
+    ) -> AssetInventory:
+        """
+        Merge per-source inventories of this inventory's assets.
+
+        This inventory is the spine, labeled ``name``: its assets define
+        the asset set and the geometry of the result. Every other source
+        is an inventory keyed by asset ids of this inventory, possibly a
+        subset, and holds the features one source supplies. Each feature
+        of each asset is taken from the first source in ``precedence``
+        that holds a value for it. ``None``, any value
+        :func:`pandas.isna` reports as missing, the empty string and the
+        string ``'NA'``, which BRAILS readers write for an absent provider
+        value, are not values. A feature that no source holds a value for
+        keeps the missing marker of the first source in ``precedence``
+        that has it.
+
+        Unless ``source_features`` is ``None``, each asset also receives
+        the feature :data:`SOURCE_STRING_FEATURE`: one character per
+        feature of ``source_features``, in that order, holding the
+        :data:`SOURCE_CODES` code of the source the value came from, or
+        :data:`SOURCE_CODE_NONE` where no source holds one. A character
+        depends on which source holds a value and never on the value, so
+        a feature holding one value per possible world gives the same
+        string as one holding a single value.
+
+        Unlike :meth:`combine`, which adds another inventory's assets, and
+        :meth:`join`, which matches another inventory's assets to these by
+        location, this method combines the features the sources hold for
+        this inventory's assets. Neither this inventory nor any source is
+        modified. The result holds deep copies, with assets inserted in
+        ascending order of the asset id as a string, so it does not depend
+        on the order of ``others`` or of the assets in any inventory.
+
+        Args:
+            others (Mapping[str, AssetInventory]):
+                The other sources, keyed by their labels.
+            precedence (Sequence[str]):
+                Every source label, ``name`` included, highest precedence
+                first.
+            name (str):
+                The label of this inventory.
+            source_features (Sequence[str] | None, optional):
+                The features the source string covers, in order. Defaults
+                to :data:`HAZUS_EQ_SOURCE_FEATURES`. ``None`` writes no
+                source string.
+
+        Returns:
+            AssetInventory:
+                A new inventory holding every asset of this one. It
+                declares the vector features of all sources, and its
+                number of possible worlds is the largest among them.
+
+        Raises:
+            TypeError:
+                If ``others`` is not a mapping, a label is not a string, a
+                source is not an :class:`AssetInventory`, or
+                ``precedence`` or ``source_features`` is a single string.
+            ValueError:
+                If ``name`` labels one of ``others``; if ``precedence``
+                omits a label, repeats one or names a label that is not a
+                source; if ``source_features`` repeats a feature or names
+                :data:`SOURCE_STRING_FEATURE`; if a source string is
+                requested and a label has no code in
+                :data:`SOURCE_CODES`; if any source already carries
+                :data:`SOURCE_STRING_FEATURE`; if a source holds an asset
+                id that this inventory lacks (up to
+                :data:`MAX_REPORTED_WORLD_PROBLEMS` are named); if two
+                sources hold different numbers of possible worlds above
+                one; or if a source holds a housing unit inventory.
+            BrailsError:
+                If a source with one possible world holds a list, which
+                the result would read as realizations, while another
+                source holds several worlds (the source is named), or if
+                the result fails :meth:`validate_possible_worlds`.
+
+        Examples:
+            >>> spine = AssetInventory()
+            >>> _ = spine.add_asset_coordinates('A1', [[-122.4, 37.8]])
+            >>> _ = spine.add_asset_features('A1', {'NumberOfStories': 'NA'})
+            >>> nsi = AssetInventory()
+            >>> _ = nsi.add_asset_coordinates('A1', [[-122.4, 37.8]])
+            >>> _ = nsi.add_asset_features(
+            ...     'A1', {'NumberOfStories': 2, 'OccupancyClass': 'RES1'}
+            ... )
+            >>> merged = spine.merge(
+            ...     {'nsi': nsi}, ['footprint', 'nsi'], name='footprint'
+            ... )
+            >>> features = merged.get_asset_features('A1')[1]
+            >>> features['NumberOfStories'], features['SourceString']
+            (2, 'N-N-----')
+        """
+        if source_features is not None and not isinstance(source_features, str):
+            # Read once, so that the checks do not consume an iterator.
+            source_features = list(source_features)
+        sources, order, n_pw = self._check_merge_sources(
+            others, precedence, name, source_features
+        )
+
+        vector_features = list(
+            dict.fromkeys(
+                feature
+                for label in order
+                for feature in sources[label].vector_features
+            )
+        )
+        result = type(self)(vector_features=vector_features)
+        result.n_pw = n_pw
+
+        for asset_id in sorted(self.inventory, key=_merge_id_order):
+            keys: list[str] = []
+            values: dict[str, Any] = {}
+            winners: dict[str, str] = {}
+            for label in order:
+                asset = sources[label].inventory.get(asset_id)
+                if asset is None:
+                    continue
+                for key, value in asset.features.items():
+                    if key not in values:
+                        keys.append(key)
+                        values[key] = value
+                    if key not in winners and not _is_missing_value(value):
+                        winners[key] = label
+                        values[key] = value
+
+            features = {key: deepcopy(values[key]) for key in keys}
+            if source_features is not None:
+                features[SOURCE_STRING_FEATURE] = ''.join(
+                    SOURCE_CODES[winners[feature]]
+                    if feature in winners
+                    else SOURCE_CODE_NONE
+                    for feature in source_features
+                )
+
+            merged = copy(self.inventory[asset_id])
+            merged.coordinates = deepcopy(merged.coordinates)
+            merged.features = features
+            result.add_asset(asset_id, merged)
+
+        result.validate_possible_worlds()
+        return result
+
+    def _check_merge_labels(
+        self,
+        others: Mapping[str, AssetInventory],
+        precedence: Sequence[str],
+        name: str,
+    ) -> tuple[dict[str, AssetInventory], list[str]]:
+        """
+        Check the source labels and the precedence given to :meth:`merge`.
+
+        Args:
+            others (Mapping[str, AssetInventory]):
+                The other sources, keyed by their labels.
+            precedence (Sequence[str]):
+                Every source label, highest precedence first.
+            name (str):
+                The label of this inventory.
+
+        Returns:
+            tuple[dict[str, AssetInventory], list[str]]:
+                Every source keyed by its label, this inventory included,
+                and the labels in order of precedence.
+
+        Raises:
+            TypeError:
+                As documented in :meth:`merge`.
+            ValueError:
+                As documented in :meth:`merge`.
+        """
+        if not isinstance(name, str):
+            raise TypeError(f'The source label must be a string, not {name!r}.')
+        if not isinstance(others, Mapping):
+            raise TypeError(
+                'others must map source labels to inventories, not '
+                f'{type(others).__name__}.'
+            )
+        for label, inventory in others.items():
+            if not isinstance(label, str):
+                raise TypeError(f'Source labels must be strings, not {label!r}.')
+            if not isinstance(inventory, AssetInventory):
+                raise TypeError(
+                    f'Source {label!r} is not an AssetInventory '
+                    f'(type {type(inventory).__name__}).'
+                )
+        if name in others:
+            raise ValueError(
+                f'The label {name!r} names this inventory and one of others.'
+            )
+        sources: dict[str, AssetInventory] = {name: self, **others}
+
+        if isinstance(precedence, str):
+            raise TypeError(
+                'precedence must be a sequence of labels, not the string '
+                f'{precedence!r}.'
+            )
+        order = list(precedence)
+        repeated = sorted(
+            (lbl for lbl, count in Counter(order).items() if count > 1), key=str
+        )
+        omitted = sorted(set(sources) - set(order))
+        unknown = sorted({str(lbl) for lbl in order if lbl not in sources})
+        if repeated or omitted or unknown:
+            raise ValueError(
+                'precedence must list every source label once. '
+                f'Repeated: {repeated}; omitted: {omitted}; '
+                f'not a source: {unknown}.'
+            )
+        return sources, order
+
+    def _check_merge_sources(
+        self,
+        others: Mapping[str, AssetInventory],
+        precedence: Sequence[str],
+        name: str,
+        source_features: Sequence[str] | None,
+    ) -> tuple[dict[str, AssetInventory], list[str], int]:
+        """
+        Check the arguments of :meth:`merge` and collect its sources.
+
+        Args:
+            others (Mapping[str, AssetInventory]):
+                The other sources, keyed by their labels.
+            precedence (Sequence[str]):
+                Every source label, highest precedence first.
+            name (str):
+                The label of this inventory.
+            source_features (Sequence[str] | None):
+                The features the source string covers, or ``None``.
+
+        Returns:
+            tuple[dict[str, AssetInventory], list[str], int]:
+                Every source keyed by its label, this inventory included;
+                the labels in order of precedence; and the number of
+                possible worlds of the result.
+
+        Raises:
+            TypeError:
+                As documented in :meth:`merge`.
+            ValueError:
+                As documented in :meth:`merge`.
+        """
+        sources, order = self._check_merge_labels(others, precedence, name)
+        if source_features is not None:
+            _check_source_features(source_features, order)
+
+        carrying = [
+            label
+            for label in order
+            if any(
+                SOURCE_STRING_FEATURE in asset.features
+                for asset in sources[label].inventory.values()
+            )
+        ]
+        if carrying:
+            raise ValueError(
+                f'Source(s) {carrying} already carry '
+                f'{SOURCE_STRING_FEATURE!r}, which describes an earlier '
+                'merge. Merge the per-source inventories in one call, or '
+                'remove the feature first.'
+            )
+
+        with_housing_units = [
+            label
+            for label in order
+            if sources[label].housing_unit_inventory is not None
+        ]
+        if with_housing_units:
+            raise ValueError(
+                f'Source(s) {with_housing_units} hold a housing unit '
+                'inventory, which merge does not combine. combine does.'
+            )
+
+        world_counts = {
+            label: sources[label].n_pw for label in order if sources[label].n_pw > 1
+        }
+        if len(set(world_counts.values())) > 1:
+            raise ValueError(
+                'The sources hold different numbers of possible worlds: '
+                f'{world_counts}.'
+            )
+        n_pw = max(sources[label].n_pw for label in order)
+        if n_pw > 1:
+            self._check_one_world_lists(sources, order, n_pw)
+
+        foreign = [
+            f'{asset_id!r} ({label})'
+            for label in order
+            for asset_id in sorted(
+                sources[label].inventory.keys() - self.inventory.keys(),
+                key=_merge_id_order,
+            )
+        ]
+        if foreign:
+            raise ValueError(
+                f'{len(foreign)} asset id(s) held by a source are absent '
+                f'from {name!r}: {_report_first_problems(foreign, ", ")}.'
+            )
+
+        return sources, order, n_pw
+
+    @staticmethod
+    def _check_one_world_lists(
+        sources: dict[str, AssetInventory], order: list[str], n_pw: int
+    ) -> None:
+        """
+        Refuse a one-world source holding lists in a merge of several worlds.
+
+        A one-world source passes :meth:`validate_possible_worlds` with a
+        list of one realization, but the result of :meth:`merge` holds
+        ``n_pw`` worlds and would read the list as too few realizations.
+
+        Args:
+            sources (dict[str, AssetInventory]):
+                Every source keyed by its label.
+            order (list[str]):
+                The labels in order of precedence.
+            n_pw (int):
+                The number of possible worlds of the result, above one.
+
+        Raises:
+            BrailsError:
+                If a source with one possible world holds a list for a
+                feature that is not a vector feature of the result. The
+                message names the first such source and up to
+                :data:`MAX_REPORTED_WORLD_PROBLEMS` of its values.
+        """
+        vector_features = {
+            feature for label in order for feature in sources[label].vector_features
+        }
+        for label in order:
+            source = sources[label]
+            if source.n_pw != 1:
+                continue
+            lists = [
+                f'asset {asset_id!r}, feature {key!r}'
+                for asset_id in sorted(source.inventory, key=_merge_id_order)
+                for key, value in source.inventory[asset_id].features.items()
+                if is_probabilistic_feature(key, value, vector_features)
+            ]
+            if lists:
+                raise BrailsError(
+                    f'Source {label!r} has one possible world but holds '
+                    f'{len(lists)} list value(s), which a merge with '
+                    f'{n_pw} possible worlds would read as realizations: '
+                    f'{_report_first_problems(lists, "; ")}.'
+                )
 
     def convert_polygons_to_centroids(self) -> None:
         """
@@ -1491,7 +1983,7 @@ class AssetInventory:
         method: str = 'GetPointsInPolygons',
     ) -> None:
         """
-        Merge with another AssetInventory using specified spatial join method.
+        Join with another AssetInventory using specified spatial join method.
 
         Args:
             inventory_to_join (AssetInventory):
@@ -2561,14 +3053,15 @@ class AssetInventory:
         if not problems:
             return
 
-        reported = problems[:MAX_REPORTED_WORLD_PROBLEMS]
-        details = '\n'.join(
-            f'  asset {asset_id}, feature {key!r}: '
-            f'{count} realizations'
-            for asset_id, key, count in reported
+        details = '  ' + _report_first_problems(
+            [
+                f'asset {asset_id}, feature {key!r}: {count} realizations'
+                for asset_id, key, count in problems
+            ],
+            '\n  ',
         )
-        if len(problems) > len(reported):
-            details += f'\n  ... and {len(problems) - len(reported)} more.'
+        if len(problems) > MAX_REPORTED_WORLD_PROBLEMS:
+            details += '.'
 
         raise BrailsError(
             f'The inventory has {self.n_pw} possible worlds, but '
