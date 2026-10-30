@@ -113,6 +113,7 @@ include = [
     "tests/types/test_housing_unit_inventory.py",
     "tests/types/test_asset_inventory_possible_worlds.py",
     "tests/types/test_inventory_merge.py",
+    "tests/types/test_integer_id_export.py",
     "tests/utils/test_input_validator.py",
     "tests/conftest.py",
 
