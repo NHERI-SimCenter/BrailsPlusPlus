@@ -159,6 +159,9 @@ include = [
 
     "brails/fixers/**/*.py",
     "tests/fixers/**/*.py",
+
+    "brails/compilers/**/*.py",
+    "tests/compilers/**/*.py",
 ]
 
 [tool.ruff.lint]
