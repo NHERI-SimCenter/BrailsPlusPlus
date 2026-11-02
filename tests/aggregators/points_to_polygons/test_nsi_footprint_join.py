@@ -364,12 +364,51 @@ class TestAcceptance:
     @pytest.mark.parametrize('arrival', ['RES1', 'RES2', 'RES3B', 'COM1'])
     @pytest.mark.parametrize('held', ['RES1', 'RES2'])
     def test_single_dwelling_accepts_nothing(self, held: str, arrival: str) -> None:
-        """A footprint holding a single dwelling refuses every arrival."""
+        """A footprint whose class is a single dwelling refuses every arrival."""
         shapes = footprints({'A': (0, 0, 10)})
         records = points(nsi(1, 5, 5, held, 1), nsi(2, 15, 5, arrival, 4))
         result = run(shapes, records)
         assert link_of(result) == {1: 'A'}
         assert reason_of(result) == {2: 'refused'}
+
+    @pytest.mark.parametrize(
+        ('arrival', 'resunits', 'branch'),
+        [
+            ('RES3C', 6, 'walk_to_shared'),
+            ('COM1', None, 'walk_to_shared'),
+            ('RES1', 1, None),
+        ],
+    )
+    def test_footprint_class_decides_acceptance(
+        self, arrival: str, resunits: int | None, branch: str | None
+    ) -> None:
+        """Two one-unit dwellings make a RES3A footprint, which is not single."""
+        shapes = footprints({'A': (0, 0, 10)})
+        records = points(
+            nsi(1, 3, 3, 'RES1', 1),
+            nsi(2, 6, 6, 'RES1', 1),
+            nsi(3, 15, 5, arrival, resunits),
+        )
+        result = run(shapes, records)
+        assert branch_of(result).get(3) == branch
+        assert reason_of(result) == ({} if branch else {3: 'refused'})
+
+    @pytest.mark.parametrize(
+        ('res2_sqft', 'branch'), [(500.0, 'walk_to_shared'), (2000.0, None)]
+    )
+    def test_governing_res2_keeps_a_footprint_single(
+        self, res2_sqft: float, branch: str | None
+    ) -> None:
+        """Beside a RES3B record, a RES2 record closes the footprint if it governs."""
+        shapes = footprints({'A': (0, 0, 10)})
+        records = points(
+            nsi(1, 3, 3, 'RES2', 1, sqft=res2_sqft),
+            nsi(2, 6, 6, 'RES3B', 4, sqft=900.0),
+            nsi(3, 15, 5, 'RES3C', 6),
+        )
+        result = run(shapes, records)
+        assert branch_of(result).get(3) == branch
+        assert reason_of(result) == ({} if branch else {3: 'refused'})
 
     @pytest.mark.parametrize('held', ['RES3B', 'COM1'])
     @pytest.mark.parametrize('arrival', ['RES1', 'RES2'])
@@ -449,6 +488,14 @@ class TestAcceptance:
         result = run(shapes, records)
         assert len(result.links) == 1
         assert result.unlinked['reason'].tolist() == ['refused']
+
+    def test_walk_arrival_into_an_empty_footprint_sets_its_class(self) -> None:
+        """A single dwelling that walks into an empty footprint makes it single."""
+        shapes = footprints({'A': (0, 0, 10)})
+        records = points(nsi(2, 13, 5, 'RES1', 1), nsi(1, -3, 5, 'RES3B', 4))
+        result = run(shapes, records)
+        assert branch_of(result) == {2: 'walk_to_empty'}
+        assert reason_of(result) == {1: 'refused'}
 
 
 class TestUnlinked:

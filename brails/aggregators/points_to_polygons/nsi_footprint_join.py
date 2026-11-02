@@ -439,11 +439,12 @@ class NSIFootprintJoin:
     points are taken in the order of a keyed uniform of their ``fd_id`` (see
     :meth:`walk_uniforms`), ties by ``fd_id``, and each takes the nearest
     footprint within ``cap_m`` that accepts it, ties by asset id. The result
-    is the same in every possible world. A footprint holding no
-    point accepts any point. A footprint holding a single dwelling accepts
-    nothing more. A footprint holding only multi-family or non-residential
-    points accepts a multi-family or non-residential point. A point that no
-    footprint within the cap accepts is returned as unlinked.
+    is the same in every possible world. A footprint holding no point
+    accepts any point. A footprint holding points refuses a point of the
+    single walk group, and accepts any other point only while the class it
+    takes from the points it already holds (below) is outside
+    :data:`SINGLE_CLASSES`. A point that no footprint within the cap accepts
+    is returned as unlinked.
 
     A point's class is its parsed ``occtype`` after the count rule (see
     :func:`point_class`), and its walk group follows from that class (see
@@ -576,14 +577,9 @@ class NSIFootprintJoin:
         inside = self._inside_pass(
             polygons, polygons_m, point_geoms, points_m, footprint_rank
         )
-        held_any = np.zeros(len(footprint_ids), dtype=bool)
-        held_single = np.zeros(len(footprint_ids), dtype=bool)
         received: dict[int, list[tuple[int, str]]] = {}
         links: list[dict[str, Any]] = []
         for point_index, footprint_index in sorted(inside.items()):
-            held_any[footprint_index] = True
-            if records[point_index].group == GROUP_SINGLE:
-                held_single[footprint_index] = True
             received.setdefault(footprint_index, []).append(
                 (point_index, BRANCH_INSIDE)
             )
@@ -596,6 +592,10 @@ class NSIFootprintJoin:
                     'walk_position': None,
                 }
             )
+
+        held_single = np.zeros(len(footprint_ids), dtype=bool)
+        for footprint_index, arrivals in received.items():
+            held_single[footprint_index] = _holds_single(arrivals, records)
 
         walkers = [index for index in range(len(records)) if index not in inside]
         candidates = self._candidates(walkers, points_m, polygons_m, footprint_rank)
@@ -611,21 +611,13 @@ class NSIFootprintJoin:
             group = records[point_index].group
             options = candidates.get(point_index, [])
             for footprint_index, distance in options:
-                if held_single[footprint_index]:
+                held = footprint_index in received
+                if held and (held_single[footprint_index] or group == GROUP_SINGLE):
                     continue
-                if held_any[footprint_index] and group == GROUP_SINGLE:
-                    continue
-                branch = (
-                    BRANCH_WALK_TO_SHARED
-                    if held_any[footprint_index]
-                    else BRANCH_WALK_TO_EMPTY
-                )
-                held_any[footprint_index] = True
-                if group == GROUP_SINGLE:
-                    held_single[footprint_index] = True
-                received.setdefault(footprint_index, []).append(
-                    (point_index, branch)
-                )
+                branch = BRANCH_WALK_TO_SHARED if held else BRANCH_WALK_TO_EMPTY
+                arrivals = received.setdefault(footprint_index, [])
+                arrivals.append((point_index, branch))
+                held_single[footprint_index] = _holds_single(arrivals, records)
                 links.append(
                     {
                         'fd_id': records[point_index].fd_id,
@@ -1014,9 +1006,7 @@ def _rank(ids: list[Any]) -> np.ndarray:
     return rank
 
 
-def _governing(
-    arrivals: list[tuple[int, str]], records: list[_Point]
-) -> int:
+def _governing(arrivals: list[tuple[int, str]], records: list[_Point]) -> int:
     """
     Choose the governing record of a footprint by the governing key.
 
@@ -1060,6 +1050,64 @@ def _governing_key(record: _Point) -> tuple[bool, bool, float, tuple]:
     )
 
 
+def _unit_total(members: list[_Point]) -> float | int | None:
+    """
+    Sum the units of a footprint's housing records.
+
+    Args:
+        members (list[_Point]):
+            The footprint's points.
+
+    Returns:
+        float or int or None:
+            The sum of their contributions, or None where none of them is a
+            housing record.
+    """
+    housing = [member.units for member in members if member.units is not None]
+    return sum(housing) if housing else None
+
+
+def _footprint_class(lead: _Point, units: float | None) -> tuple[str, bool]:
+    """
+    Return a footprint's class and whether the count band set it.
+
+    Args:
+        lead (_Point):
+            The footprint's governing record.
+        units (float or None):
+            The footprint's units (:func:`_unit_total`).
+
+    Returns:
+        tuple[str, bool]:
+            The count band of ``units`` and True where ``units`` is not None
+            and the governing record's family is in
+            :data:`COUNTED_FAMILIES`, otherwise the governing record's class
+            and False.
+    """
+    if occupancy_family(lead.nsi_class) in COUNTED_FAMILIES and units is not None:
+        return count_band(units), True
+    return lead.nsi_class, False
+
+
+def _holds_single(arrivals: list[tuple[int, str]], records: list[_Point]) -> bool:
+    """
+    Tell whether the class a footprint takes from its points is single.
+
+    Args:
+        arrivals (list):
+            The footprint's points as ``(point index, branch)``.
+        records (list[_Point]):
+            The points.
+
+    Returns:
+        bool:
+            Whether the footprint's class is in :data:`SINGLE_CLASSES`.
+    """
+    lead = records[_governing(arrivals, records)]
+    units = _unit_total([records[index] for index, _ in arrivals])
+    return _footprint_class(lead, units)[0] in SINGLE_CLASSES
+
+
 def _footprint_values(
     arrivals: list[tuple[int, str]],
     governing: int,
@@ -1098,23 +1146,21 @@ def _footprint_values(
         observed['NSIOccupancyClass'] = nsi_label
     derived: dict[str, Any] = {}
 
-    housing = [member for member in members if member.units is not None]
-    if housing:
-        units = sum(member.units for member in housing)
-        if any(member.filled for member in housing):
-            observed['NumberOfUnitsStatus'] = STATUS_MIDPOINT_FILLED
-            derived['NumberOfUnits'] = float(units)
-        else:
-            observed['NumberOfUnitsStatus'] = STATUS_COUNTED
-            observed['NumberOfUnits'] = units
-    else:
-        units = None
+    units = _unit_total(members)
+    if units is None:
         observed['NumberOfUnitsStatus'] = STATUS_NONE
-
-    if occupancy_family(lead.nsi_class) in COUNTED_FAMILIES and units is not None:
-        derived['OccupancyClass'] = count_band(units)
+    elif any(member.filled for member in members):
+        observed['NumberOfUnitsStatus'] = STATUS_MIDPOINT_FILLED
+        derived['NumberOfUnits'] = float(units)
     else:
-        observed['OccupancyClass'] = lead.nsi_class
+        observed['NumberOfUnitsStatus'] = STATUS_COUNTED
+        observed['NumberOfUnits'] = units
+
+    footprint_class, banded = _footprint_class(lead, units)
+    if banded:
+        derived['OccupancyClass'] = footprint_class
+    else:
+        observed['OccupancyClass'] = footprint_class
 
     for field, name in ((AREA_FIELD, PLAN_AREA), (VALUE_FIELD, REPLACEMENT_COST)):
         stated = [
