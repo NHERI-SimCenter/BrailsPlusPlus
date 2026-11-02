@@ -55,6 +55,7 @@ import json
 import math
 import os
 import random
+import tempfile
 from collections import Counter
 from collections.abc import Hashable, Iterable, Mapping, Sequence
 from collections.abc import Set as AbstractSet
@@ -121,26 +122,6 @@ HAZUS_EQ_SOURCE_FEATURES: tuple[str, ...] = (
 # absent provider value.
 MISSING_VALUE_MARKER = 'NA'
 
-# Property that holds the asset id in a GeoJSON file written with integer
-# ids, where the feature-level id is a sequential integer.
-UNIQUE_ID_PROPERTY = 'unique_id'
-
-# Property that the R2D AIM creators write themselves. An exported property
-# of that name would shadow theirs or be misread by them.
-R2D_AIM_ID_PROPERTY = 'AIM_id'
-
-# Suffix that replaces the GeoJSON file's suffix in the name of the id table.
-ID_TABLE_SUFFIX = '_ids.csv'
-
-# Suffix of the temporary names under which the integer-id export writes its
-# two files before renaming them into place.
-PARTIAL_FILE_SUFFIX = '.partial'
-
-# Suffix under which the integer-id export keeps the earlier id table while
-# it renames the new files into place.
-PREVIOUS_FILE_SUFFIX = '.previous'
-
-
 def _is_missing_value(value: Any) -> bool:  # noqa: ANN401
     """
     Check whether AssetInventory.merge treats a feature value as missing.
@@ -168,16 +149,24 @@ def _is_blank_type(value: Any) -> bool:  # noqa: ANN401
     return isinstance(value, float) and math.isnan(value)
 
 
-def _number_features_by_type(
-    features: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[list[Any]]]:
+def _is_plain_digit_string(text: str) -> bool:
     """
-    Number GeoJSON features from 1 within each asset type.
+    Check whether ``text`` is ASCII digits without a leading zero, or ``'0'``.
 
-    The features are sorted by ``type`` and then by ``str(asset_id)``, and
-    numbered 1, 2, 3 and so on within each ``type``. Each feature receives
-    its number as the feature-level ``id`` and its asset id, as a string, in
-    the property ``unique_id``. The features are modified in place.
+    Args:
+        text (str):
+            The string form of an asset id.
+
+    Returns:
+        bool:
+            ``True`` if ``text`` is such a string, ``False`` otherwise.
+    """
+    return text.isascii() and text.isdigit() and (text == '0' or text[0] != '0')
+
+
+def _number_features_by_type(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Number features for ``write_to_geojson(integer_ids=True)``, in place.
 
     Args:
         features (list[dict[str, Any]]):
@@ -185,15 +174,17 @@ def _number_features_by_type(
             its asset id in the property ``id``.
 
     Returns:
-        tuple[list[dict[str, Any]], list[list[Any]]]:
-            The features in file order, and the rows ``[type, id, unique_id]``
-            of the id table in the same order.
+        list[dict[str, Any]]:
+            The features in the order ``write_to_geojson`` states, each
+            carrying its number within its ``type`` as the feature-level
+            ``id`` and its asset id, as a string, in the property
+            ``unique_id``.
 
     Raises:
         ValueError:
-            If an asset already carries a ``unique_id`` or ``AIM_id`` feature,
-            has no ``type`` or a ``type`` that is ``None``, NaN or an empty
-            string, or if two asset ids have the same string form.
+            If an asset already carries a ``unique_id`` or ``AIM_id``
+            feature, has no ``type`` or a ``type`` that is ``None``, NaN or
+            an empty string, or if two asset ids have the same string form.
     """
     keyed = []
     asset_ids_by_string = {}
@@ -201,7 +192,7 @@ def _number_features_by_type(
         properties = feature['properties']
         asset_id = properties.pop('id')
         unique_id = str(asset_id)
-        for reserved in (UNIQUE_ID_PROPERTY, R2D_AIM_ID_PROPERTY):
+        for reserved in ('unique_id', 'AIM_id'):
             if reserved in properties:
                 raise ValueError(
                     f"Asset {asset_id!r} already carries a '{reserved}' "
@@ -220,75 +211,57 @@ def _number_features_by_type(
                 'export cannot tell them apart.'
             )
         asset_ids_by_string[unique_id] = asset_id
-        keyed.append((str(asset_type), unique_id, feature))
+        keyed.append((str(asset_type), asset_id, unique_id, feature))
 
-    keyed.sort(key=lambda item: item[:2])
+    # A bool fails the rule, since its string form is 'True' or 'False'.
+    numeric = all(_is_plain_digit_string(unique_id) for _, _, unique_id, _ in keyed)
+    keyed.sort(key=lambda item: (item[0], int(item[2]) if numeric else item[2]))
     last_numbers: dict[str, int] = {}
-    rows = []
-    for asset_type, unique_id, feature in keyed:
+    for asset_type, _, unique_id, feature in keyed:
         number = last_numbers.get(asset_type, 0) + 1
         last_numbers[asset_type] = number
-        feature['properties'][UNIQUE_ID_PROPERTY] = unique_id
+        feature['properties']['unique_id'] = unique_id
         feature['id'] = number
-        rows.append([asset_type, number, unique_id])
-    return [feature for _, _, feature in keyed], rows
+    return [feature for _, _, _, feature in keyed]
 
 
-def _write_integer_id_files(
-    output_file: str, geojson: dict[str, Any], table_rows: list[list[Any]]
-) -> Path:
+def _write_geojson_output_file(path: str | Path, geojson: dict[str, Any]) -> None:
     """
-    Write an integer-id GeoJSON file and its id table, so neither is partial.
-
-    Both are written under temporary names, which are removed if a write
-    fails, and then renamed into place, the table first. An existing table
-    is moved aside before the renames and restored if either of them fails,
-    so a failure leaves the earlier file and table as they were.
+    Write a GeoJSON file for ``write_to_geojson``.
 
     Args:
-        output_file (str):
-            Path to the GeoJSON file.
+        path (str or Path):
+            The output file.
         geojson (dict[str, Any]):
-            The GeoJSON ``FeatureCollection`` to write.
-        table_rows (list[list[Any]]):
-            The rows ``[type, id, unique_id]`` of the id table.
+            The GeoJSON ``FeatureCollection``, passed through
+            :func:`clean_floats` before it is written.
 
-    Returns:
-        Path:
-            Path to the id table.
+    Raises:
+        ValueError:
+            If ``geojson`` holds an infinite value outside a tuple, in which
+            case no file is created.
+        OSError:
+            If writing or replacing the file fails, in which case the
+            temporary file is removed and an existing file is left as it was.
     """
-    geojson_path = Path(output_file)
-    table_path = geojson_path.with_name(geojson_path.stem + ID_TABLE_SUFFIX)
-    partial_geojson = geojson_path.with_name(geojson_path.name + PARTIAL_FILE_SUFFIX)
-    partial_table = table_path.with_name(table_path.name + PARTIAL_FILE_SUFFIX)
-    previous_table = table_path.with_name(table_path.name + PREVIOUS_FILE_SUFFIX)
+    payload = clean_floats(geojson)
+    output_path = Path(path)
+    descriptor, partial_name = tempfile.mkstemp(
+        dir=output_path.parent, prefix=output_path.name + '.', suffix='.partial'
+    )
+    partial_path = Path(partial_name)
     try:
-        with partial_table.open('w', encoding='utf-8', newline='') as f:
-            writer = csv.writer(f, lineterminator='\n')
-            writer.writerow(['type', 'id', UNIQUE_ID_PROPERTY])
-            writer.writerows(table_rows)
-        with partial_geojson.open('w', encoding='utf-8') as f:
-            json.dump(clean_floats(geojson), f, indent=2)
-        had_table = table_path.exists()
-        if had_table:
-            table_path.replace(previous_table)
-        table_in_place = False
-        try:
-            partial_table.replace(table_path)
-            table_in_place = True
-            partial_geojson.replace(geojson_path)
-        except BaseException:
-            if had_table:
-                previous_table.replace(table_path)
-            elif table_in_place:
-                table_path.unlink()
-            raise
-        previous_table.unlink(missing_ok=True)
+        with os.fdopen(descriptor, 'w', encoding='utf-8') as f:
+            json.dump(payload, f, indent=2)
+        # mkstemp creates the file readable by its owner only. Give it the
+        # mode a newly created file would have.
+        umask = os.umask(0)
+        os.umask(umask)
+        partial_path.chmod(0o666 & ~umask)
+        partial_path.replace(output_path)
     except BaseException:
-        partial_table.unlink(missing_ok=True)
-        partial_geojson.unlink(missing_ok=True)
+        partial_path.unlink(missing_ok=True)
         raise
-    return table_path
 
 
 def _merge_id_order(asset_id: Hashable) -> tuple[str, str]:
@@ -1457,7 +1430,8 @@ class AssetInventory:
         if with_housing_units:
             raise ValueError(
                 f'Source(s) {with_housing_units} hold a housing unit '
-                'inventory, which merge does not combine. combine does.'
+                'inventory. merge does not combine housing unit inventories, '
+                'while the combine method does.'
             )
 
         world_counts = {
@@ -2274,8 +2248,7 @@ class AssetInventory:
 
         It also supports mapping asset IDs from the GeoJSON file's properties
         (using `id_column`), auto-generating new numeric IDs, or keying assets
-        by the `unique_id` property that `write_to_geojson` writes with
-        `integer_ids` (using `key_by_unique_id`).
+        by the `unique_id` property (using `key_by_unique_id`).
 
         Args:
             file_path (str):
@@ -2290,13 +2263,14 @@ class AssetInventory:
                 the unique asset ID. If `None` (default), IDs are
                 auto-generated sequentially.
             key_by_unique_id (bool, optional):
-                If `True`, key each asset by its `unique_id` property, read as
-                a string and never converted to an integer, and leave the
-                feature-level `id` unused. This reads back a file written by
-                `write_to_geojson` with `integer_ids=True`. The `unique_id`
-                property is not kept as a feature, and each feature keeps its
-                own `type`. Cannot be combined with `id_column`. Defaults to
-                `False`.
+                If `True`, key each asset by its `unique_id` property, which
+                reads back a file written by `write_to_geojson` with
+                `integer_ids=True`. The keys are ints when every `unique_id`
+                is ASCII digits without a leading zero (`'0'` included), the
+                rule under which that export orders numerically, and strings
+                otherwise. The property is not kept as a feature,
+                and each asset keeps its own `type`. Cannot be combined with
+                `id_column`. Defaults to `False`.
 
         Returns:
             bool:
@@ -2415,6 +2389,7 @@ class AssetInventory:
             # empty or repeated unique_id, or one that already keys an asset,
             # leaves the inventory as it was.
             seen_unique_ids = set()
+            unique_ids = []
             for i, asset_data in enumerate(features):
                 if (
                     not isinstance(asset_data, dict)
@@ -2423,26 +2398,31 @@ class AssetInventory:
                     continue
                 feature_properties = asset_data.get('properties')
                 unique_id = (
-                    feature_properties.get(UNIQUE_ID_PROPERTY)
+                    feature_properties.get('unique_id')
                     if isinstance(feature_properties, dict)
                     else None
                 )
                 if unique_id is None or str(unique_id) == '':
                     raise ValueError(
-                        f"Feature at index {i} has no '{UNIQUE_ID_PROPERTY}' value."
+                        f"Feature at index {i} has no 'unique_id' value."
                     )
                 unique_id = str(unique_id)
                 if unique_id in seen_unique_ids:
                     raise ValueError(
-                        f"'{UNIQUE_ID_PROPERTY}' value {unique_id!r} occurs "
+                        f"'unique_id' value {unique_id!r} occurs "
                         'in more than one feature.'
                     )
-                if unique_id in self.inventory:
+                seen_unique_ids.add(unique_id)
+                unique_ids.append(unique_id)
+            integer_keys = all(
+                _is_plain_digit_string(unique_id) for unique_id in unique_ids
+            )
+            for unique_id in unique_ids:
+                if (int(unique_id) if integer_keys else unique_id) in self.inventory:
                     raise ValueError(
-                        f"'{UNIQUE_ID_PROPERTY}' value {unique_id!r} already "
+                        f"'unique_id' value {unique_id!r} already "
                         'keys an asset in the inventory.'
                     )
-                seen_unique_ids.add(unique_id)
 
         id_counter = 1
         for i, asset_data in enumerate(features):
@@ -2496,8 +2476,9 @@ class AssetInventory:
 
             # Determine asset ID
             if key_by_unique_id:
-                # Not converted to int, so '0213456789' keeps its leading zero:
-                asset_id = str(properties.pop(UNIQUE_ID_PROPERTY))
+                asset_id = str(properties.pop('unique_id'))
+                if integer_keys:
+                    asset_id = int(asset_id)
             else:
                 # Use id_column if provided, otherwise default to "id"
                 id_key = id_column if id_column else 'id'
@@ -2728,23 +2709,21 @@ class AssetInventory:
         Args:
             output_file(str, optional):
                 Path to the output GeoJSON file. If empty, no file is written.
+                The file is written under a temporary name in the same
+                directory, which then replaces the output file, so a failed
+                write leaves an existing file as it was. A NaN is written as
+                ``null``, except inside a tuple, such as a coordinate pair,
+                whose values are written as stored (see ``clean_floats``).
             integer_ids (bool, optional):
-                If ``True``, write the file in the form the R2D tool stack
-                reads, which requires integer ids. The features are sorted by
-                ``type`` and then by ``str(asset_id)``, and numbered 1 to n
-                within each ``type``. Each carries its number as the
+                If ``True``, write the form the R2D tool stack reads, which
+                requires integer ids. The features are numbered from 1 within
+                each ``type``, and each carries its number as the
                 feature-level ``id`` and its asset id, as a string, in the
-                property ``unique_id``. An integer asset id is therefore
-                ordered as a string, so ``10`` precedes ``2``, and is read
-                back as a string. When ``output_file`` is given, a CSV table
-                with columns ``type``, ``id`` and ``unique_id`` is written
-                beside it, named by replacing the file's suffix with
-                ``_ids.csv``. An existing table of that name is overwritten,
-                as the GeoJSON file is. Assets without geometry are skipped
-                and receive no number. Nothing is written when the export
-                raises, and a failed write or rename leaves no partial file
-                and the earlier file and table as they were. Defaults to
-                ``False``.
+                property ``unique_id``. They are ordered by ``type`` and then
+                by asset id, numerically when every asset id, as a string, is
+                ASCII digits without a leading zero (``'0'`` included), and
+                as strings otherwise. Assets without geometry are skipped.
+                Defaults to ``False``.
 
         Returns:
             dict:
@@ -2752,10 +2731,12 @@ class AssetInventory:
 
         Raises:
             ValueError:
-                With ``integer_ids``, if a written asset already carries a
-                ``unique_id`` or ``AIM_id`` feature, has no ``type`` or a
-                ``type`` that is ``None``, NaN or an empty string, or if two
-                asset ids have the same string form.
+                If ``output_file`` is given and the inventory holds an
+                infinite value outside a tuple, in which case no file is
+                opened. With ``integer_ids``, also if a written asset already
+                carries a ``unique_id`` or ``AIM_id`` feature, has no
+                ``type`` or a ``type`` that is ``None``, NaN or an empty
+                string, or if two asset ids have the same string form.
 
         Examples:
             Define an AssetInventory consisting of a single asset.
@@ -2794,9 +2775,7 @@ class AssetInventory:
         geojson = self.get_geojson()
 
         if integer_ids:
-            geojson['features'], id_table_rows = _number_features_by_type(
-                geojson['features']
-            )
+            geojson['features'] = _number_features_by_type(geojson['features'])
         else:
             # Ensure each feature has its asset id, as a string, as its
             # top-level 'id'.
@@ -2807,20 +2786,12 @@ class AssetInventory:
         # If a file name is provided, write the created GeoJSON dictionary into
         # a GeoJSON file:
         if output_file:
-            if integer_ids:
-                table_path = _write_integer_id_files(
-                    output_file, geojson, id_table_rows
-                )
-            else:
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    json.dump(clean_floats(geojson), f, indent=2)
+            _write_geojson_output_file(output_file, geojson)
             num_elements = len(geojson['features'])
             element = 'asset' if num_elements == 1 else 'assets'
             print(
                 f'Wrote {num_elements} {element} to {os.path.abspath(output_file)}'
             )
-            if integer_ids:
-                print(f'Wrote the id table to {os.path.abspath(table_path)}')
         return geojson
 
     def read_from_csv(

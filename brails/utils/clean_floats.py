@@ -32,7 +32,9 @@
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 #
 
+import math
 from typing import Any
+
 
 def clean_floats(obj: Any) -> Any:  # noqa: ANN401
     """
@@ -41,7 +43,10 @@ def clean_floats(obj: Any) -> Any:  # noqa: ANN401
     This function traverses a nested structure (e.g., dict, list, JSON-like
     object) and converts any float that is numerically equivalent to an integer
     into an int, improving the readability and cleanliness of the output,
-    especially for serialization.
+    especially for serialization. A NaN becomes ``None``. Only Python floats
+    and their subclasses are handled, so a ``numpy.float32`` is returned
+    unchanged. A tuple is not traversed and is returned as it is, with the
+    values inside it.
 
     Args:
         obj (Any):
@@ -50,11 +55,22 @@ def clean_floats(obj: Any) -> Any:  # noqa: ANN401
     Returns:
         Any:
             The input object with eligible floats converted to integers.
+
+    Raises:
+        ValueError:
+            If a float outside a tuple is infinite, which JSON cannot hold.
     """
     if isinstance(obj, dict):
         return {k: clean_floats(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [clean_floats(v) for v in obj]
-    if isinstance(obj, float) and obj.is_integer():
-        return int(obj)
+    if isinstance(obj, float):
+        if math.isnan(obj):
+            return None
+        if math.isinf(obj):
+            raise ValueError(
+                f'The value {obj} is infinite and cannot be written as JSON.'
+            )
+        if obj.is_integer():
+            return int(obj)
     return obj

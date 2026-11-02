@@ -321,6 +321,11 @@ class HousingUnitInventory:
             dict[str, Any]:
                 A dictionary containing the JSON representation of the
                 inventory.
+
+        Raises:
+            ValueError:
+                If ``output_file`` is given and a feature value outside a
+                tuple is infinite, in which case no file is opened.
         """
         try:
             brails_version = version('BRAILS')
@@ -337,10 +342,12 @@ class HousingUnitInventory:
         for housing_unit_id, housing_unit in self.inventory.items():
             json_data['housing_units'][str(housing_unit_id)] = housing_unit.features
 
-        # Write the created JSON dictionary into a JSON file:
+        # Write the created JSON dictionary into a JSON file, cleaned first so
+        # a ValueError from clean_floats leaves an existing file as it was:
         if output_file:
+            cleaned = clean_floats(json_data)
             with Path(output_file).open('w', encoding='utf-8') as file_out:
-                json.dump(clean_floats(json_data), file_out, indent=2)
+                json.dump(cleaned, file_out, indent=2)
 
         return json_data
 

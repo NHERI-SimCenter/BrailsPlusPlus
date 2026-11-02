@@ -37,11 +37,12 @@
 from __future__ import annotations
 
 import copy
-import csv
 import datetime as dt
 import json
+import os
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pytest
 
 from brails.types import asset_inventory as asset_inventory_module
@@ -110,12 +111,6 @@ def write_integer(
         return returned, json.load(f)
 
 
-def read_table(tmp_path: Path) -> list[dict[str, str]]:
-    """Read the id table written beside ``inventory.geojson``."""
-    with (tmp_path / 'inventory_ids.csv').open(encoding='utf-8', newline='') as f:
-        return list(csv.DictReader(f))
-
-
 class TestIntegerIdWrite:
     """Layout of the file written with integer ids."""
 
@@ -155,7 +150,7 @@ class TestIntegerIdWrite:
         assert json.loads(json.dumps(returned['features'])) == written['features']
 
     def test_insertion_order_does_not_change_the_file(self, tmp_path: Path) -> None:
-        """Two insertion orders give the same features and the same table."""
+        """Two insertion orders give the same features."""
         first = tmp_path / 'first'
         second = tmp_path / 'second'
         first.mkdir()
@@ -165,17 +160,18 @@ class TestIntegerIdWrite:
             second, make_inventory(list(reversed(SORTED_IDS)))
         )
         assert written_first['features'] == written_second['features']
-        assert read_table(first) == read_table(second)
 
     def test_asset_without_geometry_receives_no_number(self, tmp_path: Path) -> None:
-        """A skipped asset leaves no gap in the ids and no row in the table."""
+        """A skipped asset leaves no gap in the ids."""
         inventory = make_inventory()
         inventory.add_asset(
             '9q8yyk0000', Asset('9q8yyk0000', [], {'type': 'building'})
         )
         _, written = write_integer(tmp_path, inventory)
         assert [f['id'] for f in written['features']] == [1, 2, 3, 4]
-        assert [row['unique_id'] for row in read_table(tmp_path)] == SORTED_IDS
+        assert [
+            f['properties']['unique_id'] for f in written['features']
+        ] == SORTED_IDS
 
     def test_ids_are_numbered_within_each_type(self, tmp_path: Path) -> None:
         """Each type is numbered 1 to k, and the file is ordered by type."""
@@ -194,20 +190,13 @@ class TestIntegerIdWrite:
             ('building', 1, '0213456789'),
             ('building', 2, '9q8yyk8ytp-152'),
         ]
-        assert [
-            (row['type'], int(row['id']), row['unique_id'])
-            for row in read_table(tmp_path)
-        ] == [
-            (f['properties']['type'], f['id'], f['properties']['unique_id'])
-            for f in written['features']
-        ]
 
-    def test_integer_asset_ids_are_numbered_in_string_order(
+    def test_integer_asset_ids_are_numbered_in_numeric_order(
         self, tmp_path: Path
     ) -> None:
-        """Integer keys 1, 2 and 10 are ordered as '1', '10' and '2'."""
+        """Integer keys 10, 2 and 1 are ordered as 1, 2 and 10."""
         inventory = AssetInventory()
-        for asset_id in (1, 2, 10):
+        for asset_id in (10, 2, 1):
             inventory.add_asset(
                 asset_id, Asset(asset_id, [[-122.3, 37.8]], {'type': 'building'})
             )
@@ -216,59 +205,84 @@ class TestIntegerIdWrite:
             (f['id'], f['properties']['unique_id']) for f in written['features']
         ] == [
             (1, '1'),
-            (2, '10'),
-            (3, '2'),
+            (2, '2'),
+            (3, '10'),
         ]
-        restored = AssetInventory()
-        restored.read_from_geojson(
-            str(tmp_path / 'inventory.geojson'), key_by_unique_id=True
-        )
-        assert list(restored.inventory) == ['1', '10', '2']
 
-    def test_no_file_writes_no_table(self, tmp_path: Path) -> None:
+    def test_numpy_integer_asset_ids_are_numbered_in_numeric_order(
+        self, tmp_path: Path
+    ) -> None:
+        """A numpy integer key counts as an integer."""
+        inventory = AssetInventory()
+        for asset_id in (np.int64(10), np.int64(2), 1):
+            inventory.add_asset(
+                asset_id, Asset(asset_id, [[-122.3, 37.8]], {'type': 'building'})
+            )
+        _, written = write_integer(tmp_path, inventory)
+        assert [f['properties']['unique_id'] for f in written['features']] == [
+            '1',
+            '2',
+            '10',
+        ]
+
+    def test_bool_asset_id_is_not_an_integer(self, tmp_path: Path) -> None:
+        """With a bool key among integer keys, all are ordered as strings."""
+        inventory = AssetInventory()
+        for asset_id in (True, 10, 2):
+            inventory.add_asset(
+                asset_id, Asset(asset_id, [[-122.3, 37.8]], {'type': 'building'})
+            )
+        _, written = write_integer(tmp_path, inventory)
+        assert [f['properties']['unique_id'] for f in written['features']] == [
+            '10',
+            '2',
+            'True',
+        ]
+
+    def test_mixed_asset_ids_are_numbered_in_string_order(
+        self, tmp_path: Path
+    ) -> None:
+        """With one string key among integer keys, all are ordered as strings."""
+        inventory = AssetInventory()
+        for asset_id in (2, 10, 'a'):
+            inventory.add_asset(
+                asset_id, Asset(asset_id, [[-122.3, 37.8]], {'type': 'building'})
+            )
+        _, written = write_integer(tmp_path, inventory)
+        assert [f['properties']['unique_id'] for f in written['features']] == [
+            '10',
+            '2',
+            'a',
+        ]
+
+    def test_no_file_writes_nothing(self, tmp_path: Path) -> None:
         """Without an output file the ids are returned and nothing is written."""
         returned = make_inventory().write_to_geojson(integer_ids=True)
         assert [f['id'] for f in returned['features']] == [1, 2, 3, 4]
         assert list(tmp_path.iterdir()) == []
 
 
-class TestIdTable:
-    """The sidecar table maps each integer id back to its asset id."""
+@pytest.mark.parametrize('ids', ['integer', 'string'])
+class TestOutputFile:
+    """Both export paths replace the output file only after a full write."""
 
-    def test_table_matches_the_file_row_for_row(self, tmp_path: Path) -> None:
-        """One row per feature, in file order, with the same type and ids."""
-        _, written = write_integer(tmp_path, make_inventory())
-        rows = read_table(tmp_path)
-        assert [(row['type'], int(row['id']), row['unique_id']) for row in rows] == [
-            (f['properties']['type'], f['id'], f['properties']['unique_id'])
-            for f in written['features']
-        ]
-
-    def test_table_header_and_name(self, tmp_path: Path) -> None:
-        """The table sits beside the file as ``<stem>_ids.csv``."""
-        write_integer(tmp_path, make_inventory())
-        assert sorted(p.name for p in tmp_path.iterdir()) == [
-            'inventory.geojson',
-            'inventory_ids.csv',
-        ]
-        text = (tmp_path / 'inventory_ids.csv').read_text(encoding='utf-8')
-        assert text.splitlines()[0] == 'type,id,unique_id'
-        assert text.splitlines()[1] == 'building,1,0213456789'
-
-    def test_existing_files_are_overwritten(self, tmp_path: Path) -> None:
-        """A second export replaces both the file and the table."""
-        write_integer(tmp_path, make_inventory())
+    def test_existing_file_is_overwritten(self, tmp_path: Path, ids: str) -> None:
+        """A second export replaces the file and leaves no other file."""
+        output = str(tmp_path / 'inventory.geojson')
+        make_inventory().write_to_geojson(output, integer_ids=ids == 'integer')
         inventory = make_inventory()
         inventory.remove_asset('9q8yym1bc0')
-        _, written = write_integer(tmp_path, inventory)
+        inventory.write_to_geojson(output, integer_ids=ids == 'integer')
+        written = json.loads((tmp_path / 'inventory.geojson').read_text('utf-8'))
         assert len(written['features']) == 3
-        assert len(read_table(tmp_path)) == 3
+        assert [p.name for p in tmp_path.iterdir()] == ['inventory.geojson']
 
-    def test_failed_write_leaves_the_old_files(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    def test_failed_write_leaves_the_old_file(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ids: str
     ) -> None:
-        """A write that fails leaves the earlier files and no partial file."""
-        write_integer(tmp_path, make_inventory())
+        """A write that fails leaves the earlier file and no partial file."""
+        output = str(tmp_path / 'inventory.geojson')
+        make_inventory().write_to_geojson(output, integer_ids=ids == 'integer')
         before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
 
         def fail(*_args: object, **_kwargs: object) -> None:
@@ -278,32 +292,83 @@ class TestIdTable:
         inventory = make_inventory()
         inventory.remove_asset('9q8yym1bc0')
         with pytest.raises(OSError, match='disk full'):
-            inventory.write_to_geojson(
-                str(tmp_path / 'inventory.geojson'), integer_ids=True
-            )
+            inventory.write_to_geojson(output, integer_ids=ids == 'integer')
         assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
 
-    @pytest.mark.parametrize('existing', ['pair', 'none'])
-    def test_failed_second_rename_leaves_the_old_pair(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, existing: str
+    @pytest.mark.parametrize('existing', ['file', 'none'])
+    def test_failed_replace_leaves_the_old_file(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        ids: str,
+        existing: str,
     ) -> None:
-        """A failed GeoJSON rename after the table's leaves the old files."""
-        if existing == 'pair':
-            write_integer(tmp_path, make_inventory())
-        before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+        """A failed replace leaves the earlier file, or none, and no partial."""
         geojson_path = tmp_path / 'inventory.geojson'
-        replace = type(geojson_path).replace
+        if existing == 'file':
+            make_inventory().write_to_geojson(
+                str(geojson_path), integer_ids=ids == 'integer'
+            )
+        before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
 
-        def fail_on_geojson(self: Path, target: Path) -> Path:
-            if target == geojson_path:
-                raise OSError('target busy')
-            return replace(self, target)
+        def fail(*_args: object) -> Path:
+            raise OSError('target busy')
 
-        monkeypatch.setattr(type(geojson_path), 'replace', fail_on_geojson)
+        monkeypatch.setattr(type(geojson_path), 'replace', fail)
         inventory = make_inventory()
         inventory.remove_asset('9q8yym1bc0')
         with pytest.raises(OSError, match='target busy'):
-            inventory.write_to_geojson(str(geojson_path), integer_ids=True)
+            inventory.write_to_geojson(
+                str(geojson_path), integer_ids=ids == 'integer'
+            )
+        assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+    @pytest.mark.skipif(os.name == 'nt', reason='POSIX file modes')
+    def test_file_has_the_mode_of_a_new_file(self, tmp_path: Path, ids: str) -> None:
+        """The written file is not restricted to its owner."""
+        output = tmp_path / 'inventory.geojson'
+        umask = os.umask(0o022)
+        try:
+            make_inventory().write_to_geojson(
+                str(output), integer_ids=ids == 'integer'
+            )
+        finally:
+            os.umask(umask)
+        assert output.stat().st_mode & 0o777 == 0o644
+
+    def test_nan_is_written_as_null(self, tmp_path: Path, ids: str) -> None:
+        """A NaN feature value is written as ``null``, and the file is JSON."""
+        inventory = make_inventory()
+        inventory.add_asset_features(
+            '9q8yym1bc0', {'ReplacementCost': float('nan')}, overwrite=True
+        )
+        output = tmp_path / 'inventory.geojson'
+        inventory.write_to_geojson(str(output), integer_ids=ids == 'integer')
+        text = output.read_text(encoding='utf-8')
+        assert 'NaN' not in text
+        written = json.loads(text)
+        (feature,) = (
+            f for f in written['features'] if 'ReplacementCost' in f['properties']
+        )
+        assert feature['properties']['ReplacementCost'] is None
+
+    @pytest.mark.parametrize('existing', ['file', 'none'])
+    def test_infinite_value_raises_and_writes_nothing(
+        self, tmp_path: Path, ids: str, existing: str
+    ) -> None:
+        """An infinite value raises and leaves the earlier file, or none."""
+        output = tmp_path / 'inventory.geojson'
+        if existing == 'file':
+            make_inventory().write_to_geojson(
+                str(output), integer_ids=ids == 'integer'
+            )
+        before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+        inventory = make_inventory()
+        inventory.add_asset_features(
+            '9q8yym1bc0', {'ReplacementCost': float('-inf')}, overwrite=True
+        )
+        with pytest.raises(ValueError, match='infinite'):
+            inventory.write_to_geojson(str(output), integer_ids=ids == 'integer')
         assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
 
 
@@ -383,8 +448,67 @@ class TestReadByUniqueId:
         }
         assert restored.inventory['9q8yyk8ytp'].features['type'] == 'bridge'
 
-    def test_all_digit_unique_id_stays_a_string(self, tmp_path: Path) -> None:
-        """No asset id is converted to an integer."""
+    @pytest.mark.parametrize(
+        ('asset_ids', 'keys'),
+        [
+            ((10, 2, 1), [1, 2, 10]),
+            (('10', '2', '1'), [1, 2, 10]),
+            ((10, 2, -3), ['-3', '10', '2']),
+        ],
+    )
+    def test_export_read_and_reexport_number_alike(
+        self, tmp_path: Path, asset_ids: tuple[Any, ...], keys: list[Any]
+    ) -> None:
+        """Plain-digit keys come back as ints, others as strings in string order."""
+        inventory = AssetInventory()
+        for asset_id in asset_ids:
+            inventory.add_asset(
+                asset_id, Asset(asset_id, [[-122.3, 37.8]], {'type': 'building'})
+            )
+        first = tmp_path / 'first'
+        second = tmp_path / 'second'
+        first.mkdir()
+        second.mkdir()
+        _, written_first = write_integer(first, inventory)
+        restored = AssetInventory()
+        restored.read_from_geojson(
+            str(first / 'inventory.geojson'), key_by_unique_id=True
+        )
+        assert list(restored.inventory) == keys
+        _, written_second = write_integer(second, restored)
+        assert written_second['features'] == written_first['features']
+
+    @pytest.mark.parametrize(
+        ('unique_ids', 'keys'),
+        [
+            (['0', '7', '10'], [0, 7, 10]),
+            (['07', '7'], ['07', '7']),
+            (['7', '-7'], ['7', '-7']),
+            (['7', 'a'], ['7', 'a']),
+        ],
+    )
+    def test_keys_are_ints_only_when_every_unique_id_is_plain_digits(
+        self, tmp_path: Path, unique_ids: list[str], keys: list[Any]
+    ) -> None:
+        """One unique_id with a leading zero, a sign or a letter keeps strings."""
+        path = self._write_features(tmp_path, unique_ids)
+        restored = AssetInventory()
+        restored.read_from_geojson(path, key_by_unique_id=True)
+        assert list(restored.inventory) == keys
+
+    def test_integer_unique_id_already_in_the_inventory_raises(
+        self, tmp_path: Path
+    ) -> None:
+        """An integer key that already keys an asset raises."""
+        path = self._write_features(tmp_path, ['4', '5'])
+        inventory = AssetInventory()
+        inventory.add_asset(5, Asset(5, [[-122.4, 37.7]], {'type': 'building'}))
+        with pytest.raises(ValueError, match="'5' already keys an asset"):
+            inventory.read_from_geojson(path, key_by_unique_id=True)
+        assert list(inventory.inventory) == [5]
+
+    def test_mixed_unique_ids_stay_strings(self, tmp_path: Path) -> None:
+        """Unique_ids not all plain digits keep every key a string."""
         write_integer(tmp_path, make_inventory())
         restored = AssetInventory()
         restored.read_from_geojson(
@@ -483,7 +607,7 @@ class TestDefaultWriteUnchanged:
     def test_default_file_bytes(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A call without ``integer_ids`` writes string ids and no table."""
+        """A call without ``integer_ids`` writes string ids and no other file."""
         monkeypatch.setattr(asset_inventory_module, 'datetime', _FixedDatetime)
         monkeypatch.setattr(asset_inventory_module, 'version', lambda _: '9.9')
         inventory = AssetInventory()
@@ -518,3 +642,23 @@ class TestDefaultWriteUnchanged:
         }
         assert output.read_text(encoding='utf-8') == json.dumps(expected, indent=2)
         assert [p.name for p in tmp_path.iterdir()] == ['default.geojson']
+
+    def test_whole_number_coordinates_are_written_as_stored(
+        self, tmp_path: Path
+    ) -> None:
+        """Coordinates are tuples in the payload, so -122.0 stays a float."""
+        inventory = AssetInventory()
+        inventory.add_asset(
+            'b',
+            Asset(
+                'b',
+                [[-122.0, 37.0], [-121.0, 37.0], [-121.0, 38.0], [-122.0, 37.0]],
+                {'type': 'building'},
+            ),
+        )
+        output = tmp_path / 'default.geojson'
+        inventory.write_to_geojson(str(output))
+        written = json.loads(output.read_text(encoding='utf-8'))
+        ring = written['features'][0]['geometry']['coordinates'][0]
+        assert ring[0] == [-122.0, 37.0]
+        assert all(type(value) is float for point in ring for value in point)
