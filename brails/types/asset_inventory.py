@@ -3097,62 +3097,78 @@ class AssetInventory:
 
     def get_world_realization(self, id: int = 0) -> AssetInventory:
         """
-        Extract a single realization(possible world) from an inventory.
+        Extract a single realization (possible world) from an inventory.
 
-        This method generates a new :class:`AssetInventory` instance where all
-        features containing multiple possible worlds are reduced to a single
-        realization specified by `id`. Features that are not lists are copied
-        as-is .
+        This method builds a new inventory of the same class with
+        ``n_pw`` 1 in which every feature holding multiple possible worlds
+        is reduced to its value in world ``id``. Other features are carried
+        over. A list or dict value is copied one level deep. Any other
+        value, and any container nested inside the realization's list or
+        dict value, is shared with this inventory. Coordinates and the
+        housing-unit inventory are copied.
 
         Args:
             id(int, default=0):
                 The index of the realization to extract. Must be within the
-                range of available possible worlds(0-based indexing).
+                range of available possible worlds(0-based indexing). When
+                ``n_pw`` is 1 and no feature holds more than one
+                realization, every index returns world 0.
 
         Returns:
             AssetInventory:
                 A new inventory object representing the selected realization.
 
         Raises:
-            Exception: If ``id > 0`` but the inventory only contains a single
-                       realization.
+            Exception: If ``id`` is not 0, ``n_pw`` is 1 and a feature
+                       holds more than one realization.
             Exception: If any feature has fewer realizations than the specified
                        ``id``.
         """
-        new_inventory = deepcopy(self)
+        single = self.n_pw == 1
+        world = 0 if single else id
 
-        if self.n_pw == 1 and id > 0:
-            raise Exception(
-                'Cannot retrieve different realizations as the inventory '
-                'contains only a single realization. Consider setting id=0'
-            )
+        realization = type(self)(vector_features=self.vector_features)
+        realization.housing_unit_inventory = deepcopy(self.housing_unit_inventory)
 
-        for i in self.get_asset_ids():
-            flag, features = self.get_asset_features(i)
-            for key, val in features.items():
-                if is_probabilistic_feature(key, val, self.vector_features):
-                    if len(val) > id:
-                        new_inventory.add_asset_features(
-                            i, {key: val[id]}, overwrite=True
-                        )
-                    elif len(val) == id:
-                        errmsg = (
-                            f'The world index {id} should be smaller than the '
-                            f'existing number of worlds {len(val)}, as the '
-                            'index starts from zero.'
-                        )
-                        raise Exception(errmsg)
+        for i, asset in self.inventory.items():
+            features = {}
+            for key, val in asset.features.items():
+                if not is_probabilistic_feature(key, val, self.vector_features):
+                    value = val
+                elif single and id != 0 and len(val) > 1:
+                    errmsg = (
+                        f'Cannot retrieve world {id}: the inventory has n_pw '
+                        f'1, but asset id {i}, feature {key} holds {len(val)} '
+                        'realizations.'
+                    )
+                    raise Exception(errmsg)
+                elif len(val) > world:
+                    value = val[world]
+                elif len(val) == world:
+                    errmsg = (
+                        f'The world index {world} should be smaller than the '
+                        f'existing number of worlds {len(val)}, as the '
+                        'index starts from zero.'
+                    )
+                    raise Exception(errmsg)
+                else:
+                    errmsg = (
+                        f'The world index {world} should be smaller than the '
+                        f'existing number of worlds, e.g. asset id {i}, '
+                        f'feature {key} contains only {len(val)} '
+                        'realizations.'
+                    )
+                    raise Exception(errmsg)
+                features[key] = (
+                    copy(value) if isinstance(value, (list, dict)) else value
+                )
 
-                    else:
-                        errmsg = (
-                            f'The world index {id} should be smaller than the '
-                            f'existing number of worlds, e.g. asset id {i}, '
-                            f'feature {key} contains only {len(val)} '
-                            'realizations.'
-                        )
-                        raise Exception(errmsg)
+            new_asset = copy(asset)
+            new_asset.coordinates = deepcopy(asset.coordinates)
+            new_asset.features = features
+            realization.inventory[i] = new_asset
 
-        return new_inventory
+        return realization
 
     def update_world_realization(
         self, id: int, world_realization: AssetInventory

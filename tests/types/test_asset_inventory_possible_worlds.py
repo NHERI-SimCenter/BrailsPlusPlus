@@ -47,6 +47,7 @@ from brails.types.asset_inventory import (
     AssetInventory,
     is_probabilistic_feature,
 )
+from brails.types.housing_unit_inventory import HousingUnit, HousingUnitInventory
 
 VECTOR = 'HousingUnits'
 
@@ -268,3 +269,116 @@ def test_get_world_realization_indexes_vector_features_of_lists(build_inventory:
     _, features = realization.get_asset_features('A1')
 
     assert features[VECTOR] == [3, 4]
+
+
+@pytest.mark.parametrize('world', [0, 1, 5])
+def test_get_world_realization_of_one_world_accepts_any_index(
+    build_inventory: Callable[..., AssetInventory], world: int
+) -> None:
+    """A single-world inventory returns its one world for any index."""
+    inventory = build_inventory(
+        {'A1': {'StructureType': 'C1', 'YearBuilt': [1950], VECTOR: [1, 2]}}
+    )
+    realization = inventory.get_world_realization(world)
+    _, features = realization.get_asset_features('A1')
+
+    assert realization.n_pw == 1
+    assert features == {'StructureType': 'C1', 'YearBuilt': 1950, VECTOR: [1, 2]}
+
+
+@pytest.mark.parametrize(
+    ('world', 'message'),
+    [(2, 'smaller than the existing number of worlds 2'), (3, 'contains only 2')],
+)
+def test_get_world_realization_refuses_a_missing_world(
+    build_inventory: Callable[..., AssetInventory], world: int, message: str
+) -> None:
+    """An index past the worlds of a multi-world inventory raises."""
+    inventory = build_inventory({'A1': {'StructureType': ['C1', 'C2']}}, n_pw=2)
+
+    with pytest.raises(Exception, match=message):
+        inventory.get_world_realization(world)
+
+
+def test_get_world_realization_has_one_world_and_a_dataframe(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """A realization holding a plain vector feature converts to a dataframe."""
+    inventory = build_inventory(
+        {'A1': {'StructureType': ['C1', 'C2'], VECTOR: [1, 2]}}, n_pw=2
+    )
+    realization = inventory.get_world_realization(1)
+    properties, _, count = realization.get_dataframe()
+
+    assert realization.n_pw == 1
+    assert count == 1
+    assert properties.loc['A1', 'StructureType'] == 'C2'
+    assert properties.loc['A1', VECTOR] == [1, 2]
+
+
+def test_get_world_realization_reads_back_a_multi_world_file(tmp_path: Any) -> None:
+    """A multi-world file read back with n_pw 1 refuses an index other than 0."""
+    inventory = AssetInventory()
+    inventory.add_asset(
+        'A1', Asset('A1', [[-122.4, 37.8]], {'YearBuilt': [1950, 1960, 1970]})
+    )
+    inventory.n_pw = 3
+    path = tmp_path / 'worlds.geojson'
+    inventory.write_to_geojson(str(path))
+    back = AssetInventory()
+    back.read_from_geojson(str(path))
+
+    assert back.n_pw == 1
+    assert back.get_world_realization(0).get_asset_features('A1')[1] == {
+        'YearBuilt': 1950,
+        'type': 'building',
+    }
+    with pytest.raises(Exception, match='holds 3 realizations'):
+        back.get_world_realization(2)
+    with pytest.raises(Exception, match='holds 3 realizations'):
+        back.get_world_realization(-1)
+
+
+def test_get_world_realization_keeps_the_class() -> None:
+    """The realization of a subclass instance is an instance of that subclass."""
+
+    class Subclass(AssetInventory):
+        pass
+
+    inventory = Subclass()
+    inventory.add_asset('A1', Asset('A1', [[-122.4, 37.8]], {'YearBuilt': 1950}))
+
+    assert type(inventory.get_world_realization(0)) is Subclass
+
+
+def test_get_world_realization_leaves_the_source_unchanged() -> None:
+    """Changing a realization's geometry or features leaves the source as it was."""
+    inventory = AssetInventory(vector_features=['w'])
+    inventory.add_asset(
+        'A1',
+        Asset(
+            'A1',
+            [[-122.4, 37.8]],
+            {'StructureType': ['C1', 'C2'], 'w': [1], 'meta': {'a': 1}},
+        ),
+    )
+    inventory.n_pw = 2
+    units = HousingUnitInventory()
+    units.add_housing_unit('1', HousingUnit({'income': 50000}))
+    inventory.set_housing_unit_inventory(units, validate=False)
+
+    realization = inventory.get_world_realization(0)
+    realization.inventory['A1'].coordinates[0][0] = 0.0
+    realization.add_asset_features('A1', {'StructureType': 'W1'}, overwrite=True)
+    realization.inventory['A1'].features['w'].append(2)
+    realization.inventory['A1'].features['meta']['a'] = 2
+    realization.housing_unit_inventory.inventory['1'].features['income'] = 1
+
+    assert realization.vector_features == ['w']
+    assert inventory.inventory['A1'].coordinates == [[-122.4, 37.8]]
+    assert inventory.get_asset_features('A1')[1] == {
+        'StructureType': ['C1', 'C2'],
+        'w': [1],
+        'meta': {'a': 1},
+    }
+    assert units.inventory['1'].features == {'income': 50000}

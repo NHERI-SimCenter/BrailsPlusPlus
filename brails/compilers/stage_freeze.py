@@ -33,7 +33,7 @@
 
 
 """
-Freeze the output of each pipeline stage so later stages read it unchanged.
+Freeze the output of each pipeline stage and record its digest.
 
 .. autosummary::
 
@@ -44,7 +44,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -54,7 +53,6 @@ from brails.types.asset_inventory import AssetInventory, _merge_id_order
 
 if TYPE_CHECKING:
     import os
-    from collections.abc import Sequence
 
 DIGEST_ALGORITHM = 'blake2b-128'
 """Name of the digest algorithm."""
@@ -66,15 +64,12 @@ class StageFreeze:
     """
     Hold the frozen output of each stage and the order the stages were frozen in.
 
-    A stage is frozen once, under a name, with the names of the earlier
-    stages it read. The freeze keeps a deep copy of the output and returns
-    a fresh deep copy on every read, so neither the producing stage nor any
-    later one can change the frozen value. Frozen outputs are held in memory
-    only.
-
-    The next stage frozen must declare in ``reads`` every stage read since
-    the previous freeze. The check sees :meth:`read` calls only, so a copy
-    read before an earlier freeze and still held is the caller's to declare.
+    A stage is frozen once, under a name. The freeze holds the output by
+    reference and :meth:`read` returns it, so a stage must not change a
+    frozen output. A stage that needs to change one copies it first.
+    :meth:`manifest` recomputes each held output's digest and raises if
+    one no longer matches the digest recorded at freeze. Frozen outputs
+    are held in memory only.
 
     Example:
         >>> from brails.types.asset_inventory import Asset, AssetInventory
@@ -82,44 +77,34 @@ class StageFreeze:
         >>> _ = observed.add_asset('a', Asset('a', [[-122.4, 37.7]]))
         >>> freeze = StageFreeze()
         >>> digest = freeze.freeze('observed', observed)
-        >>> donors = freeze.read('observed')
-        >>> _ = freeze.freeze('imputed', donors, reads=('observed',))
+        >>> freeze.read('observed') is observed
+        True
         >>> freeze.order
-        ('observed', 'imputed')
+        ('observed',)
     """
 
     def __init__(self) -> None:
         """Create an empty freeze with no stage frozen."""
         self._outputs: dict[str, AssetInventory] = {}
-        self._reads: dict[str, tuple[str, ...]] = {}
         self._digests: dict[str, str] = {}
         self._order: list[str] = []
-        self._read_since_freeze: list[str] = []
 
     @property
     def order(self) -> tuple[str, ...]:
         """Names of the frozen stages, in the order they were frozen."""
         return tuple(self._order)
 
-    def freeze(
-        self,
-        stage: str,
-        output: AssetInventory,
-        *,
-        reads: Sequence[str] = (),
-    ) -> str:
+    def freeze(self, stage: str, output: AssetInventory) -> str:
         """
         Freeze the output of a stage and return its digest.
+
+        The output is held by reference (see :class:`StageFreeze`).
 
         Args:
             stage (str):
                 Name of the stage. It must not be frozen already.
             output (AssetInventory):
                 The stage's output.
-            reads (Sequence[str], optional):
-                Names of already frozen stages this stage read. It must
-                name every stage passed to :meth:`read` since the previous
-                freeze (see :class:`StageFreeze`). Defaults to ``()``.
 
         Returns:
             str:
@@ -127,15 +112,11 @@ class StageFreeze:
 
         Raises:
             TypeError:
-                If ``stage`` is not a string, ``reads`` is a single string,
-                ``output`` is not an :class:`AssetInventory`, or the output
-                holds a value the digest cannot represent.
+                If ``stage`` is not a string, ``output`` is not an
+                :class:`AssetInventory`, or the output holds a value the
+                digest cannot represent.
             ValueError:
-                If ``stage`` is empty or already frozen, ``reads`` names a
-                stage twice, or a stage read since the previous freeze is
-                missing from ``reads``.
-            LookupError:
-                If ``reads`` names a stage that is not frozen.
+                If ``stage`` is empty or already frozen.
         """
         if not isinstance(stage, str):
             msg = f'A stage name must be a string, not {type(stage).__name__}.'
@@ -146,53 +127,23 @@ class StageFreeze:
         if stage in self._outputs:
             msg = f'Stage {stage!r} is already frozen.'
             raise ValueError(msg)
-        if isinstance(reads, str):
-            msg = (
-                'reads must be a sequence of stage names, not a single '
-                f'string. Pass ({reads!r},) for one stage.'
-            )
-            raise TypeError(msg)
-        reads = tuple(reads)
-        repeated = sorted({name for name in reads if reads.count(name) > 1})
-        if repeated:
-            msg = f'reads names {repeated} more than once.'
-            raise ValueError(msg)
-        unfrozen = [name for name in reads if name not in self._outputs]
-        if unfrozen:
-            msg = (
-                f'Stage {stage!r} declares reads of unfrozen stages '
-                f'{unfrozen}. A stage can read only stages frozen before '
-                f'it. Frozen so far: {self._order}.'
-            )
-            raise LookupError(msg)
         if not isinstance(output, AssetInventory):
             msg = (
                 'A stage output must be an AssetInventory, not '
                 f'{type(output).__name__}.'
             )
             raise TypeError(msg)
-        undeclared = [name for name in self._read_since_freeze if name not in reads]
-        if undeclared:
-            msg = (
-                f'Stage {stage!r} does not declare {undeclared} in reads, '
-                'but they were read since the previous freeze. Declare '
-                'every stage the output depends on.'
-            )
-            raise ValueError(msg)
 
         digest = _inventory_digest(output)
-        frozen = deepcopy(output)
 
-        self._outputs[stage] = frozen
-        self._reads[stage] = reads
+        self._outputs[stage] = output
         self._digests[stage] = digest
         self._order.append(stage)
-        self._read_since_freeze = []
         return digest
 
     def read(self, stage: str) -> AssetInventory:
         """
-        Return a copy of a frozen stage's output and record the read.
+        Return a frozen stage's output.
 
         Args:
             stage (str):
@@ -200,16 +151,14 @@ class StageFreeze:
 
         Returns:
             AssetInventory:
-                A copy the caller may change freely.
+                The held output itself (see :class:`StageFreeze`).
 
         Raises:
             LookupError:
                 If the stage is not frozen.
         """
         self._require_frozen(stage)
-        if stage not in self._read_since_freeze:
-            self._read_since_freeze.append(stage)
-        return deepcopy(self._outputs[stage])
+        return self._outputs[stage]
 
     def digest(self, stage: str) -> str:
         """
@@ -232,25 +181,29 @@ class StageFreeze:
 
     def manifest(self) -> dict[str, Any]:
         """
-        Return the recorded order, each stage's reads and each digest.
+        Return the recorded order and each digest.
 
-        Each call builds a new dict.
+        Each call recomputes the digest of every held output and builds a
+        new dict.
 
         Returns:
             dict[str, Any]:
                 ``{'digest_algorithm': ..., 'stages': [...]}``, where each
-                entry of ``stages`` is a dict with keys ``stage``, ``reads``
-                and ``digest``, and the list is in the order the stages were
+                entry of ``stages`` is a dict with keys ``stage`` and
+                ``digest``, and the list is in the order the stages were
                 frozen.
+
+        Raises:
+            RuntimeError:
+                If a held output changed after it was frozen. The message
+                names the first such stage.
         """
+        for name in self._order:
+            self._check_unchanged(name)
         return {
             'digest_algorithm': DIGEST_ALGORITHM,
             'stages': [
-                {
-                    'stage': name,
-                    'reads': list(self._reads[name]),
-                    'digest': self._digests[name],
-                }
+                {'stage': name, 'digest': self._digests[name]}
                 for name in self._order
             ],
         }
@@ -262,6 +215,11 @@ class StageFreeze:
         Args:
             path (str or os.PathLike):
                 File to write. An existing file is replaced.
+
+        Raises:
+            RuntimeError:
+                If a held output changed after it was frozen, in which case
+                nothing is written.
         """
         text = json.dumps(self.manifest(), indent=2)
         Path(path).write_text(text + '\n', encoding='utf-8')
@@ -283,9 +241,8 @@ class StageFreeze:
             ValueError:
                 If the file's ``digest_algorithm`` is not
                 :data:`DIGEST_ALGORITHM`, it has no ``stages`` list, an entry
-                lacks a string ``stage``, a list ``reads`` of distinct
-                strings or a string ``digest``, a stage appears twice, or a
-                stage reads one that was not frozen before it.
+                lacks a string ``stage`` or a string ``digest``, or a stage
+                appears twice.
         """
         manifest = json.loads(Path(path).read_text(encoding='utf-8'))
         _check_manifest(manifest, str(path))
@@ -296,6 +253,35 @@ class StageFreeze:
         if stage not in self._outputs:
             msg = f'Stage {stage!r} is not frozen. Frozen so far: {self._order}.'
             raise LookupError(msg)
+
+    def _check_unchanged(self, stage: str) -> None:
+        """
+        Raise ``RuntimeError`` if a held output no longer has its digest.
+
+        Args:
+            stage (str):
+                The frozen stage whose output is checked.
+
+        Raises:
+            RuntimeError:
+                If the output can no longer be digested, or its digest
+                differs from the one recorded at freeze.
+        """
+        try:
+            current = _inventory_digest(self._outputs[stage])
+        except TypeError as error:
+            msg = (
+                f'Stage {stage!r} changed after it was frozen: its output '
+                f'can no longer be digested ({error})'
+            )
+            raise RuntimeError(msg) from error
+        if current != self._digests[stage]:
+            msg = (
+                f'Stage {stage!r} changed after it was frozen: its digest '
+                f'is {current}, not the {self._digests[stage]} recorded at '
+                'freeze.'
+            )
+            raise RuntimeError(msg)
 
 
 def _check_manifest(manifest: Any, source: str) -> None:  # noqa: ANN401
@@ -309,6 +295,10 @@ def _check_manifest(manifest: Any, source: str) -> None:  # noqa: ANN401
             The parsed JSON.
         source (str):
             Where it came from, for the message.
+
+    Raises:
+        ValueError:
+            If any of those checks fails.
     """
     # A malformed file is a bad value, as json's own decode error is, so it
     # raises ValueError where ruff's TRY004 asks for TypeError.
@@ -329,23 +319,13 @@ def _check_manifest(manifest: Any, source: str) -> None:  # noqa: ANN401
         if not (
             isinstance(entry, dict)
             and isinstance(entry.get('stage'), str)
-            and isinstance(entry.get('reads'), list)
-            and all(isinstance(read, str) for read in entry['reads'])
-            and len(set(entry['reads'])) == len(entry['reads'])
             and isinstance(entry.get('digest'), str)
         ):
             msg = f'{source} holds a malformed stage entry: {entry!r}.'
-            raise ValueError(msg)
+            raise ValueError(msg)  # noqa: TRY004
         name = entry['stage']
         if name in seen:
             msg = f'{source} records stage {name!r} more than once.'
-            raise ValueError(msg)
-        late = [read for read in entry['reads'] if read not in seen]
-        if late:
-            msg = (
-                f'{source} records stage {name!r} reading {late}, which '
-                'were not frozen before it.'
-            )
             raise ValueError(msg)
         seen.add(name)
 
