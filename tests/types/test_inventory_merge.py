@@ -60,8 +60,7 @@ if TYPE_CHECKING:
 
     Build = Callable[..., AssetInventory]
 
-# Precedence for the three standard sources: local records over NSI over
-# footprint data.
+# Precedence for the three standard sources.
 PRECEDENCE = ['local', 'nsi', 'footprint']
 
 COORDINATES = {
@@ -224,7 +223,7 @@ class TestThreeSourceMerge:
     def test_no_value_anywhere_leaves_the_marker(
         self, build_inventory: Build
     ) -> None:
-        """Where no source holds a value, the marker stays and the string shows '-'."""
+        """No value anywhere leaves the marker and marks no source in the string."""
         merged = merge_three(build_inventory)
 
         # g2: NSI's NaN year and no local record leave no year at all.
@@ -352,7 +351,7 @@ class TestSourceString:
         assert merged.inventory['g1'].features[SOURCE_STRING_FEATURE] == 'NNL'
 
     def test_only_codes_and_the_none_marker(self, build_inventory: Build) -> None:
-        """Every character is an uppercase code or '-'."""
+        """Every character is an uppercase source code or the none marker."""
         allowed = set(SOURCE_CODES.values()) | {SOURCE_CODE_NONE}
         for asset in merge_three(build_inventory).inventory.values():
             string = asset.features[SOURCE_STRING_FEATURE]
@@ -601,11 +600,7 @@ class TestRefusals:
     def test_label_without_code_raises_only_for_a_source_string(
         self, build_inventory: Build
     ) -> None:
-        """
-        An unknown label is refused when a source string is requested.
-
-        The label is accepted when source_features is None.
-        """
+        """An unknown label is refused when a source string is requested."""
         spine, others = three_sources(build_inventory)
         others['assessor'] = others.pop('local')
         precedence = ['assessor', 'nsi', 'footprint']
@@ -640,7 +635,7 @@ class TestRefusals:
     def test_ids_absent_from_the_spine_raise_and_are_counted(
         self, build_inventory: Build
     ) -> None:
-        """Up to ten foreign ids are named and the rest counted."""
+        """Foreign ids are named up to the reporting limit and the rest counted."""
         extra = MAX_REPORTED_WORLD_PROBLEMS + 3
         spine = build_inventory({'g1': {}})
         nsi = build_inventory(

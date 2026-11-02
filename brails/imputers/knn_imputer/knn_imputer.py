@@ -82,12 +82,9 @@ class KnnImputer(Imputation):
         seed (int):
             For reproducibility
         exclude_provider_ids (bool):
-            If True (the default), the footprint provider ids and the
-            provenance feature ``footprint_provider``, listed in
-            :data:`brails.constants.PROVIDER_FEATURES`, are not used as
-            predictors where the inventory holds them. They
-            describe a footprint's source, not the building, and they stay
-            in the output inventory unchanged.
+            If True (the default), the features in
+            :data:`brails.constants.PROVIDER_FEATURES` are not used as
+            predictors. They stay in the output inventory unchanged.
     """
 
     def __init__(
@@ -211,10 +208,8 @@ class KnnImputer(Imputation):
                 )
                 column_names = bldg_properties_df.columns
 
-            # drop the footprint provider ids and footprint_provider, unless
-            # asked to keep them. This runs after exclude_features, so a
-            # provider feature named there is still present when that list
-            # is checked.
+            # This runs after exclude_features, so a provider feature named
+            # there is still present when that list is checked.
             if self.exclude_provider_ids:
                 provider_columns = [
                     feature

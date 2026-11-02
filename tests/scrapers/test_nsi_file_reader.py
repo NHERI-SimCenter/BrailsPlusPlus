@@ -52,15 +52,15 @@ from brails.scrapers.nsi_parser.nsi_parser import NSI_Parser
 from tests.scrapers.conftest import Region, serve_features
 from tests.scrapers.data.nsi_fixture_generator import FIXTURE_PATH as API_SAMPLE
 from tests.scrapers.data.nsi_pooled_fixture_generator import (
-    FIXTURE_PATH as POOLED_SAMPLE,
+    FIXTURE_PATH as NSI_SAMPLE,
 )
 
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
 
-# The fields the NSI API serves, and the column the pooled table adds.
+# The fields the NSI API serves, and the column the sample adds.
 NSI_FIELDS = frozenset(NSI_RAW_SCHEMA.names)
-POOLED_COLUMNS = NSI_FIELDS | {'query_fips'}
+SAMPLE_COLUMNS = NSI_FIELDS | {'query_fips'}
 
 
 def snapshot(inventory: AssetInventory) -> list[tuple]:
@@ -115,26 +115,26 @@ def write_table(path: Path, columns: dict[str, list]) -> Path:
 
 
 # ---------------------------------------------------------------------
-# the pooled sample
+# the Bay Area sample
 # ---------------------------------------------------------------------
 
 
-class TestPooledSample:
-    """The reader on 200 records cut from a pooled table of several counties."""
+class TestBayAreaSample:
+    """The reader on NSI records sampled from several Bay Area counties."""
 
     def test_the_sample_covers_the_cases_it_was_cut_for(self) -> None:
         """Several counties, both point sources, and stacked coordinates."""
-        frame = pq.read_table(POOLED_SAMPLE).to_pandas()
+        frame = pq.read_table(NSI_SAMPLE).to_pandas()
 
         assert len(frame) == 200
-        assert set(frame.columns) == POOLED_COLUMNS
+        assert set(frame.columns) == SAMPLE_COLUMNS
         assert frame['query_fips'].nunique() > 1
         assert set(frame['source']) == {'P', 'H'}
         assert frame.duplicated(['x', 'y'], keep=False).sum() > 0
 
     def test_the_declared_types_are_the_served_types(self) -> None:
-        """Each field of the pooled table has the type the schema declares."""
-        schema = pq.read_schema(POOLED_SAMPLE)
+        """Each field of the sample has the type the schema declares."""
+        schema = pq.read_schema(NSI_SAMPLE)
 
         for field in NSI_RAW_SCHEMA:
             stored = schema.field(field.name).type
@@ -144,11 +144,11 @@ class TestPooledSample:
 
     def test_every_field_reaches_the_features(self) -> None:
         """Each asset carries every non-null cell of its row, under its NSI name."""
-        records = pq.read_table(POOLED_SAMPLE).to_pylist()
+        records = pq.read_table(NSI_SAMPLE).to_pylist()
 
-        inventory = NSIFileReader().read(POOLED_SAMPLE)
+        inventory = NSIFileReader().read(NSI_SAMPLE)
 
-        assert inventory.get_all_asset_features() == POOLED_COLUMNS | {'type'}
+        assert inventory.get_all_asset_features() == SAMPLE_COLUMNS | {'type'}
         assert len(inventory.inventory) == len(records)
         for record in records:
             _, features = inventory.get_asset_features(record['fd_id'])
@@ -157,9 +157,9 @@ class TestPooledSample:
 
     def test_assets_are_points_keyed_by_ascending_fd_id(self) -> None:
         """The key is fd_id and the point is the record's x and y."""
-        records = pq.read_table(POOLED_SAMPLE).to_pylist()
+        records = pq.read_table(NSI_SAMPLE).to_pylist()
 
-        inventory = NSIFileReader().read(POOLED_SAMPLE)
+        inventory = NSIFileReader().read(NSI_SAMPLE)
 
         ids = inventory.get_asset_ids()
         assert ids == sorted(record['fd_id'] for record in records)
@@ -169,23 +169,23 @@ class TestPooledSample:
 
     def test_the_result_does_not_depend_on_row_order(self, tmp_path: Path) -> None:
         """Rows in another order give the identical inventory."""
-        table = pq.read_table(POOLED_SAMPLE)
+        table = pq.read_table(NSI_SAMPLE)
         order = list(range(1, table.num_rows, 2))[::-1] + list(
             range(0, table.num_rows, 2)
         )
         shuffled = tmp_path / 'shuffled.parquet'
         pq.write_table(table.take(order), shuffled)
 
-        original = NSIFileReader().read(POOLED_SAMPLE)
+        original = NSIFileReader().read(NSI_SAMPLE)
         reordered = NSIFileReader().read(shuffled)
 
         assert snapshot(reordered) == snapshot(original)
 
     def test_simcenter_format_converts_each_record(self) -> None:
         """With the flag on, each record's non-null cells go through the conversion."""
-        records = pq.read_table(POOLED_SAMPLE).to_pylist()
+        records = pq.read_table(NSI_SAMPLE).to_pylist()
 
-        inventory = NSIFileReader().read(POOLED_SAMPLE, simcenter_format=True)
+        inventory = NSIFileReader().read(NSI_SAMPLE, simcenter_format=True)
 
         for record in records:
             _, features = inventory.get_asset_features(record['fd_id'])
@@ -269,7 +269,7 @@ class TestReaderRules:
             NSIFileReader().read(path)
 
     def test_a_null_fd_id_raises(self, tmp_path: Path) -> None:
-        """A row without an id cannot be keyed; the error names file and row."""
+        """The error names the file and the row of a null fd_id."""
         path = write_table(
             tmp_path / 'null_id.parquet',
             {'fd_id': [1, None], 'x': [0.1, 0.2], 'y': [0.1, 0.2]},
@@ -307,7 +307,7 @@ class TestRawRecordWriter:
     def test_each_value_reads_back_under_its_declared_type(
         self, tmp_path: Path
     ) -> None:
-        """Integer fields stay integers; an integer in a float field becomes a float."""
+        """An integer stays an integer, and in a float field it becomes a float."""
         record = {'fd_id': 1, 'x': 0.5, 'y': 0.5, 'num_story': 2, 'static_bfe': 5}
         path = tmp_path / 'types.parquet'
 

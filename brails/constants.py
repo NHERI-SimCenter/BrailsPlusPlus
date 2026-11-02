@@ -55,7 +55,6 @@ FOOTPRINT_PROVIDER_FEATURE = 'footprint_provider'
 # The features holding each footprint provider's own ids, by the value the
 # footprint scrapers record as FOOTPRINT_PROVIDER_FEATURE. The first of them
 # ranks footprints of equal geometry and identifies a dropped footprint.
-# Microsoft footprints carry no id.
 PROVIDER_ID_FEATURES: Dict[str, Tuple[str, ...]] = {
     'usa_structures': ('usa_build_id', 'usa_uuid'),
     'microsoft': (),

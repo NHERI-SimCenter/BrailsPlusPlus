@@ -35,12 +35,6 @@
 """
 Freeze the output of each pipeline stage so later stages read it unchanged.
 
-A compiled inventory is built in stages, and a stage may depend only on the
-output of stages frozen before it. :class:`StageFreeze` holds each stage's
-output, records the order in which the stages were frozen and the earlier
-stages each one declares that it reads, and gives every frozen output a
-content digest.
-
 .. autosummary::
 
       StageFreeze
@@ -75,14 +69,12 @@ class StageFreeze:
     A stage is frozen once, under a name, with the names of the earlier
     stages it read. The freeze keeps a deep copy of the output and returns
     a fresh deep copy on every read, so neither the producing stage nor any
-    later one can change the frozen value. Each :meth:`read` is recorded,
-    and the next stage frozen must declare in ``reads`` every stage read
-    since the previous freeze. The check sees :meth:`read` calls only: a
-    copy read before an earlier freeze and still held is the caller's to
-    declare. The manifest records ``reads`` as declared, so it never omits
-    a stage the output depends on. Frozen outputs are held in memory only;
-    the manifest, which records the order, each stage's reads and each
-    output's digest, can be saved to and loaded from JSON.
+    later one can change the frozen value. Frozen outputs are held in memory
+    only.
+
+    The next stage frozen must declare in ``reads`` every stage read since
+    the previous freeze. The check sees :meth:`read` calls only, so a copy
+    read before an earlier freeze and still held is the caller's to declare.
 
     Example:
         >>> from brails.types.asset_inventory import Asset, AssetInventory
@@ -127,8 +119,7 @@ class StageFreeze:
             reads (Sequence[str], optional):
                 Names of already frozen stages this stage read. It must
                 name every stage passed to :meth:`read` since the previous
-                freeze, the only reads the check sees, and the manifest
-                records it as declared. Defaults to ``()``.
+                freeze (see :class:`StageFreeze`). Defaults to ``()``.
 
         Returns:
             str:
@@ -280,9 +271,6 @@ class StageFreeze:
         """
         Read a manifest written by :meth:`save_manifest`.
 
-        The frozen outputs themselves are not stored in the manifest, so
-        loading one gives back the record of a run, not its outputs.
-
         Args:
             path (str or os.PathLike):
                 File to read.
@@ -314,9 +302,7 @@ def _check_manifest(manifest: Any, source: str) -> None:  # noqa: ANN401
     """
     Raise ``ValueError`` unless ``manifest`` is a well-formed manifest.
 
-    The checks are those :meth:`StageFreeze.load_manifest` lists, including
-    that no stage appears twice and that each stage reads only stages
-    recorded before it.
+    The checks are those :meth:`StageFreeze.load_manifest` lists.
 
     Args:
         manifest (Any):
@@ -366,15 +352,10 @@ def _check_manifest(manifest: Any, source: str) -> None:  # noqa: ANN401
 
 def _inventory_digest(inventory: AssetInventory) -> str:
     """
-    Return the BLAKE2b-128 digest of an inventory's canonical JSON.
+    Return the digest of an inventory's canonical JSON.
 
-    The canonical form holds one entry per asset, in ascending ``str`` of
-    the asset id with the id's type name breaking a tie, each with the
-    asset's id, coordinates as stored and features. It also holds the
-    inventory's ``n_pw``, its vector features in sorted order and, when one
-    is attached, the housing-unit inventory, one entry per housing unit in
-    the same id order. Assets and keys are sorted, so the digest does not
-    depend on insertion order.
+    Assets and keys are sorted, so the digest does not depend on insertion
+    order.
 
     Args:
         inventory (AssetInventory):
@@ -445,8 +426,6 @@ def _canonical(value: Any, where: str) -> Any:  # noqa: ANN401
     """
     Convert a value to the plain JSON types the digest serializes.
 
-    Numpy scalars become Python scalars through ``.item()`` and numpy
-    arrays become lists through ``.tolist()``. A tuple becomes a list.
     Floats keep their value, so a NaN stays NaN and a float32 keeps its
     float32 rounding. An integer and a float of equal value stay distinct.
 

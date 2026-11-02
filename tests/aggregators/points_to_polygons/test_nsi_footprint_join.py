@@ -52,7 +52,7 @@ from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import Importer
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
 from tests.scrapers.data.nsi_pooled_fixture_generator import (
-    FIXTURE_PATH as POOLED_SAMPLE,
+    FIXTURE_PATH as NSI_SAMPLE,
 )
 
 # Test geometry is laid out in meters in UTM zone 10N near San Francisco and
@@ -75,8 +75,7 @@ def square(x: float, y: float, side: float = 10.0) -> list[list[float]]:
     return [lonlat(cx, cy) for cx, cy in corners]
 
 
-# Exact binary coordinates: a step of 1/4096 degree, so points on an edge
-# lie on it exactly.
+# Exact binary coordinates, so points on an edge lie on it exactly.
 UNIT_DEG = 1 / 4096
 
 
@@ -951,9 +950,9 @@ class TestInputs:
 class TestOnReaderOutput:
     """The join on NSI records as the parquet reader returns them."""
 
-    def test_pooled_sample(self) -> None:
-        """Every record of the pooled sample is linked or unlinked, once."""
-        records = NSIFileReader().read(POOLED_SAMPLE)
+    def test_bay_area_sample(self) -> None:
+        """Every record of the Bay Area sample is linked or unlinked, once."""
+        records = NSIFileReader().read(NSI_SAMPLE)
         transformer = Transformer.from_crs('EPSG:4326', METRIC_CRS, always_xy=True)
         back = Transformer.from_crs(METRIC_CRS, 'EPSG:4326', always_xy=True)
         shapes = AssetInventory()

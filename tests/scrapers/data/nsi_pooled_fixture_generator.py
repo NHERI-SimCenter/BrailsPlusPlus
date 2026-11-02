@@ -35,22 +35,22 @@
 """
 Write the stored sample NSI table.
 
-The sample holds 200 records of the NSI 2026 table for the SimCenter's San
-Francisco Bay Area Testbed, a parquet table of 43 columns: the 42 fields
-the NSI API serves and ``query_fips``, the county request that served each
-row. The first two counties in FIPS order contribute 23 records each and
-the other seven 22 each, chosen in ascending ``fd_id`` within the county:
+The sample holds NSI 2026 records sampled from several San Francisco Bay
+Area counties: the fields the NSI API serves and ``query_fips``, the county
+request that served each row. The ``SAMPLE_SIZE`` records are shared about
+evenly among the counties and chosen in ascending ``fd_id`` within each:
 
-1. every record of the first two coordinates holding two to four records
-   each, so stacked mixed-use records are present;
-2. the first five records whose ``source`` is ``H`` not taken above;
+1. every record of the first ``STACKS_PER_COUNTY`` coordinates holding two to
+   ``MAX_STACK_SIZE`` records each, so stacked mixed-use records are present;
+2. the first ``H_PER_COUNTY`` records whose ``source`` is ``H`` not taken above;
 3. the first records whose ``source`` is ``P`` not taken above, up to the
    county's share.
 
-The selection depends only on the pooled table, not on its row order. The
-module can be run by hand with the pooled table's path:
+The selection depends only on the records of the table, not on its row
+order. The module can be run by hand with the path of the NSI table to
+sample:
 
-    python tests/scrapers/data/nsi_pooled_fixture_generator.py POOLED.parquet
+    python tests/scrapers/data/nsi_pooled_fixture_generator.py NSI.parquet
 
 The test suite imports only ``FIXTURE_PATH`` from this module.
 """
@@ -71,11 +71,11 @@ H_PER_COUNTY = 5
 
 def cut_sample(pooled_path: str | Path) -> list[int]:
     """
-    Choose the sampled records of the pooled table.
+    Choose the sampled records of an NSI table.
 
     Args:
         pooled_path (str or Path):
-            The pooled NSI parquet table.
+            The NSI parquet table to sample.
 
     Returns:
         list[int]:
@@ -116,9 +116,9 @@ def cut_sample(pooled_path: str | Path) -> list[int]:
 
 
 def main() -> None:
-    """Cut the sample from the pooled table and rewrite the stored fixture."""
+    """Cut the sample from an NSI table and rewrite the stored fixture."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    parser.add_argument('pooled_path', help='the pooled NSI parquet table')
+    parser.add_argument('pooled_path', help='the NSI parquet table to sample')
     args = parser.parse_args()
 
     chosen = cut_sample(args.pooled_path)

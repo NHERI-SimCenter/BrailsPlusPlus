@@ -330,7 +330,7 @@ def test_no_raw_path_writes_nothing(
 
 
 def test_a_served_null_is_kept_as_none(canned_fetch: Callable[..., None]) -> None:
-    """The parser keeps a null NSI serves; the file reader omits it."""
+    """The parser keeps a null NSI serves as None."""
     canned_fetch([make_record(11, 0.0005, 0.0005, firmzone=None)])
 
     inventory = NSI_Parser().get_raw_data(Region())

@@ -112,8 +112,7 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
                   omitted, the newest available release is selected, with a
                   notice. See
                   :meth:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OvertureMapsScraper.resolve_release`.
-                - 'id_scheme' (str) and 'min_area' (float): how assets are
-                  keyed and the smallest plan area kept, described in
+                - 'id_scheme' (str) and 'min_area' (float): described in
                   :class:`~brails.scrapers.footprint_scraper.FootprintScraper`.
 
         Notes:
@@ -274,8 +273,7 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
             # Merge with asset type:
             features.append({**attributes, "type": ASSET_TYPE})
 
-        # Apply the area floor, key the footprints kept and build the
-        # inventory:
+        # Key the footprints kept and build the inventory:
         _, kept = self._build_keyed_inventory(
             list(intersecting_rows["geometry_coords"]),
             features,

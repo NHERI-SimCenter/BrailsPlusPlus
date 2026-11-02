@@ -46,10 +46,9 @@ import pyarrow as pa
 # The feature type written on every asset built from an NSI record.
 ASSET_TYPE = 'building'
 
-# The 42 fields the NSI 2026 API serves, in alphabetical order, and the type
-# each is stored under in a raw NSI parquet table. The integer fields are
-# those NSI serves only as integers. A float field may be served as an
-# integer, such as a sqft of 1800, and is stored as a float.
+# The fields the NSI 2026 API serves and the type each is stored under in a
+# raw NSI parquet table. A float field may be served as an integer and is
+# stored as a float.
 NSI_RAW_SCHEMA = pa.schema(
     [
         ('bid', pa.string()),

@@ -45,11 +45,6 @@ This module defines classes associated with asset inventories.
 
     AssetInventory
     Asset
-
-It also defines the constants that :meth:`AssetInventory.merge` reads:
-:data:`SOURCE_CODES`, :data:`SOURCE_CODE_NONE`,
-:data:`SOURCE_STRING_FEATURE`, :data:`HAZUS_EQ_SOURCE_FEATURES`,
-:data:`MISSING_VALUE_MARKER` and :data:`MAX_REPORTED_WORLD_PROBLEMS`.
 """
 
 from __future__ import annotations
@@ -87,14 +82,11 @@ from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 # a feature, not one realization per possible world.
 DEFAULT_VECTOR_FEATURES: tuple[str, ...] = ('HousingUnits',)
 
-# Upper bound on the number of problems named in an error raised by
-# AssetInventory.validate_possible_worlds or AssetInventory.merge.
+# Upper bound on the number of problems named in an error message.
 MAX_REPORTED_WORLD_PROBLEMS = 10
 
 # Source labels that AssetInventory.merge accepts when it writes a source
-# string, and the code each label contributes: local records, footprint
-# data, NSI, values derived from source data rather than read from it,
-# imputed values and drawn values.
+# string, and the code each label contributes.
 SOURCE_CODES: Mapping[str, str] = MappingProxyType(
     {
         'local': 'L',
@@ -151,12 +143,7 @@ PREVIOUS_FILE_SUFFIX = '.previous'
 
 def _is_missing_value(value: Any) -> bool:  # noqa: ANN401
     """
-    Check whether a feature value is missing.
-
-    ``None``, any value :func:`pandas.isna` reports as missing (a float
-    NaN, ``pd.NA``, ``NaT``), :data:`MISSING_VALUE_MARKER` and the empty
-    string are missing. Any other value, including a list of per-world
-    values, is a value.
+    Check whether AssetInventory.merge treats a feature value as missing.
 
     Args:
         value (Any):
@@ -1217,31 +1204,23 @@ class AssetInventory:
         This inventory is the spine, labeled ``name``: its assets define
         the asset set and the geometry of the result. Every other source
         is an inventory keyed by asset ids of this inventory, possibly a
-        subset, and holds the features one source supplies. Each feature
-        of each asset is taken from the first source in ``precedence``
-        that holds a value for it. ``None``, any value
-        :func:`pandas.isna` reports as missing, the empty string and the
-        string ``'NA'``, which BRAILS readers write for an absent provider
-        value, are not values. A feature that no source holds a value for
-        keeps the missing marker of the first source in ``precedence``
-        that has it.
+        subset. Each feature of each asset is taken from the first source
+        in ``precedence`` that holds a value for it. ``None``, any value
+        :func:`pandas.isna` reports as missing, the empty string and
+        :data:`MISSING_VALUE_MARKER` are not values. A feature that no
+        source holds a value for keeps the missing marker of the first
+        source in ``precedence`` that has it.
 
         Unless ``source_features`` is ``None``, each asset also receives
         the feature :data:`SOURCE_STRING_FEATURE`: one character per
         feature of ``source_features``, in that order, holding the
         :data:`SOURCE_CODES` code of the source the value came from, or
-        :data:`SOURCE_CODE_NONE` where no source holds one. A character
-        depends on which source holds a value and never on the value, so
-        a feature holding one value per possible world gives the same
-        string as one holding a single value.
+        :data:`SOURCE_CODE_NONE` where no source holds one.
 
-        Unlike :meth:`combine`, which adds another inventory's assets, and
-        :meth:`join`, which matches another inventory's assets to these by
-        location, this method combines the features the sources hold for
-        this inventory's assets. Neither this inventory nor any source is
-        modified. The result holds deep copies, with assets inserted in
-        ascending order of the asset id as a string, so it does not depend
-        on the order of ``others`` or of the assets in any inventory.
+        Neither this inventory nor any source is modified. The result
+        holds deep copies, with assets inserted in ascending order of the
+        asset id as a string, so it does not depend on the order of
+        ``others`` or of the assets in any inventory.
 
         Args:
             others (Mapping[str, AssetInventory]):
@@ -1275,15 +1254,14 @@ class AssetInventory:
                 requested and a label has no code in
                 :data:`SOURCE_CODES`; if any source already carries
                 :data:`SOURCE_STRING_FEATURE`; if a source holds an asset
-                id that this inventory lacks (up to
-                :data:`MAX_REPORTED_WORLD_PROBLEMS` are named); if two
-                sources hold different numbers of possible worlds above
-                one; or if a source holds a housing unit inventory.
+                id that this inventory lacks; if two sources hold
+                different numbers of possible worlds above one; or if a
+                source holds a housing unit inventory.
             BrailsError:
                 If a source with one possible world holds a list, which
                 the result would read as realizations, while another
-                source holds several worlds (the source is named), or if
-                the result fails :meth:`validate_possible_worlds`.
+                source holds several worlds, or if the result fails
+                :meth:`validate_possible_worlds`.
 
         Examples:
             >>> spine = AssetInventory()
@@ -1516,10 +1494,6 @@ class AssetInventory:
     ) -> None:
         """
         Refuse a one-world source holding lists in a merge of several worlds.
-
-        A one-world source passes :meth:`validate_possible_worlds` with a
-        list of one realization, but the result of :meth:`merge` holds
-        ``n_pw`` worlds and would read the list as too few realizations.
 
         Args:
             sources (dict[str, AssetInventory]):

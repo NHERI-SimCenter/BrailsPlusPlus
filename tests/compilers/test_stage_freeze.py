@@ -50,8 +50,7 @@ from brails.utils import Importer
 
 N_WORLDS = 3
 
-# Digest of sample(), computed outside the module: hashlib.blake2b with
-# digest_size=16 over the canonical JSON of sample() written out by hand.
+# Digest of sample(), computed outside the module.
 GOLDEN_DIGEST = '644e1a9b3ca5cd503daccb9b7592254e'
 
 ALGORITHM = {'digest_algorithm': DIGEST_ALGORITHM}
@@ -601,18 +600,7 @@ def nearest_donor(
 
 
 class TestImputerBatchOption:
-    """
-    The calls a donor imputer that runs in batches makes.
-
-    The observed donors are frozen first, with ``n_pw`` equal to the batches'
-    number of worlds so that every world has a realization. Batch ``j``
-    reads them and the batches before it, and in world ``w`` draws from
-    their realization ``w``. It is frozen as ``imputed_batch{j}`` with
-    ``reads`` naming the donor stage and every earlier batch. The imputer
-    decides how ``n_pw`` of the donors and of the batches are reconciled.
-    The batch loop and its nearest-donor draw are test code, so the class
-    checks the freeze and ``get_world_realization``, not an imputer.
-    """
+    """The calls a donor imputer that runs in batches makes."""
 
     BATCHES = (('t1', 't2'), ('t3',), ('t4', 't5'))
 
@@ -740,15 +728,7 @@ class TestImputerBatchOption:
 
 
 class TestNonResidentialReadOfResidentialWorlds:
-    """
-    The calls a non-residential stage makes on frozen stages.
-
-    The NSI-observed stage supplies the detailed class and the residential
-    stage the years. The residential stage is one inventory with ``n_pw``
-    worlds, in which a varying feature holds one realization per world. The
-    non-residential stage reads both, takes each world's residential
-    realization, and is frozen as a later stage that declares both reads.
-    """
+    """The calls a non-residential stage makes on frozen stages."""
 
     def observed(self) -> AssetInventory:
         """Return one NSI-observed non-residential donor."""

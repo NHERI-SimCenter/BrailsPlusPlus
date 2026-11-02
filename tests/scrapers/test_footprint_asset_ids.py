@@ -99,9 +99,8 @@ def row_lon(index: float) -> float:
     return -122.45 + meters_to_lon(index * 25.0)
 
 
-# The fixture: twelve houses 25 m apart, a 4 m shed (about 172 sq ft) on the
-# same centroid as house 3, a 5 by 6 m garage (about 323 sq ft) beside house 7,
-# and a degenerate footprint whose vertices are collinear.
+# The fixture: twelve houses 25 m apart, a 4 m shed on the same centroid as
+# house 3, a 5 by 6 m garage beside house 7, and a collinear footprint.
 HOUSES = [rectangle(row_lon(index), 12.0, 10.0) for index in range(12)]
 SHED = rectangle(row_lon(3), 4.0, 4.0)
 GARAGE = rectangle(row_lon(7) + 0.0001, 5.0, 6.0)
@@ -175,7 +174,7 @@ def test_explicit_floor_applies_under_the_default_scheme() -> None:
 
 
 def test_geohash_scheme_applies_the_floor_before_the_ids() -> None:
-    """The shed under 450 sq ft is dropped first, so its house keeps a bare geohash."""
+    """The shed under the default floor is dropped first, so its house keeps a bare geohash."""
     scraper = StubScraper({'id_scheme': 'geohash'}, FIXTURE)
     inventory = scraper.get_footprints()
 
@@ -196,7 +195,7 @@ def test_geohash_scheme_applies_the_floor_before_the_ids() -> None:
 
 
 def test_the_floor_is_measured_by_the_id_routine() -> None:
-    """A square of 449.6 sq ft is dropped although _polygon_area puts it above 450."""
+    """A square just under the floor is dropped although _polygon_area puts it above."""
     side_m = math.sqrt(449.6 / SQFT_PER_M2)
     square = rectangle(row_lon(20), side_m, side_m)
     scraper = StubScraper({'id_scheme': 'geohash'}, [*HOUSES, square])
@@ -227,7 +226,7 @@ def test_zero_floor_still_drops_footprints_without_area() -> None:
 
 
 def test_floor_is_in_the_scrapers_plan_area_unit() -> None:
-    """In meters the default floor is 450 sq ft expressed in square meters."""
+    """In meters the default floor is DEFAULT_MIN_AREA_SQFT in square meters."""
     scraper = StubScraper({'id_scheme': 'geohash', 'length': 'm'}, FIXTURE)
     inventory = scraper.get_footprints()
 

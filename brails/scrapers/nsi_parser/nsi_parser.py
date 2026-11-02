@@ -549,14 +549,14 @@ class NSI_Parser:
             ' NSI that are within the entered region of interest'
         )
 
-        # Write the records as served, under their NSI names:
+        # Write the records as served:
         if raw_parquet_path is not None:
             write_raw_records(
                 (datadict[fd_id][1] for fd_id in sorted(datadict)),
                 raw_parquet_path,
             )
 
-        # Save the results in the inventory, keeping a served null as None:
+        # Save the results in the inventory:
         inventory = AssetInventory()
         for fd_id, (geometry, properties) in datadict.items():
             asset = record_to_asset(

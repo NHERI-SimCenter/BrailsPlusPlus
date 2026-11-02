@@ -70,8 +70,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# The columns a table must carry: the record id that keys the inventory and
-# the two coordinates that place each point.
+# The columns a table must carry.
 REQUIRED_COLUMNS = ('fd_id', 'x', 'y')
 
 # The largest absolute longitude and latitude, the ranges Asset accepts.
@@ -105,13 +104,6 @@ def record_to_asset(
     """
     Build the point asset of one NSI record, keyed by its ``fd_id``.
 
-    :meth:`NSI_Parser.get_raw_data
-    <brails.scrapers.nsi_parser.nsi_parser.NSI_Parser.get_raw_data>` calls
-    it with ``omit_nulls=False`` and keeps a served null as ``None``.
-    :meth:`NSIFileReader.read
-    <brails.scrapers.nsi_parser.nsi_file_reader.NSIFileReader.read>` calls
-    it with ``omit_nulls=True``, since a null cell in a table is a gap.
-
     Args:
         record (dict[str, Any]):
             The NSI properties of the record. It is not modified.
@@ -125,8 +117,7 @@ def record_to_asset(
 
     Returns:
         Asset:
-            The asset, with the record's fields as features and the feature
-            ``type`` set to ``'building'``.
+            The asset, with the record's fields and ``type`` as features.
     """
     if omit_nulls:
         features = {
@@ -149,11 +140,7 @@ def write_raw_records(records: Iterable[dict[str, Any]], path: str | Path) -> No
     :data:`~brails.scrapers.nsi_parser.nsi_conventions.NSI_RAW_SCHEMA`,
     stored under its declared type, and then one per field outside the
     schema, in the order first seen and with its type inferred. A field a
-    record lacks or holds as None is written as null, and
-    :meth:`NSIFileReader.read
-    <brails.scrapers.nsi_parser.nsi_file_reader.NSIFileReader.read>` omits
-    null cells. An integer served for a float field, such as a sqft of
-    1800, is stored as a float.
+    record lacks or holds as None is written as null.
 
     Args:
         records (Iterable[dict[str, Any]]):
@@ -167,9 +154,8 @@ def write_raw_records(records: Iterable[dict[str, Any]], path: str | Path) -> No
             If a record lacks ``fd_id``, ``x`` or ``y``, or if two records
             share an ``fd_id``.
         TypeError:
-            If a value does not fit the declared type of its field, such as
-            a string or a float in an integer field, or if a field
-            outside the schema mixes types. The message names the field.
+            If a value does not fit the declared type of its field, or if a
+            field outside the schema mixes types.
     """
     rows = list(records)
     for row in rows:
@@ -284,8 +270,7 @@ class NSIFileReader:
 
     The table may be one written by :meth:`NSI_Parser.get_raw_data
     <brails.scrapers.nsi_parser.nsi_parser.NSI_Parser.get_raw_data>` with
-    ``raw_parquet_path``, or a table combining the NSI records of several
-    counties.
+    ``raw_parquet_path``.
 
     To import the :class:`NSIFileReader` class, use:
 
@@ -311,23 +296,19 @@ class NSIFileReader:
                 When given, only the points strictly inside the region's
                 boundary polygon are kept. The test uses each row's ``x``
                 and ``y``, which can differ by up to 5e-7 degree from the
-                served point geometry that
-                :meth:`~brails.scrapers.nsi_parser.nsi_parser.NSI_Parser.get_raw_data`
-                tests, so a point that close to the boundary can fall on the
-                other side. Defaults to None, which keeps every row.
+                served point geometry, so a point that close to the boundary
+                can fall on the other side. Defaults to None, which keeps
+                every row.
             simcenter_format (bool):
-                When True, each record's fields are renamed to SimCenter
-                conventions and its packed occupancy code is decoded; see
+                When True, each record passes through
                 :func:`brails.scrapers.nsi_parser.nsi_conventions.to_simcenter`.
                 Defaults to False, which keeps the NSI names and values.
 
         Returns:
             AssetInventory:
                 One point asset per kept row, inserted in ascending
-                ``fd_id`` whatever the row order of the file, with
-                coordinates ``[[x, y]]``, every non-null cell of the row as
-                a feature, and the feature ``type`` set to ``'building'``.
-                A null cell is omitted from that asset's features.
+                ``fd_id``, with coordinates ``[[x, y]]`` and the row's
+                non-null cells and ``type`` as features.
 
         Raises:
             ValueError:

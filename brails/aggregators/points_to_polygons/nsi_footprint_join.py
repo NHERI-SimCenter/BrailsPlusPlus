@@ -35,10 +35,7 @@
 Join NSI points to building footprints.
 
 Every NSI point is either linked to one footprint or returned as unlinked,
-never dropped. Values that NSI states for a footprint go to one inventory
-and values the join derives go to another, under the same feature names,
-so a later merge can tell them apart by their container. The rules are
-stated on :class:`NSIFootprintJoin`.
+never dropped.
 
 .. autosummary::
 
@@ -75,8 +72,7 @@ WALK_PURPOSE = 'nsi_footprint_walk'
 # World of the walk order's keyed uniform.
 WALK_WORLD = 0
 
-# Distance cap of the walk in meters, measured from each point to the
-# footprint's edge .
+# Default distance cap of the walk in meters.
 DEFAULT_CAP_M = 15.0
 
 # The housing classes, the classes whose records carry a unit count. RES4 to
@@ -84,9 +80,9 @@ DEFAULT_CAP_M = 15.0
 RES3_CLASSES = ('RES3A', 'RES3B', 'RES3C', 'RES3D', 'RES3E', 'RES3F')
 UNIT_CLASSES = ('RES1', 'RES2', *RES3_CLASSES)
 
-# Lower bound of each count band, the unit ranges of the classes in the
-# Hazus Inventory Technical Manual (see count_band). A unit count falls in
-# the band whose lower bound it has reached, so a count below 2 is RES1.
+# Lower bound of each count band, the unit ranges of the occupancy classes in
+# the Hazus Inventory Technical Manual, Hazus 7.0 (FEMA, June 2025), Table 4-1,
+# p. 4-2. A unit count falls in the band whose lower bound it has reached.
 COUNT_BANDS = (
     (50, 'RES3F'),
     (20, 'RES3E'),
@@ -103,7 +99,7 @@ COUNTED_FAMILIES = ('RES1', 'RES3')
 
 # Units a housing record contributes when its resunits is zero, negative or
 # missing: the midpoint of its class's unit band, one dwelling for RES1 and
-# RES2, and 100 for the open RES3F band.
+# RES2, and a fixed count for the open RES3F band.
 UNIT_MIDPOINTS = {
     'RES1': 1.0,
     'RES2': 1.0,
@@ -115,10 +111,7 @@ UNIT_MIDPOINTS = {
     'RES3F': 100.0,
 }
 
-# Walk groups. A single dwelling closes its footprint to every later point.
-# A multi-family or non-residential footprint accepts multi-family and
-# non-residential points (RES2 is considered with RES1 while RES4 to RES6
-# are considered with the non-residential classes).
+# Walk groups (see walk_group).
 GROUP_SINGLE = 'single'
 GROUP_MULTI_FAMILY = 'multi_family'
 GROUP_NON_RESIDENTIAL = 'non_residential'
@@ -173,6 +166,7 @@ BLOCK_FIELD = 'cbfips'
 PLAN_AREA = 'PlanArea'
 REPLACEMENT_COST = 'ReplacementCost'
 
+# Values _preview lists before counting the rest.
 _PREVIEW = 10
 
 
@@ -188,9 +182,8 @@ class NSIJoinResult(NamedTuple):
             through ``to_simcenter``, without ``Longitude``, ``Latitude``,
             ``PlanArea``, ``ReplacementCost``, ``resunits`` and ``fd_id``,
             with its class renamed ``NSIOccupancyClass``. Every other field
-            the governing record carries, ``val_cont`` and the population
-            counts among them, is that one record's value and not a sum
-            over the footprint's records. Beside them are
+            the governing record carries is that one record's value and not
+            a sum over the footprint's records. Beside them are
             ``OccupancyClass`` where the governing record's class is taken
             as it is; ``NumberOfUnits`` where every unit was counted;
             ``PlanArea`` and ``ReplacementCost`` where one received record
@@ -201,9 +194,8 @@ class NSIJoinResult(NamedTuple):
             keyed by its asset id in ascending order, with the footprint's
             geometry: ``OccupancyClass`` where the count band set it,
             ``NumberOfUnits`` where any record's units were filled by a
-            class midpoint,
-            and ``PlanArea`` and ``ReplacementCost`` where two or more
-            received records state a value, as their sums.
+            class midpoint, and ``PlanArea`` and ``ReplacementCost`` where
+            two or more received records state a value, as their sums.
         links (pandas.DataFrame):
             One row per linked point, in ascending ``fd_id``, with the
             columns in :data:`LINK_COLUMNS`. ``walk_position`` is the
@@ -238,12 +230,6 @@ class NSIJoinResult(NamedTuple):
 def _ordering_key(value: object) -> tuple[int, float, str, str]:
     """
     Build a sort key that orders identifiers of mixed types.
-
-    Finite numbers and the digit strings that read as them order numerically,
-    ahead of other strings. None, NaN, infinities and integers too large for
-    a float order last. The text of the value and the name of its type
-    end the key, so two identifiers key alike only where they are of one type
-    and one text.
 
     Args:
         value (object):
@@ -329,20 +315,13 @@ def count_band(units: float) -> str:
     """
     Return the class of the count band a unit count falls in.
 
-    The bands are the unit ranges of the occupancy classes in the Hazus
-    Inventory Technical Manual, Hazus 7.0 (FEMA, June 2025), Table 4-1,
-    p. 4-2, which prints the same definitions as Hazus 6.1, Table 4-1,
-    p. 4-2: RES1 single-family dwelling, RES3A duplex, RES3B 3-4 units,
-    RES3C 5-9 units, RES3D 10-19 units, RES3E 20-49 units, RES3F 50+ units.
-
     Args:
         units (float):
             A unit count, summed or per record.
 
     Returns:
         str:
-            ``'RES1'`` below 2, then RES3A to RES3F by the bands of
-            :data:`COUNT_BANDS`.
+            The class of its band in :data:`COUNT_BANDS`.
     """
     for lower_bound, name in COUNT_BANDS:
         if units >= lower_bound:
@@ -381,10 +360,6 @@ def point_class(occupancy_class: str, units: float | None) -> str:
     """
     Return a record's class after the count rule.
 
-    The count rule replaces the class of a RES1 or RES3 record by the count
-    band of its units (:func:`count_band`, whose bands are Hazus's), and
-    keeps every other class.
-
     Args:
         occupancy_class (str):
             The record's parsed class.
@@ -393,8 +368,8 @@ def point_class(occupancy_class: str, units: float | None) -> str:
 
     Returns:
         str:
-            The count band of ``units`` for a RES1 or RES3 record, so a
-            one-unit RES3A record is RES1; otherwise the class itself.
+            The count band of ``units`` (:func:`count_band`) for a record
+            of :data:`COUNTED_FAMILIES`, otherwise the class itself.
     """
     if occupancy_family(occupancy_class) in COUNTED_FAMILIES and units is not None:
         return count_band(units)
@@ -424,7 +399,7 @@ def walk_group(classified: str) -> str:
 
 def _preview(values: Iterable[object]) -> str:
     """
-    List up to ten values and count the rest.
+    List the leading values and count the rest.
 
     Args:
         values (Iterable[object]):
@@ -432,7 +407,7 @@ def _preview(values: Iterable[object]) -> str:
 
     Returns:
         str:
-            The first ten, comma separated, and the number not shown.
+            The leading values, comma separated, and the number not shown.
     """
     values = list(values)
     shown = ', '.join(str(value) for value in values[:_PREVIEW])
@@ -458,25 +433,22 @@ class NSIFootprintJoin:
     """
     Join NSI points to footprints, one footprint per point at most.
 
-    The join runs in two passes. In the inside pass, a point that a
-    footprint covers, its boundary included, belongs to it; a point inside
-    several footprints goes to the smallest, then to the one whose centroid
-    is nearest, then to the lowest asset id. In the walk, the remaining
-    points are taken in the order of a keyed uniform of their ``fd_id``
-    (purpose :data:`WALK_PURPOSE`), ties by ``fd_id``, and each
-    takes the nearest footprint within ``cap_m`` of the point that accepts
-    it, ties by asset id. A footprint holding no point accepts any point. A
-    footprint holding a single dwelling accepts nothing more. A footprint
-    holding only multi-family or non-residential points accepts a
-    multi-family or non-residential point. A point that no footprint within
-    the cap accepts is returned as unlinked.
+    A point that a footprint covers, its boundary included, belongs to it. A
+    point inside several footprints goes to the smallest, then to the one
+    whose centroid is nearest, then to the lowest asset id. The remaining
+    points are taken in the order of a keyed uniform of their ``fd_id`` (see
+    :meth:`walk_uniforms`), ties by ``fd_id``, and each takes the nearest
+    footprint within ``cap_m`` that accepts it, ties by asset id. The result
+    is the same in every possible world. A footprint holding no
+    point accepts any point. A footprint holding a single dwelling accepts
+    nothing more. A footprint holding only multi-family or non-residential
+    points accepts a multi-family or non-residential point. A point that no
+    footprint within the cap accepts is returned as unlinked.
 
     A point's class is its parsed ``occtype`` after the count rule (see
     :func:`point_class`), and its walk group follows from that class (see
-    :func:`walk_group`). The walk order is drawn in world 0 only, so the
-    join is a pure function of its inputs and the seed and the same in
-    every possible world. It reads footprint geometry only, so footprint
-    features held per possible world do not change it.
+    :func:`walk_group`). The join reads footprint geometry only, so
+    footprint features held per possible world do not change it.
 
     Per footprint, the units are the sum of the housing records'
     contributions (see :func:`unit_contribution`). The governing record is
@@ -484,9 +456,8 @@ class NSIFootprintJoin:
     walk: a housing class (:data:`UNIT_CLASSES`) first, then the largest
     stated ``sqft``, a record stating none ranking last, then the lowest
     ``fd_id``. The footprint's class is the count band of the units where
-    the governing record's family is RES1 or RES3,
-    and otherwise the governing record's class. The ``sqft`` and
-    ``val_struct`` of the received records that state them are summed.
+    the governing record's family is in :data:`COUNTED_FAMILIES`, and
+    otherwise the governing record's class.
 
     To import the :class:`NSIFootprintJoin` class, use:
 
@@ -514,8 +485,7 @@ class NSIFootprintJoin:
             projected_crs (object, optional):
                 A projected CRS in meters, in any form ``pyproj`` accepts,
                 for areas and distances. Web Mercator (EPSG:3857) is
-                refused, since its meters are not ground meters away from
-                the equator. When None, a UTM zone is estimated from the
+                refused. When None, a UTM zone is estimated from the
                 footprints on each call and returned in the result.
 
         Raises:
@@ -576,8 +546,7 @@ class NSIFootprintJoin:
 
         Returns:
             NSIJoinResult:
-                The per-footprint values, the links, the unlinked points,
-                the branch counts, the seed and the distance CRS.
+                The footprints' NSI values and the record of every link.
 
         Raises:
             TypeError:
@@ -846,11 +815,6 @@ class NSIFootprintJoin:
         """
         Assign every point that a footprint covers.
 
-        The test runs on the stored EPSG:4326 coordinates, so it does not
-        depend on the projection. Areas and centroid distances, which rank
-        several footprints holding one point, are measured in the projected
-        CRS.
-
         Args:
             polygons (numpy.ndarray):
                 The footprints in EPSG:4326.
@@ -1009,9 +973,7 @@ def _meter_crs(value: object) -> CRS:
     Raises:
         ValueError:
             If the value is not a CRS, is not projected, has an axis in a
-            unit other than the meter, or is Web Mercator (EPSG:3857),
-            whose distances at San Francisco are about 1.27 times the
-            ground distance.
+            unit other than the meter, or is Web Mercator (EPSG:3857).
     """
     try:
         crs = CRS.from_user_input(value)

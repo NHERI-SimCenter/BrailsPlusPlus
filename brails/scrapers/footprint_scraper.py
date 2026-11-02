@@ -65,16 +65,12 @@ from brails.utils.unit_converter import UNIT_TO_METER
 EARTH_RADIUS_FT = 20925721.784777  # Earth's radius in feet (WGS-84)
 ASSET_TYPE = 'building'
 
-# Asset id schemes. 'index', the default, keys assets by their position in
-# the scraper's output. 'geohash' keys them by the geohash of their
-# centroid, computed by brails.utils.asset_id.assign_asset_ids.
+# Asset id schemes, described in FootprintScraper.__init__.
 ID_SCHEME_INDEX = 'index'
 ID_SCHEME_GEOHASH = 'geohash'
 ID_SCHEMES = (ID_SCHEME_INDEX, ID_SCHEME_GEOHASH)
 
-# Default minimum plan area under the 'geohash' scheme, in square feet. The
-# floor keeps small footprints, such as sheds, from taking the National
-# Structure Inventory (NSI) point of the building beside them.
+# Default minimum plan area under the 'geohash' scheme, in square feet.
 DEFAULT_MIN_AREA_SQFT = 450.0
 
 # The default floor in square meters, the unit plan_area_m2 measures in.
@@ -100,13 +96,10 @@ class FootprintScraper(ABC):
         centroids (List):
             A list to store centroid coordinates of the footprints.
         id_scheme (str):
-            How assets are keyed: ``'index'`` (positional integers, the
-            default) or ``'geohash'`` (the geohash of each footprint's
-            centroid, see :func:`brails.utils.asset_id.assign_asset_ids`).
+            How assets are keyed: ``'index'`` or ``'geohash'``.
         min_area (float):
             The smallest plan area kept, in the square of the scraper's
-            length unit. Footprints below it are dropped before keys are
-            assigned.
+            length unit.
         asset_id_log (list[dict]):
             One entry per member of a geohash collision set in the last
             ``get_footprints`` call, with ``position`` the footprint's
@@ -115,12 +108,9 @@ class FootprintScraper(ABC):
             The footprints the last ``get_footprints`` call dropped before
             keys were assigned, by ``position``, ``provider_id``,
             ``plan_area`` (in the square of the length unit) and ``reason``
-            (``'below_min_area'`` or ``'zero_area'``). Whenever a floor
-            applies, under ``'geohash'`` or under ``'index'`` with
-            ``min_area`` above 0, each footprint is first tested for area:
-            one whose exterior rings enclose none is dropped as
-            ``'zero_area'`` whatever the floor, and a vertex outside the
-            longitude and latitude ranges of EPSG:4326 raises
+            (``'below_min_area'`` or ``'zero_area'``). Under ``'geohash'``,
+            or with ``min_area`` above 0, a footprint without area is
+            dropped as ``'zero_area'`` and a vertex outside EPSG:4326 raises
             ``ValueError``.
 
     Methods:
@@ -145,10 +135,8 @@ class FootprintScraper(ABC):
 
                 - ``'id_scheme'`` (str): ``'index'``, the default, keys
                   assets by position. ``'geohash'`` keys them by the geohash
-                  of their centroid, which does not change when the
-                  inventory is reordered or subset, nor, for a footprint
-                  outside every collision set, when it is pulled over a
-                  different region.
+                  of their centroid, see
+                  :func:`brails.utils.asset_id.assign_asset_ids`.
                 - ``'min_area'`` (float): the smallest plan area kept, in
                   the square of ``length_unit``, measured by
                   :func:`brails.utils.asset_id.plan_area_m2`.
@@ -231,8 +219,8 @@ class FootprintScraper(ABC):
 
         Returns:
             float:
-                min_area in square meters under ``'geohash'``, and 0
-                under ``'index'``.
+                ``DEFAULT_MIN_AREA_M2`` under ``'geohash'``, and 0 under
+                ``'index'``.
         """
         if id_scheme == ID_SCHEME_GEOHASH:
             return DEFAULT_MIN_AREA_M2
@@ -353,13 +341,6 @@ class FootprintScraper(ABC):
         """
         Apply the area floor and choose the key of each footprint kept.
 
-        This is the one place a footprint scraper assigns asset keys. Under
-        the ``'geohash'`` scheme the ids come from one call of
-        :func:`~brails.utils.asset_id.assign_asset_ids` over the footprints
-        that survive the floor and
-        :func:`~brails.utils.asset_id.has_area`. Under the ``'index'``
-        scheme the kept footprints are numbered from 0 in order.
-
         Args:
             footprints (Sequence[list]):
                 Footprints as BRAILS coordinate lists.
@@ -380,8 +361,7 @@ class FootprintScraper(ABC):
                 The indices into ``footprints`` that are kept, in order,
                 and the key of each.
         """
-        # A subclass that does not call FootprintScraper.__init__ has
-        # neither attribute, so it gets the 'index' scheme and its floor.
+        # A subclass that skips FootprintScraper.__init__ gets the defaults.
         id_scheme = getattr(self, 'id_scheme', ID_SCHEME_INDEX)
         min_area_m2 = getattr(self, '_min_area_m2', None)
         if min_area_m2 is None:
@@ -469,10 +449,7 @@ class FootprintScraper(ABC):
             str:
                 The provider's id when the footprint carries one. Otherwise
                 the sorted JSON of the features outside
-                ``LENGTH_UNIT_FEATURES``, which do not depend on the length
-                unit. A Microsoft footprint has no id, and its only
-                features that vary are its height and plan area, so it
-                ranks among footprints of equal geometry by input order.
+                ``LENGTH_UNIT_FEATURES``.
         """
         value = None if id_feature is None else features.get(id_feature)
         if value is not None and value != 'NA':
@@ -499,9 +476,6 @@ class FootprintScraper(ABC):
     ) -> Tuple[AssetInventory, List[int]]:
         """
         Key a scraper's footprints and add the kept ones to an inventory.
-
-        Every footprint scraper assembles its inventory here, so the area
-        floor, the keys and the tiebreak follow one rule for all of them.
 
         Args:
             footprints (Sequence[list]):
@@ -637,8 +611,7 @@ class FootprintScraper(ABC):
             # affect imputers. Need to verify compatibility before proceeding.
             features.append(asset_features)
 
-        # Apply the area floor, key the footprints kept and assemble the
-        # AssetInventory:
+        # Key the footprints kept and assemble the AssetInventory:
         inventory, kept = self._build_keyed_inventory(
             valid_footprints,
             features,
