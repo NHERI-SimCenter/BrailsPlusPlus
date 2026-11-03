@@ -163,7 +163,7 @@ VALUE_FIELD = 'val_struct'
 BLOCK_FIELD = 'cbfips'
 
 # SimCenter names of the summed fields, as to_simcenter writes them.
-PLAN_AREA = 'PlanArea'
+GROSS_AREA = 'GrossArea'
 REPLACEMENT_COST = 'ReplacementCost'
 
 # Values _preview lists before counting the rest.
@@ -180,13 +180,13 @@ class NSIJoinResult(NamedTuple):
             asset id in ascending order, with the footprint's geometry and
             the values NSI states. These are the governing record's fields
             through ``to_simcenter``, without ``Longitude``, ``Latitude``,
-            ``PlanArea``, ``ReplacementCost``, ``resunits`` and ``fd_id``,
+            ``GrossArea``, ``ReplacementCost``, ``resunits`` and ``fd_id``,
             with its class renamed ``NSIOccupancyClass``. Every other field
             the governing record carries is that one record's value and not
             a sum over the footprint's records. Beside them are
             ``OccupancyClass`` where the governing record's class is taken
             as it is; ``NumberOfUnits`` where every unit was counted;
-            ``PlanArea`` and ``ReplacementCost`` where one received record
+            ``GrossArea`` and ``ReplacementCost`` where one received record
             states the value; and ``NSIGoverningRecord``, ``NSIRecords``,
             ``NSIReach`` and ``NumberOfUnitsStatus``.
         derived (AssetInventory):
@@ -194,7 +194,7 @@ class NSIJoinResult(NamedTuple):
             keyed by its asset id in ascending order, with the footprint's
             geometry: ``OccupancyClass`` where the count band set it,
             ``NumberOfUnits`` where any record's units were filled by a
-            class midpoint, and ``PlanArea`` and ``ReplacementCost`` where
+            class midpoint, and ``GrossArea`` and ``ReplacementCost`` where
             two or more received records state a value, as their sums.
         links (pandas.DataFrame):
             One row per linked point, in ascending ``fd_id``, with the
@@ -1135,7 +1135,7 @@ def _footprint_values(
     for name in (
         'Longitude',
         'Latitude',
-        PLAN_AREA,
+        GROSS_AREA,
         REPLACEMENT_COST,
         UNITS_FIELD,
         ID_FIELD,
@@ -1162,7 +1162,7 @@ def _footprint_values(
     else:
         observed['OccupancyClass'] = footprint_class
 
-    for field, name in ((AREA_FIELD, PLAN_AREA), (VALUE_FIELD, REPLACEMENT_COST)):
+    for field, name in ((AREA_FIELD, GROSS_AREA), (VALUE_FIELD, REPLACEMENT_COST)):
         stated = [
             value
             for value in (

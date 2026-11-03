@@ -94,7 +94,7 @@ class HazusInferer(InferenceEngine):
         occupancyClass_key="OccupancyClass",
         numberOfStories_key="NumberOfStories",
         income_key="Income",
-        planArea_key="PlanArea",
+        grossArea_key="GrossArea",
         splitLevel_key="SplitLevel",
         garageType_key="GarageType",  # optional
         constructionClass_key="ConstructionClass",  # optional
@@ -115,7 +115,7 @@ class HazusInferer(InferenceEngine):
         self.occupancyClass_key = occupancyClass_key
         self.numberOfStories_key = numberOfStories_key
         self.income_key = income_key
-        self.planArea_key = planArea_key
+        self.grossArea_key = grossArea_key
         self.splitLevel_key = splitLevel_key
         self.garageType_key = garageType_key
         self.constructionClass_key = constructionClass_key
@@ -205,7 +205,7 @@ class HazusInferer(InferenceEngine):
                     self.income_key,
                     self.occupancyClass_key,
                     self.numberOfStories_key,
-                    self.planArea_key,
+                    self.grossArea_key,
                     self.splitLevel_key,
                 ],
                 optional_needed_keys=[
@@ -219,7 +219,7 @@ class HazusInferer(InferenceEngine):
                     self.income_key,
                     self.occupancyClass_key,
                     self.numberOfStories_key,
-                    self.planArea_key,
+                    self.grossArea_key,
                     self.splitLevel_key,
                     self.garageType_key,
                     self.constructionClass_key,
@@ -265,7 +265,7 @@ class HazusInferer(InferenceEngine):
                             self.income_key,
                             self.occupancyClass_key,
                             self.numberOfStories_key,
-                            self.planArea_key,
+                            self.grossArea_key,
                             self.splitLevel_key,
                             self.garageType_key,
                             self.constructionClass_key,
@@ -776,7 +776,7 @@ class HazusInferer(InferenceEngine):
         income_key,
         occupancyClass_key,
         numberOfStories_key,
-        planArea_key,
+        grossArea_key,
         splitLevel_key,
         garageType_key,
         constructionClass_key,
@@ -978,12 +978,12 @@ class HazusInferer(InferenceEngine):
         for i, occ, fparea, height, region in zip(
             bldg_properties_df.index,
             bldg_properties_df[occupancyClass_key],
-            bldg_properties_df[planArea_key],
+            bldg_properties_df[grossArea_key],
             bldg_properties_df["BuildingRise"],
             bldg_properties_df["Region"],
         ):
             # occ = row[occupancyClass_key]
-            # fparea = row[planArea_key]
+            # fparea = row[grossArea_key]
             if occ == "RES1":
                 base_cost = np.zeros((max(1, n_pw),))
                 garage_cost = np.zeros(

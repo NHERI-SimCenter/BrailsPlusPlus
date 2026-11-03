@@ -103,10 +103,13 @@ NSI_RAW_SCHEMA = pa.schema(
 # built of the structures in the Census tract, so every building in a tract
 # carries the same value and none of them was observed. Use the
 # YearBuiltSampler to draw a per-building year from it.
+#
+# sqft becomes GrossArea: NSI reports it as the structure's estimated
+# floor area, not its plan area.
 NSI_TO_SIMCENTER = {
     'x': 'Longitude',
     'y': 'Latitude',
-    'sqft': 'PlanArea',
+    'sqft': 'GrossArea',
     'num_story': 'NumberOfStories',
     'med_yr_blt': 'YearBuiltTractMedian',
     'val_struct': 'ReplacementCost',

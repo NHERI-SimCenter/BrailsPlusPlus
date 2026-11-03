@@ -65,7 +65,7 @@ inferer = infer_features_for_hazusdl(input_inventory=imputed_inventory,
                                      splitLevel_key=SPLIT_LEVEL_KEY,
                                      structureType_key=STRUCTURE_TYPE_KEY,
                                      replacementCost_key=REPLACEMENT_COST_KEY,
-                                     planArea_key=PLAN_AREA_KEY,
+                                     grossArea_key=PLAN_AREA_KEY,
                                      clean_features=False)
 hazus_inferred_inventory = inferer.infer()
 

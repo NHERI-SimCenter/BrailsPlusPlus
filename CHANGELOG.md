@@ -35,6 +35,8 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 
 ### Changed
 - **`med_yr_blt` from NSI now maps to `YearBuiltTractMedian`.** It is the median year built of the structures in a Census tract, so every building in a tract carries the same value. The converted path no longer emits `YearBuilt` at all. The legacy `nsi2brailsmap` path is unchanged and still maps `med_yr_blt` to `YearBuilt`, so the two conventions coexist for now.
+- **`sqft` from NSI now maps to `GrossArea`, not `PlanArea`.** NSI reports the structure's estimated floor area. `NSIFootprintJoin` writes the stated and summed areas under `GrossArea`, and no NSI field becomes `PlanArea`.
+- **`HazusInfererEarthquake`, the legacy `HazusInferer` and its subclass `SimCenterInferer` take `grossArea_key`, default `GrossArea`, in place of `planArea_key`.** The replacement cost multiplies this area by a cost per square foot without a story factor, so it needs a floor area. A caller passing `planArea_key` gets a `TypeError`. An inventory that carries the area only as `PlanArea` now gets no `ReplacementCost` and a warning, unless the caller passes `grossArea_key='PlanArea'`. `HazusInfererWind` keeps `planArea_key` and `PlanArea`.
 - The Hazus earthquake rulesets moved into `brails/inferers/hazus_inferer_earthquake/`. Legacy callers keep working through updated imports.
 - **`is_inventory` moved to `InputValidator`** and is no longer available on `InventoryValidator`, which published it as a public static method in 4.3.0. Call sites need updating to `InputValidator.is_inventory`.
 - `scipy` is now a declared dependency. It was arriving only transitively through scikit-learn.

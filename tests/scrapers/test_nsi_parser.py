@@ -110,7 +110,7 @@ def test_to_simcenter_renames_and_unpacks() -> None:
     assert converted['YearBuiltTractMedian'] == 1955
     # A tract median must not reach the inventory as an observed year.
     assert 'YearBuilt' not in converted
-    assert converted['PlanArea'] == 1800.0
+    assert converted['GrossArea'] == 1800.0
     assert converted['ReplacementCost'] == 500000.0
     # The general class passes through; nothing invents a specific type.
     assert converted['BuildingType'] == 'W'
@@ -260,6 +260,22 @@ def test_get_raw_data_applies_simcenter_format(canned_fetch: Callable[..., None]
     assert features['OccupancyClass'] == 'COM4'
     assert features['BuildingType'] == 'S'
     assert 'Basement' not in features
+
+
+def test_a_parsed_record_carries_its_gross_area(
+    canned_fetch: Callable[..., None],
+) -> None:
+    """NSI's floor area becomes GrossArea, and nothing becomes PlanArea."""
+    canned_fetch([make_record(11, 0.0005, 0.0005, ftprntsqft=900)])
+
+    inventory = NSI_Parser().get_raw_data(Region(), simcenter_format=True)
+
+    _, features = inventory.get_asset_features(11)
+    assert features['GrossArea'] == 1800.0
+    assert 'sqft' not in features
+    # The footprint polygon's area keeps its NSI name.
+    assert features['ftprntsqft'] == 900
+    assert 'PlanArea' not in features
 
 
 def test_records_sharing_a_coordinate_all_survive(

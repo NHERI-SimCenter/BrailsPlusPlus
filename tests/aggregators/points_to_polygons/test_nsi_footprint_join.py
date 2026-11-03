@@ -780,7 +780,7 @@ class TestPerFootprint:
         result = run(shapes, records)
         observed = features_of(result.observed)['A']
         assert observed['NSIGoverningRecord'] == 2
-        assert observed['PlanArea'] == 500.0
+        assert observed['GrossArea'] == 500.0
 
     def test_res2_keeps_its_class(self) -> None:
         """A RES2 governing record keeps RES2 whatever its units."""
@@ -803,9 +803,9 @@ class TestPerFootprint:
         result = run(shapes, records)
         observed = features_of(result.observed)['A']
         derived = features_of(result.derived)['A']
-        assert derived['PlanArea'] == 1500.0
+        assert derived['GrossArea'] == 1500.0
         assert derived['ReplacementCost'] == 3.0e5
-        assert 'PlanArea' not in observed
+        assert 'GrossArea' not in observed
         assert 'ReplacementCost' not in observed
 
     def test_one_stated_value_is_observed(self) -> None:
@@ -816,7 +816,7 @@ class TestPerFootprint:
         )
         result = run(shapes, records)
         observed = features_of(result.observed)['A']
-        assert observed['PlanArea'] == 700.0
+        assert observed['GrossArea'] == 700.0
         assert observed['ReplacementCost'] == 2.5e5
         assert 'A' not in result.derived.inventory
 
@@ -824,7 +824,7 @@ class TestPerFootprint:
         """A footprint whose records state no area gets no area."""
         shapes = footprints({'A': (0, 0, 10)})
         result = run(shapes, points(nsi(1, 2, 2, 'COM1')))
-        assert 'PlanArea' not in features_of(result.observed)['A']
+        assert 'GrossArea' not in features_of(result.observed)['A']
         assert 'ReplacementCost' not in features_of(result.observed)['A']
 
     def test_observed_carries_the_governing_record(self) -> None:
@@ -839,7 +839,7 @@ class TestPerFootprint:
         assert observed['NumberOfStories'] == 2
         assert observed['Basement'] is True
         assert observed['NSIOccupancyClass'] == 'RES1'
-        assert observed['PlanArea'] == 1600.0
+        assert observed['GrossArea'] == 1600.0
         assert observed['cbfips'] == '060750101001'
         for name in ('Longitude', 'Latitude', 'resunits', 'fd_id'):
             assert name not in observed
