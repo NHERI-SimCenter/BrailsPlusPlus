@@ -58,17 +58,12 @@ from brails.scrapers.usa_footprint_scraper import usa_footprint_scraper
 from brails.scrapers.usa_footprint_scraper.usa_footprint_scraper import (
     USA_FootprintScraper,
 )
+from brails.types.asset_inventory import AssetInventory
 from brails.types.region_boundary import RegionBoundary
-from brails.utils.asset_id import (
-    assign_asset_ids,
-    centroid_geohash,
-    plan_area_m2,
-)
+from brails.utils.asset_id import assign_asset_ids
 
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture
-
-    from brails.types.asset_inventory import AssetInventory
 
 METERS_PER_DEGREE = math.pi * 6371008.8 / 180.0
 SQFT_PER_M2 = 1.0 / 0.3048**2
@@ -179,16 +174,16 @@ def test_geohash_scheme_applies_the_floor_before_the_ids() -> None:
     inventory = scraper.get_footprints()
 
     assert scraper.min_area == 450.0
-    expected = [centroid_geohash(house) for house in HOUSES]
+    expected = [assign_asset_ids([house]).ids[0] for house in HOUSES]
     assert sorted(inventory.get_asset_ids()) == sorted(expected)
-    assert centroid_geohash(SHED) == expected[3]
+    assert assign_asset_ids([SHED]).ids[0] == expected[3]
     assert scraper.asset_id_log == []
 
     skipped = {entry['position']: entry for entry in scraper.asset_id_skipped}
     assert set(skipped) == {SHED_POSITION, GARAGE_POSITION, FLAT_POSITION}
     assert skipped[SHED_POSITION]['provider_id'] == 1000 + SHED_POSITION
     assert skipped[SHED_POSITION]['plan_area'] == pytest.approx(
-        plan_area_m2(SHED) * SQFT_PER_M2, rel=1e-9
+        AssetInventory.centroid_and_plan_area(SHED)[2] * SQFT_PER_M2, rel=1e-9
     )
     for asset in inventory.inventory.values():
         assert asset.features['footprint_provider'] == 'osm'
@@ -200,7 +195,7 @@ def test_the_floor_is_measured_by_the_id_routine() -> None:
     square = rectangle(row_lon(20), side_m, side_m)
     scraper = StubScraper({'id_scheme': 'geohash'}, [*HOUSES, square])
     lons, lats = zip(*square)
-    assert plan_area_m2(square) * SQFT_PER_M2 < 450.0
+    assert AssetInventory.centroid_and_plan_area(square)[2] * SQFT_PER_M2 < 450.0
     assert scraper._polygon_area(list(lats), list(lons), 'ft') > 450.0
 
     inventory = scraper.get_footprints()
@@ -217,7 +212,7 @@ def test_zero_floor_still_drops_footprints_without_area() -> None:
     inventory = scraper.get_footprints()
 
     keys = keys_by_geometry(inventory)
-    cell = centroid_geohash(HOUSES[3])
+    cell = assign_asset_ids([HOUSES[3]]).ids[0]
     assert keys[str(HOUSES[3])] == f'{cell}-120'
     assert keys[str(SHED)] == f'{cell}-16'
     assert str(FLAT) not in keys
@@ -242,9 +237,10 @@ def test_the_floor_keeps_the_same_footprints_in_every_unit(unit: str) -> None:
         rectangle(row_lon(index), math.sqrt(area), math.sqrt(area))
         for index, area in enumerate((41.8062, 41.8070, 41.8100))
     ]
-    assert [plan_area_m2(square) < floor_m2 for square in squares] == [
-        True, False, False,
-    ]
+    assert [
+        AssetInventory.centroid_and_plan_area(square)[2] < floor_m2
+        for square in squares
+    ] == [True, False, False]
 
     default = StubScraper({'id_scheme': 'geohash', 'length': unit}, squares)
     default.get_footprints()
@@ -321,7 +317,7 @@ def test_usa_scraper_records_its_ids(mocker: MockerFixture) -> None:
     requested = helper.download_attr_from_api.call_args[0][1]
     assert 'UUID' in requested
     assert sorted(inventory.get_asset_ids()) == sorted(
-        centroid_geohash(house) for house in HOUSES[:4]
+        assign_asset_ids([house]).ids[0] for house in HOUSES[:4]
     )
     features = sorted(
         (asset.features['usa_build_id'], asset.features['usa_uuid'])
@@ -383,7 +379,7 @@ def test_microsoft_scraper_records_its_provider(mocker: MockerFixture) -> None:
     inventory = scraper.get_footprints(region)
 
     assert sorted(inventory.get_asset_ids()) == sorted(
-        centroid_geohash(house) for house in HOUSES[:3]
+        assign_asset_ids([house]).ids[0] for house in HOUSES[:3]
     )
     assert {
         asset.features['footprint_provider'] for asset in inventory.inventory.values()
@@ -453,7 +449,7 @@ def test_overture_geohash_scheme(mocker: MockerFixture) -> None:
     inventory = scraper.get_footprints(region)
 
     assert sorted(inventory.get_asset_ids()) == sorted(
-        centroid_geohash(house) for house in HOUSES[:5]
+        assign_asset_ids([house]).ids[0] for house in HOUSES[:5]
     )
     assert [
         (entry['provider_id'], entry['reason']) for entry in scraper.asset_id_skipped
@@ -470,7 +466,7 @@ def test_two_query_boxes_agree_outside_collision_sets(mocker: MockerFixture) -> 
     east_edge = row_lon(3.5)
     building = rectangle(east_edge - meters_to_lon(4.0), 16.0, 16.0)
     part = rectangle(east_edge - meters_to_lon(4.0), 7.0, 7.0)
-    assert centroid_geohash(building) == centroid_geohash(part)
+    assert assign_asset_ids([building]).ids[0] == assign_asset_ids([part]).ids[0]
     scraper_class = mock_overture(mocker, [*HOUSES, building, part])
 
     pulls = {}
@@ -491,7 +487,7 @@ def test_two_query_boxes_agree_outside_collision_sets(mocker: MockerFixture) -> 
     for geometry in shared_houses:
         assert pulls['west'][geometry] == pulls['east'][geometry]
 
-    cell = centroid_geohash(building)
+    cell = assign_asset_ids([building]).ids[0]
     assert pulls['west'][str(building)] == f'{cell}-256'
     assert pulls['east'][str(building)] == cell
     assert log_sizes == {'west': 2, 'east': 0}

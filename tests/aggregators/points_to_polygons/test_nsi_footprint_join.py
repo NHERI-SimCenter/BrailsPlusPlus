@@ -51,6 +51,7 @@ from brails.scrapers import NSIFileReader
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import Importer
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
+from tests.imputers.donor_fixtures import features_of
 from tests.scrapers.data.nsi_pooled_fixture_generator import (
     FIXTURE_PATH as NSI_SAMPLE,
 )
@@ -77,15 +78,6 @@ def square(x: float, y: float, side: float = 10.0) -> list[list[float]]:
 
 # Exact binary coordinates, so points on an edge lie on it exactly.
 UNIT_DEG = 1 / 4096
-
-
-def exact_ring(x: float, y: float, side: float = 10.0) -> list[list[float]]:
-    """Return a closed square ring on exact binary longitudes and latitudes."""
-    corners = [(0, 0), (side, 0), (side, side), (0, side), (0, 0)]
-    return [
-        [-122.5 + (x + dx) * UNIT_DEG, 37.75 + (y + dy) * UNIT_DEG]
-        for dx, dy in corners
-    ]
 
 
 def footprints(shapes: dict[Any, tuple[float, float, float]]) -> AssetInventory:
@@ -154,11 +146,6 @@ def branch_of(result: nfj.NSIJoinResult) -> dict[Any, str]:
 def reason_of(result: nfj.NSIJoinResult) -> dict[Any, str]:
     """Map each unlinked fd_id to its reason."""
     return dict(zip(result.unlinked['fd_id'], result.unlinked['reason']))
-
-
-def features_of(inventory: AssetInventory) -> dict[Any, dict[str, Any]]:
-    """Return the features of every asset, keyed by asset id."""
-    return {key: dict(asset.features) for key, asset in inventory.inventory.items()}
 
 
 def table(frame: pd.DataFrame) -> dict[str, list]:
@@ -283,7 +270,11 @@ class TestInsidePass:
     def test_boundary_point_is_inside(self, x: float, y: float) -> None:
         """A point on a footprint's vertex or edge belongs to it."""
         shapes = AssetInventory()
-        shapes.add_asset('A', Asset('A', exact_ring(0, 0), {}))
+        ring = [
+            [-122.5 + dx * UNIT_DEG, 37.75 + dy * UNIT_DEG]
+            for dx, dy in [(0, 0), (10, 0), (10, 10), (0, 10), (0, 0)]
+        ]
+        shapes.add_asset('A', Asset('A', ring, {}))
         position = [-122.5 + x * UNIT_DEG, 37.75 + y * UNIT_DEG]
         result = run(shapes, points((1, position, {'occtype': 'RES1'})))
         assert branch_of(result) == {1: 'inside'}

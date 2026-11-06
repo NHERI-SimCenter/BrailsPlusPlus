@@ -49,11 +49,7 @@ from brails.utils.asset_id import (
     GEOHASH_PRECISION,
     SUFFIX_SEPARATOR,
     assign_asset_ids,
-    centroid,
-    centroid_geohash,
     geohash,
-    has_area,
-    plan_area_m2,
 )
 
 # A 0.0002 by 0.0002 degree footprint in San Francisco and its pinned id. The
@@ -67,7 +63,6 @@ GOLDEN_RING = [
     [-122.4194, 37.7749],
 ]
 GOLDEN_ID = '9q8yyk8zrd'
-GOLDEN_AREA_M2 = 390.922
 
 METERS_PER_DEGREE_LAT = math.pi * asset_id.EARTH_RADIUS_M / 180.0
 
@@ -100,10 +95,8 @@ def test_geohash_matches_the_published_example() -> None:
     assert GEOHASH_PRECISION == 10
 
 
-def test_golden_id_and_area() -> None:
-    """A fixed footprint keeps its id and its plan area."""
-    assert centroid_geohash(GOLDEN_RING) == GOLDEN_ID
-    assert plan_area_m2(GOLDEN_RING) == pytest.approx(GOLDEN_AREA_M2, abs=1e-3)
+def test_golden_id() -> None:
+    """A fixed footprint keeps its id."""
     assert assign_asset_ids([GOLDEN_RING]).ids == [GOLDEN_ID]
 
 
@@ -112,50 +105,24 @@ def test_input_forms_give_the_same_id() -> None:
     mapping = {'type': 'Polygon', 'coordinates': [GOLDEN_RING]}
     shapely_polygon = Polygon(GOLDEN_RING)
     ids = {
-        centroid_geohash(GOLDEN_RING),
-        centroid_geohash(mapping),
-        centroid_geohash(shapely_polygon),
-        centroid_geohash([tuple(point) for point in GOLDEN_RING]),
+        assign_asset_ids([footprint]).ids[0]
+        for footprint in (
+            GOLDEN_RING,
+            mapping,
+            shapely_polygon,
+            [tuple(point) for point in GOLDEN_RING],
+        )
     }
     assert ids == {GOLDEN_ID}
-
-
-def test_centroid_agrees_with_shapely() -> None:
-    """The planar centroid is the usual polygon centroid."""
-    polygon = Polygon([[-122.40, 37.78], [-122.3996, 37.78], [-122.3999, 37.7803]])
-    lon, lat = centroid(list(polygon.exterior.coords))
-    assert lon == pytest.approx(polygon.centroid.x, abs=1e-12)
-    assert lat == pytest.approx(polygon.centroid.y, abs=1e-12)
-
-
-def test_id_ignores_vertex_order_orientation_and_closing_vertex() -> None:
-    """Start vertex, orientation and closing vertex do not change the centroid."""
-    ring = [
-        [-122.41, 37.78],
-        [-122.4098, 37.7801],
-        [-122.4097, 37.7804],
-        [-122.4101, 37.7803],
-    ]
-    expected = centroid(ring)
-    reversed_rotation = list(reversed(ring[1:] + ring[:1]))
-    variants = [
-        [*ring, ring[0]],
-        ring[2:] + ring[:2],
-        list(reversed(ring)),
-        [*reversed_rotation, reversed_rotation[0]],
-    ]
-    for variant in variants:
-        assert centroid(variant) == expected
 
 
 def test_id_ignores_the_order_of_multipolygon_parts() -> None:
     """Reordering a multipolygon's parts leaves its id unchanged."""
     first = rectangle(-122.41, 37.78, 10.0, 8.0)
     second = rectangle(-122.4098, 37.7801, 6.0, 6.0)
-    assert centroid([first, second]) == centroid([second, first])
-    assert centroid_geohash(MultiPolygon([Polygon(second), Polygon(first)])) == (
-        centroid_geohash([first, second])
-    )
+    assert assign_asset_ids(
+        [MultiPolygon([Polygon(second), Polygon(first)])]
+    ).ids == assign_asset_ids([[first, second]]).ids
 
 
 def test_a_hole_does_not_change_the_id() -> None:
@@ -163,15 +130,12 @@ def test_a_hole_does_not_change_the_id() -> None:
     exterior = rectangle(-122.41, 37.78, 30.0, 30.0)
     hole = rectangle(-122.4100, 37.7801, 5.0, 5.0)
     with_hole = Polygon(exterior, [hole])
-    assert centroid_geohash(with_hole) == centroid_geohash(exterior)
-    assert plan_area_m2(with_hole) == plan_area_m2(exterior)
+    assert assign_asset_ids([with_hole]).ids == assign_asset_ids([exterior]).ids
 
 
 def test_projected_coordinates_raise() -> None:
     """Coordinates outside EPSG:4326 ranges are refused."""
     projected = [[551000.0, 4180000.0], [551010.0, 4180000.0], [551010.0, 4180010.0]]
-    with pytest.raises(ValueError, match='EPSG:4326'):
-        centroid_geohash(projected)
     with pytest.raises(ValueError, match='EPSG:4326'):
         assign_asset_ids([projected])
 
@@ -180,11 +144,9 @@ def test_zero_area_rings_are_refused() -> None:
     """Collinear or repeated vertices have no area and no id."""
     collinear = [[-122.41, 37.78], [-122.4099, 37.78], [-122.4098, 37.78]]
     repeated = [[-122.41, 37.78], [-122.41, 37.78], [-122.41, 37.78]]
-    assert not has_area(collinear)
-    assert not has_area(repeated)
-    assert has_area(GOLDEN_RING)
-    with pytest.raises(ValueError, match='encloses no area'):
-        assign_asset_ids([GOLDEN_RING, collinear])
+    for zero_area in (collinear, repeated):
+        with pytest.raises(ValueError, match='encloses no area'):
+            assign_asset_ids([GOLDEN_RING, zero_area])
 
 
 def test_ids_are_unchanged_under_reordering() -> None:
@@ -206,7 +168,7 @@ def test_ids_outside_collision_sets_survive_subsetting() -> None:
     footprints = footprint_row(20)
     house = rectangle(-122.43, 37.76, 15.0, 15.0)
     shed = rectangle(-122.43, 37.76, 4.0, 4.0)
-    cell = centroid_geohash(house)
+    cell = assign_asset_ids([house]).ids[0]
     full = assign_asset_ids([*footprints, house, shed]).ids
     assert full[-2:] == [f'{cell}-225', f'{cell}-16']
     assert all(SUFFIX_SEPARATOR not in value for value in full[:-2])
@@ -223,8 +185,8 @@ def test_a_collision_receives_the_area_suffix() -> None:
     """Footprints sharing a cell are suffixed, and each loses its suffix without its partner."""
     house = rectangle(-122.43, 37.76, 15.0, 15.0)
     shed = rectangle(-122.43, 37.76, 4.0, 4.0)
-    cell = centroid_geohash(house)
-    assert centroid_geohash(shed) == cell
+    cell = assign_asset_ids([house]).ids[0]
+    assert assign_asset_ids([shed]).ids[0] == cell
 
     result = assign_asset_ids([house, shed])
     assert result.ids == [f'{cell}-225', f'{cell}-16']
@@ -240,8 +202,7 @@ def test_equal_areas_are_ranked_by_geometry_not_input_order() -> None:
     lat = 37.76
     square = rectangle(-122.43, lat, 10.0, 10.0)
     oblong = rectangle(-122.43, lat, 20.0, 5.0)
-    assert centroid_geohash(square) == centroid_geohash(oblong)
-    assert round(plan_area_m2(square)) == round(plan_area_m2(oblong))
+    assert assign_asset_ids([square]).ids == assign_asset_ids([oblong]).ids
 
     forward = assign_asset_ids([square, oblong])
     backward = assign_asset_ids([oblong, square])
@@ -271,7 +232,7 @@ def test_the_tiebreak_ranks_identical_geometry() -> None:
 def test_errors_name_the_input_at_fault() -> None:
     """An empty polygon and an invalid geohash coordinate say what is wrong."""
     with pytest.raises(ValueError, match='A Polygon footprint has no coordinates'):
-        centroid({'type': 'Polygon', 'coordinates': []})
+        assign_asset_ids([{'type': 'Polygon', 'coordinates': []}])
     with pytest.raises(ValueError, match='A geohash needs'):
         geohash(200.0, 37.0)
 

@@ -36,6 +36,7 @@
 
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING
 
 import pytest
@@ -88,24 +89,6 @@ class FakeResponse:
         return self._payload
 
 
-def as_feature(record: dict) -> dict:
-    """
-    Wrap a property record in the GeoJSON shape the API serves.
-
-    Args:
-        record (dict):
-            Raw NSI properties.
-
-    Returns:
-        dict:
-            A GeoJSON feature carrying them, placed at their ``x`` and ``y``.
-    """
-    return {
-        'geometry': {'type': 'Point', 'coordinates': [record['x'], record['y']]},
-        'properties': record,
-    }
-
-
 def serve_features(monkeypatch: pytest.MonkeyPatch, features: list[dict]) -> None:
     """
     Serve these GeoJSON features from the NSI endpoint.
@@ -137,7 +120,19 @@ def canned_response(monkeypatch: pytest.MonkeyPatch, records: list[dict]) -> Non
         records (list[dict]):
             Raw NSI property records, each placed at its ``x`` and ``y``.
     """
-    serve_features(monkeypatch, [as_feature(record) for record in records])
+    serve_features(
+        monkeypatch,
+        [
+            {
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': [record['x'], record['y']],
+                },
+                'properties': record,
+            }
+            for record in records
+        ],
+    )
 
 
 @pytest.fixture
@@ -149,8 +144,4 @@ def canned_fetch(monkeypatch: pytest.MonkeyPatch) -> Callable[[list[dict]], None
         Callable[[list[dict]], None]:
             :func:`canned_response` with the test's patcher bound.
     """
-
-    def install(records: list[dict]) -> None:
-        canned_response(monkeypatch, records)
-
-    return install
+    return functools.partial(canned_response, monkeypatch)

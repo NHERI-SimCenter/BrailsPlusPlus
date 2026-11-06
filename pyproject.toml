@@ -99,7 +99,9 @@ brails = [
     "processors/foundation_classifier/csail_segmentation_tool/csail_seg/data/color150.mat",
     "processors/foundation_classifier/csail_segmentation_tool/csail_seg/config/*.yaml",
     "aggregators/housing_units/pyncoda/supporting_data/*.json",
-    "inferers/hazus_inferer_wind/input_schema.json"
+    "inferers/hazus_inferer_wind/input_schema.json",
+    "inferers/stories_from_height_inferer/height_scales.json",
+    "inferers/stories_from_height_inferer/README.rst"
     
 ]
 
@@ -114,6 +116,7 @@ include = [
     "tests/types/test_asset_inventory_possible_worlds.py",
     "tests/types/test_inventory_merge.py",
     "tests/types/test_integer_id_export.py",
+    "tests/types/test_asset_inventory_geometry.py",
     "tests/utils/test_input_validator.py",
     "tests/conftest.py",
 
@@ -145,6 +148,7 @@ include = [
     "brails/inferers/hazus_inferer_earthquake/hazus_eq_structure_type_inferer.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py",
     "brails/inferers/year_built_sampler/year_built_sampler.py",
+    "brails/inferers/stories_from_height_inferer/stories_from_height_inferer.py",
     "tests/inferers/**/*.py",
 
     "brails/utils/deterministic_sampling.py",
@@ -154,6 +158,13 @@ include = [
     "tests/utils/test_asset_id.py",
     "tests/scrapers/test_footprint_asset_ids.py",
     "tests/imputers/**/*.py",
+    "brails/imputers/observed_donor_imputer/donor_pool.py",
+    "brails/imputers/observed_donor_imputer/donor_records.py",
+    "brails/imputers/observed_donor_imputer/donor_search.py",
+    "brails/imputers/observed_donor_imputer/observed_donor_imputer.py",
+    "brails/utils/metric_crs.py",
+    "brails/utils/id_preview.py",
+    "tests/utils/test_metric_crs.py",
 
     "brails/validators/**/*.py",
     "tests/validators/**/*.py",

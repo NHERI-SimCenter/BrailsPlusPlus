@@ -72,3 +72,17 @@ PROVIDER_FEATURES: Tuple[str, ...] = (
     ),
     FOOTPRINT_PROVIDER_FEATURE,
 )
+
+# The features the census tract scraper writes, holding an asset's Census
+# tract and block group.
+TRACT_KEY = 'TRACT_GEOID'
+BLOCK_GROUP_KEY = 'BLOCKGROUP_GEOID'
+
+# Characters in a block-group GEOID: state 2, county 3, tract 6, group 1. A
+# tract's GEOID is the first TRACT_GEOID_LENGTH characters of its block
+# groups' GEOIDs.
+GEOID_LENGTH = 12
+TRACT_GEOID_LENGTH = 11
+
+# The geographic CRS asset coordinates are stored in.
+GEOGRAPHIC_CRS = 'EPSG:4326'

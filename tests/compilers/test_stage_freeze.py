@@ -48,6 +48,7 @@ from brails.compilers.stage_freeze import DIGEST_ALGORITHM, StageFreeze
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.types.housing_unit_inventory import HousingUnit, HousingUnitInventory
 from brails.utils import Importer
+from tests.imputers.donor_fixtures import features_of
 
 N_WORLDS = 3
 
@@ -85,18 +86,13 @@ def inventory(
     return inv
 
 
-def point(lon: float, lat: float) -> list[list[float]]:
-    """Return point coordinates."""
-    return [[lon, lat]]
-
-
 def sample() -> AssetInventory:
     """Return a small two-asset inventory with mixed feature types."""
     return inventory(
         [
             (
                 '9q8yyk8yuv',
-                point(-122.4194, 37.7749),
+                [[-122.4194, 37.7749]],
                 {
                     'OccupancyClass': 'RES1',
                     'NumberOfStories': 2,
@@ -105,7 +101,7 @@ def sample() -> AssetInventory:
             ),
             (
                 '9q8yyk8yuw',
-                point(-122.4190, 37.7750),
+                [[-122.4190, 37.7750]],
                 {
                     'OccupancyClass': 'COM1',
                     'NumberOfStories': 1,
@@ -121,11 +117,6 @@ def housing_units(income: int = 50000) -> HousingUnitInventory:
     units = HousingUnitInventory()
     units.add_housing_unit('1', HousingUnit({'income': income, 'size': 3}))
     return units
-
-
-def features_of(inv: AssetInventory) -> dict[Any, dict[str, Any]]:
-    """Return every asset's features keyed by asset id."""
-    return {aid: dict(inv.get_asset_features(aid)[1]) for aid in inv.get_asset_ids()}
 
 
 def digest_of(inv: AssetInventory) -> str:
@@ -194,7 +185,7 @@ class TestHeldByReference:
         freeze = StageFreeze()
         original = sample()
         freeze.freeze('observed', original)
-        original.add_asset('extra', Asset('extra', point(-122.0, 37.0)))
+        original.add_asset('extra', Asset('extra', [[-122.0, 37.0]]))
         with pytest.raises(RuntimeError, match="'observed' changed after"):
             freeze.manifest()
 
@@ -323,7 +314,7 @@ class TestDigest:
         records = [
             (
                 '9q8yyk8yuw',
-                point(-122.4190, 37.7750),
+                [[-122.4190, 37.7750]],
                 {
                     'PlanArea': None,
                     'NumberOfStories': 1,
@@ -332,7 +323,7 @@ class TestDigest:
             ),
             (
                 '9q8yyk8yuv',
-                point(-122.4194, 37.7749),
+                [[-122.4194, 37.7749]],
                 {
                     'PlanArea': 151.25,
                     'OccupancyClass': 'RES1',
@@ -348,7 +339,7 @@ class TestDigest:
             [
                 (
                     'a',
-                    point(-122.4, 37.7),
+                    [[-122.4, 37.7]],
                     {'n': 3, 'x': 0.5, 'w': [1.5, 2.5], 'b': True},
                 )
             ]
@@ -357,7 +348,7 @@ class TestDigest:
             [
                 (
                     'a',
-                    point(-122.4, 37.7),
+                    [[-122.4, 37.7]],
                     {
                         'n': np.int64(3),
                         'x': np.float64(0.5),
@@ -373,38 +364,38 @@ class TestDigest:
 
     def test_nan_is_a_value_and_equal_to_itself(self) -> None:
         """NaN is a value and digests equal to itself."""
-        first = inventory([('a', point(-122.4, 37.7), {'x': float('nan')})])
-        second = inventory([('a', point(-122.4, 37.7), {'x': np.float64('nan')})])
+        first = inventory([('a', [[-122.4, 37.7]], {'x': float('nan')})])
+        second = inventory([('a', [[-122.4, 37.7]], {'x': np.float64('nan')})])
         assert digest_of(first) == digest_of(second)
         assert digest_of(first) != digest_of(
-            inventory([('a', point(-122.4, 37.7), {'x': None})])
+            inventory([('a', [[-122.4, 37.7]], {'x': None})])
         )
 
     def test_int_and_float_of_equal_value_differ(self) -> None:
         """An int and a float of equal value differ."""
-        as_int = inventory([('a', point(-122.4, 37.7), {'n': 3})])
-        as_float = inventory([('a', point(-122.4, 37.7), {'n': 3.0})])
+        as_int = inventory([('a', [[-122.4, 37.7]], {'n': 3})])
+        as_float = inventory([('a', [[-122.4, 37.7]], {'n': 3.0})])
         assert digest_of(as_int) != digest_of(as_float)
 
     def test_float32_keeps_its_rounding(self) -> None:
         """A float32 keeps its rounding."""
-        as_32 = inventory([('a', point(-122.4, 37.7), {'x': np.float32(0.1)})])
-        as_64 = inventory([('a', point(-122.4, 37.7), {'x': 0.1})])
+        as_32 = inventory([('a', [[-122.4, 37.7]], {'x': np.float32(0.1)})])
+        as_64 = inventory([('a', [[-122.4, 37.7]], {'x': 0.1})])
         rounded = inventory(
-            [('a', point(-122.4, 37.7), {'x': float(np.float32(0.1))})]
+            [('a', [[-122.4, 37.7]], {'x': float(np.float32(0.1))})]
         )
         assert digest_of(as_32) != digest_of(as_64)
         assert digest_of(as_32) == digest_of(rounded)
 
     def test_integer_and_string_ids_are_distinct(self) -> None:
         """Integer and string ids are distinct."""
-        as_int = inventory([(1, point(-122.4, 37.7), {})])
-        as_str = inventory([('1', point(-122.4, 37.7), {})])
+        as_int = inventory([(1, [[-122.4, 37.7]], {})])
+        as_str = inventory([('1', [[-122.4, 37.7]], {})])
         both = inventory(
-            [('1', point(-122.4, 37.7), {}), (1, point(-122.4, 37.7), {})]
+            [('1', [[-122.4, 37.7]], {}), (1, [[-122.4, 37.7]], {})]
         )
         reversed_both = inventory(
-            [(1, point(-122.4, 37.7), {}), ('1', point(-122.4, 37.7), {})]
+            [(1, [[-122.4, 37.7]], {}), ('1', [[-122.4, 37.7]], {})]
         )
         assert digest_of(as_int) != digest_of(as_str)
         assert digest_of(both) == digest_of(reversed_both)
@@ -424,7 +415,7 @@ class TestDigest:
         """Each kind of change moves the digest."""
         inv = sample()
         if change == 'geometry':
-            inv.inventory['9q8yyk8yuv'].coordinates = point(-122.4194, 37.77491)
+            inv.inventory['9q8yyk8yuv'].coordinates = [[-122.4194, 37.77491]]
         elif change == 'feature value':
             inv.add_asset_features(
                 '9q8yyk8yuv', {'NumberOfStories': 3}, overwrite=True
@@ -458,7 +449,7 @@ class TestDigest:
 
     def test_order_of_vector_features_does_not_matter(self) -> None:
         """The order of vector features does not matter."""
-        records = [('a', point(-122.4, 37.7), {'w': [1, 2]})]
+        records = [('a', [[-122.4, 37.7]], {'w': [1, 2]})]
         first = inventory(records, vector_features=['w', 'v'])
         second = inventory(records, vector_features=['v', 'w'])
         assert digest_of(first) == digest_of(second)
@@ -471,14 +462,14 @@ class TestDigest:
     ) -> None:
         """An unsupported value raises and freezes nothing."""
         freeze = StageFreeze()
-        bad = inventory([('a', point(-122.4, 37.7), {'x': value})])
+        bad = inventory([('a', [[-122.4, 37.7]], {'x': value})])
         with pytest.raises(TypeError, match="features of asset 'a'"):
             freeze.freeze('observed', bad)
         assert freeze.order == ()
 
     def test_non_string_feature_key_raises(self) -> None:
         """A feature key that is not a string raises."""
-        bad = inventory([('a', point(-122.4, 37.7), {})])
+        bad = inventory([('a', [[-122.4, 37.7]], {})])
         bad.inventory['a'].features[1] = 'x'
         with pytest.raises(TypeError, match='has type int, not str'):
             digest_of(bad)
@@ -547,14 +538,6 @@ class TestImputerBatchOption:
 
     BATCHES = (('t1', 't2'), ('t3',), ('t4', 't5'))
 
-    def donors(self, *, reverse: bool = False) -> AssetInventory:
-        """Return the observed donors, which hold one year in every world."""
-        records = [
-            ('d1', point(BATCH_LONGITUDES['d1'], 37.77), {'YearBuilt': 1950}),
-            ('d2', point(BATCH_LONGITUDES['d2'], 37.77), {'YearBuilt': 1970}),
-        ]
-        return inventory(records[::-1] if reverse else records, n_pw=N_WORLDS)
-
     def run(
         self, *, reverse: bool = False
     ) -> tuple[StageFreeze, list[set[str]], dict[str, list[str]]]:
@@ -571,8 +554,16 @@ class TestImputerBatchOption:
                 The freeze, each batch's donor ids, and each target's donor
                 in every world.
         """
+        # two observed donors, one year in every world
+        records = [
+            ('d1', [[BATCH_LONGITUDES['d1'], 37.77]], {'YearBuilt': 1950}),
+            ('d2', [[BATCH_LONGITUDES['d2'], 37.77]], {'YearBuilt': 1970}),
+        ]
         freeze = StageFreeze()
-        freeze.freeze('observed', self.donors(reverse=reverse))
+        freeze.freeze(
+            'observed',
+            inventory(records[::-1] if reverse else records, n_pw=N_WORLDS),
+        )
         pools = []
         donors_used: dict[str, list[str]] = {}
         for j, targets in enumerate(self.BATCHES, start=1):
@@ -592,7 +583,7 @@ class TestImputerBatchOption:
             pools.append(set(pool.get_asset_ids()))
             batch = inventory(
                 [
-                    (t, point(BATCH_LONGITUDES[t], 37.77), {'YearBuilt': years[t]})
+                    (t, [[BATCH_LONGITUDES[t], 37.77]], {'YearBuilt': years[t]})
                     for t in targets
                 ],
                 n_pw=N_WORLDS,
@@ -653,19 +644,13 @@ class TestImputerBatchOption:
 class TestNonResidentialReadOfResidentialWorlds:
     """The calls a non-residential stage makes on frozen stages."""
 
-    def observed(self) -> AssetInventory:
-        """Return one NSI-observed non-residential donor."""
-        return inventory(
-            [('o1', point(-122.405, 37.771), {'OccupancyClass': 'COM4'})]
-        )
-
     def residential(self) -> AssetInventory:
         """Return two residential assets with years in three worlds."""
         return inventory(
             [
                 (
                     'r1',
-                    point(-122.41, 37.77),
+                    [[-122.41, 37.77]],
                     {
                         'OccupancyClass': 'RES1',
                         'YearBuilt': [1921, 1935, 1948],
@@ -674,7 +659,7 @@ class TestNonResidentialReadOfResidentialWorlds:
                 ),
                 (
                     'r2',
-                    point(-122.40, 37.77),
+                    [[-122.40, 37.77]],
                     {
                         'OccupancyClass': 'RES3A',
                         'YearBuilt': [1960, 1962, 1958],
@@ -694,7 +679,10 @@ class TestNonResidentialReadOfResidentialWorlds:
                 The freeze and the residential stage's digest.
         """
         freeze = StageFreeze()
-        freeze.freeze('observed', self.observed())
+        freeze.freeze(
+            'observed',
+            inventory([('o1', [[-122.405, 37.771]], {'OccupancyClass': 'COM4'})]),
+        )
         digest = freeze.freeze('residential', self.residential())
         observed = freeze.read('observed')
         occupancy = observed.get_asset_features('o1')[1]['OccupancyClass']
@@ -714,7 +702,7 @@ class TestNonResidentialReadOfResidentialWorlds:
             [
                 (
                     'n1',
-                    point(-122.405, 37.77),
+                    [[-122.405, 37.77]],
                     {'OccupancyClass': occupancy, 'YearBuilt': years},
                 )
             ],

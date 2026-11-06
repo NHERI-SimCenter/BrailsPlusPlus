@@ -73,6 +73,7 @@ from shapely.geometry import GeometryCollection, mapping
 from shapely.geometry.base import BaseGeometry  # noqa: TC002
 
 from brails.exceptions import BrailsError
+from brails.utils.asset_id import _centroid_and_plan_area, _has_area
 from brails.utils.clean_floats import clean_floats
 from brails.types.housing_unit_inventory import HousingUnitInventory
 from brails.utils.geo_tools import GeoTools
@@ -1504,6 +1505,67 @@ class AssetInventory:
                     f'{n_pw} possible worlds would read as realizations: '
                     f'{_report_first_problems(lists, "; ")}.'
                 )
+
+    @staticmethod
+    def has_area(coordinates: object) -> bool:
+        """
+        Return whether the exterior rings of a footprint enclose any area.
+
+        A footprint without area receives no geohash asset id
+        (:func:`brails.utils.asset_id.assign_asset_ids`), so callers drop
+        such footprints with this test first.
+
+        Args:
+            coordinates (object):
+                A BRAILS coordinate list (a list of ``[lon, lat]`` for a
+                polygon, a list of such rings for a multipolygon), a GeoJSON
+                mapping of type ``Polygon`` or ``MultiPolygon``, or an object
+                with ``__geo_interface__``, such as a Shapely geometry, in
+                EPSG:4326.
+
+        Returns:
+            bool:
+                True when the absolute areas of the exterior rings sum to
+                more than zero.
+
+        Raises:
+            ValueError:
+                If the coordinates are not one of the accepted forms, or a
+                vertex is not a finite coordinate pair within EPSG:4326
+                ranges.
+        """
+        return _has_area(coordinates)
+
+    @staticmethod
+    def centroid_and_plan_area(coordinates: object) -> tuple[float, float, float]:
+        """
+        Return a footprint's centroid and plan area, as its asset id reads them.
+
+        The centroid is the planar centroid of the exterior rings in
+        EPSG:4326, the point whose geohash is the footprint's id. It ignores
+        interior rings, so for a geometry with holes it differs from the
+        Shapely centroid that :meth:`Asset.get_centroid` returns. The plan
+        area is the exterior rings' shoelace area in square
+        degrees scaled to a sphere of radius
+        :data:`brails.utils.asset_id.EARTH_RADIUS_M` at the centroid's
+        latitude. Neither depends on a ring's starting vertex, orientation
+        or closing vertex, or on the order of the parts.
+
+        Args:
+            coordinates (object):
+                A footprint in any form :meth:`has_area` accepts.
+
+        Returns:
+            tuple[float, float, float]:
+                The centroid's longitude and latitude, and the plan area in
+                square meters, unrounded.
+
+        Raises:
+            ValueError:
+                In the cases :meth:`has_area` raises it, or if the exterior
+                rings enclose no area.
+        """
+        return _centroid_and_plan_area(coordinates)
 
     def convert_polygons_to_centroids(self) -> None:
         """

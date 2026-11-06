@@ -58,7 +58,7 @@ from brails.constants import FOOTPRINT_PROVIDER_FEATURE, PROVIDER_ID_FEATURES
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.types.region_boundary import RegionBoundary
 from brails.utils import UnitConverter
-from brails.utils.asset_id import assign_asset_ids, has_area, plan_area_m2
+from brails.utils.asset_id import assign_asset_ids
 from brails.utils.unit_converter import UNIT_TO_METER
 
 # Global constants for plan area calculations and asset typing:
@@ -73,7 +73,7 @@ ID_SCHEMES = (ID_SCHEME_INDEX, ID_SCHEME_GEOHASH)
 # Default minimum plan area under the 'geohash' scheme, in square feet.
 DEFAULT_MIN_AREA_SQFT = 450.0
 
-# The default floor in square meters, the unit plan_area_m2 measures in.
+# The default floor in square meters, the unit the plan area is measured in.
 DEFAULT_MIN_AREA_M2 = DEFAULT_MIN_AREA_SQFT * UNIT_TO_METER['ft'] ** 2
 
 # Features recorded in the scraper's length unit or its square. They stay
@@ -139,7 +139,7 @@ class FootprintScraper(ABC):
                   :func:`brails.utils.asset_id.assign_asset_ids`.
                 - ``'min_area'`` (float): the smallest plan area kept, in
                   the square of ``length_unit``, measured by
-                  :func:`brails.utils.asset_id.plan_area_m2`.
+                  :meth:`AssetInventory.centroid_and_plan_area`.
             length_unit (str):
                 The scraper's length unit, which sets the unit of
                 ``min_area``. Defaults to ``'ft'``.
@@ -384,10 +384,10 @@ class FootprintScraper(ABC):
         for index, footprint in enumerate(footprints):
             if screen:
                 reason, area_m2 = None, 0.0
-                if not has_area(footprint):
+                if not AssetInventory.has_area(footprint):
                     reason = 'zero_area'
                 elif min_area_m2 > 0:
-                    area_m2 = plan_area_m2(footprint)
+                    area_m2 = AssetInventory.centroid_and_plan_area(footprint)[2]
                     if area_m2 < min_area_m2:
                         reason = 'below_min_area'
                 if reason is not None:

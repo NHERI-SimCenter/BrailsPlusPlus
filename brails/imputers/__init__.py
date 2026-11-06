@@ -34,3 +34,4 @@
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 
 from .knn_imputer.knn_imputer import KnnImputer
+from .observed_donor_imputer.observed_donor_imputer import ObservedDonorImputer

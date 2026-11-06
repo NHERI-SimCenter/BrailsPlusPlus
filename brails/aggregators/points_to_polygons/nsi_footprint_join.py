@@ -54,16 +54,17 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
-from pyproj import CRS
-from pyproj.exceptions import CRSError
 
 from brails.scrapers.nsi_parser.nsi_conventions import to_simcenter
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
 from brails.utils.geo_tools import GeoTools
+from brails.utils.metric_crs import meter_crs
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
+
+    from pyproj import CRS
 
 # Purpose label of the walk order's keyed uniform. Renaming it moves every
 # walk order and therefore every link the walk makes.
@@ -296,21 +297,6 @@ def parse_occupancy_class(occtype: object) -> str | None:
     return head or None
 
 
-def occupancy_family(occupancy_class: str) -> str:
-    """
-    Return the family of an occupancy class.
-
-    Args:
-        occupancy_class (str):
-            A parsed class.
-
-    Returns:
-        str:
-            ``'RES3'`` for RES3A to RES3F, otherwise the class itself.
-    """
-    return 'RES3' if occupancy_class in RES3_CLASSES else occupancy_class
-
-
 def count_band(units: float) -> str:
     """
     Return the class of the count band a unit count falls in.
@@ -371,7 +357,9 @@ def point_class(occupancy_class: str, units: float | None) -> str:
             The count band of ``units`` (:func:`count_band`) for a record
             of :data:`COUNTED_FAMILIES`, otherwise the class itself.
     """
-    if occupancy_family(occupancy_class) in COUNTED_FAMILIES and units is not None:
+    # RES3A to RES3F count as RES3
+    family = 'RES3' if occupancy_class in RES3_CLASSES else occupancy_class
+    if family in COUNTED_FAMILIES and units is not None:
         return count_band(units)
     return occupancy_class
 
@@ -509,7 +497,7 @@ class NSIFootprintJoin:
         self.cap_m = float(cap)
         self.seed = int(seed)
         self.projected_crs = (
-            None if projected_crs is None else _meter_crs(projected_crs)
+            None if projected_crs is None else meter_crs(projected_crs)
         )
 
     def walk_uniforms(self, fd_ids: Sequence[Any]) -> np.ndarray:
@@ -560,7 +548,11 @@ class NSIFootprintJoin:
         footprint_ids, polygons = self._read_footprints(footprints)
         records = self._read_points(points)
 
-        crs = self._metric_crs(polygons)
+        crs = (
+            self.projected_crs
+            if self.projected_crs is not None
+            else gpd.GeoSeries(polygons, crs='EPSG:4326').estimate_utm_crs()
+        )
         polygons_m = np.asarray(
             gpd.GeoSeries(polygons, crs='EPSG:4326').to_crs(crs).array,
             dtype=object,
@@ -572,7 +564,13 @@ class NSIFootprintJoin:
             gpd.GeoSeries(point_geoms, crs='EPSG:4326').to_crs(crs).array,
             dtype=object,
         )
-        footprint_rank = _rank(footprint_ids)
+        # rank of each footprint id in canonical id order
+        order = sorted(
+            range(len(footprint_ids)),
+            key=lambda index: _ordering_key(footprint_ids[index]),
+        )
+        footprint_rank = np.empty(len(footprint_ids), dtype=np.int64)
+        footprint_rank[order] = np.arange(len(footprint_ids))
 
         inside = self._inside_pass(
             polygons, polygons_m, point_geoms, points_m, footprint_rank
@@ -641,32 +639,22 @@ class NSIFootprintJoin:
         observed, derived = self._per_footprint(
             footprints, footprint_ids, received, records
         )
+        # links table, sorted by fd_id
+        rows = sorted(links, key=lambda row: _ordering_key(row['fd_id']))
+        links_frame = pd.DataFrame(rows, columns=list(LINK_COLUMNS))
+        links_frame['distance_m'] = links_frame['distance_m'].astype(float)
+        links_frame['walk_position'] = pd.array(
+            [row['walk_position'] for row in rows], dtype='Int64'
+        )
         return NSIJoinResult(
             observed=observed,
             derived=derived,
-            links=_links_frame(links),
+            links=links_frame,
             unlinked=_unlinked_frame(unlinked, records),
             branch_counts=_branch_counts(links, unlinked, records, inside),
             seed=self.seed,
             crs=crs,
         )
-
-    def _metric_crs(self, polygons: np.ndarray) -> CRS:
-        """
-        Return the CRS that areas and distances are measured in.
-
-        Args:
-            polygons (numpy.ndarray):
-                The footprints in EPSG:4326.
-
-        Returns:
-            pyproj.CRS:
-                The configured CRS, or the UTM zone estimated from the
-                footprints.
-        """
-        if self.projected_crs is not None:
-            return self.projected_crs
-        return gpd.GeoSeries(polygons, crs='EPSG:4326').estimate_utm_crs()
 
     @staticmethod
     def _read_footprints(
@@ -950,62 +938,6 @@ class NSIFootprintJoin:
         return observed, derived
 
 
-def _meter_crs(value: object) -> CRS:
-    """
-    Read a projected CRS whose axes are in meters.
-
-    Args:
-        value (object):
-            A CRS in any form ``pyproj`` accepts.
-
-    Returns:
-        pyproj.CRS:
-            The CRS.
-
-    Raises:
-        ValueError:
-            If the value is not a CRS, is not projected, has an axis in a
-            unit other than the meter, or is Web Mercator (EPSG:3857).
-    """
-    try:
-        crs = CRS.from_user_input(value)
-    except CRSError as error:
-        raise ValueError(f'projected_crs is not a CRS: {value!r}') from error
-    units = {axis.unit_name for axis in crs.axis_info}
-    if not crs.is_projected or not units <= {'metre', 'meter'}:
-        raise ValueError(
-            'projected_crs must be a projected CRS in meters, not '
-            f'{crs.name} ({crs.to_string()}), whose axes are in '
-            f'{", ".join(sorted(units)) or "no unit"}.'
-        )
-    operation = crs.coordinate_operation
-    if operation is not None and 'Pseudo Mercator' in operation.method_name:
-        raise ValueError(
-            'projected_crs must measure ground distances, not '
-            f'{crs.name} ({crs.to_string()}), a Web Mercator CRS whose '
-            'meters are not ground meters away from the equator.'
-        )
-    return crs
-
-
-def _rank(ids: list[Any]) -> np.ndarray:
-    """
-    Rank ids in ascending order of :func:`_ordering_key`.
-
-    Args:
-        ids (list):
-            The ids by index.
-
-    Returns:
-        numpy.ndarray:
-            Each id's rank, from 0.
-    """
-    order = sorted(range(len(ids)), key=lambda index: _ordering_key(ids[index]))
-    rank = np.empty(len(ids), dtype=np.int64)
-    rank[order] = np.arange(len(ids))
-    return rank
-
-
 def _governing(arrivals: list[tuple[int, str]], records: list[_Point]) -> int:
     """
     Choose the governing record of a footprint by the governing key.
@@ -1084,7 +1016,9 @@ def _footprint_class(lead: _Point, units: float | None) -> tuple[str, bool]:
             :data:`COUNTED_FAMILIES`, otherwise the governing record's class
             and False.
     """
-    if occupancy_family(lead.nsi_class) in COUNTED_FAMILIES and units is not None:
+    # RES3A to RES3F count as RES3
+    family = 'RES3' if lead.nsi_class in RES3_CLASSES else lead.nsi_class
+    if family in COUNTED_FAMILIES and units is not None:
         return count_band(units), True
     return lead.nsi_class, False
 
@@ -1186,27 +1120,6 @@ def _footprint_values(
         else REACH_WALK
     )
     return observed, derived
-
-
-def _links_frame(links: list[dict[str, Any]]) -> pd.DataFrame:
-    """
-    Tabulate the links in ascending ``fd_id``.
-
-    Args:
-        links (list[dict]):
-            One entry per linked point.
-
-    Returns:
-        pandas.DataFrame:
-            The columns of :data:`LINK_COLUMNS`.
-    """
-    rows = sorted(links, key=lambda row: _ordering_key(row['fd_id']))
-    frame = pd.DataFrame(rows, columns=list(LINK_COLUMNS))
-    frame['distance_m'] = frame['distance_m'].astype(float)
-    frame['walk_position'] = pd.array(
-        [row['walk_position'] for row in rows], dtype='Int64'
-    )
-    return frame
 
 
 def _unlinked_frame(

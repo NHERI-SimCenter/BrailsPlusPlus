@@ -374,40 +374,6 @@ class TestRawRecordWriter:
 SAMPLE_REGION = Region(box(-122.47, 37.76, -122.46, 37.77))
 
 
-def api_features() -> list[dict]:
-    """
-    Read the stored NSI API sample as the API serves it.
-
-    Returns:
-        list[dict]:
-            The GeoJSON features, with their served point geometry.
-    """
-    return json.loads(Path(API_SAMPLE).read_text())['features']
-
-
-def as_stored(features: dict[str, Any]) -> dict[str, Any]:
-    """
-    Apply to features what a write and read-back changes in them.
-
-    Args:
-        features (dict[str, Any]):
-            The features of an asset the parser returned.
-
-    Returns:
-        dict[str, Any]:
-            The features without null values, and with an integer in a float
-            field as a float.
-    """
-    floats = {
-        field.name for field in NSI_RAW_SCHEMA if pa.types.is_floating(field.type)
-    }
-    return {
-        name: float(value) if name in floats else value
-        for name, value in features.items()
-        if value is not None
-    }
-
-
 class TestRawPullFile:
     """A pull written by the parser reads back as the inventory it returned."""
 
@@ -415,7 +381,7 @@ class TestRawPullFile:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Same ids and features up to the stated differences, and the points to 5e-7."""
-        features = api_features()
+        features = json.loads(Path(API_SAMPLE).read_text())['features']
         # One record served without a field, and one with a null.
         del features[3]['properties']['bldheight']
         features[4]['properties']['firmzone'] = None
@@ -427,10 +393,19 @@ class TestRawPullFile:
 
         assert read.get_asset_ids() == sorted(pulled.get_asset_ids())
         assert len(read.inventory) == len(features)
+        floats = {
+            field.name for field in NSI_RAW_SCHEMA if pa.types.is_floating(field.type)
+        }
         for asset_id in read.get_asset_ids():
             _, read_features = read.get_asset_features(asset_id)
             _, pulled_features = pulled.get_asset_features(asset_id)
-            assert typed(read_features) == typed(as_stored(pulled_features))
+            # a write and read-back drops nulls and stores float fields as floats
+            stored = {
+                name: float(value) if name in floats else value
+                for name, value in pulled_features.items()
+                if value is not None
+            }
+            assert typed(read_features) == typed(stored)
             ((x_read, y_read),) = read.get_asset_coordinates(asset_id)[1]
             ((x_pulled, y_pulled),) = pulled.get_asset_coordinates(asset_id)[1]
             assert abs(x_read - x_pulled) <= 5e-7

@@ -44,7 +44,9 @@ vocabulary that no peril owns.
 
       diagnosis_frame
       preview_failures
-      preview_ids
+
+``preview_ids`` and ``PREVIEW_LIMIT`` (from :mod:`brails.utils.id_preview`)
+can also be imported from this module.
 """
 
 from __future__ import annotations
@@ -52,6 +54,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pandas as pd
+
+from brails.utils.id_preview import PREVIEW_LIMIT, join_preview, preview_ids
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -78,9 +82,6 @@ DIAGNOSIS_INFEASIBLE = 'infeasible'
 # inferer produce a value. Only an infeasible asset has any.
 DIAGNOSIS_COLUMNS = ('diagnosis', 'detail', 'resolvable_by')
 
-# How many failing assets an error message names before counting the rest.
-# An inventory-wide failure would otherwise print an inventory-wide message.
-PREVIEW_LIMIT = 10
 
 
 def diagnosis_frame(rows: dict) -> pd.DataFrame:
@@ -103,44 +104,6 @@ def diagnosis_frame(rows: dict) -> pd.DataFrame:
     )
 
 
-def _truncate(entries: list[str], total: int) -> str:
-    """
-    Join entries for an error message, counting whatever is left out.
-
-    Args:
-        entries (list[str]):
-            The entries to show, already cut to the limit.
-        total (int):
-            How many there were before the cut.
-
-    Returns:
-        str:
-            A comma-separated preview with a count of any remainder.
-    """
-    shown = ', '.join(entries)
-    extra = total - len(entries)
-    if extra > 0:
-        shown += f' and {extra} more'
-    return shown
-
-
-def preview_ids(asset_ids: Iterable) -> str:
-    """
-    Format failing asset ids for an error message.
-
-    Args:
-        asset_ids (Iterable):
-            The ids to show.
-
-    Returns:
-        str:
-            A comma-separated preview with a count of any remainder.
-    """
-    ids = list(asset_ids)
-    return _truncate([str(asset_id) for asset_id in ids[:PREVIEW_LIMIT]],
-                     len(ids))
-
-
 def preview_failures(failures: pd.Series) -> str:
     """
     Format failing assets and their diagnoses for an error message.
@@ -157,4 +120,4 @@ def preview_failures(failures: pd.Series) -> str:
         f'{asset_id} ({diagnosis})'
         for asset_id, diagnosis in list(failures.items())[:PREVIEW_LIMIT]
     ]
-    return _truncate(entries, len(failures))
+    return join_preview(entries, len(failures))

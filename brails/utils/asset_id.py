@@ -39,16 +39,15 @@ The id of a footprint is the geohash of the planar centroid of its exterior
 rings in EPSG:4326, with collisions resolved as :func:`assign_asset_ids`
 describes. A change to any routine here changes ids. The module imports the
 standard library only, so a copy of it used outside BRAILS gives the same ids.
+Its centroid and area routines are private;
+:class:`~brails.types.asset_inventory.AssetInventory` exposes them as the
+static methods ``has_area`` and ``centroid_and_plan_area``.
 
 .. autosummary::
 
       AssetIdResult
       assign_asset_ids
-      centroid
-      centroid_geohash
       geohash
-      has_area
-      plan_area_m2
 """
 
 from __future__ import annotations
@@ -94,19 +93,16 @@ class AssetIdResult(NamedTuple):
     log: list[dict[str, Any]]
 
 
-def _is_number(value: object) -> bool:
-    """Return whether a value is a real number and not a boolean."""
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
-
-
 def _is_point(value: object) -> bool:
     """Return whether a value looks like one coordinate pair."""
     return (
         isinstance(value, Sequence)
         and not isinstance(value, str)
         and len(value) >= 2  # noqa: PLR2004
-        and _is_number(value[0])
-        and _is_number(value[1])
+        and all(
+            isinstance(number, (int, float)) and not isinstance(number, bool)
+            for number in value[:2]
+        )
     )
 
 
@@ -153,7 +149,7 @@ def _to_ring(points: Sequence[Any]) -> Ring:
 
 def _exterior_rings(geometry: object) -> list[Ring]:
     """
-    Return the open exterior rings of a footprint :func:`centroid` accepts.
+    Return the open exterior rings of a footprint.
 
     Args:
         geometry (object):
@@ -247,21 +243,19 @@ def _parts(geometry: object) -> tuple[list[Ring], Point, list[tuple[float, float
     return rings, origin, [_ring_moments(ring, origin) for ring in rings]
 
 
-def has_area(geometry: object) -> bool:
+def _has_area(geometry: object) -> bool:
     """
     Return whether the exterior rings of a footprint enclose any area.
 
-    Callers drop footprints without area with this test before calling
-    :func:`assign_asset_ids`.
+    The public contract is that of ``AssetInventory.has_area`` in BRAILS.
 
     Args:
         geometry (object):
-            A footprint in any form :func:`centroid` accepts.
+            A footprint in any form :func:`_exterior_rings` accepts.
 
     Returns:
         bool:
-            True when the absolute areas of the exterior rings sum to more than
-            zero.
+            Whether the exterior rings enclose any area.
 
     Raises:
         ValueError:
@@ -269,34 +263,6 @@ def has_area(geometry: object) -> bool:
     """
     _, _, moments = _parts(geometry)
     return math.fsum(abs(double_area) for double_area, _, _ in moments) > 0.0
-
-
-def centroid(geometry: object) -> tuple[float, float]:
-    """
-    Compute the planar centroid of a footprint's exterior rings.
-
-    The result does not depend on a ring's starting vertex, its orientation,
-    a closing vertex, or the order of the parts. Interior rings are ignored.
-
-    Args:
-        geometry (object):
-            A BRAILS coordinate list (a list of ``[lon, lat]`` for a polygon,
-            a list of such rings for a multipolygon), a GeoJSON mapping of
-            type ``Polygon`` or ``MultiPolygon``, or an object with
-            ``__geo_interface__``. Coordinates are longitude and latitude in
-            EPSG:4326.
-
-    Returns:
-        tuple[float, float]:
-            The centroid's longitude and latitude.
-
-    Raises:
-        ValueError:
-            If the geometry is not an accepted form, a vertex is invalid, or
-            the exterior rings enclose no area.
-    """
-    _, origin, moments = _parts(geometry)
-    return _centroid_of(origin, moments)
 
 
 def _centroid_of(
@@ -317,7 +283,7 @@ def _centroid_of(
     if total == 0.0:
         raise ValueError(
             'A footprint whose exterior rings enclose no area has no centroid. '
-            'Drop it with has_area before computing ids.'
+            'Drop it with AssetInventory.has_area before computing ids.'
         )
     return (
         origin[0] + math.fsum(weighted_x) / total,
@@ -325,30 +291,34 @@ def _centroid_of(
     )
 
 
-def plan_area_m2(geometry: object) -> float:
+def _centroid_and_plan_area(geometry: object) -> tuple[float, float, float]:
     """
-    Compute the plan area of a footprint's exterior rings in square meters.
+    Compute the planar centroid and the plan area of a footprint's exterior rings.
 
-    The shoelace area in square degrees is scaled to a sphere of radius
-    ``EARTH_RADIUS_M`` at the centroid's latitude. The result is unrounded.
+    The public contract is that of ``AssetInventory.centroid_and_plan_area``
+    in BRAILS.
 
     Args:
         geometry (object):
-            A footprint in any form :func:`centroid` accepts.
+            A footprint in any form :func:`_exterior_rings` accepts, with
+            longitude and latitude in EPSG:4326.
 
     Returns:
-        float:
-            The plan area in square meters, unrounded.
+        tuple[float, float, float]:
+            The centroid's longitude and latitude, and the plan area in
+            square meters, unrounded.
 
     Raises:
         ValueError:
-            In the cases :func:`centroid` raises it.
+            If the geometry is not an accepted form, a vertex is invalid, or
+            the exterior rings enclose no area.
     """
     _, origin, moments = _parts(geometry)
-    _, latitude = _centroid_of(origin, moments)
+    longitude, latitude = _centroid_of(origin, moments)
     square_degrees = math.fsum(abs(double_area) for double_area, _, _ in moments) / 2.0
     meters_per_degree = math.pi * EARTH_RADIUS_M / 180.0
-    return square_degrees * meters_per_degree**2 * math.cos(math.radians(latitude))
+    area = square_degrees * meters_per_degree**2 * math.cos(math.radians(latitude))
+    return longitude, latitude, area
 
 
 def geohash(lon: float, lat: float, precision: int = GEOHASH_PRECISION) -> str:
@@ -410,23 +380,6 @@ def geohash(lon: float, lat: float, precision: int = GEOHASH_PRECISION) -> str:
     return ''.join(characters)
 
 
-def centroid_geohash(geometry: object) -> str:
-    """
-    Return the geohash of a footprint's centroid.
-
-    This is the id of a footprint outside every collision set.
-
-    Args:
-        geometry (object):
-            A footprint in any form :func:`centroid` accepts.
-
-    Returns:
-        str:
-            The geohash of the centroid.
-    """
-    return geohash(*centroid(geometry))
-
-
 def _normalized_ring(ring: Ring) -> tuple[Point, ...]:
     """Orient a ring counterclockwise and start it at its smallest vertex."""
     double_area, _, _ = _ring_moments(ring, _origin([ring]))
@@ -440,16 +393,6 @@ def _normalized_ring(ring: Ring) -> tuple[Point, ...]:
     return min(rotations)
 
 
-def _normalized_geometry(geometry: object) -> tuple[tuple[Point, ...], ...]:
-    """Return a footprint's rings in a form free of vertex order and part order."""
-    return tuple(sorted(_normalized_ring(ring) for ring in _exterior_rings(geometry)))
-
-
-def _round_half_up(value: float) -> int:
-    """Round a non-negative value to the nearest integer, halves up."""
-    return math.floor(value + 0.5)
-
-
 def assign_asset_ids(
     geometries: Sequence[object],
     tiebreak: Sequence[str | None] | None = None,
@@ -457,7 +400,7 @@ def assign_asset_ids(
     """
     Assign each footprint of a set its asset id.
 
-    A footprint's id is the geohash of its centroid (:func:`centroid_geohash`).
+    A footprint's id is the geohash of its centroid.
     Footprints of this call that share a geohash form a collision set, and
     each member is suffixed with its plan area in whole square meters,
     rounded half up, as ``<geohash>-<area>``. Members whose rounded areas are
@@ -472,7 +415,7 @@ def assign_asset_ids(
 
     Args:
         geometries (Sequence[object]):
-            Footprints in any form :func:`centroid` accepts.
+            Footprints in any form :func:`_exterior_rings` accepts.
         tiebreak (Sequence[str | None], optional):
             One string per footprint that orders members equal in normalized
             geometry, such as a provider's id. Defaults to None, so identical
@@ -482,7 +425,7 @@ def assign_asset_ids(
         ValueError:
             If ``tiebreak`` does not match ``geometries`` in length, a
             geometry is not an accepted form, a vertex is invalid, or a
-            footprint encloses no area (see :func:`has_area`).
+            footprint encloses no area.
 
     Returns:
         AssetIdResult:
@@ -499,12 +442,13 @@ def assign_asset_ids(
 
     hashes = []
     for position, geometry in enumerate(geometries):
-        if not has_area(geometry):
+        if not _has_area(geometry):
             raise ValueError(
                 f'The footprint at position {position} encloses no area and '
-                'cannot receive an id. Drop it with has_area before the call.'
+                'cannot receive an id. Drop it with AssetInventory.has_area '
+                'before the call.'
             )
-        hashes.append(centroid_geohash(geometry))
+        hashes.append(geohash(*_centroid_and_plan_area(geometry)[:2]))
 
     ids = list(hashes)
     members_by_hash: dict[str, list[int]] = {}
@@ -547,7 +491,8 @@ def _resolve_collision_set(
     """
     members_by_area: dict[int, list[int]] = {}
     for position in members:
-        area = _round_half_up(plan_area_m2(geometries[position]))
+        # half up, not round()'s half to even
+        area = math.floor(_centroid_and_plan_area(geometries[position])[2] + 0.5)
         members_by_area.setdefault(area, []).append(position)
 
     for area, same_area in members_by_area.items():
@@ -560,7 +505,13 @@ def _resolve_collision_set(
 
         keys = {
             position: (
-                _normalized_geometry(geometries[position]),
+                # order-free key of the exterior rings
+                tuple(
+                    sorted(
+                        _normalized_ring(ring)
+                        for ring in _exterior_rings(geometries[position])
+                    )
+                ),
                 tiebreak[position] is not None,
                 '' if tiebreak[position] is None else str(tiebreak[position]),
             )
