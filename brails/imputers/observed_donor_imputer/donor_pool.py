@@ -266,7 +266,7 @@ class DonorPool:
         self,
         *,
         imputer: ObservedDonorImputer,
-        donors: Sequence[tuple[Any, _DonorSite, Mapping[str, Any]]],
+        donors: Sequence[tuple[Any, _DonorSite, Mapping[str, Any], int]],
         targets: Mapping[Any, _DonorSite],
         no_area: Iterable[Any],
         vector_features: Sequence[str],
@@ -282,10 +282,9 @@ class DonorPool:
         Args:
             imputer (ObservedDonorImputer):
                 The imputer building the pool.
-            donors (Sequence[tuple[Any, _DonorSite, Mapping[str, Any]]]):
-                ``(asset_id, site, features)`` per donor, with one possible
-                world, in ascending order of the id as a string, each id
-                once.
+            donors (Sequence[tuple[Any, _DonorSite, Mapping[str, Any], int]]):
+                ``(asset_id, site, features, n_pw)`` per donor, in ascending
+                order of the id as a string, each id once.
             targets (Mapping[Any, _DonorSite]):
                 The sites of the targets that are not donors.
             no_area (Iterable[Any]):
@@ -308,11 +307,11 @@ class DonorPool:
                 If a donor id occurs twice.
         """
         self.imputer = imputer
-        self.donor_ids = tuple(asset_id for asset_id, _, _ in donors)
+        self.donor_ids = tuple(asset_id for asset_id, _, _, _ in donors)
         if len(set(self.donor_ids)) != len(self.donor_ids):
             msg = 'A donor pool holds each donor id once.'
             raise ValueError(msg)
-        sites = [site for _, site, _ in donors]
+        sites = [site for _, site, _, _ in donors]
         self.lon = np.array([s.lon for s in sites], dtype=float)
         self.lat = np.array([s.lat for s in sites], dtype=float)
         self.log_area = np.array([s.log_area for s in sites], dtype=float)
@@ -326,7 +325,9 @@ class DonorPool:
             if sites
             else None
         )
-        self._donor_features = [dict(f) for _, _, f in donors]
+        self._donor_features = [dict(f) for _, _, f, _ in donors]
+        self._donor_worlds = [n for _, _, _, n in donors]
+        self._per_world = any(n > 1 for n in self._donor_worlds)
         self._vector_features = tuple(vector_features)
         self.features = tuple(features)
         self.soft_filters = tuple(soft_filters)
@@ -342,7 +343,7 @@ class DonorPool:
         for index, block_group in enumerate(self.block_group):
             if block_group is not None:
                 self.block_group_donors.setdefault(block_group, []).append(index)
-        self._view: _DonorWorldView | None = None
+        self._views: dict[int, _DonorWorldView] = {}
 
     def __contains__(self, asset_id: object) -> bool:
         """Return whether the pool records ``asset_id``."""
@@ -402,27 +403,31 @@ class DonorPool:
         keep = meters <= cap_m
         return _DonorNeighborhood(index[keep], meters[keep])
 
-    def view(self) -> _DonorWorldView:
+    def view(self, world: int) -> _DonorWorldView:
         """
-        Return the donors' values, the same in every world.
+        Return the donors' values in one world.
 
-        The donors hold one world here, so their features are read as world
-        0 of 1.
+        Args:
+            world (int):
+                The world.
 
         Returns:
             _DonorWorldView:
                 Eligibility, status, soft-filter values and imputed-feature
-                values of every donor.
+                values of every donor in that world.
         """
-        if self._view is not None:
-            return self._view
+        key = world if self._per_world else 0
+        if key in self._views:
+            return self._views[key]
         n = len(self.donor_ids)
         eligible = np.zeros(n, dtype=bool)
         status = np.full(n, _STATUS_UNKNOWN, dtype=np.int8)
         filters = {f: np.empty(n, dtype=object) for f in self.soft_filters}
         values = []
-        for i, raw in enumerate(self._donor_features):
-            features = _world_features(raw, 0, 1, self._vector_features)
+        for i, (raw, n_pw) in enumerate(
+            zip(self._donor_features, self._donor_worlds)
+        ):
+            features = _world_features(raw, world, n_pw, self._vector_features)
             eligible[i] = all(not _is_missing(features, f) for f in self.required)
             status[i] = _status_code(features, self.status_key, self.status_values)
             for f in self.soft_filters:
@@ -434,5 +439,6 @@ class DonorPool:
                     if not _is_missing(features, f)
                 }
             )
-        self._view = _DonorWorldView(eligible, status, filters, values)
-        return self._view
+        view = _DonorWorldView(eligible, status, filters, values)
+        self._views[key] = view
+        return view

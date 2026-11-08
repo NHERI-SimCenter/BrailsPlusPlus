@@ -139,15 +139,20 @@ class DonorImputationResult(NamedTuple):
             One row per target, world and round, with the columns of
             :data:`LOG_COLUMNS`.
         pool (DonorPool):
-            The pool the draws read.
+            The pool the draws read; with a freeze, the pool of the last
+            batch, which holds the sites of that batch's targets only.
         seed (int):
             The seed of the draws.
+        batches (tuple[str, ...]):
+            The names of the frozen batches, in order; empty when no
+            freeze was given.
     """
 
     imputed: AssetInventory
     log: pd.DataFrame
     pool: DonorPool
     seed: int
+    batches: tuple[str, ...] = ()
 
 
 def _log_row(draw: DonorDraw, round_number: int) -> dict[str, Any]:

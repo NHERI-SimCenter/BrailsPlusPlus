@@ -94,10 +94,12 @@ from brails.imputers.observed_donor_imputer.donor_search import (
 )
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.asset_id import EARTH_RADIUS_M
-from brails.utils.deterministic_sampling import asset_key_digest
+from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Iterable, Mapping, Sequence
+
+    from brails.compilers.stage_freeze import StageFreeze
 
 __all__ = [
     'DonorDraw',
@@ -131,6 +133,7 @@ RESIDENTIAL_STATUS_NAME = 'residential'
 # Purpose labels of the keyed uniforms.
 PURPOSE_DONOR = 'observed_donor'
 PURPOSE_FALLBACK = 'observed_donor_fallback'
+PURPOSE_BATCH = 'observed_donor_batch'
 
 # The great-circle distance the donor pool's tree measures, for one pair.
 _HAVERSINE = DistanceMetric.get_metric('haversine')
@@ -201,7 +204,7 @@ class ObservedDonorImputer(Imputation):
     read-only by convention, and ``seed`` holds the seed used.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         features: Sequence[str] = OCCUPANCY_UNITS_AND_STORIES,
@@ -218,6 +221,7 @@ class ObservedDonorImputer(Imputation):
         stories_key: str | None = STORIES_KEY,
         stories_weight: float = 1.0,
         max_attempts: int = 5,
+        n_batches: int = 1,
         seed: int | None = None,
     ) -> None:
         """
@@ -276,12 +280,15 @@ class ObservedDonorImputer(Imputation):
             max_attempts (int, optional):
                 Number of repair attempts before giving up or scanning the
                 nearest donors. Defaults to 5.
+            n_batches (int, optional):
+                The number of feedback batches of :meth:`impute_stage`.
+                Defaults to 1, no feedback.
             seed (int, optional):
                 The seed. ``None`` draws one from system entropy.
 
         Raises:
             ValueError:
-                If ``k`` or ``max_attempts`` is below 1,
+                If ``k``, ``max_attempts`` or ``n_batches`` is below 1,
                 ``cap_m`` or ``location_scale_m`` is not positive, a weight
                 is negative, ``status_key`` is not among ``features``,
                 ``soft_filters`` and ``required``,
@@ -290,8 +297,8 @@ class ObservedDonorImputer(Imputation):
                 draw, or ``validated`` is a string or names a feature not
                 in ``features``.
         """
-        if k < 1 or max_attempts < 1:
-            msg = 'k and max_attempts must be at least 1.'
+        if k < 1 or max_attempts < 1 or n_batches < 1:
+            msg = 'k, max_attempts and n_batches must be at least 1.'
             raise ValueError(msg)
         if cap_m <= 0 or location_scale_m <= 0:
             msg = 'cap_m and location_scale_m must be positive.'
@@ -324,6 +331,7 @@ class ObservedDonorImputer(Imputation):
         self.stories_key = stories_key
         self.stories_weight = float(stories_weight)
         self.max_attempts = int(max_attempts)
+        self.n_batches = int(n_batches)
         self.seed = secrets.randbits(64) if seed is None else int(seed)
         self._search = DonorSearch(
             k=self.k,
@@ -366,7 +374,7 @@ class ObservedDonorImputer(Imputation):
         if (
             not isinstance(status_name, str)
             or not status_name
-            or set(labels) & {PURPOSE_DONOR, PURPOSE_FALLBACK}
+            or set(labels) & {PURPOSE_DONOR, PURPOSE_FALLBACK, PURPOSE_BATCH}
         ):
             msg = (
                 f'status_name {status_name!r} must be a non-empty string whose '
@@ -400,7 +408,8 @@ class ObservedDonorImputer(Imputation):
 
         Raises:
             ValueError:
-                If the inventory holds more than one possible world.
+                If the inventory holds more than one possible world, or
+                :attr:`n_batches` is above 1, which needs a freeze.
         """
         result = self.impute_stage(
             input_inventory, input_inventory, n_worlds=n_worlds
@@ -416,11 +425,14 @@ class ObservedDonorImputer(Imputation):
     def impute_stage(
         self,
         targets: AssetInventory,
-        donors: AssetInventory,
+        donors: AssetInventory | None = None,
         *,
         n_worlds: int = 1,
         status: Mapping[Any, bool] | None = None,
         validate: Callable[[Any, int, Mapping[str, Any]], bool] | None = None,
+        freeze: StageFreeze | None = None,
+        donor_stage: str | None = None,
+        batch_prefix: str = 'imputed',
     ) -> DonorImputationResult:
         """
         Fill the missing features of targets from a donor inventory.
@@ -440,12 +452,26 @@ class ObservedDonorImputer(Imputation):
         still rejected keeps its first values and is logged
         :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_EXHAUSTED`.
 
+        With ``freeze``, the observed donors are read from it as
+        ``donor_stage``, and the targets run in :attr:`n_batches` batches,
+        one batch when :attr:`n_batches` is 1. A target's batch is ``1 +
+        floor(u * n_batches)`` for its keyed uniform under
+        :data:`PURPOSE_BATCH` at world 0, so it is the same in every world.
+        Batch ``j`` draws from the observed donors and from the frozen
+        batches ``1`` to ``j - 1``. A target of an earlier batch donates, in
+        world ``w``, its own features with the values copied to it in world
+        ``w`` in their place, and it replaces its own observed record when
+        it is also an observed donor. Each batch is validated and repaired,
+        then frozen as ``f'{batch_prefix}_batch{j}'``, an empty batch
+        included. Nothing else is frozen.
+
         Args:
             targets (AssetInventory):
                 The targets, with one possible world or ``n_worlds``. Not
                 modified.
-            donors (AssetInventory):
+            donors (AssetInventory, optional):
                 The observed donors, with one possible world. Not modified.
+                Required without ``freeze``.
             n_worlds (int, optional):
                 The number of worlds. Defaults to 1.
             status (Mapping[Any, bool], optional):
@@ -455,6 +481,14 @@ class ObservedDonorImputer(Imputation):
             validate (Callable[[Any, int, Mapping[str, Any]], bool], optional):
                 ``validate(asset_id, world, features)``, called with the
                 target's features in that world after the copy.
+            freeze (StageFreeze, optional):
+                The freeze the donors are read from and the batches written
+                to.
+            donor_stage (str, optional):
+                The frozen stage holding the observed donors. Required with
+                ``freeze``.
+            batch_prefix (str, optional):
+                The prefix of the batch names. Defaults to ``'imputed'``.
 
         Returns:
             DonorImputationResult:
@@ -462,28 +496,147 @@ class ObservedDonorImputer(Imputation):
                 worlds, assets in ascending order of the id as a string. A
                 feature equal in every world is stored as a scalar and
                 otherwise as a list with ``None`` where no value was copied.
-                The result also carries the log, the pool and the seed.
+                With ``freeze``, the inventory is the union of the frozen
+                batches. The result also carries the log, the pool, the seed
+                and the names of the frozen batches.
 
         Raises:
             ValueError:
-                If ``n_worlds`` is below 1, ``donors`` holds more than one
-                possible world, or ``targets`` holds a number of worlds
-                other than 1 and ``n_worlds``.
+                If ``n_worlds`` is below 1; if the observed donors hold more
+                than one possible world; if ``targets`` holds a number of
+                worlds other than 1 and ``n_worlds``; if both ``donors`` and
+                ``freeze`` are given, or neither; if ``freeze`` is given
+                without ``donor_stage``; or if :attr:`n_batches` is above 1
+                without ``freeze``.
+            LookupError:
+                If the freeze lacks the donor stage or an earlier batch.
         """
-        self._check_worlds(targets, donors, n_worlds)
-        pool = self.pool(donors, targets)
-        copied, log = self._run_targets(
-            pool,
-            targets,
-            sorted(targets.inventory, key=str),
-            n_worlds=n_worlds,
-            status=status,
-            validate=validate,
-        )
-        imputed = self._imputed_inventory(targets, copied, n_worlds)
+        self._check_stage_arguments(donors, freeze, donor_stage)
+        observed = donors if freeze is None else freeze.read(donor_stage)
+        self._check_worlds(targets, observed, n_worlds)
+        target_ids = sorted(targets.inventory, key=str)
+        if freeze is None:
+            groups = [target_ids]
+        else:
+            numbers = self._batch_numbers(target_ids)
+            groups = [
+                [a for a, n in zip(target_ids, numbers) if n == batch]
+                for batch in range(1, self.n_batches + 1)
+            ]
+        observed_records = {
+            asset_id: (asset_id, asset, 1, observed.vector_features)
+            for asset_id, asset in observed.inventory.items()
+        }
+        names: list[str] = []
+        rows: list[dict[str, Any]] = []
+        imputed = None
+        pool = None
+        for batch, members in enumerate(groups, start=1):
+            records = dict(observed_records)
+            for name in names:
+                for record in self._batch_records(
+                    freeze.read(name), targets, n_worlds
+                ):
+                    records[record[0]] = record
+            # the batch's targets as their own inventory
+            batch_targets = AssetInventory(vector_features=targets.vector_features)
+            for asset_id in members:
+                batch_targets.inventory[asset_id] = targets.inventory[asset_id]
+            batch_targets.n_pw = targets.n_pw
+            pool = self._build_pool(list(records.values()), batch_targets)
+            copied, log = self._run_targets(
+                pool,
+                targets,
+                members,
+                n_worlds=n_worlds,
+                status=status,
+                validate=validate,
+            )
+            rows.extend(log)
+            imputed = self._imputed_inventory(targets, copied, n_worlds)
+            if freeze is not None:
+                name = f'{batch_prefix}_batch{batch}'
+                freeze.freeze(name, imputed)
+                names.append(name)
+        if freeze is not None:
+            # the batch outputs, merged in id order
+            assets = {
+                asset_id: asset
+                for name in names
+                for asset_id, asset in freeze.read(name).inventory.items()
+            }
+            imputed = AssetInventory(vector_features=targets.vector_features)
+            for asset_id in sorted(assets, key=str):
+                imputed.add_asset(asset_id, deepcopy(assets[asset_id]))
+            imputed.n_pw = n_worlds
         return DonorImputationResult(
-            imputed, pd.DataFrame(log, columns=list(LOG_COLUMNS)), pool, self.seed
+            imputed,
+            pd.DataFrame(rows, columns=list(LOG_COLUMNS)),
+            pool,
+            self.seed,
+            tuple(names),
         )
+
+    def _check_stage_arguments(
+        self,
+        donors: AssetInventory | None,
+        freeze: StageFreeze | None,
+        donor_stage: str | None,
+    ) -> None:
+        """
+        Check that the donor arguments of :meth:`impute_stage` can run.
+
+        Args:
+            donors (AssetInventory | None):
+                The donors given directly.
+            freeze (StageFreeze | None):
+                The freeze given.
+            donor_stage (str | None):
+                The donor stage given.
+
+        Raises:
+            ValueError:
+                In the argument cases :meth:`impute_stage` lists.
+        """
+        if donors is not None and freeze is not None:
+            msg = 'Pass the donors directly or through a freeze, not both.'
+            raise ValueError(msg)
+        if freeze is None and self.n_batches > 1:
+            msg = (
+                f'n_batches={self.n_batches} needs a freeze and a donor_stage '
+                'to read earlier batches through.'
+            )
+            raise ValueError(msg)
+        if freeze is not None and donor_stage is None:
+            msg = 'A freeze needs the donor_stage the observed donors are frozen as.'
+            raise ValueError(msg)
+        if freeze is None and donors is None:
+            msg = 'Pass the observed donors, or a freeze and a donor_stage.'
+            raise ValueError(msg)
+
+    def _batch_numbers(self, asset_ids: Iterable[Hashable]) -> list[int]:
+        """
+        Return each target's feedback batch.
+
+        Args:
+            asset_ids (Iterable[Hashable]):
+                The targets.
+
+        Returns:
+            list[int]:
+                One batch number from 1 to :attr:`n_batches` per target, in
+                the order given, as :meth:`impute_stage` describes.
+        """
+        asset_ids = list(asset_ids)
+        if not asset_ids:
+            return []
+        uniforms = keyed_uniforms(
+            asset_key_digest(asset_ids),
+            seed=self.seed,
+            purpose=PURPOSE_BATCH,
+            world=0,
+        )
+        return [min(1 + int(u * self.n_batches), self.n_batches) for u in uniforms]
 
     def pool(
         self, donors: AssetInventory, targets: AssetInventory | None = None
@@ -513,7 +666,7 @@ class ObservedDonorImputer(Imputation):
             )
             raise ValueError(msg)
         records = [
-            (asset_id, donors.inventory[asset_id], donors.vector_features)
+            (asset_id, donors.inventory[asset_id], 1, donors.vector_features)
             for asset_id in donors.inventory
         ]
         return self._build_pool(records, targets)
@@ -683,7 +836,7 @@ class ObservedDonorImputer(Imputation):
             raise ValueError(msg)
         return self._nearest_admitted(
             pool,
-            pool.view(),
+            pool.view(world),
             site,
             asset_id,
             redraw,
@@ -700,16 +853,15 @@ class ObservedDonorImputer(Imputation):
 
     def _build_pool(
         self,
-        records: Sequence[tuple[Any, Asset, Sequence[str]]],
+        records: Sequence[tuple[Any, Asset, int, Sequence[str]]],
         targets: AssetInventory | None,
     ) -> DonorPool:
         """
         Build a pool from donor records and an optional target inventory.
 
         Args:
-            records (Sequence[tuple[Any, Asset, Sequence[str]]]):
-                ``(asset_id, asset, vector_features)`` per donor, with one
-                possible world.
+            records (Sequence[tuple[Any, Asset, int, Sequence[str]]]):
+                ``(asset_id, asset, n_pw, vector_features)`` per donor.
             targets (AssetInventory | None):
                 The targets.
 
@@ -720,19 +872,19 @@ class ObservedDonorImputer(Imputation):
         keep = (*self.features, *self.soft_filters, *self.required)
         donors = []
         no_area = set()
-        for asset_id, asset, _ in sorted(records, key=lambda r: str(r[0])):
+        for asset_id, asset, n_pw, _ in sorted(records, key=lambda r: str(r[0])):
             site = self._search.site(asset)
             if site is None:
                 no_area.add(asset_id)
                 continue
             raw = {key: asset.features[key] for key in keep if key in asset.features}
-            donors.append((asset_id, site, raw))
+            donors.append((asset_id, site, raw, n_pw))
         vector_features = tuple(
-            dict.fromkeys(f for record in records for f in record[2])
+            dict.fromkeys(f for record in records for f in record[3])
         )
         target_sites = {}
         if targets is not None:
-            donor_ids = {asset_id for asset_id, _, _ in donors}
+            donor_ids = {asset_id for asset_id, _, _, _ in donors}
             for asset_id, asset in targets.inventory.items():
                 if asset_id in donor_ids or asset_id in no_area:
                     continue
@@ -753,6 +905,52 @@ class ObservedDonorImputer(Imputation):
             status_key=self.status_key,
             status_values=self.status_values,
         )
+
+    def _batch_records(
+        self,
+        batch: AssetInventory,
+        targets: AssetInventory,
+        n_worlds: int,
+    ) -> list[tuple[Hashable, Asset, int, Sequence[str]]]:
+        """
+        Turn a frozen batch into donor records.
+
+        Each record holds the target's own features, its copied values
+        taking their place in the worlds where a value was copied.
+
+        Args:
+            batch (AssetInventory):
+                A frozen batch, holding copied values only.
+            targets (AssetInventory):
+                The targets, for their own features and coordinates.
+            n_worlds (int):
+                The number of worlds.
+
+        Returns:
+            list[tuple[Hashable, Asset, int, Sequence[str]]]:
+                ``(asset_id, asset, n_worlds, vector_features)`` per asset
+                of the batch.
+        """
+        records = []
+        for asset_id, imputed in batch.inventory.items():
+            target = targets.inventory[asset_id]
+            features = dict(target.features)
+            for key, value in imputed.features.items():
+                if not isinstance(value, list):
+                    features[key] = value
+                    continue
+                own = features.get(key)
+                features[key] = [
+                    copied
+                    if copied is not None
+                    else _world_features(
+                        {key: own}, w, targets.n_pw, targets.vector_features
+                    ).get(key)
+                    for w, copied in enumerate(value)
+                ]
+            asset = Asset(asset_id, target.coordinates, features)
+            records.append((asset_id, asset, n_worlds, targets.vector_features))
+        return records
 
     # ------------------------------------------------------------------
     # The draw path
@@ -1100,7 +1298,7 @@ class ObservedDonorImputer(Imputation):
                 None, _empty_draw(asset_id, world, iteration, OUTCOME_NO_AREA), None
             )
         site = pool.site(asset_id)
-        view = pool.view()
+        view = pool.view(world)
         excluded = {asset_id, *exclude_donors}
         if neighborhood is None:
             neighborhood = self._search.neighborhood(pool, site)
