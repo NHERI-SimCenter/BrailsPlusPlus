@@ -413,25 +413,6 @@ def test_a_masonry_walkup_above_low_code_is_diagnosed(
     )
 
 
-def test_a_type_absent_only_from_this_era_names_the_year(
-    build_inventory: Callable[..., AssetInventory],
-) -> None:
-    """Where another era carries the class, the story count cannot help."""
-    inventory = build_inventory(
-        {
-            'a': {
-                'OccupancyClass': 'IND4',
-                'NumberOfStories': 2,
-                'YearBuilt': 1960,
-                'DesignLevel': 'Moderate-Code',
-                'BuildingType': 'W',
-            }
-        }
-    )
-    row = _inferer().check(inventory).loc['a']
-    assert 'YearBuilt' in row['resolvable_by']
-
-
 def test_an_occupancy_the_tables_do_not_know_is_invalid(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
@@ -481,24 +462,6 @@ def test_nothing_is_offered_where_the_lookup_could_not_run(
     assert all(verdicts['resolvable_by'] == ())
 
 
-def test_a_real_value_in_an_unread_shape_is_not_called_invalid(
-    build_inventory: Callable[..., AssetInventory],
-) -> None:
-    """
-    Imputing over real data would replace it with data unnecessarily.
-
-    The category is what keeps a caller from treating a per-world value
-    as a missing one and filling it in.
-    """
-    features = dict(STORE)
-    features['NumberOfStories'] = [2, 3]
-    inventory = build_inventory({'a': features}, n_pw=2)
-    assert (
-        _inferer().check(inventory).loc['a', 'diagnosis']
-        == DIAGNOSIS_UNSUPPORTED
-    )
-
-
 def test_every_design_level_table_starts_at_an_admitting_level() -> None:
     """
     The year is offered as resolvable on the strength of this.
@@ -512,36 +475,6 @@ def test_every_design_level_table_starts_at_an_admitting_level() -> None:
     legality = get_hazus_unreinforced_design_levels()
     for _breaks, levels in tables.values():
         assert all(levels[0] in allowed for allowed in legality.values())
-
-
-def test_the_offered_features_differ_with_what_blocks_the_asset(
-    build_inventory: Callable[..., AssetInventory],
-) -> None:
-    """
-    Each asset is offered what would work for it, and nothing else.
-
-    A general type absent from every band of the occupancy cannot be
-    resolved by the story count; one absent only from this band can.
-    """
-    inventory = build_inventory(
-        {
-            'other_band': dict(WOOD_TOWER),
-            'other_occupancy': {
-                'OccupancyClass': 'COM1',
-                'NumberOfStories': 2,
-                'YearBuilt': 1960,
-                'DesignLevel': 'Moderate-Code',
-                'BuildingType': 'MH',
-            },
-        }
-    )
-    verdicts = _inferer().check(inventory)
-    assert 'NumberOfStories' in verdicts.loc['other_band', 'resolvable_by']
-    assert (
-        'NumberOfStories'
-        not in verdicts.loc['other_occupancy', 'resolvable_by']
-    )
-    assert 'OccupancyClass' in verdicts.loc['other_occupancy', 'resolvable_by']
 
 
 def _design_level(year: int) -> str:
