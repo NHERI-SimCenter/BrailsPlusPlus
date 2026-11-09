@@ -95,6 +95,12 @@ from brails.imputers.observed_donor_imputer.donor_search import (
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.asset_id import EARTH_RADIUS_M
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
+from brails.utils.world_values import (
+    OCCUPANCY_KEY,
+    STORIES_KEY,
+    UNITS_KEY,
+    collapse_realizations,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Iterable, Mapping, Sequence
@@ -107,11 +113,6 @@ __all__ = [
     'DonorPool',
     'ObservedDonorImputer',
 ]
-
-# The features the imputer reads and fills.
-OCCUPANCY_KEY = 'OccupancyClass'
-UNITS_KEY = 'NumberOfUnits'
-STORIES_KEY = 'NumberOfStories'
 
 # Features the imputer fills by default.
 OCCUPANCY_UNITS_AND_STORIES = (OCCUPANCY_KEY, UNITS_KEY, STORIES_KEY)
@@ -1708,14 +1709,7 @@ class ObservedDonorImputer(Imputation):
                 ]
                 if all(value is None for value in realizations):
                     continue
-                first = realizations[0]
-                if (
-                    all(value == first for value in realizations[1:])
-                    and first is not None
-                ):
-                    features[feature] = first
-                else:
-                    features[feature] = realizations
+                features[feature] = collapse_realizations(realizations)
             coordinates = deepcopy(targets.inventory[asset_id].coordinates)
             imputed.add_asset(asset_id, Asset(asset_id, coordinates, features))
         imputed.n_pw = n_worlds
