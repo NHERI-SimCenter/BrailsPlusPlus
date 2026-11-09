@@ -169,8 +169,10 @@ include = [
     "brails/aggregators/unit_budget/unit_budget.py",
     "brails/utils/source_updates.py",
     "brails/utils/world_values.py",
+    "brails/utils/inventory_union.py",
     "tests/aggregators/unit_budget/test_unit_budget.py",
     "tests/utils/test_source_updates.py",
+    "tests/utils/test_inventory_union.py",
 
     "brails/validators/**/*.py",
     "tests/validators/**/*.py",
