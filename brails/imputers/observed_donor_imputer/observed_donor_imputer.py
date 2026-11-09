@@ -672,6 +672,70 @@ class ObservedDonorImputer(Imputation):
         ]
         return self._build_pool(records, targets)
 
+    def status_probability(
+        self, pool: DonorPool, asset_ids: Iterable[Hashable]
+    ) -> dict[Hashable, float]:
+        """
+        Return the chance that the status round gives each asset the status.
+
+        By default this is the chance of being residential. The chance is that
+        of the status round's pick on ``pool`` in world 0 at iteration 0,
+        before its uniform is drawn: the inverse-distance weight of the donors
+        with the status among the ``k`` nearest donors within :attr:`cap_m`,
+        over the weight of all of them. Without a donor within the cap it is
+        the share of the donors of the asset's block group with the status,
+        which the round's fallback picks with equal weights. Like the round, it
+        reads no soft filter and no feature of the asset itself, and the asset
+        is never its own donor. Under batch feedback a later batch's round
+        reads more donors than an observed pool holds.
+
+        Args:
+            pool (DonorPool):
+                A pool from :meth:`pool` that records the assets.
+            asset_ids (Iterable[Hashable]):
+                The assets.
+
+        Returns:
+            dict[Hashable, float]:
+                The chance per asset, NaN for an asset without area or
+                without any donor the round could pick.
+
+        Raises:
+            LookupError:
+                If the pool does not record an asset.
+            ValueError:
+                If another imputer built the pool.
+        """
+        self._check_pool(pool)
+        view = pool.view(0)
+        chances: dict[Hashable, float] = {}
+        for asset_id in asset_ids:
+            if asset_id in pool.no_area:
+                chances[asset_id] = math.nan
+                continue
+            site = pool.site(asset_id)
+            neighborhood = self._search.neighborhood(pool, site)
+            excluded = {asset_id}
+            mask = self._search.eligible(
+                pool, view, neighborhood.index, excluded, None
+            )
+            if mask.any():
+                ranked, weights = self._search.ranked_weights(neighborhood, mask)
+                status = view.status[neighborhood.index[ranked]]
+                share = weights[status == _STATUS_INSIDE].sum() / weights.sum()
+                chances[asset_id] = float(share)
+                continue
+            index, base = self._search.block_group_candidates(
+                pool, view, site, excluded, None
+            )
+            members = index[base]
+            chances[asset_id] = (
+                float(np.mean(view.status[members] == _STATUS_INSIDE))
+                if members.size
+                else math.nan
+            )
+        return chances
+
     def draw(
         self,
         pool: DonorPool,
@@ -1563,14 +1627,11 @@ class ObservedDonorImputer(Imputation):
                 without a block group or a donor in it.
         """
         no_donor = _DonorPick(None, None, 0, math.nan, math.nan, OUTCOME_NO_DONOR)
-        if site.block_group is None:
-            return no_donor
-        index = np.array(
-            pool.block_group_donors.get(site.block_group, []), dtype=np.int64
+        index, base = self._search.block_group_candidates(
+            pool, view, site, excluded, status_code
         )
         if index.size == 0:
             return no_donor
-        base = self._search.eligible(pool, view, index, excluded, status_code)
         for level, mask in enumerate(self._search.levels(view, index, base, soft)):
             members = index[mask]
             if members.size:

@@ -268,10 +268,7 @@ class DonorSearch:
             chosen = (len(levels) - 1, levels[-1], OUTCOME_FEWER_THAN_K)
         if chosen is not None:
             level, mask, outcome = chosen
-            ranked = neighborhood.order[mask[neighborhood.order]][: self.k]
-            weights = 1.0 / np.maximum(
-                neighborhood.distance[ranked], MIN_WEIGHT_DISTANCE
-            )
+            ranked, weights = self.ranked_weights(neighborhood, mask)
             cumulative = np.cumsum(weights)
             u = self.uniform(key, purpose, world, iteration)
             position = int(
@@ -363,6 +360,67 @@ class DonorSearch:
                 )
             levels.append(mask)
         return levels
+
+    def ranked_weights(
+        self, neighborhood: _DonorNeighborhood, mask: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Rank the admitted candidates of a pick and weight them.
+
+        Args:
+            neighborhood (_DonorNeighborhood):
+                The donors within the cap, with distances and their order.
+            mask (numpy.ndarray):
+                The candidates admitted, one boolean per donor of the
+                neighborhood, at least one true.
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]:
+                The positions into the neighborhood of the :attr:`k`
+                nearest admitted candidates, nearest first, and their
+                inverse-distance weights.
+        """
+        ranked = neighborhood.order[mask[neighborhood.order]][: self.k]
+        weights = 1.0 / np.maximum(
+            neighborhood.distance[ranked], MIN_WEIGHT_DISTANCE
+        )
+        return ranked, weights
+
+    def block_group_candidates(
+        self,
+        pool: DonorPool,
+        view: _DonorWorldView,
+        site: _DonorSite,
+        excluded: set[Any],
+        status_code: int | None,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Return the donors of a site's block group and those a fallback may pick.
+
+        Args:
+            pool (DonorPool):
+                The pool.
+            view (_DonorWorldView):
+                The donors in this world.
+            site (_DonorSite):
+                The target's site.
+            excluded (set[Any]):
+                Donors removed.
+            status_code (int | None):
+                The status code to match, ``None`` for none.
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]:
+                The donors' indices in ascending order, empty without a
+                block group, and the mask of :meth:`eligible` over them.
+        """
+        if site.block_group is None:
+            index = np.zeros(0, dtype=np.int64)
+        else:
+            index = np.array(
+                pool.block_group_donors.get(site.block_group, []), dtype=np.int64
+            )
+        return index, self.eligible(pool, view, index, excluded, status_code)
 
     def uniform(
         self, key: np.ndarray, purpose: str, world: int, iteration: int
