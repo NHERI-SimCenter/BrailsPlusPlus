@@ -34,12 +34,9 @@
 """
 Derive reproducible random draws from asset identity, not from order.
 
-A draw that must reproduce bit for bit under reordering, subsetting, and
-reruns cannot come from a stream generator, because a generator ties the
-value an asset receives to its position in the sequence. These helpers
-derive one uniform per (asset, world, purpose, iteration) from a keyed
-hash instead, so an asset draws the same number whether it runs alone
-or as part of a large inventory.
+A draw depends on the asset, world, purpose and iteration it is keyed
+by, never on the asset's position in a sequence, so it reproduces bit
+for bit under reordering, subsetting and reruns.
 
 .. autosummary::
 
@@ -162,10 +159,8 @@ def keyed_uniforms(
     Draw one uniform per asset from its key.
 
     The seed, key, world, purpose, and iteration are folded through the
-    mixer one at a time. Combining them arithmetically instead — a seed
-    plus an iteration counter, say — would leave neighboring draws
-    related, which matters when a caller asks the same asset for a
-    fresh value on one attempt after another.
+    mixer one at a time, so a change in any one of them gives the asset
+    an unrelated uniform.
 
     Args:
         asset_keys (np.ndarray):
@@ -333,7 +328,8 @@ def _cumulative_weights(row: Sequence[float], code: int) -> np.ndarray:
 
     Returns:
         np.ndarray:
-            Cumulative probabilities ending at exactly one.
+            Cumulative probabilities that reach exactly one at the last
+            category of positive weight and stay there.
 
     Raises:
         ValueError:
@@ -357,9 +353,9 @@ def _cumulative_weights(row: Sequence[float], code: int) -> np.ndarray:
             'drawn.'
         )
     cumulative = np.cumsum(values) / total
-    # The last entry is pinned to one. A cumulative sum of normalized
-    # weights can land a fraction below it, and a uniform above that would
-    # then be counted against the padding and draw a category that is not
-    # there.
-    cumulative[-1] = 1.0
+    # Every entry from the last category of positive weight onward is
+    # pinned to one. A cumulative sum of normalized weights can land a
+    # fraction below it, and a uniform above that would then draw a
+    # trailing category of weight zero, or the padding past the row.
+    cumulative[np.flatnonzero(values)[-1] :] = 1.0
     return cumulative

@@ -66,6 +66,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **NSI merge coordinates.** The merge loop rebuilt every matched footprint's coordinate list from a variable left over by an earlier loop, so every matched building recorded the coordinates of the last footprint processed.
 - The NSI basement flag decode was inverted, now it is parsed correctly.
 - The Hazus state region mapping was missing Washington and the Northern Mariana Islands; now it is comprehensive.
+- `grouped_categorical` no longer draws a trailing category of weight zero. Where a weight vector ended in zeros and its normalized cumulative sum stopped a fraction below one, the largest uniforms selected the last zero-weight category.
 
 ---
 

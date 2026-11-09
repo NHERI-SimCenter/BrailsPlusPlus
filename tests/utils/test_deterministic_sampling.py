@@ -282,6 +282,24 @@ def test_a_row_that_cannot_sum_to_one_still_draws_inside_itself() -> None:
     assert positions.tolist() == [9]
 
 
+def test_a_trailing_zero_weight_category_is_never_drawn() -> None:
+    """
+    A row that normalizes to just under one may end in zero weights.
+
+    The uniforms between the last positive cumulative value and one have
+    to land on the last category of positive weight, not on the
+    zero-weight categories after it.
+    """
+    row = [0.1] * 10 + [0.0, 0.0]
+    assert np.cumsum(row)[9] / sum(row) < 1.0
+    positions = grouped_categorical(
+        np.array([np.nextafter(1.0, 0.0)]),
+        weights=[row],
+        groups=np.array([0]),
+    )
+    assert positions.tolist() == [9]
+
+
 def test_frequencies_follow_the_weights() -> None:
     """Draws land in each category about as often as its weight says."""
     sample = 20000
