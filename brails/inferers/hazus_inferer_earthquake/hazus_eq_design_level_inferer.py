@@ -49,6 +49,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
+from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
+    get_hazus_state_region_mapping,
+)
 from brails.inferers.inference_engine import InferenceEngine
 from brails.types.asset_inventory import is_probabilistic_feature
 
@@ -80,8 +83,9 @@ GENERIC_DESIGN_LEVELS = {
     '0': ((1976, 1996), ('Pre-Code', 'Pre-Code', 'Low-Code')),
 }
 
-# States with their own Appendix C matrix.
-STATE_DESIGN_LEVELS = {'CA': CA_DESIGN_LEVELS}
+# States with their own Appendix C matrix, keyed by the full state name
+# that Table A-22 uses.
+STATE_DESIGN_LEVELS = {'California': CA_DESIGN_LEVELS}
 
 
 def _select_era_row(
@@ -92,7 +96,7 @@ def _select_era_row(
 
     Args:
         state (str):
-            Two-letter state code.
+            Full state name, as in ``'California'``.
         seismic_zone (str | int):
             1997 UBC seismic zone.
 
@@ -102,9 +106,16 @@ def _select_era_row(
 
     Raises:
         ValueError:
-            If the zone is not in the selected state table.
+            If the state is not in the Hazus region table, or the zone is
+            not in the selected state table.
     """
-    table = STATE_DESIGN_LEVELS.get(str(state).upper(), GENERIC_DESIGN_LEVELS)
+    if state not in get_hazus_state_region_mapping():
+        raise ValueError(
+            f'{state!r} is not a state in the Hazus region table. Give '
+            "the full name, as in 'California'; two-letter codes and "
+            'abbreviations are not accepted.'
+        )
+    table = STATE_DESIGN_LEVELS.get(state, GENERIC_DESIGN_LEVELS)
     zone = str(seismic_zone).upper()
     if zone not in table:
         valid = ', '.join(table)
@@ -136,7 +147,7 @@ def _preview(asset_ids: list) -> str:
 
 def assign_design_levels(
     year_built: pd.Series,
-    state: str = 'CA',
+    state: str = 'California',
     seismic_zone: str | int = '4',
     *,
     field_name: str = 'YearBuilt',
@@ -153,9 +164,8 @@ def assign_design_levels(
         year_built (pd.Series):
             Construction years indexed by asset id.
         state (str):
-            Two-letter state code that selects the matrix. Only CA has
-            its own matrix so far; AK, HI, OR, UT, and WA use the
-            generic table until theirs are added.
+            Full state name that selects the matrix, as in
+            ``'California'``.
         seismic_zone (str | int):
             1997 UBC seismic zone of the site.
         field_name (str):
@@ -168,8 +178,9 @@ def assign_design_levels(
 
     Raises:
         ValueError:
-            If the zone is not in the selected state table, or a year is
-            missing, non-numeric, non-integral, or not positive.
+            If the state is not in the Hazus region table, the zone is
+            not in the selected state table, or a year is missing,
+            non-numeric, non-integral, or not positive.
     """
     breaks, levels = _select_era_row(state, seismic_zone)
     years = pd.to_numeric(year_built, errors='coerce')
@@ -236,7 +247,7 @@ class HazusEQDesignLevelInferer(InferenceEngine):
     def __init__(
         self,
         method: str = '5.1',
-        state: str = 'CA',
+        state: str = 'California',
         seismic_zone: str | int = '4',
         year_built_key: str = 'YearBuilt',
         design_level_key: str = 'DesignLevel',
@@ -248,7 +259,8 @@ class HazusEQDesignLevelInferer(InferenceEngine):
             method (str):
                 The design level method. Only ``'5.1'`` is implemented.
             state (str):
-                Two-letter state code that selects the matrix.
+                Full state name that selects the matrix, as in
+                ``'California'``.
             seismic_zone (str | int):
                 1997 UBC seismic zone of the site.
             year_built_key (str):
@@ -260,8 +272,9 @@ class HazusEQDesignLevelInferer(InferenceEngine):
             NotImplementedError:
                 If ``method`` is ``'6.1'``.
             ValueError:
-                If ``method`` is unknown, or the zone is not in the
-                selected state table.
+                If ``method`` is unknown, the state is not in the Hazus
+                region table, or the zone is not in the selected state
+                table.
         """
         if str(method) == '6.1':
             raise NotImplementedError(

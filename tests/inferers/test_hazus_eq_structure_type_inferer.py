@@ -557,7 +557,7 @@ def _design_level(year: int) -> str:
             The design level for California, UBC zone 4.
     """
     return assign_design_levels(
-        pd.Series({'a': year}), state='CA', seismic_zone='4'
+        pd.Series({'a': year}), state='California', seismic_zone='4'
     )['a']
 
 

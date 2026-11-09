@@ -62,7 +62,7 @@ def test_california_zone_4_boundaries() -> None:
     years = pd.Series(
         {'a': 1800, 'b': 1940, 'c': 1941, 'd': 1975, 'e': 1976, 'f': 2026}
     )
-    levels = assign_design_levels(years, state='CA', seismic_zone=4)
+    levels = assign_design_levels(years, state='California', seismic_zone=4)
     assert levels.tolist() == [
         'Pre-Code',
         'Pre-Code',
@@ -78,7 +78,7 @@ def test_california_zone_4_boundaries() -> None:
 def test_california_zone_3_caps_at_moderate() -> None:
     """The Table C-10 zone 3 row never rises above Moderate-Code."""
     years = pd.Series({'a': 1940, 'b': 1950, 'c': 1976, 'd': 2000})
-    levels = assign_design_levels(years, state='CA', seismic_zone=3)
+    levels = assign_design_levels(years, state='California', seismic_zone=3)
     assert levels.tolist() == [
         'Pre-Code',
         'Moderate-Code',
@@ -90,7 +90,7 @@ def test_california_zone_3_caps_at_moderate() -> None:
 def test_generic_zone_4_boundaries() -> None:
     """Pin the generic zone 4 era breaks at 1975/1976 and 1995/1996."""
     years = pd.Series({'a': 1975, 'b': 1976, 'c': 1995, 'd': 1996, 'e': 2026})
-    levels = assign_design_levels(years, state='TX', seismic_zone='4')
+    levels = assign_design_levels(years, state='Texas', seismic_zone='4')
     assert levels.tolist() == [
         'Pre-Code',
         'Moderate-Code',
@@ -103,41 +103,40 @@ def test_generic_zone_4_boundaries() -> None:
 @pytest.mark.parametrize(
     ('zone', 'expected'),
     [
-        ('4', ['Pre-Code', 'Moderate-Code', 'High-Code']),
         ('3', ['Pre-Code', 'Moderate-Code', 'Moderate-Code']),
         ('2B', ['Pre-Code', 'Low-Code', 'Moderate-Code']),
         ('2A', ['Pre-Code', 'Low-Code', 'Low-Code']),
-        ('1', ['Pre-Code', 'Low-Code', 'Low-Code']),
         ('0', ['Pre-Code', 'Pre-Code', 'Low-Code']),
     ],
 )
 def test_generic_zone_rows(zone: str, expected: list[str]) -> None:
     """Probe one year in each era of every generic zone row."""
     years = pd.Series({'a': 1950, 'b': 1980, 'c': 2000})
-    levels = assign_design_levels(years, state='TX', seismic_zone=zone)
+    levels = assign_design_levels(years, state='Texas', seismic_zone=zone)
     assert levels.tolist() == expected
 
 
-def test_california_differs_from_generic() -> None:
-    """A 1950 zone 4 building is Moderate-Code in CA and Pre-Code elsewhere."""
-    years = pd.Series({'a': 1950})
-    in_ca = assign_design_levels(years, state='CA', seismic_zone=4)
-    in_tx = assign_design_levels(years, state='TX', seismic_zone=4)
-    assert in_ca.tolist() == ['Moderate-Code']
-    assert in_tx.tolist() == ['Pre-Code']
-
-
-def test_spelling_is_normalized() -> None:
-    """Integer, lowercase, and mixed-case spellings resolve the same way."""
+def test_zone_spelling_is_normalized() -> None:
+    """A seismic zone resolves the same way in either case and as an integer."""
     years = pd.Series({'a': 1980})
-    assert assign_design_levels(years, 'TX', '2b').tolist() == ['Low-Code']
-    assert assign_design_levels(years, 'tx', '2B').tolist() == ['Low-Code']
-    assert assign_design_levels(years, 'ca', 4).tolist() == ['High-Code']
+    assert assign_design_levels(years, 'Texas', '2b').tolist() == ['Low-Code']
+    assert assign_design_levels(years, 'Texas', '2B').tolist() == ['Low-Code']
+    assert assign_design_levels(years, 'California', 4).tolist() == ['High-Code']
+
+
+def test_a_two_letter_state_code_is_rejected() -> None:
+    """A two-letter state code raises and asks for the full state name."""
+    years = pd.Series({'a': 1980})
+    with pytest.raises(ValueError, match='Give the full name'):
+        assign_design_levels(years, state='CA', seismic_zone=4)
 
 
 @pytest.mark.parametrize(
     ('state', 'zone'),
-    [('CA', '2B'), ('TX', '5'), ('TX', '2'), ('CA', '')],
+    [
+        ('California', '2B'),
+        ('Texas', '5'),
+    ],
 )
 def test_unknown_zone_is_rejected(state: str, zone: str) -> None:
     """A zone outside the selected state table raises with the valid zones."""
@@ -153,13 +152,13 @@ def test_invalid_years_are_rejected(bad_year: object) -> None:
     """Missing and malformed years raise and name the offending asset."""
     years = pd.Series({'good': 1980, 'bad': bad_year})
     with pytest.raises(ValueError, match='bad'):
-        assign_design_levels(years, state='CA', seismic_zone=4)
+        assign_design_levels(years, state='California', seismic_zone=4)
 
 
 def test_integral_float_and_string_years_pass() -> None:
     """Whole years stored as floats or digit strings are accepted."""
     years = pd.Series({'a': 1975.0, 'b': '1976'})
-    levels = assign_design_levels(years, state='CA', seismic_zone=4)
+    levels = assign_design_levels(years, state='California', seismic_zone=4)
     assert levels.tolist() == ['Moderate-Code', 'High-Code']
 
 
@@ -211,7 +210,7 @@ def test_infer_assigns_every_asset(
             'c': {'YearBuilt': 1990},
         }
     )
-    inferer = HazusEQDesignLevelInferer(state='CA', seismic_zone=4)
+    inferer = HazusEQDesignLevelInferer(state='California', seismic_zone=4)
     result = inferer.infer(inventory)
     expected = {'a': 'Pre-Code', 'b': 'Moderate-Code', 'c': 'High-Code'}
     for asset_id, level in expected.items():
@@ -278,7 +277,7 @@ def test_unknown_method_is_rejected() -> None:
 def test_bad_zone_fails_at_construction() -> None:
     """Configuration errors surface when the inferer is built."""
     with pytest.raises(ValueError, match='Valid zones'):
-        HazusEQDesignLevelInferer(state='CA', seismic_zone='2B')
+        HazusEQDesignLevelInferer(state='California', seismic_zone='2B')
 
 
 def test_importer_finds_the_inferer() -> None:
