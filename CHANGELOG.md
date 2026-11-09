@@ -41,6 +41,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **Shared world-value names** (`brails/utils/world_values.py`). `OCCUPANCY_KEY`, `UNITS_KEY`, `STORIES_KEY` and `collapse_realizations`, the rule by which `ObservedDonorImputer` stores per-world values, move there from the imputer module, which imports them, so they stay importable from it.
 - **`is_missing_value`** (`brails/types/asset_inventory.py`), the public name of the test `merge` applies to missing values.
 - **`ObservedDonorImputer.status_probability`**, which returns the chance that the imputer's status round gives an asset the status, residential by default.
+- **`apply_to_sources`** (`brails/utils/source_updates.py`), which withholds replaced values from their per-source inventories and writes the replacements into the imputed one, so that a second merge codes them `I`.
 
 ### Changed
 - **`med_yr_blt` from NSI now maps to `YearBuiltTractMedian`.** It is the median year built of the structures in a Census tract, so every building in a tract carries the same value. The converted path no longer emits `YearBuilt` at all. The legacy `nsi2brailsmap` path is unchanged and still maps `med_yr_blt` to `YearBuilt`, so the two conventions coexist for now.

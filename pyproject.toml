@@ -165,7 +165,9 @@ include = [
     "brails/utils/metric_crs.py",
     "brails/utils/id_preview.py",
     "tests/utils/test_metric_crs.py",
+    "brails/utils/source_updates.py",
     "brails/utils/world_values.py",
+    "tests/utils/test_source_updates.py",
 
     "brails/validators/**/*.py",
     "tests/validators/**/*.py",
