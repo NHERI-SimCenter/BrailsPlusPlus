@@ -42,6 +42,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **`is_missing_value`** (`brails/types/asset_inventory.py`), the public name of the test `merge` applies to missing values.
 - **`ObservedDonorImputer.status_probability`**, which returns the chance that the imputer's status round gives an asset the status, residential by default.
 - **`apply_to_sources`** (`brails/utils/source_updates.py`), which withholds replaced values from their per-source inventories and writes the replacements into the imputed one, so that a second merge codes them `I`.
+- **`BlockGroupUnitBudget`** (`brails/aggregators/unit_budget/`), which places the ACS B25024 housing units that a block group's footprints with observed records do not account for on its other footprints, as mobile homes near mobile-home park points and as dwellings given a structure size in each possible world. No dwelling holds more units than its gross floor area allows at `min_unit_area_sqft` per unit, and units that find no room are reported in `gaps`. The size bins take Hazus occupancy classes, a choice its README explains.
 
 ### Changed
 - **`med_yr_blt` from NSI now maps to `YearBuiltTractMedian`.** It is the median year built of the structures in a Census tract, so every building in a tract carries the same value. The converted path no longer emits `YearBuilt` at all. The legacy `nsi2brailsmap` path is unchanged and still maps `med_yr_blt` to `YearBuilt`, so the two conventions coexist for now.
