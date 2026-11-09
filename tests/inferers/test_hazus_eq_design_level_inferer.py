@@ -46,6 +46,11 @@ from brails.inferers.hazus_inferer_earthquake.hazus_eq_design_level_inferer impo
     apply_w1_carveout,
     assign_design_levels,
 )
+from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_INVALID,
+    DIAGNOSIS_OK,
+    DIAGNOSIS_UNSUPPORTED,
+)
 from brails.utils import Importer
 
 if TYPE_CHECKING:
@@ -145,9 +150,7 @@ def test_unknown_zone_is_rejected(state: str, zone: str) -> None:
         assign_design_levels(years, state=state, seismic_zone=zone)
 
 
-@pytest.mark.parametrize(
-    'bad_year', [None, float('nan'), 0, -1, 1975.5, 'old']
-)
+@pytest.mark.parametrize('bad_year', [None, 0, 1975.5, 'old', True])
 def test_invalid_years_are_rejected(bad_year: object) -> None:
     """Missing and malformed years raise and name the offending asset."""
     years = pd.Series({'good': 1980, 'bad': bad_year})
@@ -196,7 +199,190 @@ def test_w1_carveout_rejects_mismatched_index() -> None:
 
 
 # ---------------------------------------------------------------------
-# the inferer class
+# check and draw
+
+
+def test_a_usable_year_passes(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """A whole positive year passes with nothing to report or resolve."""
+    inventory = build_inventory({'a': {'YearBuilt': 1950}})
+    row = HazusEQDesignLevelInferer().check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_OK
+    assert row['detail'] == ''
+    assert row['resolvable_by'] == ()
+
+
+def test_a_missing_year_names_the_year_feature(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """An asset carrying no year is invalid and resolvable by the year."""
+    inventory = build_inventory({'a': {'OccupancyClass': 'RES1'}})
+    row = HazusEQDesignLevelInferer().check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_INVALID
+    assert row['detail'] == 'no YearBuilt'
+    assert row['resolvable_by'] == ('YearBuilt',)
+
+
+@pytest.mark.parametrize('bad_year', [True, 'unknown', 1975.5, 0])
+def test_an_unusable_year_is_invalid(
+    build_inventory: Callable[..., AssetInventory],
+    bad_year: object,
+) -> None:
+    """Every unusable year form is invalid and names the year feature."""
+    inventory = build_inventory({'a': {'YearBuilt': bad_year}})
+    row = HazusEQDesignLevelInferer().check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_INVALID
+    assert row['detail'].startswith('YearBuilt')
+    assert row['resolvable_by'] == ('YearBuilt',)
+
+
+def test_a_per_world_year_is_unsupported(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """A per-world year is unsupported and names nothing to resolve it."""
+    inventory = build_inventory({'a': {'YearBuilt': [1950, 1990]}}, n_pw=2)
+    row = HazusEQDesignLevelInferer().check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_UNSUPPORTED
+    assert 'not supported yet' in row['detail']
+    assert row['resolvable_by'] == ()
+
+
+def test_check_leaves_the_inventory_alone(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """Diagnosing an inventory writes no design level to it."""
+    inventory = build_inventory({'a': {'YearBuilt': 1950}})
+    HazusEQDesignLevelInferer().check(inventory)
+    _, features = inventory.get_asset_features('a')
+    assert 'DesignLevel' not in features
+
+
+def test_check_and_assign_design_levels_agree(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """Both entry points read the same year values as usable."""
+    unusable = {
+        'boolean': True,
+        'text': 'unknown',
+        'fractional': 1975.5,
+        'zero': 0,
+        'negative': -1,
+        'absent': None,
+    }
+    features = {
+        asset_id: {'YearBuilt': year} for asset_id, year in unusable.items()
+    }
+    features['whole'] = {'YearBuilt': 1950}
+    verdicts = HazusEQDesignLevelInferer().check(build_inventory(features))
+    flagged = verdicts.index[verdicts['diagnosis'] != DIAGNOSIS_OK]
+    assert set(flagged) == set(unusable)
+    with pytest.raises(ValueError, match='positive whole year'):
+        assign_design_levels(pd.Series(unusable, dtype=object))
+
+
+def test_a_named_feature_resolves_the_asset(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """Supplying the feature an invalid asset names turns that asset OK."""
+    inferer = HazusEQDesignLevelInferer()
+    (feature,) = inferer.check(
+        build_inventory({'a': {'OccupancyClass': 'RES1'}})
+    ).loc['a', 'resolvable_by']
+    supplied = build_inventory(
+        {'a': {'OccupancyClass': 'RES1', feature: 1950}}
+    )
+    assert inferer.check(supplied).loc['a', 'diagnosis'] == DIAGNOSIS_OK
+
+
+def test_draw_assigns_a_level_to_every_asset(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """Drawing for assets that passed gives a named series on their index."""
+    inventory = build_inventory(
+        {'a': {'YearBuilt': 1930}, 'b': {'YearBuilt': 1990}}
+    )
+    levels = HazusEQDesignLevelInferer().draw(inventory)
+    assert levels.name == 'DesignLevel'
+    assert list(levels.index) == list(inventory.get_asset_ids())
+    assert levels.tolist() == ['Pre-Code', 'High-Code']
+
+
+@pytest.mark.parametrize('huge', [10**19, 1e20])
+def test_a_year_too_large_to_compare_is_refused(
+    build_inventory: Callable[..., AssetInventory],
+    huge: object,
+) -> None:
+    """A year above the integer cast is invalid and names the year feature."""
+    inventory = build_inventory({'a': {'YearBuilt': huge}})
+    row = HazusEQDesignLevelInferer().check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_INVALID
+    assert row['resolvable_by'] == ('YearBuilt',)
+    with pytest.raises(ValueError, match='bad'):
+        assign_design_levels(pd.Series({'good': 1980, 'bad': huge}))
+
+
+def test_a_year_of_9999_is_usable_and_two_to_the_63_is_not(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """A year of 9999 draws High-Code and one of 2**63 is refused."""
+    inventory = build_inventory(
+        {'ordinary': {'YearBuilt': 9999}, 'past_it': {'YearBuilt': 2**63}}
+    )
+    verdicts = HazusEQDesignLevelInferer().check(inventory)
+    assert verdicts.loc['ordinary', 'diagnosis'] == DIAGNOSIS_OK
+    assert verdicts.loc['past_it', 'diagnosis'] == DIAGNOSIS_INVALID
+    assert assign_design_levels(
+        pd.Series({'a': 9999}, dtype=object)
+    ).tolist() == ['High-Code']
+
+
+@pytest.mark.parametrize(
+    ('year', 'level'),
+    [
+        (2**63 - 513, 'High-Code'),
+        (2**63 - 512, 'High-Code'),
+        (2**63 - 1, 'High-Code'),
+        (2**63, None),
+    ],
+)
+def test_check_and_assign_agree_at_the_top_of_the_integer_range(
+    build_inventory: Callable[..., AssetInventory],
+    year: int,
+    level: str | None,
+) -> None:
+    """The two entry points read the same years around the integer bound."""
+    inventory = build_inventory({'a': {'YearBuilt': year}})
+    diagnosis = HazusEQDesignLevelInferer().check(inventory).loc[
+        'a', 'diagnosis'
+    ]
+    years = pd.Series({'a': year}, dtype=object)
+    if level is None:
+        assert diagnosis == DIAGNOSIS_INVALID
+        with pytest.raises(ValueError, match='positive whole year'):
+            assign_design_levels(years)
+    else:
+        assert diagnosis == DIAGNOSIS_OK
+        assert assign_design_levels(years).tolist() == [level]
+
+
+@pytest.mark.parametrize('sign', [1, -1])
+def test_a_year_beyond_the_float_range_is_diagnosed(
+    build_inventory: Callable[..., AssetInventory],
+    sign: int,
+) -> None:
+    """A year of 10**400 comes back invalid and raises nothing, either sign."""
+    year = sign * 10**400
+    inventory = build_inventory({'a': {'YearBuilt': year}})
+    row = HazusEQDesignLevelInferer().check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_INVALID
+    assert row['resolvable_by'] == ('YearBuilt',)
+    with pytest.raises(ValueError, match='positive whole year'):
+        assign_design_levels(pd.Series({'a': year}, dtype=object))
+
+
+# ---------------------------------------------------------------------
+# infer
 
 
 def test_infer_assigns_every_asset(
@@ -238,7 +424,7 @@ def test_infer_reports_the_configured_year_key(
     """The invalid-year error names the configured feature name."""
     inventory = build_inventory({'a': {'erected': 'unknown'}})
     inferer = HazusEQDesignLevelInferer(year_built_key='erected')
-    with pytest.raises(ValueError, match='erected must be a positive'):
+    with pytest.raises(ValueError, match='erected is not a number'):
         inferer.infer(inventory)
 
 
@@ -249,17 +435,12 @@ def test_infer_requires_year_built(
     inventory = build_inventory(
         {'a': {'YearBuilt': 1950}, 'b': {'OccupancyClass': 'RES1'}}
     )
-    with pytest.raises(ValueError, match='Missing on: b'):
+    with pytest.raises(ValueError, match=r'b \(no YearBuilt\)'):
         HazusEQDesignLevelInferer().infer(inventory)
 
 
-def test_infer_rejects_per_world_years(
-    build_inventory: Callable[..., AssetInventory],
-) -> None:
-    """Per-world year lists are refused until multi-world support lands."""
-    inventory = build_inventory({'a': {'YearBuilt': [1950, 1990]}}, n_pw=2)
-    with pytest.raises(ValueError, match='not supported yet'):
-        HazusEQDesignLevelInferer().infer(inventory)
+# ---------------------------------------------------------------------
+# configuration and wiring
 
 
 def test_v61_method_is_reserved() -> None:

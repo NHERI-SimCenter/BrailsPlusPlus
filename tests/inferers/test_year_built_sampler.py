@@ -44,7 +44,11 @@ from scipy.special import ndtr
 from scipy.stats import truncnorm
 
 import brails.inferers
-from brails.inferers.inference_diagnosis import DIAGNOSIS_OK
+from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_INVALID,
+    DIAGNOSIS_OK,
+    DIAGNOSIS_UNSUPPORTED,
+)
 from brails.inferers.year_built_sampler.year_built_sampler import (
     YearBuiltSampler,
     sample_years,
@@ -69,7 +73,8 @@ def test_a_usable_median_passes(
 ) -> None:
     """An ordinary tract median is drawable."""
     inventory = build_inventory({'a': {'YearBuiltTractMedian': 1962}})
-    assert YearBuiltSampler(sigma=15).check(inventory)['a'] == DIAGNOSIS_OK
+    verdicts = YearBuiltSampler(sigma=15).check(inventory)
+    assert verdicts.loc['a', 'diagnosis'] == DIAGNOSIS_OK
 
 
 def test_a_missing_median_is_diagnosed(
@@ -77,53 +82,97 @@ def test_a_missing_median_is_diagnosed(
 ) -> None:
     """An asset outside NSI coverage carries no median and is named."""
     inventory = build_inventory({'a': {'OccupancyClass': 'RES1'}})
-    assert 'no YearBuiltTractMedian' in YearBuiltSampler(sigma=15).check(
-        inventory
-    )['a']
+    row = YearBuiltSampler(sigma=15).check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_INVALID
+    assert 'no YearBuiltTractMedian' in row['detail']
 
 
 def test_a_zero_median_is_diagnosed(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
-    """NSI ships zeros, and sampling around one would invent an old building."""
+    """A tract median of zero is invalid, as NSI ships those."""
     inventory = build_inventory({'a': {'YearBuiltTractMedian': 0}})
-    assert 'sits outside' in YearBuiltSampler(sigma=15).check(inventory)['a']
+    row = YearBuiltSampler(sigma=15).check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_INVALID
+    assert 'sits outside' in row['detail']
 
 
 def test_a_median_past_the_cap_is_diagnosed(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
-    """The same defect from the other end."""
+    """A tract median above the cap is invalid."""
     inventory = build_inventory({'a': {'YearBuiltTractMedian': 3000}})
-    assert 'sits outside' in YearBuiltSampler(sigma=15).check(inventory)['a']
+    row = YearBuiltSampler(sigma=15).check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_INVALID
+    assert 'sits outside' in row['detail']
 
 
 def test_a_non_numeric_median_is_diagnosed(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
-    """Text where a year belongs is reported, not coerced."""
+    """Text where a year belongs is invalid."""
     inventory = build_inventory({'a': {'YearBuiltTractMedian': 'unknown'}})
-    assert 'not a number' in YearBuiltSampler(sigma=15).check(inventory)['a']
+    row = YearBuiltSampler(sigma=15).check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_INVALID
+    assert 'not a number' in row['detail']
+
+
+def test_a_boolean_median_is_diagnosed(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """A boolean where a year belongs is invalid."""
+    inventory = build_inventory({'a': {'YearBuiltTractMedian': True}})
+    row = YearBuiltSampler(sigma=15).check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_INVALID
+    assert 'boolean' in row['detail']
 
 
 def test_a_per_world_median_is_diagnosed(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
-    """Multi-world sampling is not supported yet, and the sampler says so."""
+    """A per-world median is unsupported and names nothing to resolve it."""
     inventory = build_inventory(
         {'a': {'YearBuiltTractMedian': [1960, 1970]}}, n_pw=2
     )
-    assert 'per-world' in YearBuiltSampler(sigma=15).check(inventory)['a']
+    row = YearBuiltSampler(sigma=15).check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_UNSUPPORTED
+    assert 'one value per world' in row['detail']
+    assert row['resolvable_by'] == ()
 
 
 def test_check_leaves_the_inventory_alone(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
-    """The screen is pure; the compiler runs it on every asset."""
+    """Diagnosing an inventory writes no year to it."""
     inventory = build_inventory({'a': {'YearBuiltTractMedian': 1962}})
     YearBuiltSampler(sigma=15).check(inventory)
     _, features = inventory.get_asset_features('a')
     assert 'YearBuilt' not in features
+
+
+def test_an_invalid_median_names_the_median_feature(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """An invalid median is resolvable by the median feature."""
+    inventory = build_inventory(
+        {
+            'absent': {'OccupancyClass': 'RES1'},
+            'outside': {'YearBuiltTractMedian': 0},
+            'text': {'YearBuiltTractMedian': 'unknown'},
+        }
+    )
+    verdicts = YearBuiltSampler(sigma=15).check(inventory)
+    assert list(verdicts['resolvable_by']) == [('YearBuiltTractMedian',)] * 3
+
+
+def test_a_median_beyond_the_float_range_is_diagnosed(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """A median of 10**400 comes back invalid and raises nothing."""
+    inventory = build_inventory({'a': {'YearBuiltTractMedian': 10**400}})
+    row = YearBuiltSampler(sigma=15).check(inventory).loc['a']
+    assert row['diagnosis'] == DIAGNOSIS_INVALID
+    assert 'sits outside' in row['detail']
 
 
 # ---------------------------------------------------------------------
@@ -177,7 +226,7 @@ def test_infer_writes_a_year_to_every_asset(
 def test_years_are_python_integers(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
-    """Making sure we do not have a numpy scalar here."""
+    """A written year is a Python integer."""
     inventory = build_inventory({'a': {'YearBuiltTractMedian': 1962}})
     _, features = (
         YearBuiltSampler(sigma=15).infer(inventory).get_asset_features('a')
@@ -318,13 +367,7 @@ def _cell_probabilities(
 
 
 def test_years_match_an_independently_computed_reference() -> None:
-    """Pin the map from uniform to year against a separate scipy path.
-
-    This is what holds the discretization. A rounding rule half a year
-    out of step changes these years and passes every other test here,
-    the frequency check below included. The truncation interval is the
-    neighboring concern, covered by the nearby-bound test.
-    """
+    """The drawn years match what scipy gives for the same uniforms."""
     medians = pd.Series({str(i): 1962.0 for i in range(200)})
     sigma, seed, floor, cap = 15.0, 5, 1800, 2026
     drawn = sample_years(medians, sigma=sigma, seed=seed, floor=floor, cap=cap)
@@ -339,17 +382,7 @@ def test_years_match_an_independently_computed_reference() -> None:
 
 
 def test_the_sampled_years_match_the_exact_cell_probabilities() -> None:
-    """The hash stream must actually be uniform once it becomes years.
-
-    The reference test above compares against the same uniforms the
-    sampler used. This one checks if the keyed stream is evenly distributed.
-
-    Each year is a Bernoulli trial, so an observed frequency carries a
-    standard error of sqrt(p(1-p)/N). Four standard deviations is a wide band,
-    chosen to leave no room for a spurious failure; the seed is fixed,
-    so the test either passes or fails every time. It is blind to a half-year
-    shift, which moves no cell by even one standard error at this sample size.
-    """
+    """Each year is drawn within four standard errors of its probability."""
     count = 20000
     mean, sigma = 1962.0, 15.0
     drawn = sample_years(
@@ -366,12 +399,7 @@ def test_the_sampled_years_match_the_exact_cell_probabilities() -> None:
 
 
 def test_no_mass_accumulates_on_a_nearby_bound() -> None:
-    """The bound gets one year's worth of probability, not a whole tail.
-
-    With a median two years above the floor, clipping an untruncated
-    draw would leave roughly 45% of the assets sitting on 1800.
-    Truncation leaves about 3%.
-    """
+    """A median two years above the floor leaves the floor one year's mass."""
     count = 20000
     mean, sigma, floor = 1802.0, 15.0, 1800
     drawn = sample_years(
@@ -388,13 +416,7 @@ def test_no_mass_accumulates_on_a_nearby_bound() -> None:
 
 
 def test_odd_bounds_are_respected() -> None:
-    """Odd bounds hold, which is where rounding half to even could bite.
-
-    The final clip is what would catch a draw landing exactly on a half
-    year next to an odd bound. That is unreachable in practice, so this
-    is a statement about the bounds holding end to end rather than a
-    test of the clip.
-    """
+    """A draw against odd bounds stays inside them."""
     drawn = sample_years(
         pd.Series({str(i): 1801.0 for i in range(2000)}),
         sigma=15.0,
@@ -407,7 +429,7 @@ def test_odd_bounds_are_respected() -> None:
 
 
 def test_per_asset_bounds_restrict_the_draw() -> None:
-    """What the compiler's force-consistent draw needs from this function."""
+    """Each asset's year falls inside the bounds given for that asset."""
     medians = pd.Series({'a': 1962, 'b': 1962})
     drawn = sample_years(
         medians,
@@ -446,12 +468,7 @@ def test_misaligned_keys_are_refused() -> None:
 
 
 def test_bounds_are_matched_by_asset_id() -> None:
-    """Bounds arriving in another order must still land on their assets.
-
-    A caller that builds bounds from a diagnosis table has no reason to
-    produce them in the medians' order. Taking them positionally gives
-    every asset another asset's restriction: no error and plausible years.
-    """
+    """Bounds are matched to the medians by asset id."""
     medians = pd.Series({'a': 1962, 'b': 1962})
     drawn = sample_years(
         medians,
@@ -474,16 +491,20 @@ def test_bounds_missing_an_asset_are_refused() -> None:
 
 
 def test_sample_years_refuses_a_median_outside_the_bounds() -> None:
-    """Every median check() rejects, and draw() rejects."""
+    """A median below the floor or above the cap is refused."""
     for median in (0, 2050):
         with pytest.raises(ValueError, match=r'usable median.*\[1800, 2026\]'):
             sample_years(pd.Series({'a': median}), sigma=15.0, seed=7)
 
 
-def test_sample_years_refuses_an_unusable_median() -> None:
-    """Skipping check() is a caller error, and it is caught."""
+@pytest.mark.parametrize('sign', [1, -1])
+def test_sample_years_refuses_a_median_beyond_the_float_range(
+    sign: int,
+) -> None:
+    """A median of 10**400 is refused as unusable, either sign."""
+    medians = pd.Series({'a': sign * 10**400}, dtype=object)
     with pytest.raises(ValueError, match='usable median'):
-        sample_years(pd.Series({'a': None}), sigma=15.0, seed=7)
+        sample_years(medians, sigma=15.0, seed=7)
 
 
 # ---------------------------------------------------------------------

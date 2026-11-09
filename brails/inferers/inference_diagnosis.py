@@ -35,10 +35,8 @@
 """
 Report what an inferer can and cannot do with an asset.
 
-An inferer that fails on individual assets says so per asset rather than
-raising on the first one, so a caller can screen an inventory, keep the
-reasons, and act on the assets that pass. These are the pieces of that
-vocabulary that no peril owns.
+The verdicts, columns and helpers here are the parts of the per-asset
+diagnosis vocabulary of inferers that no peril owns.
 
 .. autosummary::
 
@@ -79,7 +77,9 @@ DIAGNOSIS_INFEASIBLE = 'infeasible'
 # The columns of a diagnosis frame. ``diagnosis`` is one of the four
 # verdicts above, ``detail`` says what happened in words, and
 # ``resolvable_by`` names the features that would each, alone, let the
-# inferer produce a value. Only an infeasible asset has any.
+# inferer produce a value. An unsupported asset names none. An invalid
+# asset names the driver a caller could supply or redraw, where the
+# inferer reads one driver and can say which.
 DIAGNOSIS_COLUMNS = ('diagnosis', 'detail', 'resolvable_by')
 
 
@@ -106,18 +106,19 @@ def diagnosis_frame(rows: dict) -> pd.DataFrame:
 
 def preview_failures(failures: pd.Series) -> str:
     """
-    Format failing assets and their diagnoses for an error message.
+    Format failing assets and their reasons for an error message.
 
     Args:
         failures (pd.Series):
-            Diagnoses indexed by asset id.
+            The ``detail`` column of a diagnosis frame, indexed by asset
+            id.
 
     Returns:
         str:
             A comma-separated preview with a count of any remainder.
     """
     entries = [
-        f'{asset_id} ({diagnosis})'
-        for asset_id, diagnosis in list(failures.items())[:PREVIEW_LIMIT]
+        f'{asset_id} ({reason})'
+        for asset_id, reason in list(failures.items())[:PREVIEW_LIMIT]
     ]
     return join_preview(entries, len(failures))

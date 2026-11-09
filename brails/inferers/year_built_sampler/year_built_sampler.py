@@ -50,7 +50,10 @@ import numpy as np
 import pandas as pd
 
 from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_INVALID,
     DIAGNOSIS_OK,
+    DIAGNOSIS_UNSUPPORTED,
+    diagnosis_frame,
     preview_failures,
     preview_ids,
 )
@@ -90,6 +93,25 @@ _SEED_BITS = 64
 # integer cell the same width, including the two at the bounds.
 _HALF_YEAR = 0.5
 
+
+def _as_center(value: object) -> float:
+    """
+    Read a tract median as the center a draw is taken around.
+
+    Args:
+        value (object):
+            A raw median value, of any type.
+
+    Returns:
+        float:
+            The value as a float. A value that reads as no finite number
+            gives NaN.
+    """
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return float('nan')
+    return number if np.isfinite(number) else float('nan')
 
 
 def _aligned_bounds(
@@ -195,7 +217,7 @@ def sample_years(
             check() was skipped, or if the supplied bounds or keys do
             not cover the assets being drawn for.
     """
-    centers = pd.to_numeric(medians, errors='coerce').to_numpy(dtype=float)
+    centers = medians.map(_as_center).to_numpy(dtype=float)
     usable = (
         np.isfinite(centers) & (centers >= floor) & (centers <= cap)
     )
@@ -242,14 +264,10 @@ class YearBuiltSampler(InferenceEngine):
     """
     Add a sampled construction year to every asset in an inventory.
 
-    The National Structure Inventory reports a median year built for the
-    Census tract, not for the building. Treating that median as an
-    observed year gives a city where every building in a tract was built
-    the same year; this class replaces it with a draw around it.
-
-    The class writes ``YearBuilt`` whether or not one is already there.
-    Deciding when a sampled year should displace an observed one belongs
-    to the caller.
+    Each year is drawn around the tract median the asset carries under
+    ``median_key``, through :func:`sample_years`. The class writes
+    ``YearBuilt`` whether or not one is already there. Deciding when a
+    sampled year should displace an observed one belongs to the caller.
 
     Each sampler draws its own seed unless given one, so two runs over
     the same inventory produce different years. Read ``self.seed`` to
@@ -308,7 +326,7 @@ class YearBuiltSampler(InferenceEngine):
         self.year_built_key = year_built_key
         self.world = int(world)
 
-    def check(self, input_inventory: AssetInventory) -> pd.Series:
+    def check(self, input_inventory: AssetInventory) -> pd.DataFrame:
         """
         Diagnose every asset without drawing anything.
 
@@ -317,47 +335,83 @@ class YearBuiltSampler(InferenceEngine):
                 The inventory to diagnose.
 
         Returns:
-            pd.Series:
-                One verdict per asset id: ``'OK'`` where a year can be
-                drawn, otherwise what stands in the way. A tract median
-                of zero is a real NSI value, not a missing one, and
-                sampling around it would date the building to the
-                floor with full confidence, so it is diagnosed rather
-                than drawn.
+            pd.DataFrame:
+                One row per asset id, with ``diagnosis``, ``detail`` and
+                ``resolvable_by``. A median that is absent, unreadable
+                or outside the sampler's bounds is invalid and names the
+                median feature. A median holding one value per world is
+                unsupported and names nothing.
         """
-        verdicts = {}
+        rows = {}
         for asset_id in input_inventory.get_asset_ids():
             _, features = input_inventory.get_asset_features(asset_id)
-            median = features.get(self.median_key)
-            if median is None:
-                verdicts[asset_id] = f'no {self.median_key}'
-            elif is_probabilistic_feature(
-                self.median_key, median, input_inventory.vector_features
-            ):
-                verdicts[asset_id] = (
-                    f'{self.median_key} is a per-world list; multi-world '
-                    'sampling is planned and not supported yet'
-                )
-            else:
-                verdicts[asset_id] = self._check_value(median)
-        return pd.Series(verdicts, dtype=object, name='diagnosis')
+            rows[asset_id] = self._resolve(
+                features, input_inventory.vector_features
+            )
+        return diagnosis_frame(rows)
 
-    def _check_value(self, median: object) -> str:
+    def _resolve(
+        self, features: dict, vector_features: set
+    ) -> tuple[str, str, tuple[str, ...]]:
         """
-        Diagnose one median value.
+        Diagnose one asset from its features.
+
+        Args:
+            features (dict):
+                The asset's features.
+            vector_features (set):
+                Names of the features whose values are vectors.
+
+        Returns:
+            tuple[str, str, tuple[str, ...]]:
+                The diagnosis, the detail, and the features that would
+                each, alone, admit the asset.
+        """
+        median = features.get(self.median_key)
+        if median is None:
+            return (
+                DIAGNOSIS_INVALID,
+                f'no {self.median_key}',
+                (self.median_key,),
+            )
+        if is_probabilistic_feature(
+            self.median_key, median, vector_features
+        ):
+            return (
+                DIAGNOSIS_UNSUPPORTED,
+                f'{self.median_key} holds one value per world; '
+                'multi-world sampling is planned and not supported yet',
+                (),
+            )
+        failure = self._check_value(median)
+        if failure is not None:
+            return DIAGNOSIS_INVALID, failure, (self.median_key,)
+        return DIAGNOSIS_OK, '', ()
+
+    def _check_value(self, median: object) -> str | None:
+        """
+        Say why one median cannot be used.
 
         Args:
             median (object):
                 The value read from the asset.
 
         Returns:
-            str:
-                ``'OK'`` or the reason it cannot be used.
+            str | None:
+                The reason the value is unusable, or ``None`` where it is
+                usable.
         """
+        if isinstance(median, bool):
+            return f'{self.median_key} is a boolean: {median!r}'
         try:
             year = float(median)
         except (TypeError, ValueError):
             return f'{self.median_key} is not a number: {median!r}'
+        except OverflowError:
+            return (
+                f'{self.median_key} of {median!r} sits outside '
+                f'[{self.floor}, {self.cap}]'
+            )
         if not np.isfinite(year):
             return f'{self.median_key} is not a number: {median!r}'
         if year < self.floor or year > self.cap:
@@ -365,7 +419,7 @@ class YearBuiltSampler(InferenceEngine):
                 f'{self.median_key} of {median!r} sits outside '
                 f'[{self.floor}, {self.cap}]'
             )
-        return DIAGNOSIS_OK
+        return None
 
     def draw(
         self,
@@ -430,7 +484,9 @@ class YearBuiltSampler(InferenceEngine):
                 their diagnoses.
         """
         verdicts = self.check(input_inventory)
-        failed = verdicts[verdicts != DIAGNOSIS_OK]
+        failed = verdicts.loc[
+            verdicts['diagnosis'] != DIAGNOSIS_OK, 'detail'
+        ]
         if not failed.empty:
             reasons = preview_failures(failed)
             raise ValueError(
