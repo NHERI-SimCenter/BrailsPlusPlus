@@ -39,6 +39,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **`meter_crs`** (`brails/utils/metric_crs.py`), the check that a projected CRS measures ground meters, which `NSIFootprintJoin` applies.
 - **Footprint geometry on `AssetInventory`.** The static methods `has_area` and `centroid_and_plan_area` give a footprint's area test, centroid and plan area as its geohash asset id reads them. They replace the public `has_area`, `centroid`, `plan_area_m2` and `centroid_geohash` of `brails/utils/asset_id.py`, whose routines are now private.
 - **Shared world-value names** (`brails/utils/world_values.py`). `OCCUPANCY_KEY`, `UNITS_KEY`, `STORIES_KEY` and `collapse_realizations`, the rule by which `ObservedDonorImputer` stores per-world values, move there from the imputer module, which imports them, so they stay importable from it.
+- **`is_missing_value`** (`brails/types/asset_inventory.py`), the public name of the test `merge` applies to missing values.
 
 ### Changed
 - **`med_yr_blt` from NSI now maps to `YearBuiltTractMedian`.** It is the median year built of the structures in a Census tract, so every building in a tract carries the same value. The converted path no longer emits `YearBuilt` at all. The legacy `nsi2brailsmap` path is unchanged and still maps `med_yr_blt` to `YearBuilt`, so the two conventions coexist for now.

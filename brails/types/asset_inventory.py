@@ -143,6 +143,10 @@ def _is_missing_value(value: Any) -> bool:  # noqa: ANN401
     return pd.isna(value) is True
 
 
+# Public name of the missing-value test, for code outside this module.
+is_missing_value = _is_missing_value
+
+
 def _is_blank_type(value: Any) -> bool:  # noqa: ANN401
     """Check whether an asset ``type`` is ``None``, a NaN or an empty string."""
     if value is None or value == '':
