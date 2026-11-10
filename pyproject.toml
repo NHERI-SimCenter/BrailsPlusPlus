@@ -150,6 +150,7 @@ include = [
     "brails/inferers/hazus_inferer_earthquake/hazus_eq_height_class_inferer.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_eq_structure_type_inferer.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py",
+    "brails/inferers/hazus_inferer_earthquake/hazus_table_completion.py",
     "brails/inferers/year_built_sampler/year_built_sampler.py",
     "brails/inferers/acs_year_built_sampler/acs_year_built_sampler.py",
     "brails/inferers/stories_from_height_inferer/stories_from_height_inferer.py",
