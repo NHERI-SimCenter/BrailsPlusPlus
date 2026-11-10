@@ -61,6 +61,11 @@ from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_unreinforced_design_levels,
     get_hazus_year_classes,
 )
+from brails.inferers.hazus_inferer_earthquake.hazus_table_completion import (
+    CellFill,
+    get_completed_west_coast_weights,
+    get_west_coast_fill_routes,
+)
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INFEASIBLE,
     DIAGNOSIS_INVALID,
@@ -207,6 +212,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         building_type_key: str = 'BuildingType',
         structure_type_key: str = 'StructureType',
         world: int = DEFAULT_WORLD,
+        complete_tables: bool = False,
     ) -> None:
         """
         Set up the inferer and resolve its region tables.
@@ -249,12 +255,22 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             world (int):
                 Possible-world index. Only a single world is supported
                 currently.
+            complete_tables (bool):
+                Whether to draw the West Coast cells no manual prints a
+                row for from the completed tables of
+                :mod:`.hazus_table_completion`, whose
+                ``get_west_coast_fill_routes`` states how each cell is
+                filled. With the default, an asset
+                in such a cell is infeasible. Printed cells draw as
+                printed either way. Whether an inventory should draw
+                from the completion is the caller's decision.
 
         Raises:
             ValueError:
                 If the state is not one the Hazus region table names, if
-                the tables carry no RES1 distribution for it, or if the
-                legality set given is one no year could reach.
+                the tables carry no RES1 distribution for it, if the
+                legality set given is one no year could reach, or if
+                ``complete_tables`` is set outside the West Coast.
 
                 A state without a RES1 distribution is refused here because
                 an inventory compiled that way would silently hold no
@@ -294,6 +310,18 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             for era, years in get_hazus_year_classes().items()
             for year in years
         }
+        self.complete_tables = bool(complete_tables)
+        self._completed_weights = None
+        self._fill_routes = {}
+        if self.complete_tables:
+            if self.region != WEST_COAST:
+                raise ValueError(
+                    f'complete_tables applies to the {WEST_COAST} tables '
+                    f'only. {self.state} draws from the {self.region} '
+                    'tables.'
+                )
+            self._completed_weights = get_completed_west_coast_weights()
+            self._fill_routes = get_west_coast_fill_routes()
 
     def _legality_set(self, override: tuple[str, ...] | None) -> tuple:
         """
@@ -770,14 +798,12 @@ class HazusEQStructureTypeInferer(InferenceEngine):
                 Structure types and their weights, both empty where the
                 frame selects no row at all.
         """
-        if frame.occupancy == 'RES1':
-            rows = self._weights['RES1']
-            row = (rows[frame.era] if self._needs_era else rows)[self.state]
-            types = self._type_lists['RES1']
+        # completed weights replace the printed row except for RES1
+        if self._completed_weights is None or frame.occupancy == 'RES1':
+            types, row = self._published_row(frame)
         else:
-            cell = self._weights[frame.occupancy][frame.band]
-            row = cell[frame.era] if self._needs_era else cell
             types = self._type_lists[frame.band]
+            row = self._completed_weights[frame.occupancy][frame.band][frame.era]
         if not row:
             return (), ()
         members = self._membership.get(frame.general_type)
@@ -792,6 +818,138 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             tuple(structure_type for structure_type, _ in kept),
             tuple(weight for _, weight in kept),
         )
+
+    def _published_row(self, frame: _Frame) -> tuple[tuple, tuple]:
+        """
+        Return the types and weights the tables print for a frame's cell.
+
+        Args:
+            frame (_Frame):
+                The feature values that select the cell.
+
+        Returns:
+            tuple[tuple, tuple]:
+                The structure types of the cell and the weights printed
+                against them, before any restriction narrows them. The
+                weights are empty where the tables print no such row.
+        """
+        if frame.occupancy == 'RES1':
+            rows = self._weights['RES1']
+            row = (rows[frame.era] if self._needs_era else rows)[self.state]
+            return self._type_lists['RES1'], row
+        cell = self._weights[frame.occupancy][frame.band]
+        row = cell[frame.era] if self._needs_era else cell
+        return self._type_lists[frame.band], row
+
+    def _frame_or_raise(
+        self,
+        features: dict,
+        vector_features: frozenset[str] | None,
+        question: str,
+    ) -> _Frame:
+        """
+        Read the cell an asset's features select, raising where none is.
+
+        Args:
+            features (dict):
+                One asset's features.
+            vector_features (frozenset[str] or None):
+                Names of the features whose values are vectors.
+            question (str):
+                What the caller asked about the cell, for the message.
+
+        Returns:
+            _Frame:
+                The feature values that select the cell.
+
+        Raises:
+            ValueError:
+                If a driver cannot be read, since the features then
+                select no cell.
+        """
+        frame, failure = self._read_frame(
+            features, vector_features or frozenset()
+        )
+        if failure is not None:
+            raise ValueError(
+                f'The features select no cell of the {self.region} tables: '
+                f'{failure.detail}. Diagnose the asset with check() before '
+                f'asking {question}.'
+            )
+        return frame
+
+    def cell_is_unpublished(
+        self,
+        features: dict,
+        *,
+        vector_features: frozenset[str] | None = None,
+    ) -> bool:
+        """
+        Say whether the tables print no distribution for an asset's cell.
+
+        An asset the tables have no row for and an asset whose row the
+        restrictions emptied both come back infeasible from
+        :meth:`check`, and the two call for different answers: the first
+        is a gap in the published model and the second is a disagreement
+        among the asset's own features.
+
+        Args:
+            features (dict):
+                One asset's features.
+            vector_features (frozenset[str] or None):
+                Names of the features whose values are vectors.
+
+        Returns:
+            bool:
+                True where the cell the features select carries no
+                printed row.
+
+        Raises:
+            ValueError:
+                If a driver cannot be read, since the features then
+                select no cell.
+        """
+        frame = self._frame_or_raise(
+            features, vector_features, 'whether its cell is published'
+        )
+        _, row = self._published_row(frame)
+        return not row
+
+    def cell_fill(
+        self,
+        features: dict,
+        *,
+        vector_features: frozenset[str] | None = None,
+    ) -> CellFill | None:
+        """
+        Say how the completed tables fill an asset's cell.
+
+        With ``complete_tables`` set, :meth:`cell_is_unpublished` still
+        reports a filled cell as unprinted. For such an asset found
+        infeasible, this method shows that it had a filled row to draw
+        from, so the infeasibility comes from its own features.
+
+        Args:
+            features (dict):
+                One asset's features.
+            vector_features (frozenset[str] or None):
+                Names of the features whose values are vectors.
+
+        Returns:
+            CellFill or None:
+                The fill the inferer draws the cell from, or None where
+                no fill applies: a printed cell, or any cell when
+                ``complete_tables`` is not set.
+
+        Raises:
+            ValueError:
+                If a driver cannot be read, since the features then
+                select no cell.
+        """
+        frame = self._frame_or_raise(
+            features, vector_features, 'how its cell is filled'
+        )
+        return self._fill_routes.get((frame.occupancy, frame.band, frame.era))
 
     def _drawable(self, frame: _Frame) -> bool:
         """

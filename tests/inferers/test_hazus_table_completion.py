@@ -35,10 +35,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 
 from brails.inferers.hazus_inferer_earthquake import hazus_table_completion
+from brails.inferers.hazus_inferer_earthquake.hazus_eq_structure_type_inferer import (
+    HazusEQStructureTypeInferer,
+)
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     WEST_COAST,
     get_hazus_occ_type_mapping,
@@ -54,6 +59,12 @@ from brails.inferers.hazus_inferer_earthquake.hazus_table_completion import (
     get_west_coast_fill_routes,
     is_implausible,
 )
+from brails.inferers.inference_diagnosis import DIAGNOSIS_OK
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from brails.types.asset_inventory import AssetInventory
 
 TYPE_LISTS = get_hazus_occ_type_mapping()[0][WEST_COAST]
 PRINTED = get_hazus_occ_type_mapping()[1][WEST_COAST]
@@ -61,6 +72,14 @@ ROUTES = get_west_coast_fill_routes()
 COMPLETED = get_completed_west_coast_weights()
 BANDS = ('low_rise', 'mid_rise', 'high_rise')
 ERAS = ('pre_1950', '1950_to_1970', 'post_1970')
+
+# Four of the six design levels the inferer reads. Very High-Code and
+# Severe-Code bar URM, C3 and S5 as Moderate-Code does, so they add no case.
+HAZUS_DESIGN_LEVELS = ('Pre-Code', 'Low-Code', 'Moderate-Code', 'High-Code')
+
+# A story count inside each story band and a year inside each era.
+STORIES_IN_BAND = {'low_rise': 2, 'mid_rise': 5, 'high_rise': 10}
+YEAR_IN_ERA = {'pre_1950': 1930, '1950_to_1970': 1960, 'post_1970': 1990}
 
 
 def _cells() -> list[tuple[str, str, str]]:
@@ -322,6 +341,34 @@ def test_a_source_at_half_mass_passes(low_row: list[int], route: str) -> None:
 
 # ---------------------------------------------------------------------
 # the completed weights
+
+
+def test_every_cell_draws_at_four_design_levels(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """
+    The inferer finds something to draw in every cell at each of four levels.
+
+    URM, C3 and S5 are set aside by the inferer where the West Coast bars
+    them, so the check runs the region's own legality rule.
+    """
+    assets = {
+        f'{occupancy}|{band}|{era}|{level}': {
+            'OccupancyClass': occupancy,
+            'NumberOfStories': STORIES_IN_BAND[band],
+            'YearBuilt': YEAR_IN_ERA[era],
+            'DesignLevel': level,
+        }
+        for occupancy, band, era in _cells()
+        for level in HAZUS_DESIGN_LEVELS
+    }
+    inferer = HazusEQStructureTypeInferer(
+        state='California', seed=20260828, complete_tables=True
+    )
+    verdicts = inferer.check(build_inventory(assets))
+    refused = verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK]
+    assert len(verdicts) == len(_cells()) * len(HAZUS_DESIGN_LEVELS)
+    assert refused.empty, list(refused.index)
 
 
 def test_printed_cells_are_unchanged() -> None:

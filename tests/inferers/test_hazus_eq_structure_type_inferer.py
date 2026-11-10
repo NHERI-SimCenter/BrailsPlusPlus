@@ -57,6 +57,10 @@ from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_occ_type_mapping,
     get_hazus_unreinforced_design_levels,
 )
+from brails.inferers.hazus_inferer_earthquake.hazus_table_completion import (
+    get_completed_west_coast_weights,
+    get_west_coast_fill_routes,
+)
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INFEASIBLE,
     DIAGNOSIS_INVALID,
@@ -103,6 +107,10 @@ HOME = {
     'YearBuilt': 1930,
     'DesignLevel': 'Pre-Code',
 }
+
+# A five-story school built 1950 to 1970, whose West Coast cell the tables
+# print no row for.
+SCHOOL = dict(STORE, OccupancyClass='EDU1', NumberOfStories=5)
 
 
 def _inferer(**kwargs: object) -> HazusEQStructureTypeInferer:
@@ -967,3 +975,127 @@ def test_the_importer_finds_the_inferer() -> None:
         is HazusEQStructureTypeInferer
     )
     assert hasattr(brails.inferers, 'HazusEQStructureTypeInferer')
+
+
+# ---------------------------------------------------------------------
+# unprinted cells
+
+
+def test_an_unpublished_cell_is_told_apart_from_an_emptied_row() -> None:
+    """A cell with no printed row is unpublished, and an emptied one is not."""
+    inferer = _inferer()
+
+    assert inferer.cell_is_unpublished(dict(SCHOOL))
+    assert inferer.cell_is_unpublished(
+        dict(STORE, OccupancyClass='COM7', NumberOfStories=9)
+    )
+    assert not inferer.cell_is_unpublished(dict(MASONRY_WALKUP))
+
+
+def test_an_unreadable_driver_has_no_cell_to_ask_about() -> None:
+    """A driver that cannot be read selects no cell, and the question raises."""
+    features = {
+        key: value for key, value in STORE.items() if key != 'DesignLevel'
+    }
+
+    with pytest.raises(ValueError, match='no DesignLevel'):
+        _inferer().cell_is_unpublished(features)
+
+
+# ---------------------------------------------------------------------
+# completed tables
+
+
+def test_the_completed_tables_admit_an_unprinted_cell(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """The school is infeasible by default and drawable with the completion."""
+    inventory = build_inventory({'a': dict(SCHOOL)})
+    default = _inferer().check(inventory).loc['a', 'diagnosis']
+    completed = _inferer(complete_tables=True).check(inventory)
+    assert default == DIAGNOSIS_INFEASIBLE
+    assert completed.loc['a', 'diagnosis'] == DIAGNOSIS_OK
+
+
+def test_a_filled_cell_draws_only_the_types_of_its_row(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """At Pre-Code no type is barred, and the draw stays within the filled row."""
+    row = get_completed_west_coast_weights()['EDU1']['mid_rise'][
+        '1950_to_1970'
+    ]
+    types = get_hazus_occ_type_mapping()[0]['West Coast']['mid_rise']
+    weighted = {t for t, weight in zip(types, row) if weight > 0}
+    features = dict(SCHOOL, DesignLevel='Pre-Code')
+    drawn = set(_spread(build_inventory, features, complete_tables=True))
+    assert drawn <= weighted
+    assert len(drawn) > 1
+
+
+def test_pinned_draw_in_a_filled_cell(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """One value fixed in place."""
+    inventory = build_inventory({'asset_0': dict(SCHOOL)})
+    inferer = _inferer(seed=20260828, complete_tables=True)
+    assert inferer.draw(inventory)['asset_0'] == 'C2'
+
+
+def test_a_printed_cell_draws_alike_with_and_without_the_completion(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """The completion leaves printed cells as printed."""
+    inventory = build_inventory(
+        {f'asset_{index}': dict(STORE) for index in range(50)}
+    )
+    default = _inferer().draw(inventory)
+    completed = _inferer(complete_tables=True).draw(inventory)
+    assert completed.equals(default)
+
+
+def test_a_filled_cell_reports_its_fill() -> None:
+    """``cell_fill`` returns the route of a filled cell, None for a printed one."""
+    inferer = _inferer(complete_tables=True)
+    routes = get_west_coast_fill_routes()
+    assert inferer.cell_fill(dict(SCHOOL)) == routes[
+        ('EDU1', 'mid_rise', '1950_to_1970')
+    ]
+    assert inferer.cell_fill(dict(STORE)) is None
+    assert inferer.cell_fill(dict(HOME)) is None
+
+
+def test_without_the_completion_no_cell_is_filled() -> None:
+    """The inferer then draws every cell from the printed tables."""
+    assert _inferer().cell_fill(dict(SCHOOL)) is None
+
+
+def test_a_filled_cell_is_still_reported_unpublished() -> None:
+    """The completion changes what is drawn, not what the tables print."""
+    assert _inferer(complete_tables=True).cell_is_unpublished(dict(SCHOOL))
+
+
+def test_a_filled_row_emptied_by_the_features_is_told_apart(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """
+    A five-story wood school is infeasible with the completion on.
+
+    The filled mid-rise row carries no wood. With the completion on,
+    withholding the building type resolves it, which it does not with the
+    completion off, and ``cell_fill`` reports the cell as filled.
+    """
+    features = dict(SCHOOL, BuildingType='W')
+    inventory = build_inventory({'a': features})
+    completed = _inferer(complete_tables=True)
+    on = completed.check(inventory).loc['a']
+    off = _inferer().check(inventory).loc['a']
+    assert on['diagnosis'] == DIAGNOSIS_INFEASIBLE
+    assert 'BuildingType' in on['resolvable_by']
+    assert 'BuildingType' not in off['resolvable_by']
+    assert completed.cell_fill(features) is not None
+
+
+def test_the_completion_outside_the_west_coast_is_refused() -> None:
+    """Only the West Coast tables are completed."""
+    with pytest.raises(ValueError, match='West Coast tables'):
+        _inferer(state='Iowa', complete_tables=True)
