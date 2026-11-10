@@ -102,7 +102,8 @@ brails = [
     "inferers/hazus_inferer_wind/input_schema.json",
     "inferers/stories_from_height_inferer/height_scales.json",
     "inferers/stories_from_height_inferer/README.rst",
-    "aggregators/unit_budget/README.rst"
+    "aggregators/unit_budget/README.rst",
+    "inferers/acs_year_built_sampler/README.rst"
     
 ]
 
@@ -149,6 +150,7 @@ include = [
     "brails/inferers/hazus_inferer_earthquake/hazus_eq_structure_type_inferer.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py",
     "brails/inferers/year_built_sampler/year_built_sampler.py",
+    "brails/inferers/acs_year_built_sampler/acs_year_built_sampler.py",
     "brails/inferers/stories_from_height_inferer/stories_from_height_inferer.py",
     "tests/inferers/**/*.py",
 
