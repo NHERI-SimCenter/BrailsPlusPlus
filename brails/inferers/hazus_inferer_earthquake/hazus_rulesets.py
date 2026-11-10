@@ -36,14 +36,8 @@ Hazus rulesets transcribed from the FEMA Hazus Inventory Technical Manual.
 
 Structure type distributions, region groupings, and replacement cost
 data, each returned by a getter whose docstring names the manual tables
-it transcribes. The Appendix A structure type weights come from the 6.0
-edition:
-https://www.fema.gov/sites/default/files/documents/fema_hazus-6-inventory-technical-manual.pdf
-The 6.1 edition (August 2024) renumbered that appendix and replaced the
-state-level weight tables with distributions conditioned on the general
-building type, so the weights here appear in print only in 6.0. The
-cost, garage, and income tables match the 6.1 edition and cite its
-numbering.
+it transcribes. The README beside this module states which editions of
+the manual the tables come from.
 
 .. autosummary::
 
@@ -52,6 +46,8 @@ numbering.
       get_hazus_height_classes
       get_hazus_year_classes
       get_hazus_sampling_height_bands
+      get_hazus_sampling_height_band
+      get_hazus_story_count
       get_hazus_height_classes_by_type
       get_hazus_unreinforced_design_levels
       get_hazus_general_type_membership
@@ -63,8 +59,18 @@ numbering.
 
 from __future__ import annotations
 
-# TODO(sy): Check - what is all-zero row? What should we do for the case that does not exist?
-# TODO(sy): Check - use multiple possible worlds samples if available.
+import math
+
+# The region group whose Appendix A tables are stratified by era.
+WEST_COAST = 'West Coast'
+
+# The types the Appendix A footnote of the FEMA Hazus Inventory Technical
+# Manual 7.0 calls unreinforced: "Unreinforced SBTs URM, C3 and S5 are not
+# allowed in West Coast Region where Design Levels are higher than Pre-Code"
+# (West Coast tables pp. A-2 to A-12), with Low-Code in place of Pre-Code
+# elsewhere. Which levels admit them by region comes from
+# get_hazus_unreinforced_design_levels, whose docstring carries the rest.
+UNREINFORCED_MASONRY_TYPES = ('S5', 'C3', 'URM')
 
 
 def get_hazus_occ_type_mapping() -> tuple[dict, dict]:
@@ -78,7 +84,7 @@ def get_hazus_occ_type_mapping() -> tuple[dict, dict]:
     type list of its band.
 
     Sources, all in Appendix A of the 6.0 edition (the 6.1 appendix no
-    longer prints these weights; see the module docstring):
+    longer prints these weights):
 
     - West Coast non-RES1: Tables A-2 (low-rise) to A-10 (high-rise).
     - West Coast RES1: Tables A-17 to A-19, one per era.
@@ -1408,6 +1414,58 @@ def get_hazus_sampling_height_bands() -> dict[str, tuple[int, int | None]]:
     }
 
 
+def get_hazus_sampling_height_band(stories: int) -> str:
+    """
+    Return the Appendix A story band a story count falls in.
+
+    Args:
+        stories (int):
+            Story count.
+
+    Returns:
+        str:
+            The band of :func:`get_hazus_sampling_height_bands` that
+            covers the count.
+
+    Raises:
+        ValueError:
+            If no band covers the count.
+    """
+    for band, (lowest, highest) in get_hazus_sampling_height_bands().items():
+        if stories >= lowest and (highest is None or stories <= highest):
+            return band
+    raise ValueError(f'No story band covers {stories} stories.')
+
+
+def get_hazus_story_count(stories: object) -> int:
+    """
+    Read a story count as the Appendix A tables take it.
+
+    Args:
+        stories (object):
+            A feature value: a number, or a string ``float`` reads.
+
+    Returns:
+        int:
+            The count.
+
+    Raises:
+        TypeError:
+            If ``float`` cannot read the value.
+        ValueError:
+            If the value is not a finite whole number of one or more.
+    """
+    try:
+        count = float(stories)
+    except (TypeError, ValueError) as error:
+        msg = f'{stories!r} is not a number.'
+        raise TypeError(msg) from error
+    if not math.isfinite(count) or count != int(count) or count < 1:
+        msg = f'{stories!r} is not a whole number of stories of one or more.'
+        raise ValueError(msg)
+    return int(count)
+
+
 def get_hazus_height_classes_by_type() -> (
     dict[str, dict[str, tuple[int, int | None]] | None]
 ):
@@ -1462,30 +1520,7 @@ def get_hazus_unreinforced_design_levels() -> dict[str, tuple[str, ...]]:
     tables of the FEMA Hazus Inventory Technical Manual 7.0:
     "Unreinforced SBTs URM, C3 and S5 are not allowed in West Coast
     Region where Design Levels are higher than Pre-Code", with Low-Code
-    in place of Pre-Code for the other two regions. The 6.1 edition
-    carries the same footnote; the 6.0 edition carries none. Page
-    numbers rather than table captions throughout Appendix A: both
-    editions print two tables captioned A-1, so every caption after the
-    first sits one below the number the manual's own cross-references
-    use.
-
-    The regional split is worth reading before relying on it. The
-    condition is the region group, which selects a table set rather than
-    measuring seismicity, and the West Coast group spans UBC zone 4 on
-    the California coast to zones 0 and 1 across the interior. The
-    structural population it governs is also nearly empty: these three
-    types carry 28.18% of West Coast printed weight before 1950, 1.90%
-    from 1950 to 1970 and 0.08% after 1970, while every Low-Code year in
-    the generic design level table falls after 1976.
-    `HazusEQStructureTypeInferer` takes an override for callers who would
-    rather apply the nationwide bound the fragility library carries, that is,
-    allow Low-Code Design Levels for the above three structure types nationwide.
-
-    This governs what the sampled building stock may contain. It is the
-    tighter of the two rules that bear on these types: the Earthquake
-    Model Technical Manual 6.1 Table 5-7 (p. 5-27) parameterizes them
-    under Pre-Code and Low-Code only, nationwide, which is what the
-    fragility library ships.
+    in place of Pre-Code for the other two regions.
 
     Returns:
         dict[str, tuple[str, ...]]:

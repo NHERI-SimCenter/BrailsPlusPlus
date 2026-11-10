@@ -50,10 +50,14 @@ import numpy as np
 import pandas as pd
 
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
+    UNREINFORCED_MASONRY_TYPES,
+    WEST_COAST,
     get_hazus_general_type_membership,
     get_hazus_occ_type_mapping,
+    get_hazus_sampling_height_band,
     get_hazus_sampling_height_bands,
     get_hazus_state_region_mapping,
+    get_hazus_story_count,
     get_hazus_unreinforced_design_levels,
     get_hazus_year_classes,
 )
@@ -80,14 +84,6 @@ if TYPE_CHECKING:
 
 # Part of the reproducibility contract; see keyed_uniforms.
 STRUCTURE_TYPE_PURPOSE = 'structure_type'
-
-# The types the Appendix A footnote of the FEMA Hazus Inventory Technical
-# Manual 7.0 calls unreinforced: "Unreinforced SBTs URM, C3 and S5 are not
-# allowed in West Coast Region where Design Levels are higher than Pre-Code"
-# (West Coast tables pp. A-2 to A-12), with Low-Code in place of Pre-Code
-# elsewhere. Which levels admit them by region comes from
-# get_hazus_unreinforced_design_levels, whose docstring carries the rest.
-UNREINFORCED_MASONRY_TYPES = ('S5', 'C3', 'URM')
 
 # Design levels the Hazus earthquake models define, in increasing order of
 # seismic design strength. Every design level table starts at Pre-Code, so
@@ -236,8 +232,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
                 instead the nationwide bound the fragility library
                 carries. What bears on that choice, including how much
                 of the West Coast stock the regional clause reaches, is
-                in the docstring of
-                :func:`get_hazus_unreinforced_design_levels`.
+                in the "Scope" section of the README beside this module.
             occupancy_key (str):
                 Feature name the occupancy class is read from.
             stories_key (str):
@@ -278,7 +273,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         self._type_lists = type_lists[self.region]
         self._weights = type_weights[self.region]
         # Only the West Coast tables are stratified by era.
-        self._needs_era = self.region == 'West Coast'
+        self._needs_era = self.region == WEST_COAST
         self._check_single_family_coverage()
         self.seed = secrets.randbits(_SEED_BITS) if seed is None else int(seed)
         self.use_building_type = bool(use_building_type)
@@ -695,23 +690,19 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         if failure is not None:
             return '', failure
         try:
-            story_count = float(stories)
-        except (TypeError, ValueError):
+            story_count = get_hazus_story_count(stories)
+        except TypeError:
             return '', _Verdict(
                 DIAGNOSIS_INVALID,
                 f'{self.stories_key} is not a number: {stories!r}',
             )
-        if (
-            not np.isfinite(story_count)
-            or story_count != int(story_count)
-            or story_count < 1
-        ):
+        except ValueError:
             return '', _Verdict(
                 DIAGNOSIS_INVALID,
                 f'{self.stories_key} of {stories!r} is not a whole number of '
                 'stories of one or more',
             )
-        return self._band_of(int(story_count)), None
+        return self._band_of(story_count), None
 
     def _read_general_type(
         self, features: dict, vector_features: set
@@ -764,10 +755,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             str:
                 The band name.
         """
-        for band, (lowest, highest) in self._bands.items():
-            if stories >= lowest and (highest is None or stories <= highest):
-                return band
-        raise ValueError(f'No sampling band covers {stories} stories.')
+        return get_hazus_sampling_height_band(stories)
 
     def _candidates(self, frame: _Frame) -> tuple[tuple, tuple]:
         """

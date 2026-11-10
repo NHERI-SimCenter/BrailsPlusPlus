@@ -37,12 +37,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_general_type_membership,
     get_hazus_height_classes_by_type,
     get_hazus_occ_type_mapping,
+    get_hazus_sampling_height_band,
     get_hazus_sampling_height_bands,
     get_hazus_state_region_mapping,
+    get_hazus_story_count,
 )
 
 if TYPE_CHECKING:
@@ -114,6 +118,38 @@ def test_sampling_bands_split_at_three_and_seven() -> None:
         'mid_rise': (4, 7),
         'high_rise': (8, None),
     }
+
+
+def test_a_story_count_selects_its_story_band() -> None:
+    """Three and four stories, and seven and eight, fall in adjacent bands."""
+    assert get_hazus_sampling_height_band(3) == 'low_rise'
+    assert get_hazus_sampling_height_band(4) == 'mid_rise'
+    assert get_hazus_sampling_height_band(7) == 'mid_rise'
+    assert get_hazus_sampling_height_band(8) == 'high_rise'
+    with pytest.raises(ValueError, match='No story band'):
+        get_hazus_sampling_height_band(0)
+
+
+@pytest.mark.parametrize(('value', 'count'), [(10, 10), (10.0, 10), ('10', 10)])
+def test_a_story_count_is_read_as_float_reads_it(value: object, count: int) -> None:
+    """Numbers and numeric strings read as whole story counts."""
+    assert get_hazus_story_count(value) == count
+
+
+@pytest.mark.parametrize(
+    ('value', 'error'),
+    [
+        ('ten', TypeError),
+        (None, TypeError),
+        (0, ValueError),
+        (9.5, ValueError),
+        (float('nan'), ValueError),
+    ],
+)
+def test_an_unusable_story_count_raises(value: object, error: type) -> None:
+    """A value float cannot read, or no whole count of one or more, raises."""
+    with pytest.raises(error):
+        get_hazus_story_count(value)
 
 
 def test_sampling_band_names_key_the_weight_tables() -> None:

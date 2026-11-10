@@ -103,7 +103,8 @@ brails = [
     "inferers/stories_from_height_inferer/height_scales.json",
     "inferers/stories_from_height_inferer/README.rst",
     "aggregators/unit_budget/README.rst",
-    "inferers/acs_year_built_sampler/README.rst"
+    "inferers/acs_year_built_sampler/README.rst",
+    "inferers/hazus_inferer_earthquake/README.rst"
     
 ]
 
