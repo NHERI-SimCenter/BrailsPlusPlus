@@ -50,11 +50,19 @@ S5 are set aside: the row of the same occupancy class and story band in a
 neighboring era, then the row of the same occupancy class and era one
 story band down. The three types are set aside in that test because the
 region bars them above its earliest design level, and a building of any
-era may be given a later one. A cell that neither source fills combines
-the printed rows of its story band and era within each general building
-type. Cells of the pairs in ``IMPLAUSIBLE_PAIRS`` are filled too, and
-never serve as sources. ``get_west_coast_fill_routes`` states the rule in
-full.
+era may be given a later one. The filled row still carries the source's
+weight on them, renormalized with the rest, and the structure type
+inferer removes them at draw time where the design level bars them, as it
+does for a printed row.
+
+A cell that neither source fills combines the printed rows of its story
+band and era within each general building type. The fallback takes that
+form because the 6.1 edition (p. 5-10) normalizes its structure type
+distributions within each general building type, so that an asset whose
+general type is known draws only that type's specific types. Cells of the
+pairs in ``IMPLAUSIBLE_PAIRS`` are filled too, so that an asset with such
+a pair still draws a type, and never serve as sources.
+``get_west_coast_fill_routes`` states the rule in full.
 
 Scope
 -----

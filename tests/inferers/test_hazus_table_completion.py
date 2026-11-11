@@ -404,15 +404,8 @@ def test_the_fallback_matches_values_worked_by_hand() -> None:
     """
     EDU1 high-rise from 1970 draws the combined high-rise rows of 1970 on.
 
-    The eight inputs are the COM4, COM5, COM6, EDU2, GOV1, RES3, RES4 and
-    RES5 rows of ITM 6.0 Table A-10 (p. A-8), each summing to 100. On the
-    high-rise list their steel types (S1, S2, S4, S5) total 80, 79, 70,
-    50, 80, 55, 72 and 63, their concrete types (C1, C2, C3, PC2) 20, 21,
-    30, 50, 20, 43, 27 and 37, and RM2, the one masonry type, 0, 0, 0, 0,
-    0, 2, 1 and 0. The shares are therefore 549 / 8, 248 / 8 and 3 / 8
-    percent. S1 is 56, 54, 45, 30, 52, 44, 56 and 25 of those steel
-    totals, a mean share of 0.65638 of steel. PC2 is 1, 1, 0, 0, 0, 5, 2
-    and 0 of the concrete totals, a mean share of 0.035996 of concrete.
+    The expected values are worked from the rows of Table A-10 (p. A-8)
+    of the Hazus Inventory Technical Manual 6.0.
     """
     filled = COMPLETED['EDU1']['high_rise']['post_1970']
     row = dict(zip(TYPE_LISTS['high_rise'], filled))

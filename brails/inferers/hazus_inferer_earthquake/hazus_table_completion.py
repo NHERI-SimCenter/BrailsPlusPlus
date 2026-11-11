@@ -34,12 +34,8 @@
 """
 Complete the West Coast Appendix A structure type tables.
 
-The West Coast mid-rise and high-rise tables that
-``get_hazus_occ_type_mapping`` transcribes print no row for some cells
-of occupancy class, story band and era. No manual prints the rows that
-fill them here: each is computed from printed rows of the
-transcription. The README beside this module states what the
-completion rests on.
+The section "The completed West Coast tables" of the README beside this
+module states what the completion rests on.
 
 .. autosummary::
 
@@ -64,8 +60,7 @@ from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_year_classes,
 )
 
-# A source row passes a route when it keeps at least this share of its
-# weight. The bound is inclusive.
+# The least share of its weight a source row must keep to pass a route.
 HALF_MASS = 0.5
 
 ROUTE_ADJACENT_ERA = 'adjacent_era'
@@ -117,8 +112,8 @@ class CellFill(NamedTuple):
             fallback the ``(band, era)`` whose printed rows it combines.
         kept_mass (float | None):
             The share of the source row's weight left on the target
-            story band's type list without URM, C3 and S5, or None for
-            the fallback.
+            story band's type list without ``UNREINFORCED_MASONRY_TYPES``,
+            or None for the fallback.
     """
 
     route: str
@@ -155,24 +150,18 @@ def get_west_coast_fill_routes() -> dict[tuple[str, str, str], CellFill]:
     """
     Return the route that fills each empty West Coast cell.
 
-    Every empty cell is filled, those of ``IMPLAUSIBLE_PAIRS`` included,
-    so that an asset with such a pair still draws a type, and a cell of
-    ``IMPLAUSIBLE_PAIRS`` is never a source. A cell takes the first
-    of the two routes below whose source keeps at least ``HALF_MASS`` of
-    its weight on the target story band's type list once URM, C3 and S5,
-    which the region bars above its earliest design level
-    (``get_hazus_unreinforced_design_levels``), are set aside, and
-    otherwise the fallback.
+    A cell takes the first of the two routes below whose source keeps at
+    least ``HALF_MASS`` of its weight on the target story band's type
+    list without ``UNREINFORCED_MASONRY_TYPES``, and otherwise the
+    fallback. Cells of ``IMPLAUSIBLE_PAIRS`` are filled but never serve
+    as sources.
 
     1. ``ROUTE_ADJACENT_ERA``: the same occupancy and story band in the
        neighboring era, the later one where both are sources.
     2. ``ROUTE_BAND_BELOW``: the same occupancy and era one story band
        down.
     3. ``ROUTE_FALLBACK``: the printed rows of the story band and era,
-       combined within each general building type (see
-       ``_fallback_row``).
-
-    The routes are computed from the transcription at each call.
+       combined within each general building type (``_fallback_row``).
 
     Returns:
         dict[tuple[str, str, str], CellFill]:
@@ -200,13 +189,7 @@ def get_completed_west_coast_weights() -> dict:
     The nesting is that of the West Coast entry of the weights
     ``get_hazus_occ_type_mapping`` returns, and each filled row aligns
     with its story band's type list there. Printed rows, RES1 included,
-    are returned unchanged. A cell filled by either of the first two
-    routes of ``get_west_coast_fill_routes`` keeps the source's weights
-    on the target story band's type list, URM, C3 and S5 included,
-    renormalized to 100. The structure type inferer removes those three
-    at draw time where the design level bars them, as it does for a
-    printed row. The weights are computed from the transcription at each
-    call.
+    are returned unchanged.
 
     Returns:
         dict:
@@ -293,7 +276,7 @@ def _kept_mass(
     Returns:
         float:
             The source row's weight on the target story band's type list
-            without URM, C3 and S5, over its total weight.
+            without ``UNREINFORCED_MASONRY_TYPES``, over its total weight.
     """
     occupancy, band, era = source
     row = weights[occupancy][band][era]
@@ -411,18 +394,11 @@ def _fallback_row(
     """
     Combine the printed rows of a story band and era within each general type.
 
-    The FEMA Hazus Inventory Technical Manual 6.1 (p. 5-10) normalizes
-    its structure type distributions within each general building type,
-    so that an asset whose general type is known draws only that type's
-    specific types. The fallback follows that form. Its inputs are the
-    rows of ``_fallback_inputs``. For each general type of
-    ``get_hazus_general_type_membership``, take its members on the story
-    band's type list. A member's conditional weight is the mean of its
-    share within the general type, over the input rows that hold weight
-    in that general type. The general type's share is the mean, over all
-    input rows, of the fraction of the row's total on its members. A
-    type's stored weight is its general type's share times its
-    conditional weight.
+    The inputs are the rows of ``_fallback_inputs``. Each general type of
+    ``get_hazus_general_type_membership`` receives the mean share of the
+    input rows' weight on its members of the story band's type list,
+    split among those members by their mean share within the general
+    type over the rows that hold weight in it.
 
     Args:
         band (str):
