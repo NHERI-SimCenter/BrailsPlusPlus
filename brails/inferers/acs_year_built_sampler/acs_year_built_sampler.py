@@ -72,8 +72,8 @@ from brails.utils.deterministic_sampling import (
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
 
-# First year of the open oldest B25034 bin, a placeholder; see the README
-# beside this module, "Defaults and scope".
+# First year of the open oldest B25034 bin, which the table leaves
+# without one; see the README beside this module, "Defaults and scope".
 OLDEST_YEAR = 1890
 
 # Last year of the open newest B25034 bin: the final survey year of the

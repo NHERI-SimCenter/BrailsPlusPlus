@@ -91,25 +91,27 @@ Defaults and scope
 ------------------
 
 ``OLDEST_YEAR``, 1890, is the first year of the open oldest bin, 1939 or
-earlier, which the table leaves without one. It is a placeholder, not a
-published bound. All 50 years from 1890 to 1939 fall in the earliest
-era of every design-level table of ``HazusEQDesignLevelInferer``, whose
-earliest break is 1941, so the bound changes no design level, but it sets
-the years drawn in that bin. ``NEWEST_YEAR``, 2024, the last survey year
+earlier, which the table leaves without one. It is not a published bound.
+It sets the years drawn in that bin, and the Hazus earthquake inferers of
+BRAILS return the same result for any of them: all 50 years from 1890 to
+1939 fall in the earliest era of every design-level table, whose earliest
+break is 1940, and in the earliest era of the structure type tables, which
+ends before 1950. The bound will be revisited when BRAILS supports a method
+that tells those years apart. ``NEWEST_YEAR``, 2024, the last survey year
 of the estimates, closes the newest bin, 2020 or later, at five years.
 
 ``DEFAULT_SMOOTHING``, 20 pseudo-units, keeps a tract's empty B25127 cells
 from ruling a combination out. Without it, a tract that holds no structure of
 50 or more units built from 2000 to 2019 would forbid one in every block group
-of the tract, and the raking could have no solution. The value was tested in
-the testbed's San Francisco study on a building table built on the city's
-own footprint layer, 142,542 buildings within the study's scope: the
-absolute error of the building counts per B25034 bin, summed over the ten
-bins, was 31,149 buildings at 5 pseudo-units, 31,669 at 20 and 32,480 at
-50. The error moves by about 4 percent over that range, 5 scoring lowest,
-and 20 stays as the value the study ran with. A caller passes another
-value as ``smoothing``. At 0 nothing is added, and a
-class row with no counts in the tract becomes uniform over the six bins.
+of the tract, and the raking could have no solution. The value was tested
+on San Francisco, on a building table built on the city's own footprint
+layer, with 142,542 buildings in the test: the absolute error of the
+building counts per B25034 bin, summed over the ten bins, was 31,149
+buildings at 5 pseudo-units, 31,669 at 20 and 32,480 at 50. The error
+moves by about 4 percent over that range, 5 scoring lowest, and the
+default stays at 20. A caller passes another value as ``smoothing``. At 0
+nothing is added, and a class row with no counts in the tract becomes
+uniform over the six bins.
 
 ``RAKE_TOLERANCE``, 1e-12, is the bin residual, as a share of the block
 group's units, below which the raking stops, and ``RAKE_ITERATIONS``,
@@ -126,4 +128,5 @@ A draw depends on more than its asset. Through the raking it depends on the
 classes and units of the other residential assets of its block group in the
 fitted inventory, and through the pooled rows on every tract of its county in
 the B25127 table. Fit the sampler on the inventory of the whole study area,
-and pass B25127 rows for every tract of each county the study touches.
+and pass B25127 rows for every tract of each county the study area
+touches.

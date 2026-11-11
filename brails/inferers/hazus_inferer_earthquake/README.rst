@@ -41,8 +41,8 @@ of occupancy class, story band and era: 71 in the transcription that
 editions found no published row for any of them. The 6.0 edition omits
 some of these rows and prints others with a label and no values, and 6.1
 and 7.0 omit every one. ``hazus_table_completion.py`` fills each cell from
-printed rows of the transcription. The completion is this project's own,
-and no edition of the manual prints it.
+printed rows of the transcription. The completion is BRAILS's own, and no
+edition of the manual prints it.
 
 A cell takes the first of two sources that keeps at least ``HALF_MASS``
 of its weight on the type list of the cell's story band once URM, C3 and
