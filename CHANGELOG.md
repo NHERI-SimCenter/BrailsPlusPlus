@@ -52,6 +52,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **Named donor search defaults** (`DEFAULT_DONOR_K` and `DEFAULT_DONOR_CAP_M` in `observed_donor_imputer.py`), the defaults of `ObservedDonorImputer`'s `k` and `cap_m`.
 - **`NeighborYearSampler`** (`brails/inferers/neighbor_year_sampler/`), which copies to a building outside the residential classes the year of a nearby residential building in the same world, through the observed-donor search on location alone, with the block group as fallback. It fits on a frozen stage. A `README.rst` beside it states the defaults and the scope.
 - **Donor stage for the replacement cost** (`donor_stage_from_log` in `brails/imputers/replacement_cost/replacement_cost_imputer.py`), which names, per target and world, the observed donor whose values the target kept, from the log of `ObservedDonorImputer.impute_stage`.
+- **`ReplacementCostImputer`** (`brails/imputers/replacement_cost/`), which keeps the value NSI states in `ReplacementCost` and gives every other building its observed donor's value per gross square foot times its own gross floor area.
 
 ### Changed
 - **`med_yr_blt` from NSI now maps to `YearBuiltTractMedian`.** It is the median year built of the structures in a Census tract, so every building in a tract carries the same value. The converted path no longer emits `YearBuilt` at all. The legacy `nsi2brailsmap` path is unchanged and still maps `med_yr_blt` to `YearBuilt`, so the two conventions coexist for now.
