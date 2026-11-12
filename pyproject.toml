@@ -170,6 +170,7 @@ include = [
     "brails/imputers/observed_donor_imputer/donor_records.py",
     "brails/imputers/observed_donor_imputer/donor_search.py",
     "brails/imputers/observed_donor_imputer/observed_donor_imputer.py",
+    "brails/imputers/replacement_cost/replacement_cost_imputer.py",
     "brails/utils/metric_crs.py",
     "brails/utils/id_preview.py",
     "tests/utils/test_metric_crs.py",
