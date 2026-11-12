@@ -147,6 +147,7 @@ include = [
     "tests/scrapers/data/nsi_pooled_fixture_generator.py",
 
     "tests/scrapers/test_overture_release_resolution.py",
+    "tests/scrapers/test_overture_local_path.py",
 
     "brails/inferers/inference_diagnosis.py",
     "brails/inferers/hazus_inferer_earthquake/hazus_eq_design_level_inferer.py",

@@ -48,7 +48,7 @@ This module define the base class for scraping OvertureMaps data.
 from abc import ABC
 import re
 import urllib.request
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Sequence, Tuple, Union
 from tqdm import tqdm
 
 import pandas as pd
@@ -107,8 +107,8 @@ class OvertureMapsScraper(ABC):
 
     - Fetching release version names from the Overture Maps release index.
     - Constructing S3 paths to specific dataset partitions.
-    - Reading datasets from S3 into a Pandas DataFrame with optional
-      spatial filtering.
+    - Reading datasets from S3, or from local Parquet files, into an Arrow
+      table or a Pandas DataFrame with optional spatial filtering.
     - Normalizing bounding box coordinates to a consistent format.
     - Formatting source metadata from NumPy arrays or lists of dictionaries.
     """
@@ -290,6 +290,81 @@ class OvertureMapsScraper(ABC):
         return f"{S3_BASE_PATH}/{release}/theme={theme}/type={overture_type}/"
 
     @staticmethod
+    def _read_table(
+        overture_release: str,
+        overture_type: str,
+        bbox: Optional[Tuple[float, float, float, float]] = None,
+        connect_timeout: Optional[int] = None,
+        request_timeout: Optional[int] = None,
+        paths: Optional[Sequence[str]] = None,
+    ) -> pa.Table:
+        """
+        Read an Overture dataset from S3, or from local files, as a table.
+
+        The rows kept are those whose ``bbox`` column overlaps ``bbox``. The
+        same filter applies to the S3 dataset and to local files.
+
+        Args:
+            overture_release (str):
+                Dataset release version specifying which data to retrieve.
+                Not used when ``paths`` is given.
+            overture_type (str):
+                The dataset type to load. Not used when ``paths`` is given.
+            bbox (Optional[Tuple[float, float, float, float]]):
+                Optional bounding box (xmin, ymin, xmax, ymax) to filter data
+                spatially.
+            connect_timeout (Optional[int]):
+                Timeout in seconds for establishing the S3 connection.
+            request_timeout (Optional[int]):
+                Timeout in seconds for data requests.
+            paths (Optional[Sequence[str]]):
+                Local Parquet files to read in place of the S3 dataset. Each
+                file must hold Overture's ``bbox`` column when ``bbox`` is
+                given.
+
+        Returns:
+            pa.Table:
+                The rows read, with the columns and the schema metadata of
+                the dataset.
+        """
+        if bbox is not None:
+            bbox = OvertureMapsScraper.normalize_bbox_order(bbox)
+            xmin, ymin, xmax, ymax = bbox
+            filter_expr = (
+                (pc.field("bbox", "xmin") < xmax) &
+                (pc.field("bbox", "xmax") > xmin) &
+                (pc.field("bbox", "ymin") < ymax) &
+                (pc.field("bbox", "ymax") > ymin)
+            )
+        else:
+            filter_expr = None
+
+        if paths is not None:
+            dataset = ds.dataset(
+                list(paths), filesystem=fs.LocalFileSystem(), format="parquet"
+            )
+        else:
+            path = OvertureMapsScraper._dataset_path(
+                overture_release, overture_type
+            )
+            filesystem = fs.S3FileSystem(
+                anonymous=True,
+                region="us-west-2",
+                connect_timeout=connect_timeout,
+                request_timeout=request_timeout,
+            )
+            dataset = ds.dataset(path, filesystem=filesystem)
+
+        batches = []
+        batch_iterator = dataset.to_batches(
+            batch_size=10000, filter=filter_expr)
+
+        for batch in tqdm(batch_iterator, desc="Reading dataset batches"):
+            batches.append(batch)
+
+        return pa.Table.from_batches(batches)
+
+    @staticmethod
     def _read_to_pandas(
         overture_release: str,
         overture_type: str,
@@ -315,42 +390,16 @@ class OvertureMapsScraper(ABC):
 
         Returns:
             pd.DataFrame:
-                The dataset content as a Pandas DataFrame.
+                The dataset content as a Pandas DataFrame, as
+                :meth:`_read_table` reads it.
         """
-        path = OvertureMapsScraper._dataset_path(
-            overture_release, overture_type
-        )
-
-        if bbox is not None:
-            bbox = OvertureMapsScraper.normalize_bbox_order(bbox)
-            xmin, ymin, xmax, ymax = bbox
-            filter_expr = (
-                (pc.field("bbox", "xmin") < xmax) &
-                (pc.field("bbox", "xmax") > xmin) &
-                (pc.field("bbox", "ymin") < ymax) &
-                (pc.field("bbox", "ymax") > ymin)
-            )
-        else:
-            filter_expr = None
-
-        filesystem = fs.S3FileSystem(
-            anonymous=True,
-            region="us-west-2",
+        return OvertureMapsScraper._read_table(
+            overture_release,
+            overture_type,
+            bbox=bbox,
             connect_timeout=connect_timeout,
             request_timeout=request_timeout,
-        )
-
-        dataset = ds.dataset(path, filesystem=filesystem)
-
-        batches = []
-        batch_iterator = dataset.to_batches(
-            batch_size=10000, filter=filter_expr)
-
-        for batch in tqdm(batch_iterator, desc="Reading dataset batches"):
-            batches.append(batch)
-
-        table = pa.Table.from_batches(batches)
-        return table.to_pandas()
+        ).to_pandas()
 
     @staticmethod
     def _format_sources(sources_array):
