@@ -54,6 +54,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **Donor stage for the replacement cost** (`donor_stage_from_log` in `brails/imputers/replacement_cost/replacement_cost_imputer.py`), which names, per target and world, the observed donor whose values the target kept, from the log of `ObservedDonorImputer.impute_stage`.
 - **`ReplacementCostImputer`** (`brails/imputers/replacement_cost/`), which keeps the value NSI states in `ReplacementCost` and gives every other building its observed donor's value per gross square foot times its own gross floor area.
 - **A separate draw for the replacement cost.** A building whose donor gives no rate draws a building of its class by location, under a seed and labels of its own, and `ReplacementCostImputer.impute` runs the draw for every target. A README beside the module states the units and scope of the rate.
+- **Local files and an export for `OvertureMapsFootprintScraper`.** `'local_path'` reads GeoParquet files of Overture `building` rows in place of the S3 bucket, with the release from `'overtureRelease'` or the file, and `download(region, path)` writes the raw rows of a region, every column included, to a file `'local_path'` reads.
 
 ### Changed
 - **`med_yr_blt` from NSI now maps to `YearBuiltTractMedian`.** It is the median year built of the structures in a Census tract, so every building in a tract carries the same value. The converted path no longer emits `YearBuilt` at all. The legacy `nsi2brailsmap` path is unchanged and still maps `med_yr_blt` to `YearBuilt`, so the two conventions coexist for now.
@@ -78,6 +79,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - The NSI basement flag decode was inverted, now it is parsed correctly.
 - The Hazus state region mapping was missing Washington and the Northern Mariana Islands; now it is comprehensive.
 - `grouped_categorical` no longer draws a trailing category of weight zero. Where a weight vector ended in zeros and its normalized cumulative sum stopped a fraction below one, the largest uniforms selected the last zero-weight category.
+- **`OvertureMapsFootprintScraper.get_footprints` returns an empty inventory for a region holding no building**, instead of raising `KeyError`.
 
 ---
 

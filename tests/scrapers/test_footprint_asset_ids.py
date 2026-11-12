@@ -39,6 +39,7 @@ import math
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
+import pyarrow as pa
 import pytest
 from shapely.geometry import Polygon
 
@@ -410,13 +411,13 @@ def mock_overture(
         OvertureMapsFootprintScraper, 'resolve_release', return_value='2026-07-22.0'
     )
 
-    def read(_release: str, overture_type: str, bbox: Any = None) -> pd.DataFrame:
+    def read(_release: str, overture_type: str, bbox: Any = None) -> pa.Table:
         del bbox
         if overture_type == 'building':
-            return overture_frame(footprints)
-        return overture_frame(list(parts))
+            return pa.Table.from_pandas(overture_frame(footprints))
+        return pa.Table.from_pandas(overture_frame(list(parts)))
 
-    mocker.patch.object(OvertureMapsFootprintScraper, '_read_to_pandas', side_effect=read)
+    mocker.patch.object(OvertureMapsFootprintScraper, '_read_table', side_effect=read)
     return OvertureMapsFootprintScraper
 
 
@@ -469,7 +470,7 @@ def test_overture_reads_buildings_only(mocker: MockerFixture) -> None:
     scraper_class = mock_overture(mocker, HOUSES[:2], parts=[HOUSES[5]])
     inventory = scraper_class({'length': 'ft'}).get_footprints(region)
 
-    read = OvertureMapsFootprintScraper._read_to_pandas
+    read = OvertureMapsFootprintScraper._read_table
     assert [call.args[1] for call in read.call_args_list] == ['building']
     assert set(keys_by_geometry(inventory)) == {str(house) for house in HOUSES[:2]}
 

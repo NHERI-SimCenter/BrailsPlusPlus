@@ -51,7 +51,6 @@ import urllib.request
 from typing import Optional, List, Sequence, Tuple, Union
 from tqdm import tqdm
 
-import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
@@ -108,7 +107,7 @@ class OvertureMapsScraper(ABC):
     - Fetching release version names from the Overture Maps release index.
     - Constructing S3 paths to specific dataset partitions.
     - Reading datasets from S3, or from local Parquet files, into an Arrow
-      table or a Pandas DataFrame with optional spatial filtering.
+      table with optional spatial filtering.
     - Normalizing bounding box coordinates to a consistent format.
     - Formatting source metadata from NumPy arrays or lists of dictionaries.
     """
@@ -363,43 +362,6 @@ class OvertureMapsScraper(ABC):
             batches.append(batch)
 
         return pa.Table.from_batches(batches)
-
-    @staticmethod
-    def _read_to_pandas(
-        overture_release: str,
-        overture_type: str,
-        bbox: Optional[Tuple[float, float, float, float]] = None,
-        connect_timeout: Optional[int] = None,
-        request_timeout: Optional[int] = None,
-    ) -> pd.DataFrame:
-        """
-        Read an Overture dataset from S3 into a Pandas DataFrame.
-
-        Args:
-            overture_release (str):
-                Dataset release version specifying which data to retrieve.
-            overture_type (str):
-                The dataset type to load.
-            bbox (Optional[Tuple[float, float, float, float]]):
-                Optional bounding box (xmin, ymin, xmax, ymax) to filter data
-                spatially.
-            connect_timeout (Optional[int]):
-                Timeout in seconds for establishing the S3 connection.
-            request_timeout (Optional[int]):
-                Timeout in seconds for data requests.
-
-        Returns:
-            pd.DataFrame:
-                The dataset content as a Pandas DataFrame, as
-                :meth:`_read_table` reads it.
-        """
-        return OvertureMapsScraper._read_table(
-            overture_release,
-            overture_type,
-            bbox=bbox,
-            connect_timeout=connect_timeout,
-            request_timeout=request_timeout,
-        ).to_pandas()
 
     @staticmethod
     def _format_sources(sources_array):
