@@ -43,6 +43,7 @@ from .hazus_inferer_earthquake.hazus_eq_height_class_inferer import (
 )
 from .year_built_sampler.year_built_sampler import YearBuiltSampler
 from .acs_year_built_sampler.acs_year_built_sampler import ACSYearBuiltSampler
+from .neighbor_year_sampler.neighbor_year_sampler import NeighborYearSampler
 from .stories_from_height_inferer.stories_from_height_inferer import (
     StoriesFromHeightInferer,
 )
