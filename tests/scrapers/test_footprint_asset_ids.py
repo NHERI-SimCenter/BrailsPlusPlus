@@ -63,6 +63,8 @@ from brails.types.region_boundary import RegionBoundary
 from brails.utils.asset_id import assign_asset_ids
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from pytest_mock import MockerFixture
 
 METERS_PER_DEGREE = math.pi * 6371008.8 / 180.0
@@ -399,9 +401,11 @@ def overture_frame(footprints: list[list[list[float]]]) -> pd.DataFrame:
 
 
 def mock_overture(
-    mocker: MockerFixture, footprints: list[list[list[float]]]
+    mocker: MockerFixture,
+    footprints: list[list[list[float]]],
+    parts: Sequence[list[list[float]]] = (),
 ) -> type:
-    """Return the Overture scraper serving the given buildings, read offline."""
+    """Return the Overture scraper serving buildings and parts, read offline."""
     mocker.patch.object(
         OvertureMapsFootprintScraper, 'resolve_release', return_value='2026-07-22.0'
     )
@@ -410,7 +414,7 @@ def mock_overture(
         del bbox
         if overture_type == 'building':
             return overture_frame(footprints)
-        return overture_frame([])
+        return overture_frame(list(parts))
 
     mocker.patch.object(OvertureMapsFootprintScraper, '_read_to_pandas', side_effect=read)
     return OvertureMapsFootprintScraper
@@ -459,10 +463,22 @@ def test_overture_geohash_scheme(mocker: MockerFixture) -> None:
         assert inventory.inventory[key].features['overture_id'] == f'ov-{index}'
 
 
+def test_overture_reads_buildings_only(mocker: MockerFixture) -> None:
+    """The scraper requests the building type only, so a part never becomes an asset."""
+    region = RegionBoundary({'type': 'locationPolygon', 'data': BOX})
+    scraper_class = mock_overture(mocker, HOUSES[:2], parts=[HOUSES[5]])
+    inventory = scraper_class({'length': 'ft'}).get_footprints(region)
+
+    read = OvertureMapsFootprintScraper._read_to_pandas
+    assert [call.args[1] for call in read.call_args_list] == ['building']
+    assert set(keys_by_geometry(inventory)) == {str(house) for house in HOUSES[:2]}
+
+
 def test_two_query_boxes_agree_outside_collision_sets(mocker: MockerFixture) -> None:
     """Footprints both boxes return keep their ids unless a box splits a collision set."""
-    # A building and a building part share a centroid 4 m west of the east
-    # box's edge. The east box reaches the building but not the part.
+    # A building and a smaller footprint inside it share a centroid 4 m west
+    # of the east box's edge. The east box reaches the building but not the
+    # smaller footprint.
     east_edge = row_lon(3.5)
     building = rectangle(east_edge - meters_to_lon(4.0), 16.0, 16.0)
     part = rectangle(east_edge - meters_to_lon(4.0), 7.0, 7.0)

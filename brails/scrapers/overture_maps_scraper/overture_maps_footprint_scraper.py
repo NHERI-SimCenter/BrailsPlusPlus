@@ -46,7 +46,6 @@ This module define the concrete class for scraping OvertureMaps footprint data.
 """
 from typing import Dict, Any
 import numpy as np
-import pandas as pd
 from shapely import wkb
 
 from brails.constants import DEFAULT_UNITS
@@ -58,7 +57,7 @@ from brails.scrapers.overture_maps_scraper.overture_maps_scraper import \
     OvertureMapsScraper
 
 # Define global variables:
-OVERTURE_TYPES = ['building', 'building_part']
+OVERTURE_TYPE = 'building'
 ASSET_TYPE = 'building'
 
 # Attributes with associated units and the units they are defined in within
@@ -70,7 +69,12 @@ DIMENSIONAL_ATTR = {'height': 'm',
 
 class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
     """
-    Scraper for extracting Overture Maps buildings and building-parts.
+    Scraper for extracting Overture Maps buildings.
+
+    The scraper reads Overture's ``building`` type only. Overture's
+    ``building_part`` type describes portions of a building that is already
+    present as a ``building`` row, such as a tower above its podium, and is
+    not read.
 
     This class extends
     :class:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OvertureMapsScraper`
@@ -142,10 +146,9 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
         """
         Retrieve Overture building assets within a specified region.
 
-        This method loads Overture dataset for assets of 'building' and
-        'building_part' types that are within the boundary of the given
-        region. Resulting assets are save as an
-        :class:`~brails.types.asset_inventory.AssetInventory`.
+        This method loads the Overture rows of the 'building' type that are
+        within the boundary of the given region. Resulting assets are saved
+        as an :class:`~brails.types.asset_inventory.AssetInventory`.
 
         Args:
             region (RegionBoundary)
@@ -191,30 +194,23 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
             Searching for Berkeley, CA...
             Found Berkeley, Alameda County, California, United States
             Reading dataset batches: 339it [00:39,  8.49it/s]
-            Reading dataset batches: 12it [00:02,  4.99it/s]
             Finding the assets within the specified area...
-            Found a total of 36181 assets within the specified area.
+            Found a total of ... assets within the specified area.
 
             Write the obtained inventory in ``berkeley_buildings.geojson``.
 
             >>> _ = inventory.write_to_geojson('berkeley_buildings.geojson')
-            Wrote 36181 assets to /home/bacetiner/Documents/SoftwareTesting/
+            Wrote ... assets to /home/bacetiner/Documents/SoftwareTesting/
             berkeley_buildings.geojson
         """
         bpoly, _,  _ = region.get_boundary()
         bbox = bpoly.bounds
 
-        dfs = []
-        # Load data for each overture type:
-        for overture_type in OVERTURE_TYPES:
-            df = self._read_to_pandas(
-                self.overture_release,
-                overture_type,
-                bbox=bbox
-            )
-            dfs.append(df)
-
-        dataset = pd.concat(dfs, ignore_index=True)
+        dataset = self._read_to_pandas(
+            self.overture_release,
+            OVERTURE_TYPE,
+            bbox=bbox
+        )
 
         # Convert WKB to Shapely geometries:
         dataset["geometry"] = dataset["geometry"].apply(
