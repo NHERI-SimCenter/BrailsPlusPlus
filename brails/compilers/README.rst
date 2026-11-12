@@ -2,9 +2,10 @@ Inventory compilers
 ===================
 
 The classes of ``brails.compilers`` build an inventory out of the sources a
-method needs. This page describes the procedures they run and the scope of
-their rules, a section for each class whose procedure a user must know. The
-docstrings state what a caller passes and receives.
+method needs. This page describes the procedures they run, where their
+constants come from and the scope of their rules, in a section for each
+class that needs one. The docstrings state what a caller passes and
+receives.
 
 Pair re-draw
 ------------
@@ -183,3 +184,79 @@ A ``PairRedraw`` serves one world: the inventory it reads holds one possible
 world, the donors are that world's observed donors, and its draws run in the
 world it is given. Each world of a study takes its own. The plan and the
 result do not depend on the order of the inventory's assets.
+
+Stacked footprints
+------------------
+
+``StackedFootprintMerge`` merges the Overture outlines of one building, such
+as a podium and the towers drawn on it, into one asset. Its class docstring
+states the rule step by step, and its thresholds are constants in
+``stacked_footprints.py`` beside this page. This section states where the
+thresholds come from and what the rule leaves unmerged.
+
+The thresholds
+~~~~~~~~~~~~~~
+
+``NEST_MIN`` (0.9), ``COPY_IOU`` (0.75) and ``PART_TALLER_M`` (3.0 m) are the
+boundaries by which SimCenter's building inventories of eleven San Francisco
+Bay Area cities, built from assessor parcels, local footprints and Overture
+footprints, classify overlapping footprints. In those inventories two
+footprints whose intersection over union reaches ``COPY_IOU`` are two
+drawings of one building, and a footprint at least ``NEST_MIN`` inside a
+larger one is nested in it. A nested pair is taken as parts of one building
+when the two footprints share a parcel, or when they show the Overture
+signal of the class docstring. ``StackedFootprintMerge`` reads no parcels
+and keeps the signal alone.
+
+Of the 793,016 footprints of the inventories built from local footprints,
+1,282 pairs overlap by more than a tenth of the smaller footprint. Their
+intersection over union has two modes: 858 pairs lie below 0.1 and 126
+between 0.80 and 0.95, while the bins from 0.50 to 0.75 hold 28 pairs in
+all. ``COPY_IOU`` lies at the low end of that gap. The share of the smaller
+footprint inside the larger has no such gap, with 159 pairs between 0.75 and
+0.90, 258 between 0.90 and 0.95 and 753 at 0.95 or more, so ``NEST_MIN`` is
+not set by one. No derivation of ``PART_TALLER_M`` is on record. None of the
+three values is fitted to buildings known to be stacked or taken from a
+published source.
+
+The merge moves few footprints, and its counts change little near the
+packaged values. Of the 157,778 Overture buildings of San Francisco at or
+above 450 sq ft of plan area in release 2026-10-21.0, the merge joins 54
+members into 10 heads, so 0.034% of the buildings leave the inventory. With
+one constant changed at a time, the counts are:
+
+=====================  =======  =======  =====
+Constant               Value    Members  Heads
+=====================  =======  =======  =====
+``NEST_MIN``           0.85     54       10
+``NEST_MIN``           0.95     50       10
+``PART_TALLER_M``      2.0 m    54       10
+``PART_TALLER_M``      5.0 m    53       9
+=====================  =======  =======  =====
+
+The same buildings hold no copies at a ``COPY_IOU`` of 0.7, 0.75 or 0.8. The
+thresholds will be revisited when BRAILS adds a method whose result depends
+more on how stacked footprints are grouped than the story count of the few
+merged assets does, such as a floor area summed over parts.
+
+Scope
+~~~~~
+
+The signal reads Overture's ``height`` and ``class``, so the merge takes
+Overture footprints only and refuses an inventory that holds others. A
+nested pair without the signal stays two assets. Of the San Francisco
+buildings above, 69 lie at least ``NEST_MIN`` inside a larger one, and 15
+of them stay. The city inventories, which compare parcels, merge some of
+these. A footprint merges into the top of its nest whatever the heights
+when either of the two is a roof outline.
+
+Footprints are compared by their exterior rings, the only rings a BRAILS
+asset stores, so a footprint in the courtyard of another lies inside it.
+One of the 10 San Francisco heads holds its member this way.
+
+A merged asset takes the tallest part's height over the whole union, with
+the tallest part's source of that height, and the story count and height
+class inferred from the height then apply to all of it. A later step that
+multiplies plan area by story count overstates the floor area of a podium
+with a tower on part of it. The ``parts`` table of ``StackedMergeResult``
+keeps each part's area and height for such a step.
