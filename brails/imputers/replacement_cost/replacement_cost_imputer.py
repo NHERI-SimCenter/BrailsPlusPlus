@@ -44,6 +44,7 @@ Impute the replacement cost of a building from the rate of a donor.
 from __future__ import annotations
 
 import math
+import secrets
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, NamedTuple
 
@@ -59,12 +60,20 @@ from brails.aggregators.unit_budget.unit_budget import (
     AREA_FROM_PLAN_AREA,
     AREA_FROM_STORIES,
 )
+from brails.compilers.stage_freeze import StageFreeze
+from brails.constants import BLOCK_GROUP_KEY
+from brails.imputers.imputation import Imputation
 from brails.imputers.observed_donor_imputer.donor_records import (
     LOG_COLUMNS as DONOR_LOG_COLUMNS,
 )
 from brails.imputers.observed_donor_imputer.donor_records import (
     OUTCOME_NO_AREA,
     ROUND_STATUS,
+)
+from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
+    DEFAULT_DONOR_CAP_M,
+    DEFAULT_DONOR_K,
+    ObservedDonorImputer,
 )
 from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
@@ -84,24 +93,38 @@ from brails.utils.world_values import (
 if TYPE_CHECKING:
     from collections.abc import Hashable, Mapping, Sequence
 
-    from brails.compilers.stage_freeze import StageFreeze
-
 # Feature of the donor stage holding, per world, the id of the donor whose
 # values a target kept, and the name the stage is frozen under.
 IMPUTATION_DONOR_KEY = 'ImputationDonor'
 DONOR_STAGE = 'imputation_donors'
 
 # Source codes of a value NSI states: one record's value, or the sum of the
-# values of several records of one footprint.
+# values of several records of one footprint. README.rst beside this module,
+# "The value and the rate".
 NSI_VALUE_CODES = (SOURCE_CODES['nsi'], SOURCE_CODES['derived'])
 
-# Outcomes of a target, besides the imputer's OUTCOME_NO_AREA.
+# Source codes of a class a building of the separate draw may hold: local,
+# footprint, NSI or derived, never imputed or drawn. README.rst beside this
+# module, "Scope".
+DONOR_CLASS_CODES = tuple(
+    SOURCE_CODES[label] for label in ('local', 'footprint', 'nsi', 'derived')
+)
+
+# Prefix of the purpose labels of the separate draw, which the observed-donor
+# imputer's draw extends to 'replacement_cost:observed_donor' and
+# 'replacement_cost:observed_donor_fallback'.
+VALUE_PURPOSE_PREFIX = 'replacement_cost'
+
+# Outcomes of a target besides those of the separate draw, which are the
+# observed-donor imputer's.
 OUTCOME_IMPUTATION_DONOR = 'imputation_donor'
 OUTCOME_NO_CLASS = 'no_class'
-OUTCOME_NO_DONOR_RATE = 'no_donor_rate'
+
+# Feature holding a building's rate in the separate draw's own inventories.
+_RATE_KEY = 'ReplacementCostRate'
 
 # Columns of the log of ReplacementCostImputer.impute_stage. donor_id is the
-# donor the donor stage names, with or without a rate.
+# building whose rate the target took, None without one.
 LOG_COLUMNS = (
     'asset_id',
     'world',
@@ -221,15 +244,18 @@ class ReplacementCostResult(NamedTuple):
         log (pandas.DataFrame):
             One row per target and world, with the columns of
             :data:`LOG_COLUMNS`.
+        seed (int):
+            The seed of the separate draw.
     """
 
     imputed: AssetInventory
     log: pd.DataFrame
+    seed: int
 
 
-class ReplacementCostImputer:
+class ReplacementCostImputer(Imputation):
     """
-    Give a building without a replacement cost the value of its donor's rate.
+    Give a building without a replacement cost the value of a donor's rate.
 
     A building has a rate where the source code of its ``value_key`` is
     among :data:`NSI_VALUE_CODES` and its ``value_key`` and
@@ -255,16 +281,32 @@ class ReplacementCostImputer:
        its floor area, logged :data:`OUTCOME_IMPUTATION_DONOR`. The value is
        copied with the features that donor supplied, and the donor's class
        is not compared with the target's.
-    5. Any other target is logged :data:`OUTCOME_NO_DONOR_RATE` and gets no
-       value.
+    5. Any other target takes the separate draw: one building of its class
+       in this world whose class code is among :data:`DONOR_CLASS_CODES`
+       and which has a rate, drawn by the observed-donor imputer with a
+       distance of location alone. One of the ``k`` nearest such buildings
+       within ``cap_m`` is picked with inverse-distance weights, and without
+       one there, a building of the target's block group with equal
+       weights. The target's value is that building's rate times its floor
+       area, logged with the observed-donor imputer's outcome for the draw.
+       A target without a candidate, or whose coordinates enclose no area,
+       gets no value.
+
+    The draw depends on the target's id, the seed, the world and the
+    buildings, never on their order, under the labels formed from
+    :data:`VALUE_PURPOSE_PREFIX`. The README beside this module states the
+    units of the value and the scope of the rate.
 
     Every constructor argument is stored as an attribute of the same name,
-    read-only by convention.
+    read-only by convention, and ``seed`` holds the seed used.
     """
 
     def __init__(
         self,
         *,
+        seed: int | None = None,
+        k: int = DEFAULT_DONOR_K,
+        cap_m: float = DEFAULT_DONOR_CAP_M,
         value_key: str = REPLACEMENT_COST,
         gross_area_key: str = GROSS_AREA,
         occupancy_key: str = OCCUPANCY_KEY,
@@ -276,6 +318,16 @@ class ReplacementCostImputer:
         Configure the imputer.
 
         Args:
+            seed (int, optional):
+                The seed of the separate draw. ``None`` draws one from system
+                entropy.
+            k (int, optional):
+                The number of nearest buildings the separate draw picks
+                among. Defaults to
+                :data:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.DEFAULT_DONOR_K`.
+            cap_m (float, optional):
+                The separate draw's distance cap in meters. Defaults to
+                :data:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.DEFAULT_DONOR_CAP_M`.
             value_key (str, optional):
                 The replacement cost feature, the one imputed. Defaults to
                 :data:`~brails.aggregators.points_to_polygons.nsi_footprint_join.REPLACEMENT_COST`.
@@ -301,7 +353,8 @@ class ReplacementCostImputer:
                 If ``source_features`` is a single string.
             ValueError:
                 If ``source_features`` repeats a feature or lacks the
-                occupancy class or the value feature.
+                occupancy class or the value feature, ``k`` is below 1 or
+                ``cap_m`` is not positive.
         """
         if isinstance(source_features, str):
             msg = 'source_features must be a sequence of feature names.'
@@ -322,6 +375,61 @@ class ReplacementCostImputer:
         self.stories_key = stories_key
         self.source_string_key = source_string_key
         self.source_features = source_features
+        self.seed = secrets.randbits(64) if seed is None else int(seed)
+        # The defaults of k and cap_m: README.rst beside this module, "Scope".
+        self.k = k
+        self.cap_m = cap_m
+        self._imputer = ObservedDonorImputer(
+            features=(_RATE_KEY,),
+            soft_filters=(),
+            required=(OCCUPANCY_KEY, _RATE_KEY),
+            k=k,
+            cap_m=cap_m,
+            location_scale_m=1.0,
+            area_weight=0.0,
+            stories_key=None,
+            stories_weight=0.0,
+            seed=self.seed,
+        )
+
+    def impute(self, input_inventory: AssetInventory) -> AssetInventory:
+        """
+        Impute the replacement cost of an inventory's buildings.
+
+        No donor is named, so every target takes the separate draw, which
+        reads the source string of each building with a value of a target's
+        class.
+
+        Args:
+            input_inventory (AssetInventory):
+                The inventory. It is not modified.
+
+        Returns:
+            AssetInventory:
+                A copy of the inventory with the imputed values filled in.
+
+        Raises:
+            ValueError:
+                As :meth:`impute_stage` raises.
+        """
+        freeze = StageFreeze()
+        freeze.freeze('inventory', input_inventory)
+        freeze.freeze(
+            DONOR_STAGE,
+            donor_stage_from_log(
+                pd.DataFrame(columns=list(DONOR_LOG_COLUMNS)),
+                AssetInventory(),
+                n_worlds=input_inventory.n_pw,
+            ),
+        )
+        result = self.impute_stage(freeze, 'inventory', DONOR_STAGE)
+        output = deepcopy(input_inventory)
+        for asset_id in result.imputed.get_asset_ids():
+            output.add_asset_features(
+                asset_id, result.imputed.inventory[asset_id].features
+            )
+        output.n_pw = input_inventory.n_pw
+        return output
 
     def impute_stage(
         self,
@@ -337,7 +445,8 @@ class ReplacementCostImputer:
         Neither frozen stage is changed. With ``world=None`` every world is
         computed, the number of worlds being the larger of the two stages'.
         With a ``world``, that world's realization of each stage is read,
-        or world 0 of a stage holding one world.
+        or world 0 of a stage holding one world, and the separate draw draws
+        with that world's index.
 
         Args:
             freeze (StageFreeze):
@@ -366,8 +475,9 @@ class ReplacementCostImputer:
                 If a stage holds a number of worlds other than 1 and the
                 other's, the donor stage holds an asset the stage lacks or
                 names a donor the stage lacks, ``world`` is not a world of
-                the stages, a donor's source string is missing or of the
-                wrong length, or a target's coordinates cannot be read.
+                the stages, the source string of a building read is missing
+                or of the wrong length, or a target's coordinates cannot be
+                read.
         """
         if donor_stage is None:
             msg = (
@@ -427,7 +537,7 @@ class ReplacementCostImputer:
             )
         imputed.n_pw = len(worlds)
         return ReplacementCostResult(
-            imputed, pd.DataFrame(rows, columns=list(LOG_COLUMNS))
+            imputed, pd.DataFrame(rows, columns=list(LOG_COLUMNS)), self.seed
         )
 
     def _impute_world(
@@ -455,6 +565,8 @@ class ReplacementCostImputer:
         """
         values: dict[Hashable, float] = {}
         rows = []
+        # class to the targets of the separate draw, with their rows and areas
+        pending: dict[str, list[tuple[Hashable, dict[str, Any], float]]] = {}
         for asset_id in sorted(buildings.inventory, key=str):
             asset = buildings.inventory[asset_id]
             if not is_missing_value(asset.features.get(self.value_key)):
@@ -483,7 +595,6 @@ class ReplacementCostImputer:
             )
             rate = None
             if donor_id is not None:
-                row['donor_id'] = donor_id
                 if donor_id not in buildings.inventory:
                     msg = (
                         f'The donor stage names donor {donor_id!r} for asset '
@@ -492,11 +603,94 @@ class ReplacementCostImputer:
                     raise ValueError(msg)
                 rate = self._rate(donor_id, buildings.inventory[donor_id].features)
             if rate is None:
-                row['outcome'] = OUTCOME_NO_DONOR_RATE
+                pending.setdefault(occupancy, []).append((asset_id, row, area))
                 continue
-            row.update(outcome=OUTCOME_IMPUTATION_DONOR, rate=rate)
+            row.update(
+                outcome=OUTCOME_IMPUTATION_DONOR, donor_id=donor_id, rate=rate
+            )
             values[asset_id] = rate * area
+        if pending:
+            values.update(self._separate_draw(buildings, pending, world))
         return values, rows
+
+    def _separate_draw(
+        self,
+        buildings: AssetInventory,
+        pending: Mapping[str, list[tuple[Hashable, dict[str, Any], float]]],
+        world: int,
+    ) -> dict[Hashable, float]:
+        """
+        Draw a building of its class for each target without a donor's rate.
+
+        Each class builds one pool over the world's buildings of that class
+        with a class code among :data:`DONOR_CLASS_CODES` and a rate, and
+        records its targets' sites.
+
+        Args:
+            buildings (AssetInventory):
+                The stage's realization of the world.
+            pending (Mapping[str, list[tuple[Hashable, dict[str, Any], float]]]):
+                Per class, each target with its log row, which the draw
+                completes, and its floor area in square feet.
+            world (int):
+                The world the draw reads.
+
+        Returns:
+            dict[Hashable, float]:
+                The value per target that drew a building.
+
+        Raises:
+            ValueError:
+                If the source string of a building of a pending class is
+                missing or of the wrong length.
+        """
+        position = self.source_features.index(self.occupancy_key)
+        candidates: dict[str, dict[Hashable, float]] = {}
+        for asset_id in sorted(buildings.inventory, key=str):
+            features = buildings.inventory[asset_id].features
+            occupancy = features.get(self.occupancy_key)
+            if (
+                not isinstance(occupancy, str)
+                or occupancy not in pending
+                or is_missing_value(features.get(self.value_key))
+            ):
+                continue
+            if self._codes(asset_id, features)[position] not in DONOR_CLASS_CODES:
+                continue
+            rate = self._rate(asset_id, features)
+            if rate is not None:
+                candidates.setdefault(occupancy, {})[asset_id] = rate
+
+        values = {}
+        for occupancy in sorted(pending):
+            targets = _draw_inventory(
+                buildings,
+                occupancy,
+                dict.fromkeys(asset_id for asset_id, _, _ in pending[occupancy]),
+            )
+            pool = self._imputer.pool(
+                _draw_inventory(buildings, occupancy, candidates.get(occupancy, {})),
+                targets,
+            )
+            for asset_id, row, area in pending[occupancy]:
+                draw = self._imputer.draw(
+                    pool,
+                    asset_id,
+                    targets.inventory[asset_id].features,
+                    (_RATE_KEY,),
+                    world=world,
+                    status=None,
+                    purpose_prefix=VALUE_PURPOSE_PREFIX,
+                )
+                row.update(
+                    outcome=draw.outcome,
+                    donor_id=draw.donor_id,
+                    distance_m=draw.distance_m,
+                )
+                if draw.donor_id is not None:
+                    row['rate'] = dict(draw.values)[_RATE_KEY]
+                    values[asset_id] = row['rate'] * area
+        return values
 
     def _floor_area(
         self, asset_id: Hashable, asset: Asset
@@ -561,6 +755,34 @@ class ReplacementCostImputer:
             ValueError:
                 If the source string is missing or of the wrong length.
         """
+        codes = self._codes(asset_id, features)
+        if codes[self.source_features.index(self.value_key)] not in NSI_VALUE_CODES:
+            return None
+        value = _positive(features.get(self.value_key))
+        gross = _positive(features.get(self.gross_area_key))
+        if value is None or gross is None:
+            return None
+        return value / gross
+
+    def _codes(self, asset_id: Hashable, features: Mapping[str, Any]) -> str:
+        """
+        Return a building's source string.
+
+        Args:
+            asset_id (Hashable):
+                The building, for the error message.
+            features (Mapping[str, Any]):
+                Its features in one world.
+
+        Returns:
+            str:
+                The source string, one code per source feature.
+
+        Raises:
+            ValueError:
+                If the string is missing or its length differs from the
+                number of source features.
+        """
         codes = features.get(self.source_string_key)
         if not isinstance(codes, str) or len(codes) != len(self.source_features):
             msg = (
@@ -569,13 +791,40 @@ class ReplacementCostImputer:
                 f'{self.source_string_key!r}: {codes!r}.'
             )
             raise ValueError(msg)
-        if codes[self.source_features.index(self.value_key)] not in NSI_VALUE_CODES:
-            return None
-        value = _positive(features.get(self.value_key))
-        gross = _positive(features.get(self.gross_area_key))
-        if value is None or gross is None:
-            return None
-        return value / gross
+        return codes
+
+
+def _draw_inventory(
+    buildings: AssetInventory,
+    occupancy: str,
+    members: Mapping[Hashable, float | None],
+) -> AssetInventory:
+    """
+    Write buildings of one class in the features the separate draw reads.
+
+    Args:
+        buildings (AssetInventory):
+            The stage's realization of the world.
+        occupancy (str):
+            The class.
+        members (Mapping[Hashable, float | None]):
+            The buildings, each with its rate, or ``None`` for a target.
+
+    Returns:
+        AssetInventory:
+            One asset per member, sharing its coordinates, with the class,
+            the block group where the building holds one, and the rate.
+    """
+    inventory = AssetInventory()
+    for asset_id, rate in members.items():
+        asset = buildings.inventory[asset_id]
+        features: dict[str, Any] = {OCCUPANCY_KEY: occupancy}
+        if BLOCK_GROUP_KEY in asset.features:
+            features[BLOCK_GROUP_KEY] = asset.features[BLOCK_GROUP_KEY]
+        if rate is not None:
+            features[_RATE_KEY] = rate
+        inventory.add_asset(asset_id, Asset(asset_id, asset.coordinates, features))
+    return inventory
 
 
 def _positive(value: object) -> float | None:

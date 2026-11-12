@@ -51,28 +51,48 @@ from brails.aggregators.unit_budget.unit_budget import (
 )
 from brails.compilers.stage_freeze import StageFreeze
 from brails.imputers import ObservedDonorImputer, ReplacementCostImputer
+from brails.imputers.imputation import Imputation
 from brails.imputers.observed_donor_imputer.donor_records import (
     LOG_COLUMNS as DONOR_LOG_COLUMNS,
 )
 from brails.imputers.observed_donor_imputer.donor_records import (
+    OUTCOME_BLOCK_GROUP,
     OUTCOME_DONOR,
+    OUTCOME_FEWER_THAN_K,
     OUTCOME_NO_AREA,
+    OUTCOME_NO_DONOR,
     ROUND_DONOR,
     ROUND_REPAIR,
+)
+from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
+    DEFAULT_DONOR_CAP_M,
+    DEFAULT_DONOR_K,
 )
 from brails.imputers.replacement_cost.replacement_cost_imputer import (
     IMPUTATION_DONOR_KEY,
     OUTCOME_IMPUTATION_DONOR,
     OUTCOME_NO_CLASS,
-    OUTCOME_NO_DONOR_RATE,
     ReplacementCostResult,
     donor_stage_from_log,
 )
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.inventory_union import union_disjoint
-from tests.imputers.donor_fixtures import asset, inventory, square
+from tests.imputers.donor_fixtures import (
+    BG_A,
+    BG_B,
+    OTHER_SEED,
+    SEED,
+    asset,
+    features_of,
+    inventory,
+    square,
+)
 
 SQFT = 0.3048**2
+
+# The donors of labeled_draws on the fixture seed, worlds 0 to 7.
+GOLDEN_NEAR = ['n1', 'n3', 'n1', 'n2', 'n1', 'n2', 'n1', 'n1']
+GOLDEN_BLOCK_GROUP = ['g3', 'g3', 'g2', 'g1', 'g3', 'g3', 'g2', 'g3']
 
 
 def source(occupancy: str = 'I', value: str = '-', stories: str = 'I') -> str:
@@ -188,10 +208,13 @@ def donor_stage(
 
 
 def run(
-    buildings: AssetInventory, donors: AssetInventory, world: int | None = None
+    buildings: AssetInventory,
+    donors: AssetInventory,
+    world: int | None = None,
+    **options: Any,
 ) -> ReplacementCostResult:
     """
-    Freeze a stage and its donor stage and impute it.
+    Freeze a stage and its donor stage and impute it on the fixture seed.
 
     Args:
         buildings (AssetInventory):
@@ -200,6 +223,8 @@ def run(
             The donor stage.
         world (int, optional):
             The world. Defaults to every world.
+        **options (Any):
+            Overrides of the constructor arguments.
 
     Returns:
         ReplacementCostResult:
@@ -208,7 +233,7 @@ def run(
     freeze = StageFreeze()
     freeze.freeze('stage', buildings)
     freeze.freeze('donors', donors)
-    return ReplacementCostImputer().impute_stage(
+    return ReplacementCostImputer(**{'seed': SEED, **options}).impute_stage(
         freeze, 'stage', 'donors', world=world
     )
 
@@ -448,6 +473,10 @@ class TestOutcomes:
         assert row['area_source'] is None
         assert value_of(result, 't') is None
 
+
+class TestSeparateDraw:
+    """A target without a donor's rate draws a building of its class."""
+
     @pytest.mark.parametrize(
         'donor',
         [
@@ -458,44 +487,311 @@ class TestOutcomes:
             {'SourceString': source('N', '-'), 'ReplacementCost': 'NA'},
         ],
     )
-    def test_donor_without_a_rate(self, donor: dict[str, Any]) -> None:
-        """A donor without a positive NSI value and gross area gives no rate."""
+    def test_named_donor_without_a_rate(self, donor: dict[str, Any]) -> None:
+        """A donor without a positive NSI value and gross area means a draw."""
         buildings = inventory(
-            {'d': nsi_building(10.0, 100.0, 1.0, **donor), 't': target(0.0)}
+            {
+                'd': nsi_building(10.0, 100.0, 1.0, **donor),
+                'c': nsi_building(900.0, 40.0, 1.0),
+                't': target(0.0, GrossArea=2.0),
+            }
         )
         result = run(buildings, donor_stage(buildings, {'t': 'd'}))
         row = logged(result, 't')
-        assert row['outcome'] == OUTCOME_NO_DONOR_RATE
-        assert row['donor_id'] == 'd'
-        assert value_of(result, 't') is None
+        assert row['outcome'] == OUTCOME_FEWER_THAN_K
+        assert row['donor_id'] == 'c'
+        assert row['distance_m'] == pytest.approx(900.0, rel=1e-3)
+        assert value_of(result, 't') == 80.0
 
     def test_no_named_donor(self) -> None:
-        """A target the donor stage lacks, or names no donor for, gets no rate."""
-        buildings = inventory({'t': target(0.0), 'u': target(30.0)})
+        """A target the donor stage lacks, or names no donor for, draws."""
+        buildings = inventory(
+            {
+                'c': nsi_building(900.0, 40.0, 1.0),
+                't': target(0.0, GrossArea=1.0),
+                'u': target(30.0, GrossArea=1.0),
+            }
+        )
         result = run(buildings, donor_stage(buildings, {'u': [None]}))
-        for asset_id in ('t', 'u'):
-            row = logged(result, asset_id)
-            assert row['outcome'] == OUTCOME_NO_DONOR_RATE
-            assert row['donor_id'] is None
+        assert {value_of(result, a) for a in ('t', 'u')} == {40.0}
 
     def test_unreached_and_withheld_donors(self) -> None:
-        """A donor NSI did not reach, or whose value was withheld, gives no rate."""
+        """A donor NSI did not reach, or whose value was withheld, means a draw."""
         buildings = inventory(
             {
                 'unreached': target(10.0),
                 'withheld': nsi_building(
                     20.0, 'NA', 1.0, SourceString=source('I', '-')
                 ),
-                't': target(0.0),
-                'u': target(5.0),
+                'c': nsi_building(900.0, 40.0, 1.0),
+                't': target(0.0, GrossArea=1.0),
+                'u': target(5.0, GrossArea=1.0),
             }
         )
         result = run(
             buildings, donor_stage(buildings, {'t': 'unreached', 'u': 'withheld'})
         )
-        assert {logged(result, a)['outcome'] for a in ('t', 'u')} == {
-            OUTCOME_NO_DONOR_RATE
+        assert {logged(result, a)['donor_id'] for a in ('t', 'u')} == {'c'}
+
+    def test_class_filter(self) -> None:
+        """A nearer building of another class is never drawn."""
+        buildings = inventory(
+            {
+                'res': nsi_building(10.0, 999.0, 1.0, occupancy='RES1'),
+                'c': nsi_building(1500.0, 40.0, 1.0),
+                't': target(0.0, GrossArea=1.0),
+            }
+        )
+        result = run(buildings, donor_stage(buildings, {}, n_pw=20))
+        assert set(result.log['donor_id']) == {'c'}
+
+    def test_class_of_each_world(self) -> None:
+        """A target whose class differs between worlds draws that world's class."""
+        buildings = inventory(
+            {
+                'com': nsi_building(10.0, 40.0, 1.0),
+                'res': nsi_building(20.0, 60.0, 1.0, occupancy='RES1'),
+                't': target(0.0, occupancy=['COM1', 'RES1'], GrossArea=1.0),
+            }
+        )
+        buildings.n_pw = 2
+        result = run(buildings, donor_stage(buildings, {}))
+        assert list(result.log['donor_id']) == ['com', 'res']
+        assert value_of(result, 't') == [40.0, 60.0]
+
+    @pytest.mark.parametrize(
+        'excluded',
+        [
+            {'SourceString': source('I', 'N')},
+            {'SourceString': source('D', 'N')},
+            {'GrossArea': None},
+            {'GrossArea': 0.0},
+            {'SourceString': source('N', 'I')},
+        ],
+    )
+    def test_buildings_never_drawn(self, excluded: dict[str, Any]) -> None:
+        """An imputed or drawn class, no gross area or an imputed value excludes."""
+        buildings = inventory(
+            {
+                'x': nsi_building(10.0, 999.0, 1.0, **excluded),
+                'c': nsi_building(1500.0, 40.0, 1.0),
+                't': target(0.0, GrossArea=1.0),
+            }
+        )
+        result = run(buildings, donor_stage(buildings, {}, n_pw=20))
+        assert set(result.log['donor_id']) == {'c'}
+
+    def test_local_and_footprint_classes_are_drawn(self) -> None:
+        """A building whose class is local or from the footprint is a candidate."""
+        buildings = inventory(
+            {
+                'l': nsi_building(10.0, 40.0, 1.0, SourceString=source('L', 'N')),
+                'f': nsi_building(20.0, 40.0, 1.0, SourceString=source('F', 'R')),
+                't': target(0.0, GrossArea=1.0),
+            }
+        )
+        result = run(buildings, donor_stage(buildings, {}, n_pw=30))
+        assert set(result.log['donor_id']) == {'l', 'f'}
+
+    def test_block_group_fallback(self) -> None:
+        """Without a building within the cap, one of the block group is drawn."""
+        buildings = inventory(
+            {
+                'far': nsi_building(3000.0, 40.0, 1.0, BLOCKGROUP_GEOID=BG_A),
+                'other': nsi_building(-2500.0, 99.0, 1.0, BLOCKGROUP_GEOID=BG_B),
+                't': target(0.0, GrossArea=1.0, BLOCKGROUP_GEOID=BG_A),
+            }
+        )
+        result = run(buildings, donor_stage(buildings, {}))
+        row = logged(result, 't')
+        assert (row['outcome'], row['donor_id']) == (OUTCOME_BLOCK_GROUP, 'far')
+        assert value_of(result, 't') == 40.0
+
+    def test_no_donor_and_no_area(self) -> None:
+        """Without a candidate, or without area, the draw gives no value."""
+        lon, lat = square(0.0, 0.0)[0]
+        buildings = inventory(
+            {
+                'c': nsi_building(10.0, 40.0, 1.0),
+                'ind': target(30.0, occupancy='IND1', GrossArea=1.0),
+            }
+        )
+        buildings.add_asset(
+            'pt',
+            Asset('pt', [[lon, lat]], {'OccupancyClass': 'COM1', 'GrossArea': 1.0}),
+        )
+        result = run(buildings, donor_stage(buildings, {}))
+        assert logged(result, 'ind')['outcome'] == OUTCOME_NO_DONOR
+        assert logged(result, 'pt')['outcome'] == OUTCOME_NO_AREA
+        assert result.imputed.get_asset_ids() == []
+
+    def test_location_alone(self) -> None:
+        """The nearest building is drawn whatever its plan area."""
+        big_features = nsi_building(3.0, 10.0, 1.0)[1]
+        buildings = inventory(
+            {
+                'big': (square(3.0, 0.0, side=100.0), big_features),
+                'same': nsi_building(5.0, 20.0, 1.0),
+                't': target(0.0, GrossArea=1.0),
+            }
+        )
+        result = run(buildings, donor_stage(buildings, {}, n_pw=20), k=1)
+        assert set(result.log['donor_id']) == {'big'}
+
+    def test_k_and_defaults(self) -> None:
+        """With k 1 the nearest is drawn; k and the cap default to the imputer's."""
+        buildings = inventory(
+            {
+                **{
+                    f'c{i}': nsi_building(100.0 * i, 10.0 * i, 1.0)
+                    for i in range(1, 4)
+                },
+                't': target(0.0, GrossArea=1.0),
+            }
+        )
+        result = run(buildings, donor_stage(buildings, {}, n_pw=30), k=1)
+        assert set(result.log['donor_id']) == {'c1'}
+        default = ReplacementCostImputer()
+        assert (default.k, default.cap_m) == (DEFAULT_DONOR_K, DEFAULT_DONOR_CAP_M)
+
+    def test_seed_recorded(self) -> None:
+        """Without a seed one is drawn, recorded and returned."""
+        freeze = StageFreeze()
+        freeze.freeze('stage', inventory({'t': target(0.0)}))
+        freeze.freeze('donors', AssetInventory())
+        imputer = ReplacementCostImputer()
+        result = imputer.impute_stage(freeze, 'stage', 'donors')
+        assert isinstance(imputer.seed, int)
+        assert result.seed == imputer.seed
+
+
+def labeled_draws(
+    seed: int = SEED,
+    order: list[str] | None = None,
+    extra: dict[str, tuple[list, dict[str, Any]]] | None = None,
+    n_worlds: int = 8,
+) -> dict[str, list[Any]]:
+    """
+    Return the donors of two targets, one per label, in every world.
+
+    ``near`` has five candidates within the cap and draws under the donor
+    label. ``bg`` lies in block group A, 2.5 km from every candidate, and
+    draws under the fallback label from three buildings of that block group.
+
+    Args:
+        seed (int, optional):
+            The seed. Defaults to the fixture seed.
+        order (list[str], optional):
+            The insertion order of the stage. Defaults to the fixture's.
+        extra (dict, optional):
+            Buildings added to the stage.
+        n_worlds (int, optional):
+            The number of worlds. Defaults to 8.
+
+    Returns:
+        dict[str, list[Any]]:
+            Target id to its donor per world.
+    """
+    records = {
+        **{f'n{i}': nsi_building(100.0 * i, 10.0 * i, 1.0) for i in range(1, 6)},
+        **{
+            f'g{i}': nsi_building(
+                -2500.0 - 100.0 * i, 10.0 * i, 1.0, BLOCKGROUP_GEOID=BG_A
+            )
+            for i in range(1, 4)
+        },
+        'near': target(0.0, GrossArea=1.0),
+        'bg': target(-20000.0, GrossArea=1.0, BLOCKGROUP_GEOID=BG_A),
+        **(extra or {}),
+    }
+    buildings = inventory(records, order)
+    result = run(buildings, donor_stage(buildings, {}, n_pw=n_worlds), seed=seed)
+    return {
+        a: list(result.log.loc[result.log['asset_id'] == a, 'donor_id'])
+        for a in ('near', 'bg')
+    }
+
+
+class TestLabels:
+    """The two draws are keyed by identity under labels of their own."""
+
+    def test_golden(self) -> None:
+        """Each label gives the pinned donors on the fixture seed."""
+        assert labeled_draws() == {
+            'near': GOLDEN_NEAR,
+            'bg': GOLDEN_BLOCK_GROUP,
         }
+
+    def test_seed_sensitivity(self) -> None:
+        """Another seed changes at least one pick under each label."""
+        base, other = labeled_draws(), labeled_draws(seed=OTHER_SEED)
+        assert base['near'] != other['near']
+        assert base['bg'] != other['bg']
+
+    def test_reordering(self) -> None:
+        """The stage's insertion order changes nothing."""
+        base = labeled_draws()
+        ids = [*(f'n{i}' for i in range(1, 6)), *(f'g{i}' for i in range(1, 4))]
+        order = ['bg', 'near', *reversed(ids)]
+        assert labeled_draws(order=order) == base
+
+    def test_locality_within_the_cap(self) -> None:
+        """Buildings beyond the cap leave a draw with a candidate within it alone."""
+        base = labeled_draws()
+        extra = {
+            'beyond': nsi_building(2600.0, 5.0, 1.0),
+            'res_beyond': nsi_building(-2600.0, 5.0, 1.0, occupancy='RES1'),
+        }
+        assert labeled_draws(extra=extra)['near'] == base['near']
+
+    def test_locality_of_the_fallback(self) -> None:
+        """Buildings beyond the cap and outside the block group leave it alone."""
+        base = labeled_draws()
+        extra = {'outside': nsi_building(-17000.0, 5.0, 1.0, BLOCKGROUP_GEOID=BG_B)}
+        assert labeled_draws(extra=extra)['bg'] == base['bg']
+
+    @pytest.mark.parametrize(
+        ('block_group', 'expected'), [(BG_B, None), (BG_A, 'edge')]
+    )
+    def test_just_beyond_the_cap(self, block_group: str, expected: Any) -> None:
+        """A building 2,001 m away is drawn only as its block group's fallback."""
+        buildings = inventory(
+            {
+                'edge': nsi_building(
+                    2001.0, 40.0, 1.0, BLOCKGROUP_GEOID=block_group
+                ),
+                't': target(0.0, GrossArea=1.0, BLOCKGROUP_GEOID=BG_A),
+            }
+        )
+        result = run(buildings, donor_stage(buildings, {}, n_pw=10))
+        assert set(result.log['donor_id']) == {expected}
+
+
+class TestImpute:
+    """The library entry point sends every target to the separate draw."""
+
+    def test_plain_inventory(self) -> None:
+        """Every target of a plain inventory takes the separate draw."""
+        plain = inventory(
+            {
+                'c': nsi_building(500.0, 40.0, 1.0),
+                't': target(0.0, GrossArea=3.0),
+                'n': nsi_building(10.0, 77.0, 1.0),
+            }
+        )
+        before = features_of(plain)
+        imputer = ReplacementCostImputer(seed=SEED)
+        output = imputer.impute(plain)
+        assert isinstance(imputer, Imputation)
+        assert features_of(plain) == before
+        drawn = run(plain, AssetInventory())
+        assert logged(drawn, 't')['outcome'] == OUTCOME_FEWER_THAN_K
+        assert output.n_pw == 1
+        assert output.inventory['t'].features == {
+            **plain.inventory['t'].features,
+            'ReplacementCost': value_of(drawn, 't'),
+        }
+        assert output.inventory['n'].features == plain.inventory['n'].features
 
 
 class TestProvenance:
@@ -620,6 +916,29 @@ class TestWorlds:
                 result.log,
                 whole.log[whole.log['world'] == 2].reset_index(drop=True),
             )
+
+    def test_separate_draw_of_one_world(self) -> None:
+        """World 2's separate draw equals a run on that realization with world 2."""
+        buildings = inventory(
+            {
+                **{
+                    f'c{i}': nsi_building(100.0 * i, 10.0 * i, 1.0)
+                    for i in range(1, 6)
+                },
+                't': target(0.0, GrossArea=1.0),
+            }
+        )
+        buildings.n_pw = 3
+        donors = donor_stage(buildings, {'t': None}, n_pw=3)
+        whole = run(buildings, donors)
+        scalar = run(
+            buildings.get_world_realization(2),
+            donors.get_world_realization(2),
+            world=2,
+        )
+        assert value_of(scalar, 't') == value_of(whole, 't')[2]
+        assert logged(scalar, 't')['donor_id'] == list(whole.log['donor_id'])[2]
+        assert len(set(whole.log['donor_id'])) > 1
 
     def test_agreeing_worlds_collapse(self) -> None:
         """A value equal in every world is stored as a scalar."""
