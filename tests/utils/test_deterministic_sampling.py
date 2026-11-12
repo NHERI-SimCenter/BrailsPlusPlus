@@ -43,6 +43,7 @@ from brails.utils.deterministic_sampling import (
     asset_key_digest,
     grouped_categorical,
     keyed_uniforms,
+    require_run_seed,
     truncated_normal,
 )
 
@@ -392,3 +393,15 @@ def test_each_asset_is_compared_against_its_own_row() -> None:
     assert positions.tolist() == [
         0 if code % 2 else 1 for code in range(group_count)
     ]
+
+
+# ---------------------------------------------------------------------
+# worlds of one run
+
+
+def test_a_world_other_than_the_default_needs_a_seed() -> None:
+    """World 0 may draw its own seed; any other world must be given one."""
+    require_run_seed(0, None)
+    require_run_seed(3, 11)
+    with pytest.raises(ValueError, match='seed'):
+        require_run_seed(3, None)

@@ -67,6 +67,7 @@ from brails.utils.deterministic_sampling import (
     asset_key_digest,
     grouped_categorical,
     keyed_uniforms,
+    require_run_seed,
 )
 
 if TYPE_CHECKING:
@@ -510,11 +511,7 @@ class ACSYearBuiltSampler(InferenceEngine):
                 f'smoothing must be a finite number of at least 0, got '
                 f'{smoothing!r}.'
             )
-        if int(world) != DEFAULT_WORLD and seed is None:
-            raise ValueError(
-                f'World {world} needs the seed of the run; samplers of '
-                'one run share one seed.'
-            )
+        require_run_seed(world, seed)
         self._b25034_block_groups = _table_arrays(
             b25034_block_groups,
             _BIN_VARIABLES,

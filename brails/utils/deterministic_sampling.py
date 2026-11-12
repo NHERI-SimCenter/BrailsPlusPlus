@@ -44,6 +44,7 @@ for bit under reordering, subsetting and reruns.
       keyed_uniforms
       truncated_normal
       grouped_categorical
+      require_run_seed
 """
 
 from __future__ import annotations
@@ -86,6 +87,33 @@ _PROBABILITY_CEILING = float(np.nextafter(1.0, 0.0))
 
 DEFAULT_WORLD = 0
 DEFAULT_ITERATION = 0
+
+
+def require_run_seed(world: int, seed: int | None) -> None:
+    """
+    Refuse a world other than the default without the seed of its run.
+
+    The samplers of one run draw each world with its own instance, and the
+    worlds are one run only when every instance has the same seed, so a
+    sampler of a world other than :data:`DEFAULT_WORLD` takes the seed
+    explicitly.
+
+    Args:
+        world (int):
+            The world a sampler draws.
+        seed (int | None):
+            The seed it was given, ``None`` for none.
+
+    Raises:
+        ValueError:
+            If ``world`` is not :data:`DEFAULT_WORLD` and ``seed`` is
+            ``None``.
+    """
+    if int(world) != DEFAULT_WORLD and seed is None:
+        raise ValueError(
+            f'World {world} needs the seed of the run; samplers of '
+            'one run share one seed.'
+        )
 
 
 def _splitmix64(value: np.ndarray) -> np.ndarray:
