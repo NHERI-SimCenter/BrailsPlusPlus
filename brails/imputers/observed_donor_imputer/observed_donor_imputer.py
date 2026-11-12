@@ -136,6 +136,11 @@ PURPOSE_DONOR = 'observed_donor'
 PURPOSE_FALLBACK = 'observed_donor_fallback'
 PURPOSE_BATCH = 'observed_donor_batch'
 
+# Default number of nearest donors picked among, and the donor distance cap
+# in meters.
+DEFAULT_DONOR_K = 20
+DEFAULT_DONOR_CAP_M = 2000.0
+
 # The great-circle distance the donor pool's tree measures, for one pair.
 _HAVERSINE = DistanceMetric.get_metric('haversine')
 
@@ -215,8 +220,8 @@ class ObservedDonorImputer(Imputation):
         status_values: Sequence[Any] = RESIDENTIAL_CLASSES,
         status_name: str = RESIDENTIAL_STATUS_NAME,
         validated: Sequence[str] | None = None,
-        k: int = 20,
-        cap_m: float = 2000.0,
+        k: int = DEFAULT_DONOR_K,
+        cap_m: float = DEFAULT_DONOR_CAP_M,
         location_scale_m: float = 100.0,
         area_weight: float = 1.0,
         stories_key: str | None = STORIES_KEY,
@@ -260,10 +265,11 @@ class ObservedDonorImputer(Imputation):
                 takes those of :data:`VALIDATED_FEATURES` that ``features``
                 holds, possibly none.
             k (int, optional):
-                The number of nearest donors picked among. Defaults to 20.
+                The number of nearest donors picked among. Defaults to
+                :data:`DEFAULT_DONOR_K`.
             cap_m (float, optional):
                 The donor distance cap in meters, the same for every target.
-                Defaults to 2000.
+                Defaults to :data:`DEFAULT_DONOR_CAP_M`.
             location_scale_m (float, optional):
                 Meters of separation counted as one unit of distance.
                 Defaults to 100.
