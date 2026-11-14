@@ -38,4 +38,3 @@ from .housing_units.pyncoda.pyncoda_housing_units import (
 )
 from .points_to_polygons.basic.basic_points_to_polygons import BasicPointsToPolygonsAllocator
 from .points_to_polygons.nsi_footprint_join import NSIFootprintJoin
-from .unit_budget.unit_budget import BlockGroupUnitBudget

@@ -55,11 +55,6 @@ from brails.aggregators.points_to_polygons.nsi_footprint_join import (
     GROSS_AREA,
     REPLACEMENT_COST,
 )
-from brails.aggregators.unit_budget.unit_budget import (
-    AREA_FROM_GROSS_AREA,
-    AREA_FROM_PLAN_AREA,
-    AREA_FROM_STORIES,
-)
 from brails.constants import BLOCK_GROUP_KEY
 from brails.imputers.imputation import Imputation
 from brails.imputers.observed_donor_imputer.donor_records import (
@@ -73,6 +68,11 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     DEFAULT_DONOR_CAP_M,
     DEFAULT_DONOR_K,
     ObservedDonorImputer,
+)
+from brails.inferers.acs_unit_budget.acs_unit_budget import (
+    AREA_FROM_GROSS_AREA,
+    AREA_FROM_PLAN_AREA,
+    AREA_FROM_STORIES,
 )
 from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
@@ -707,10 +707,10 @@ class ReplacementCostImputer(Imputation):
         Returns:
             tuple[float | None, str | None]:
                 The floor area in square feet and one of
-                :data:`~brails.aggregators.unit_budget.unit_budget.AREA_FROM_GROSS_AREA`,
-                :data:`~brails.aggregators.unit_budget.unit_budget.AREA_FROM_STORIES`
+                :data:`~brails.inferers.acs_unit_budget.acs_unit_budget.AREA_FROM_GROSS_AREA`,
+                :data:`~brails.inferers.acs_unit_budget.acs_unit_budget.AREA_FROM_STORIES`
                 and
-                :data:`~brails.aggregators.unit_budget.unit_budget.AREA_FROM_PLAN_AREA`,
+                :data:`~brails.inferers.acs_unit_budget.acs_unit_budget.AREA_FROM_PLAN_AREA`,
                 or ``(None, None)`` without a gross area or a plan area.
 
         Raises:

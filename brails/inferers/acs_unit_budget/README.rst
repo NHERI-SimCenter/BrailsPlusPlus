@@ -4,9 +4,9 @@ Block-group unit budget
 ``BlockGroupUnitBudget`` places the housing units a census table counts in a
 block group, less those of the footprints that already hold observed records,
 on the remaining footprints. The tables it packages, ``B25024_BINS``,
-``MOBILE_HOME_BIN`` and ``BIN_CLASSES``, are in ``unit_budget.py`` beside this
-page. The classes, unit ranges and midpoints it reads, ``UNIT_CLASSES``,
-``COUNT_BANDS`` and ``UNIT_MIDPOINTS``, are in
+``MOBILE_HOME_BIN`` and ``BIN_CLASSES``, are in ``acs_unit_budget.py``
+beside this page. The classes, unit ranges and midpoints it reads,
+``UNIT_CLASSES``, ``COUNT_BANDS`` and ``UNIT_MIDPOINTS``, are in
 ``brails/aggregators/points_to_polygons/nsi_footprint_join.py``. This page
 states where those tables come from, why the bins take Hazus occupancy
 classes, and the scope of the defaults. The class docstring states the

@@ -43,13 +43,14 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 import pytest
 
-from brails.aggregators import BlockGroupUnitBudget
 from brails.aggregators.points_to_polygons.nsi_footprint_join import (
     GROSS_AREA,
     UNIT_MIDPOINTS,
     count_band,
 )
-from brails.aggregators.unit_budget.unit_budget import (
+from brails.constants import BLOCK_GROUP_KEY
+from brails.inferers import BlockGroupUnitBudget
+from brails.inferers.acs_unit_budget.acs_unit_budget import (
     B25024_BINS,
     BIN_CLASSES,
     GAP_BIN_WITHOUT_STRUCTURE,
@@ -67,7 +68,6 @@ from brails.aggregators.unit_budget.unit_budget import (
     PURPOSE_UNIT_BUDGET,
     UnitBudgetResult,
 )
-from brails.constants import BLOCK_GROUP_KEY
 from brails.types.asset_inventory import (
     SOURCE_STRING_FEATURE,
     Asset,

@@ -102,7 +102,7 @@ brails = [
     "inferers/hazus_inferer_wind/input_schema.json",
     "inferers/stories_from_height_inferer/height_scales.json",
     "inferers/stories_from_height_inferer/README.rst",
-    "aggregators/unit_budget/README.rst",
+    "inferers/acs_unit_budget/README.rst",
     "inferers/acs_year_built_sampler/README.rst",
     "imputers/residential_neighbor_year_sampler/README.rst",
     "imputers/replacement_cost/README.rst",
@@ -159,6 +159,7 @@ include = [
     "brails/inferers/hazus_inferer_earthquake/hazus_table_completion.py",
     "brails/inferers/year_built_sampler/year_built_sampler.py",
     "brails/inferers/acs_year_built_sampler/acs_year_built_sampler.py",
+    "brails/inferers/acs_unit_budget/acs_unit_budget.py",
     "brails/inferers/stories_from_height_inferer/stories_from_height_inferer.py",
     "tests/inferers/**/*.py",
 
@@ -180,11 +181,9 @@ include = [
     "brails/utils/metric_crs.py",
     "brails/utils/id_preview.py",
     "tests/utils/test_metric_crs.py",
-    "brails/aggregators/unit_budget/unit_budget.py",
     "brails/utils/source_updates.py",
     "brails/utils/world_values.py",
     "brails/utils/inventory_union.py",
-    "tests/aggregators/unit_budget/test_unit_budget.py",
     "tests/utils/test_source_updates.py",
     "tests/utils/test_inventory_union.py",
 
