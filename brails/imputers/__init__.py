@@ -36,3 +36,6 @@
 from .knn_imputer.knn_imputer import KnnImputer
 from .observed_donor_imputer.observed_donor_imputer import ObservedDonorImputer
 from .replacement_cost.replacement_cost_imputer import ReplacementCostImputer
+from .residential_neighbor_year_sampler.residential_neighbor_year_sampler import (
+    NeighborYearSampler,
+)

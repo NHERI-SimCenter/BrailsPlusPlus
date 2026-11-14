@@ -104,7 +104,7 @@ brails = [
     "inferers/stories_from_height_inferer/README.rst",
     "aggregators/unit_budget/README.rst",
     "inferers/acs_year_built_sampler/README.rst",
-    "inferers/neighbor_year_sampler/README.rst",
+    "imputers/residential_neighbor_year_sampler/README.rst",
     "imputers/replacement_cost/README.rst",
     "inferers/hazus_inferer_earthquake/README.rst",
     "compilers/README.rst"
@@ -159,7 +159,6 @@ include = [
     "brails/inferers/hazus_inferer_earthquake/hazus_table_completion.py",
     "brails/inferers/year_built_sampler/year_built_sampler.py",
     "brails/inferers/acs_year_built_sampler/acs_year_built_sampler.py",
-    "brails/inferers/neighbor_year_sampler/neighbor_year_sampler.py",
     "brails/inferers/stories_from_height_inferer/stories_from_height_inferer.py",
     "tests/inferers/**/*.py",
 
@@ -177,6 +176,7 @@ include = [
     "brails/imputers/observed_donor_imputer/donor_search.py",
     "brails/imputers/observed_donor_imputer/observed_donor_imputer.py",
     "brails/imputers/replacement_cost/replacement_cost_imputer.py",
+    "brails/imputers/residential_neighbor_year_sampler/residential_neighbor_year_sampler.py",
     "brails/utils/metric_crs.py",
     "brails/utils/id_preview.py",
     "tests/utils/test_metric_crs.py",

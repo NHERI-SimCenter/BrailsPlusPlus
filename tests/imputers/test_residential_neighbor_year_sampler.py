@@ -40,7 +40,7 @@ from typing import Any
 import pandas as pd
 import pytest
 
-import brails.inferers
+import brails.imputers
 from brails.constants import BLOCK_GROUP_KEY
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     DEFAULT_DONOR_CAP_M,
@@ -48,14 +48,14 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     OUTCOME_BLOCK_GROUP,
     OUTCOME_FEWER_THAN_K,
 )
+from brails.imputers.residential_neighbor_year_sampler.residential_neighbor_year_sampler import (
+    NeighborYearSampler,
+)
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INFEASIBLE,
     DIAGNOSIS_INVALID,
     DIAGNOSIS_OK,
     DIAGNOSIS_UNSUPPORTED,
-)
-from brails.inferers.neighbor_year_sampler.neighbor_year_sampler import (
-    NeighborYearSampler,
 )
 from brails.utils import Importer
 from brails.utils.stage_freeze import StageFreeze
@@ -665,5 +665,5 @@ def test_the_arguments() -> None:
 
 def test_the_sampler_is_exported_and_discoverable() -> None:
     """The class is exported from the package and found by Importer."""
-    assert brails.inferers.NeighborYearSampler is NeighborYearSampler
+    assert brails.imputers.NeighborYearSampler is NeighborYearSampler
     assert Importer().get_class('NeighborYearSampler') is NeighborYearSampler

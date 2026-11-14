@@ -6,10 +6,10 @@ nearby residential building that holds one in the same possible world. It
 runs the donor search of ``ObservedDonorImputer``, in
 ``brails/imputers/observed_donor_imputer/observed_donor_imputer.py``, on the
 residential buildings of a frozen stage, and takes its defaults from that
-module. ``neighbor_year_sampler.py`` beside this page holds the class. This
-page states where the defaults come from, why the search is configured as
-it is, and which buildings the sampler reads. The class docstring states
-the procedure.
+module. ``residential_neighbor_year_sampler.py`` beside this page holds the
+class. This page states where the defaults come from, why the search is
+configured as it is, and which buildings the sampler reads. The class
+docstring states the procedure.
 
 The defaults
 ------------
