@@ -241,17 +241,16 @@ class UnitBudgetResult(NamedTuple):
             mobile-home bin and :data:`TOTAL_LABEL` included, with the
             columns of :data:`DIAGNOSTIC_COLUMNS`. ``generated_units`` holds
             the units the budget placed in that world, ``total_units`` those
-            and the reached units, ``lower`` and ``upper`` the estimate less
-            and plus :attr:`ACSUnitBudget.moe_factor` times the
-            margin, and ``outside`` whether the total lies beyond them. The
-            margin of a bin summing two table lines, and of the total, is
-            the root of the summed squared margins.
+            and the reached units, ``margin`` its margin of error, ``lower``
+            and ``upper`` the estimate less and plus
+            :attr:`ACSUnitBudget.moe_factor` times the margin, and
+            ``outside`` whether the total lies beyond them.
         gaps (pandas.DataFrame):
             The parts of a budget left unplaced, and the block groups
             without one, with the columns of :data:`GAP_COLUMNS`. ``count``
             holds structures, or targets for :data:`GAP_NO_ACS`. ``units``
-            holds units, for :data:`GAP_UNITS_OVER_CAPACITY` the most of
-            the bin's units left over in any one world.
+            holds units, for :data:`GAP_UNITS_OVER_CAPACITY` those left
+            over, the same in every world.
         log (pandas.DataFrame):
             One row per target and per reached footprint made a mobile
             home, with the columns of :data:`LOG_COLUMNS`.
@@ -381,80 +380,24 @@ class ACSUnitBudget:
     :data:`B25024_BINS` and a mobile-home line. A footprint is reached when
     an observed record gives it a class. The others, the targets, receive
     what the counts leave once the reached footprints' units are
-    subtracted.
+    subtracted: :meth:`allocate` makes some of them
+    :data:`MOBILE_HOME_CLASS` mobile homes and some dwellings with a class
+    of :data:`BIN_CLASSES` in each possible world, drops the small targets
+    left and passes the others to the non-residential stage. The README
+    beside this module states the method, the tables and the defaults.
 
-    Each target has a capacity, the whole number of units its gross floor
-    area holds at :attr:`min_unit_area_sqft` square feet per unit. The gross
-    floor area is the target's
-    :data:`~brails.constants.GROSS_AREA_KEY`
-    in square feet where it holds a positive number, else its plan area
-    times its :data:`~brails.constants.STORIES_KEY` where that is
-    a positive number, else its plan area alone. The candidates are the
-    targets with plan area and a capacity of at least one unit.
+    Each target has a capacity, the whole number of units its gross floor area
+    holds at :attr:`min_unit_area_sqft` square feet per unit. The gross floor
+    area is the target's :data:`~brails.constants.GROSS_AREA_KEY` in square
+    feet where it holds a positive number, else its plan area times its
+    :data:`~brails.constants.STORIES_KEY` where that is a positive number, else
+    its plan area alone. No dwelling holds more units than its capacity, and no
+    bin receives more than its estimate less its reached units. The dwellings,
+    and the units each bin places, are the same in every world; which dwelling
+    holds which bin varies.
 
-    Each block group with a B25024 row goes through seven steps.
-
-    1. Mobile homes. The table's mobile-home count less the units of the
-       reached :data:`MOBILE_HOME_CLASS` footprints, rounded down and
-       floored at zero, is the number of footprints made
-       :data:`MOBILE_HOME_CLASS` with :data:`MOBILE_HOME_UNITS` unit. They
-       are taken nearest first from the footprints within
-       :attr:`mh_park_radius_m` of a mobile-home park point: the targets
-       with a capacity of at least one unit, and the reached
-       :data:`RELABEL_CLASS` footprints that ``allocate`` names in
-       ``relabel_sources``, whose class is then withheld from its source.
-       A reached footprint keeps its source's unit count, so its capacity
-       is not checked. Mobile homes are not candidates.
-    2. Residuals. Each structure-size bin's residual ``R_b`` is its
-       estimate less the units of the reached footprints of its class in
-       :data:`BIN_CLASSES`, other than those made mobile homes, floored at
-       zero.
-    3. The total deficit. Flooring at zero hides a bin whose reached units
-       exceed its estimate, so the residuals can sum to more than the block
-       group lacks as a whole, the estimates' sum less the reached units'
-       sum. Unless :attr:`per_bin` is set, the residuals are then replaced
-       by the deficit's whole units, shared among the bins in proportion to
-       their whole residuals by largest remainders. No bin gains.
-    4. Structures per bin. A bin needs as many structures as its residual
-       fills at the middle of its unit range, ``R_b / midpoint_b``, a
-       fraction, with the midpoints of
-       :data:`~brails.aggregators.points_to_polygons.nsi_footprint_join.UNIT_MIDPOINTS`.
-       The rounded sum of these needs, capped at the number of candidates,
-       is shared among the bins in proportion to their needs by largest
-       remainders. A bin then keeps no more structures than its whole
-       residual fills at the bin's least unit count ``low_b``, that is
-       ``floor(R_b) // low_b``, and, counting from the largest bin down, no
-       more than the candidates left whose capacity holds ``low_b``.
-    5. Dwellings. The candidates are ranked by the imputer's residential
-       probability (highest first, unknown last), then plan area (largest
-       first), then id. From the largest bin down, each bin reserves one
-       candidate per structure: the highest-ranked of those left whose
-       capacity holds the bin's even share (its whole residual over its
-       structures, within the bin's range), then, where too few do, the
-       largest that hold its least unit count, ties by rank. The reserved
-       candidates are the dwellings, the same in every world.
-    6. Bins and units per world. In each world the dwellings are put in a
-       random order that tends to put larger floor areas first: descending
-       ``ln(u) / A``, with ``u`` the dwelling's keyed uniform under
-       :data:`PURPOSE_UNIT_BUDGET` and ``A`` its gross floor area in square
-       meters.
-       From the largest bin down, each bin's structures go to the first
-       dwellings in that order whose capacity holds the bin's even share,
-       then, where too few do, to the largest that hold its least unit
-       count, ties in that order, which the reservation makes always
-       possible. The bin's whole residual is split evenly over its
-       structures, the extra units to the first, and clipped to the bin's
-       range. A dwelling then holds no more than its capacity, and the
-       units above it move, in order, to the bin's dwellings with capacity
-       left. Which dwelling holds a bin varies by world, the units each bin
-       places do not, and no bin receives more than its residual.
-    7. The rest. A target that became neither a mobile home nor a dwelling
-       is dropped when its plan area is under :attr:`threshold_sqft` and it
-       lies beyond :attr:`mh_park_radius_m` of every mobile-home park
-       point, and is otherwise passed to the non-residential stage.
-
-    What a step cannot place is recorded in the result's ``gaps``, and
-    ``allocate`` warns where structures found no candidate able to hold
+    What the budget cannot place is recorded in the result's ``gaps``, and
+    ``allocate`` warns where structures found no footprint able to hold
     them or units exceeded their dwellings' capacity. A block group without
     a B25024 row has no budget: its targets are left to the imputer's
     residential round, and with :attr:`drop_without_acs` the small ones
@@ -1678,10 +1621,8 @@ def _sum_margin(margins: list[float]) -> float:
     """
     Return the margin of error of a sum of estimates.
 
-    The margin is the root of the summed squared margins, the
-    approximation of U.S. Census Bureau, Understanding and Using American
-    Community Survey Data: What All Data Users Need to Know (2020),
-    chapter 8, formula (1). A negative or missing margin counts as zero.
+    The margin is the root of the summed squared margins, a negative or
+    missing margin counting as zero.
 
     Args:
         margins (list[float]):
