@@ -105,7 +105,7 @@ from brails.utils.world_values import (
 if TYPE_CHECKING:
     from collections.abc import Hashable, Iterable, Mapping, Sequence
 
-    from brails.compilers.stage_freeze import StageFreeze
+    from brails.utils.stage_freeze import StageFreeze
 
 __all__ = [
     'DonorDraw',

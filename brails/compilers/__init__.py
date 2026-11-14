@@ -31,16 +31,6 @@
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 
-"""
-Compilers build an inventory out of the sources a method needs.
+"""Compilers build an inventory out of the sources a method needs."""
 
-.. autosummary::
-
-      StageFreeze
-"""
-
-from .stage_freeze import StageFreeze
-
-__all__ = [
-    'StageFreeze',
-]
+__all__ = []

@@ -40,13 +40,13 @@ from typing import Any
 
 import pytest
 
-from brails.compilers.stage_freeze import StageFreeze
 from brails.imputers import ObservedDonorImputer
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     OUTCOME_EXHAUSTED,
     ROUND_DONOR,
     ROUND_REPAIR,
 )
+from brails.utils.stage_freeze import StageFreeze
 from tests.imputers.donor_fixtures import (
     OTHER_SEED,
     asset,

@@ -163,6 +163,8 @@ include = [
 
     "brails/utils/deterministic_sampling.py",
     "tests/utils/test_deterministic_sampling.py",
+    "brails/utils/stage_freeze.py",
+    "tests/utils/test_stage_freeze.py",
 
     "brails/utils/asset_id.py",
     "tests/utils/test_asset_id.py",

@@ -41,7 +41,6 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 import pytest
 
-from brails.compilers.stage_freeze import StageFreeze
 from brails.imputers.observed_donor_imputer.donor_records import (
     LOG_COLUMNS,
     OUTCOME_DONOR,
@@ -56,6 +55,7 @@ from brails.imputers.replacement_cost.replacement_cost_imputer import (
     IMPUTATION_DONOR_KEY,
     donor_stage_from_log,
 )
+from brails.utils.stage_freeze import StageFreeze
 from tests.imputers.donor_fixtures import asset, imputer, inventory, world_value
 
 if TYPE_CHECKING:

@@ -39,6 +39,8 @@ Available classes:
     - :class:`Importer`: Class for importing class files.
     - :class:`GeoTools`: Class containing static methods for geospatial
       analysis and operations.
+    - :class:`StageFreeze`: Class for freezing the output of each pipeline
+      stage and recording its digest.
     - :class:`ArcgisAPIServiceHelper`: Class for interacting with an ArcGIS API
       service.
     - :class:`PlotTools`: Class for creating visually appealing figures.
@@ -55,6 +57,7 @@ Available classes:
 """
 from .importer import Importer
 from .geo_tools import GeoTools
+from .stage_freeze import StageFreeze
 from .arcgisapi_service_helper import ArcgisAPIServiceHelper
 from .plot_tools import PlotTools
 from .unit_converter import UnitConverter

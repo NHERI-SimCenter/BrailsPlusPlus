@@ -43,11 +43,11 @@ from typing import Any
 import numpy as np
 import pytest
 
-import brails.compilers
-from brails.compilers.stage_freeze import DIGEST_ALGORITHM, StageFreeze
+import brails.utils
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.types.housing_unit_inventory import HousingUnit, HousingUnitInventory
 from brails.utils import Importer
+from brails.utils.stage_freeze import DIGEST_ALGORITHM, StageFreeze
 from tests.imputers.donor_fixtures import features_of
 
 N_WORLDS = 3
@@ -742,9 +742,8 @@ class TestDiscovery:
     """The class is exported and registered with the Importer."""
 
     def test_exported_from_the_package(self) -> None:
-        """The class is exported from brails.compilers."""
-        assert brails.compilers.StageFreeze is StageFreeze
-        assert brails.compilers.__all__ == ['StageFreeze']
+        """The class is exported from brails.utils."""
+        assert brails.utils.StageFreeze is StageFreeze
 
     def test_importer_finds_the_class(self) -> None:
         """The Importer registers the class."""

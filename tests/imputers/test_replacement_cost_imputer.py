@@ -49,7 +49,6 @@ from brails.aggregators.unit_budget.unit_budget import (
     AREA_FROM_STORIES,
     GEOID_COLUMN,
 )
-from brails.compilers.stage_freeze import StageFreeze
 from brails.imputers import ObservedDonorImputer, ReplacementCostImputer
 from brails.imputers.imputation import Imputation
 from brails.imputers.observed_donor_imputer.donor_records import (
@@ -77,6 +76,7 @@ from brails.imputers.replacement_cost.replacement_cost_imputer import (
 )
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.inventory_union import union_disjoint
+from brails.utils.stage_freeze import StageFreeze
 from tests.imputers.donor_fixtures import (
     BG_A,
     BG_B,

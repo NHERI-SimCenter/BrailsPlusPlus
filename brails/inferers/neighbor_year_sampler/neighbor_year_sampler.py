@@ -48,7 +48,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
-from brails.compilers.stage_freeze import StageFreeze
 from brails.constants import BLOCK_GROUP_KEY
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     DEFAULT_DONOR_CAP_M,
@@ -76,6 +75,7 @@ from brails.utils.deterministic_sampling import (
     DEFAULT_WORLD,
     require_run_seed,
 )
+from brails.utils.stage_freeze import StageFreeze
 
 if TYPE_CHECKING:
     from collections.abc import Hashable

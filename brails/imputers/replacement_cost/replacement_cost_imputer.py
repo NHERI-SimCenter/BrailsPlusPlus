@@ -60,7 +60,6 @@ from brails.aggregators.unit_budget.unit_budget import (
     AREA_FROM_PLAN_AREA,
     AREA_FROM_STORIES,
 )
-from brails.compilers.stage_freeze import StageFreeze
 from brails.constants import BLOCK_GROUP_KEY
 from brails.imputers.imputation import Imputation
 from brails.imputers.observed_donor_imputer.donor_records import (
@@ -83,6 +82,7 @@ from brails.types.asset_inventory import (
     AssetInventory,
     is_missing_value,
 )
+from brails.utils.stage_freeze import StageFreeze
 from brails.utils.unit_converter import UNIT_TO_METER
 from brails.utils.world_values import (
     OCCUPANCY_KEY,

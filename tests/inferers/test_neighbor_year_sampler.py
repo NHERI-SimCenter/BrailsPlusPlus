@@ -41,7 +41,6 @@ import pandas as pd
 import pytest
 
 import brails.inferers
-from brails.compilers.stage_freeze import StageFreeze
 from brails.constants import BLOCK_GROUP_KEY
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     DEFAULT_DONOR_CAP_M,
@@ -59,6 +58,7 @@ from brails.inferers.neighbor_year_sampler.neighbor_year_sampler import (
     NeighborYearSampler,
 )
 from brails.utils import Importer
+from brails.utils.stage_freeze import StageFreeze
 from tests.imputers.donor_fixtures import (
     BG_A,
     BG_B,
