@@ -92,14 +92,14 @@ class ResidentialNeighborYearSampler(InferenceEngine):
     """
     Copy to each building the construction year of a nearby residential one.
 
-    :meth:`fit` takes as donors the buildings of one world of a frozen
-    stage that are in
+    :meth:`select_donors` takes as donors the buildings of one world of a
+    frozen stage that are in
     :data:`~brails.inferers.acs_year_built_sampler.acs_year_built_sampler.RESIDENTIAL_CLASSES`
     and hold a whole-number year, whatever its source. :meth:`draw` copies
     to each building the year of a donor near it, or of one in its block
-    group where none lies within ``cap_m``, and :meth:`picks` reports the
-    donor each building draws. The README beside this module states the
-    method, the defaults and the scope.
+    group where none lies within ``cap_m``, and :meth:`draw_details`
+    reports the donor each building draws. The README beside this module
+    states the method, the defaults and the scope.
 
     A draw depends on the asset's id and coordinates, its block group, the
     seed, the world, the iteration, ``k``, ``cap_m`` and the donors, and
@@ -178,16 +178,18 @@ class ResidentialNeighborYearSampler(InferenceEngine):
         self._donor_frame: pd.DataFrame | None = None
 
     # -----------------------------------------------------------------
-    # Fit
+    # Donor selection
 
-    def fit(self, freeze: StageFreeze, stage: str) -> ResidentialNeighborYearSampler:
+    def select_donors(
+        self, freeze: StageFreeze, stage: str
+    ) -> ResidentialNeighborYearSampler:
         """
         Take the donors from one world of a frozen stage.
 
         A stage holding several worlds is read in :attr:`world`, and a
-        stage holding one is read as it is. The fit changes nothing in the
+        stage holding one is read as it is. The call changes nothing in the
         stage and reads nothing but it. A later call replaces the earlier
-        fit.
+        donors.
 
         Args:
             freeze (StageFreeze):
@@ -197,7 +199,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Returns:
             ResidentialNeighborYearSampler:
-                This sampler, fitted.
+                This sampler, with its donors selected.
 
         Raises:
             TypeError:
@@ -211,8 +213,8 @@ class ResidentialNeighborYearSampler(InferenceEngine):
         """
         if not isinstance(freeze, StageFreeze):
             msg = (
-                'fit reads a StageFreeze and the name of a frozen stage, not '
-                f'{type(freeze).__name__}.'
+                'select_donors reads a StageFreeze and the name of a frozen stage, '
+                f'not {type(freeze).__name__}.'
             )
             raise TypeError(msg)
         output = freeze.read(stage)
@@ -236,7 +238,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
                 if is_probabilistic_feature(key, value, realization.vector_features):
                     msg = (
                         f'Asset {asset_id}: {key} holds one value per world; '
-                        'fit takes one world at a time.'
+                        'select_donors takes one world at a time.'
                     )
                     raise ValueError(msg)
             whole = (
@@ -257,7 +259,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
     @property
     def donors(self) -> pd.DataFrame:
         """
-        The fitted donors as the donor search sees them.
+        The selected donors as the donor search sees them.
 
         Returns:
             pd.DataFrame:
@@ -269,7 +271,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Raises:
             RuntimeError:
-                If the sampler has not been fitted.
+                If :meth:`select_donors` has not been called.
         """
         donors = self._get_donors()
         if self._donor_frame is not None:
@@ -291,7 +293,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
     def _get_donors(self) -> AssetInventory:
         """
-        Return the fitted donors, or raise if there are none.
+        Return the selected donors, or raise if there are none.
 
         Returns:
             AssetInventory:
@@ -299,11 +301,11 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Raises:
             RuntimeError:
-                If :meth:`fit` has not been called.
+                If :meth:`select_donors` has not been called.
         """
         if self._donors is None:
             raise RuntimeError(
-                'ResidentialNeighborYearSampler must be fitted with fit() first.'
+                'Call ResidentialNeighborYearSampler.select_donors() first.'
             )
         return self._donors
 
@@ -314,9 +316,9 @@ class ResidentialNeighborYearSampler(InferenceEngine):
         """
         Diagnose every asset without drawing anything.
 
-        A verdict reads the asset's features and coordinates and the fitted
-        donors, the asset itself counted among them where it is one, so a
-        one-asset inventory gets the verdict of the full one.
+        A verdict reads the asset's features and coordinates and the
+        selected donors, the asset itself counted among them where it is one,
+        so a one-asset inventory gets the verdict of the full one.
 
         Args:
             input_inventory (AssetInventory):
@@ -337,7 +339,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Raises:
             RuntimeError:
-                If the sampler has not been fitted.
+                If :meth:`select_donors` has not been called.
         """
         pool = self._imputer.pool(self._get_donors(), input_inventory)
         rows = {}
@@ -463,15 +465,17 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Raises:
             RuntimeError:
-                If the sampler has not been fitted.
+                If :meth:`select_donors` has not been called.
             ValueError:
                 If an asset does not pass :meth:`check`, naming the
                 assets, or draws no donor, which happens only when the
-                inventory is not a realization of the fitted stage.
+                inventory is not a realization of the donors' stage.
         """
-        return self.picks(input_inventory, iteration=iteration)[self.year_built_key]
+        return self.draw_details(input_inventory, iteration=iteration)[
+            self.year_built_key
+        ]
 
-    def picks(
+    def draw_details(
         self,
         input_inventory: AssetInventory,
         *,
@@ -504,11 +508,11 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Raises:
             RuntimeError:
-                If the sampler has not been fitted.
+                If :meth:`select_donors` has not been called.
             ValueError:
                 If an asset does not pass :meth:`check`, naming the
                 assets, or draws no donor, which happens only when the
-                inventory is not a realization of the fitted stage.
+                inventory is not a realization of the donors' stage.
         """
         pool = self._imputer.pool(self._get_donors(), input_inventory)
         assets = {}
@@ -549,7 +553,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
                 msg = (
                     f'Asset {asset_id} passed check but drew no donor '
                     f'({pick.outcome}); pass a realization of the stage the '
-                    'sampler was fitted on.'
+                    'sampler took its donors from.'
                 )
                 raise ValueError(msg)
             copied = dict(pick.values)
@@ -592,7 +596,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Raises:
             RuntimeError:
-                If the sampler has not been fitted.
+                If :meth:`select_donors` has not been called.
             ValueError:
                 If any asset cannot be drawn for, naming the assets and
                 the reason each fails.

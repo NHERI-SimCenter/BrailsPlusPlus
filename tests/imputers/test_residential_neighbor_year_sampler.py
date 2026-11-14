@@ -181,7 +181,7 @@ def _point(east: float, north: float, **features: Any) -> tuple[list, dict]:
 
 def _sampler(freeze: StageFreeze, **kwargs: Any) -> ResidentialNeighborYearSampler:
     """
-    Build a sampler on the fixture seed and fit it on the stage.
+    Build a sampler on the fixture seed and select its donors from the stage.
 
     Args:
         freeze (StageFreeze):
@@ -191,28 +191,28 @@ def _sampler(freeze: StageFreeze, **kwargs: Any) -> ResidentialNeighborYearSampl
 
     Returns:
         ResidentialNeighborYearSampler:
-            The fitted sampler.
+            The sampler, with its donors selected.
     """
-    return ResidentialNeighborYearSampler(**{'seed': SEED, **kwargs}).fit(
+    return ResidentialNeighborYearSampler(**{'seed': SEED, **kwargs}).select_donors(
         freeze, STAGE
     )
 
 
 # ---------------------------------------------------------------------
-# What the fit reads
+# What select_donors reads
 
 
-def test_fit_reads_a_freeze_and_a_frozen_stage() -> None:
+def test_select_donors_reads_a_freeze_and_a_frozen_stage() -> None:
     """An inventory in place of the freeze, or an unfrozen stage, raises."""
     freeze, stage = _frozen(_donors())
     with pytest.raises(TypeError, match='StageFreeze'):
-        ResidentialNeighborYearSampler(seed=SEED).fit(stage, STAGE)
+        ResidentialNeighborYearSampler(seed=SEED).select_donors(stage, STAGE)
     with pytest.raises(LookupError):
-        ResidentialNeighborYearSampler(seed=SEED).fit(freeze, 'step4')
+        ResidentialNeighborYearSampler(seed=SEED).select_donors(freeze, 'step4')
 
 
-def test_fit_reads_the_held_stage_and_changes_nothing() -> None:
-    """The draw leaves the freeze intact, and a refit sees a changed stage."""
+def test_select_donors_reads_the_held_stage_and_changes_nothing() -> None:
+    """The freeze stays intact, and a second select_donors sees a changed stage."""
     records = {
         'r': asset(100.0, 0.0, OccupancyClass='RES1', YearBuilt=[1950, 1960, 1970]),
     }
@@ -220,7 +220,7 @@ def test_fit_reads_the_held_stage_and_changes_nothing() -> None:
     targets = inventory({'t': asset(0.0, 0.0, OccupancyClass='COM1')})
     assert _sampler(freeze, world=1).draw(targets).loc['t'] == 1960
     freeze.manifest()
-    # a change to the held stage after the fit fails the manifest
+    # a change to the held stage after select_donors fails the manifest
     stage.inventory['r'].features['YearBuilt'][1] = 1999
     with pytest.raises(RuntimeError):
         freeze.manifest()
@@ -245,7 +245,7 @@ def test_each_world_copies_its_own_residential_year() -> None:
         assert list(sampler.donors.index) == ['r']
         assert sampler.donors.loc['r', 'YearBuilt'] == year
         for iteration in range(20):
-            picks = sampler.picks(targets, iteration=iteration)
+            picks = sampler.draw_details(targets, iteration=iteration)
             assert (picks.loc['t', 'donor_id'], picks.loc['t', 'YearBuilt']) == (
                 'r',
                 year,
@@ -274,11 +274,11 @@ def test_a_world_matches_its_realization_frozen_alone() -> None:
     assert 'm' in worlds.donors.index
     assert 'm' not in _sampler(freeze, world=0).donors.index
     pd.testing.assert_frame_equal(
-        worlds.picks(targets), _sampler(alone, world=2).picks(targets)
+        worlds.draw_details(targets), _sampler(alone, world=2).draw_details(targets)
     )
 
 
-def test_fit_refuses_one_value_per_world() -> None:
+def test_select_donors_refuses_one_value_per_world() -> None:
     """A per-world list left in the world read raises, as does a missing world."""
     records = {'r': asset(0.0, 0.0, OccupancyClass='RES1', YearBuilt=[1950, 1960])}
     freeze, _ = _frozen(records)
@@ -299,7 +299,7 @@ def test_fit_refuses_one_value_per_world() -> None:
 def test_golden_picks() -> None:
     """The donor round's and the fallback's picks are pinned."""
     freeze, _ = _frozen(_donors())
-    picks = _sampler(freeze).picks(inventory(_targets()))
+    picks = _sampler(freeze).draw_details(inventory(_targets()))
     assert {
         asset_id: (picks.loc[asset_id, 'donor_id'], picks.loc[asset_id, 'YearBuilt'])
         for asset_id in GOLDEN_PICKS
@@ -320,11 +320,11 @@ def test_seed_world_and_iteration_change_picks() -> None:
         for i in range(10)
     }
     for targets in (inventory(near), inventory(far)):
-        first = _sampler(freeze).picks(targets)['donor_id']
+        first = _sampler(freeze).draw_details(targets)['donor_id']
         for other in (
-            _sampler(freeze, seed=OTHER_SEED).picks(targets),
-            _sampler(freeze, world=1).picks(targets),
-            _sampler(freeze).picks(targets, iteration=1),
+            _sampler(freeze, seed=OTHER_SEED).draw_details(targets),
+            _sampler(freeze, world=1).draw_details(targets),
+            _sampler(freeze).draw_details(targets, iteration=1),
         ):
             assert not first.equals(other['donor_id'])
 
@@ -334,8 +334,8 @@ def test_reordering_changes_nothing() -> None:
     donors, targets = _donors(), _targets()
     freeze, _ = _frozen(donors)
     reversed_freeze, _ = _frozen(donors, order=list(reversed(donors)))
-    expected = _sampler(freeze).picks(inventory(targets))
-    picks = _sampler(reversed_freeze).picks(
+    expected = _sampler(freeze).draw_details(inventory(targets))
+    picks = _sampler(reversed_freeze).draw_details(
         inventory(targets, order=list(reversed(targets)))
     )
     pd.testing.assert_frame_equal(picks.loc[expected.index], expected)
@@ -359,7 +359,7 @@ def test_the_distance_is_location_alone() -> None:
     targets = inventory(
         {'t': asset(0.0, 0.0, 10.0, OccupancyClass='COM1', NumberOfStories=1)}
     )
-    picks = _sampler(_frozen(records)[0], k=1).picks(targets)
+    picks = _sampler(_frozen(records)[0], k=1).draw_details(targets)
     assert picks.loc['t', 'donor_id'] == 'near'
 
 
@@ -393,10 +393,10 @@ def test_draws_are_local_to_the_cap_and_the_block_group() -> None:
         ),
     }
     targets = inventory(_targets())
-    expected = _sampler(_frozen(base)[0]).picks(targets)
+    expected = _sampler(_frozen(base)[0]).draw_details(targets)
     for records in (added, removed, changed):
         pd.testing.assert_frame_equal(
-            _sampler(_frozen(records)[0]).picks(targets), expected
+            _sampler(_frozen(records)[0]).draw_details(targets), expected
         )
 
 
@@ -414,11 +414,12 @@ def test_a_donor_just_past_the_cap_is_only_a_fallback() -> None:
     }
     sampler = _sampler(_frozen(records)[0])
     assert {
-        sampler.picks(target, iteration=i).loc['t', 'donor_id'] for i in range(20)
+        sampler.draw_details(target, iteration=i).loc['t', 'donor_id']
+        for i in range(20)
     } == {'home'}
     own = _sampler(
         _frozen({'edge': asset(2001.0, 0.0, **edge, BLOCKGROUP_GEOID=BG_A)})[0]
-    ).picks(target)
+    ).draw_details(target)
     assert (own.loc['t', 'donor_id'], own.loc['t', 'outcome']) == (
         'edge',
         OUTCOME_BLOCK_GROUP,
@@ -558,7 +559,7 @@ def test_a_non_residential_year_makes_no_donor() -> None:
 
 
 def test_an_inventory_from_another_stage_raises_in_the_draw() -> None:
-    """A fitted donor passed back as a target passes check, then picks raises."""
+    """A donor passed back as a target passes check, then draw_details raises."""
     records = {
         'r0': asset(
             0.0, 0.0, OccupancyClass='RES1', YearBuilt=1950, BLOCKGROUP_GEOID=BG_A
@@ -571,7 +572,7 @@ def test_an_inventory_from_another_stage_raises_in_the_draw() -> None:
     )
     assert sampler.check(targets).loc['r0', 'diagnosis'] == DIAGNOSIS_OK
     with pytest.raises(ValueError, match='passed check but drew no donor'):
-        sampler.picks(targets)
+        sampler.draw_details(targets)
 
 
 def test_an_integral_float_year_is_copied_as_an_integer() -> None:
@@ -606,22 +607,22 @@ def test_check_is_pure() -> None:
     assert 'YearBuilt' not in targets.get_asset_features('t0')[1]
 
 
-def test_calls_before_fit_raise() -> None:
-    """Checking or drawing an unfitted sampler is a programming error."""
+def test_calls_before_select_donors_raise() -> None:
+    """Checking or drawing before select_donors is a programming error."""
     sampler = ResidentialNeighborYearSampler(seed=SEED)
     targets = inventory(_targets())
-    for call in (sampler.check, sampler.draw, sampler.picks, sampler.infer):
-        with pytest.raises(RuntimeError, match='fit'):
+    for call in (sampler.check, sampler.draw, sampler.draw_details, sampler.infer):
+        with pytest.raises(RuntimeError, match='select_donors'):
             call(targets)
-    with pytest.raises(RuntimeError, match='fit'):
+    with pytest.raises(RuntimeError, match='select_donors'):
         _ = sampler.donors
 
 
 def test_draw_refuses_assets_that_fail_check() -> None:
-    """Draw and picks name the assets check would refuse."""
+    """Draw and draw_details name the assets check would refuse."""
     sampler = _sampler(_frozen(_donors())[0])
     bad = inventory({'bad': asset(0.0, 0.0, OccupancyClass='RES1')})
-    for call in (sampler.draw, sampler.picks):
+    for call in (sampler.draw, sampler.draw_details):
         with pytest.raises(ValueError, match='bad'):
             call(bad)
 

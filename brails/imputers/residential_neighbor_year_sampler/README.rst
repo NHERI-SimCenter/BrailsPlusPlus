@@ -24,16 +24,16 @@ years. The cap is the imputer's own bound.
 The method
 ----------
 
-``fit`` reads one world of a frozen stage: the world the sampler is
-constructed with where the stage holds several, the stage as it is where it
-holds one. It takes as donors the buildings whose ``occupancy_key`` is in
+``select_donors`` reads one world of a frozen stage: the world the sampler
+is constructed with where the stage holds several, the stage as it is where
+it holds one. It takes as donors the buildings whose ``occupancy_key`` is in
 ``RESIDENTIAL_CLASSES`` and whose ``year_built_key`` holds a whole number,
 an integer or an integral float, whatever its source. An asset whose
 ``occupancy_key`` or ``year_built_key`` still holds one value per world in
 the world read, as in a stage of one world that holds a list, is refused.
 
-Each call of ``check``, ``draw`` or ``picks`` indexes the donors and the
-sites of the inventory's buildings. The index leaves out every building
+Each call of ``check``, ``draw`` or ``draw_details`` indexes the donors and
+the sites of the inventory's buildings. The index leaves out every building
 whose coordinates enclose no area: such a donor is never drawn and
 ``donors`` does not list it, and ``check`` refuses such a building.
 
