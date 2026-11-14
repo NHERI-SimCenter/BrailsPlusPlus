@@ -99,6 +99,7 @@ brails = [
     "processors/foundation_classifier/csail_segmentation_tool/csail_seg/data/color150.mat",
     "processors/foundation_classifier/csail_segmentation_tool/csail_seg/config/*.yaml",
     "aggregators/housing_units/pyncoda/supporting_data/*.json",
+    "aggregators/stacked_footprints/README.rst",
     "inferers/hazus_inferer_wind/input_schema.json",
     "inferers/stories_from_height_inferer/height_scales.json",
     "inferers/stories_from_height_inferer/README.rst",

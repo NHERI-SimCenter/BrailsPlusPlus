@@ -69,8 +69,7 @@ from brails.utils.unit_converter import UNIT_TO_METER, UnitConverter
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-# The thresholds and the stacking signal: brails/compilers/README.rst,
-# "Stacked footprints".
+# The thresholds and the stacking signal are described in README.rst.
 NEST_MIN = 0.9  # share of the smaller footprint inside the larger
 COPY_IOU = 0.75  # intersection over union of two drawings of one building
 PART_TALLER_M = 3.0  # meters, compared after conversion from the length unit
@@ -144,46 +143,21 @@ class StackedFootprintMerge:
     """
     Merge the stacked Overture footprints of one building into one asset.
 
-    Overture draws some buildings as several outlines, such as a podium
-    with the towers on it, each outline a building of its own. The merge
-    joins them and re-keys the inventory:
+    :meth:`merge` keeps one of the footprints that copy each other, merges
+    a nested footprint that shows Overture's stacking signal into the top
+    of its nest, and re-keys the footprints that remain with
+    :func:`~brails.utils.asset_id.assign_asset_ids`. A group's head is the
+    top footprint of a nest or, for a set of copies, the copy it keeps. A
+    merged asset holds the union of its parts, the largest ``height`` and
+    ``num_floors`` over them, the members' ``overture_id`` values under
+    :data:`PART_IDS_FEATURE`, the ``sources`` entries of its parts with the
+    height entries of the tallest part alone, and the other features of its
+    head.
 
-    1. *Pairs.* Two footprints form a pair when their intersection covers
-       at least :data:`NEST_MIN` of the smaller one's area (nested) or their
-       intersection over union is at least :data:`COPY_IOU` (copies). The
-       areas are planar in EPSG:4326, of the exterior rings a BRAILS asset
-       stores. The larger footprint of a pair is its container, ties of
-       area going to the lower ``overture_id``.
-    2. *Copies.* Each connected set of copies keeps one footprint: one
-       with a height before one without, then the larger, then the lower
-       ``overture_id``. The others are dropped.
-    3. *Nests.* Of the nested pairs between the footprints that remain,
-       each footprint goes to its largest container, and from there up to
-       the top of the nest, the container that lies in no other.
-    4. *Signal.* A footprint merges into the top of its nest when it is
-       taller than the top by more than :data:`PART_TALLER_M`, has a height
-       where the top has none, or when either of the two has class
-       :data:`ROOF_CLASS`. Otherwise it stays an asset of its own.
-    5. *Merge.* The top of a nest, its head, and the footprints merging
-       into it, its members, become one asset. Its coordinates are the
-       exterior rings of the union of their polygons, and its ``height``
-       and ``num_floors`` the largest over the parts, absent where no part
-       has one. :data:`PART_IDS_FEATURE` holds the members' ``overture_id``
-       values, sorted and joined by :data:`PART_IDS_SEPARATOR`. ``sources``
-       holds the entries of the part whose height was taken, then the
-       head's, then the other members', less the entries of the other
-       parts whose property is the height, so that
-       :class:`~brails.inferers.stories_from_height_inferer.stories_from_height_inferer.StoriesFromHeightInferer`
-       reads the height's source from the tallest part's entries wherever
-       those name one. Every other feature is the head's.
-    6. *Keys.* The footprints that remain are keyed by
-       :func:`~brails.utils.asset_id.assign_asset_ids` with the
-       ``overture_id`` as tiebreak, so a footprint in no collision set of
-       either keying keeps the key the Overture scraper gave it.
-
-    A union is at least as large as its head, so the merge leaves no
-    footprint below an area floor the scraper applied.
-    ``brails/compilers/README.rst`` states where the thresholds come from
+    A footprint in no collision set of either keying keeps the key the
+    Overture scraper gave it, and the merge leaves no footprint below an
+    area floor the scraper applied. The merge takes Overture footprints
+    only. ``README.rst`` states the method, where the thresholds come from
     and what the rule leaves unmerged.
     """
 
