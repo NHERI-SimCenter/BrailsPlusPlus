@@ -55,6 +55,7 @@ import numpy as np
 import pandas as pd
 import shapely
 
+from brails.constants import GROSS_AREA, REPLACEMENT_COST
 from brails.scrapers.nsi_parser.nsi_conventions import to_simcenter
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
@@ -162,10 +163,6 @@ ID_FIELD = 'fd_id'
 AREA_FIELD = 'sqft'
 VALUE_FIELD = 'fullrep'
 BLOCK_FIELD = 'cbfips'
-
-# SimCenter names of the summed fields, as to_simcenter writes them.
-GROSS_AREA = 'GrossArea'
-REPLACEMENT_COST = 'ReplacementCost'
 
 # Values _preview lists before counting the rest.
 _PREVIEW = 10

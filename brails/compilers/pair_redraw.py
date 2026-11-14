@@ -54,6 +54,7 @@ from brails.aggregators.points_to_polygons.nsi_footprint_join import (
     point_class,
     unit_contribution,
 )
+from brails.constants import SOURCE_STRING_FEATURE
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_sampling_height_band,
     get_hazus_story_count,
@@ -64,7 +65,6 @@ from brails.inferers.hazus_inferer_earthquake.hazus_table_completion import (
 from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
     SOURCE_CODES,
-    SOURCE_STRING_FEATURE,
     AssetInventory,
 )
 from brails.utils.deterministic_sampling import DEFAULT_WORLD

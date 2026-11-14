@@ -72,6 +72,17 @@ from shapely import box
 from shapely.geometry import GeometryCollection, mapping
 from shapely.geometry.base import BaseGeometry  # noqa: TC002
 
+from brails.constants import (
+    DESIGN_LEVEL_KEY,
+    HEIGHT_CLASS_KEY,
+    OCCUPANCY_KEY,
+    REPLACEMENT_COST,
+    SOURCE_STRING_FEATURE,
+    STORIES_KEY,
+    STRUCTURE_TYPE_KEY,
+    UNITS_KEY,
+    YEAR_BUILT_KEY,
+)
 from brails.exceptions import BrailsError
 from brails.utils.asset_id import _centroid_and_plan_area, _has_area
 from brails.utils.clean_floats import clean_floats
@@ -103,20 +114,17 @@ SOURCE_CODES: Mapping[str, str] = MappingProxyType(
 # Character of the source string for a feature that no source holds.
 SOURCE_CODE_NONE = '-'
 
-# Feature that AssetInventory.merge writes the source string to.
-SOURCE_STRING_FEATURE = 'SourceString'
-
 # Features covered by the source string by default, one character each,
 # in the order a Hazus earthquake inventory is built.
 HAZUS_EQ_SOURCE_FEATURES: tuple[str, ...] = (
-    'OccupancyClass',
-    'NumberOfUnits',
-    'NumberOfStories',
-    'YearBuilt',
-    'DesignLevel',
-    'StructureType',
-    'HeightClass',
-    'ReplacementCost',
+    OCCUPANCY_KEY,
+    UNITS_KEY,
+    STORIES_KEY,
+    YEAR_BUILT_KEY,
+    DESIGN_LEVEL_KEY,
+    STRUCTURE_TYPE_KEY,
+    HEIGHT_CLASS_KEY,
+    REPLACEMENT_COST,
 )
 
 # String BRAILS readers, the footprint scrapers among them, write for an

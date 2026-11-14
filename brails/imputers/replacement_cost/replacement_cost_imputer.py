@@ -51,11 +51,15 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 import numpy as np
 import pandas as pd
 
-from brails.aggregators.points_to_polygons.nsi_footprint_join import (
+from brails.constants import (
+    BLOCK_GROUP_KEY,
     GROSS_AREA,
+    IMPUTATION_DONOR_KEY,
+    OCCUPANCY_KEY,
     REPLACEMENT_COST,
+    SOURCE_STRING_FEATURE,
+    STORIES_KEY,
 )
-from brails.constants import BLOCK_GROUP_KEY
 from brails.imputers.imputation import Imputation
 from brails.imputers.observed_donor_imputer.donor_records import (
     LOG_COLUMNS as DONOR_LOG_COLUMNS,
@@ -72,7 +76,6 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     DEFAULT_DONOR_K,
     DEFAULT_LOCATION_SCALE_M,
     DEFAULT_STORIES_WEIGHT,
-    IMPUTATION_DONOR_KEY,
     ObservedDonorImputer,
     imputation_donors_from_log,
 )
@@ -84,18 +87,13 @@ from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
     SOURCE_CODE_NONE,
     SOURCE_CODES,
-    SOURCE_STRING_FEATURE,
     Asset,
     AssetInventory,
     is_missing_value,
 )
 from brails.utils.stage_freeze import StageFreeze
 from brails.utils.unit_converter import UNIT_TO_METER
-from brails.utils.world_values import (
-    OCCUPANCY_KEY,
-    STORIES_KEY,
-    collapse_realizations,
-)
+from brails.utils.world_values import collapse_realizations
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Mapping, Sequence
@@ -247,20 +245,20 @@ class ReplacementCostImputer(Imputation):
                 :data:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.DEFAULT_STORIES_WEIGHT`.
             value_key (str, optional):
                 The replacement cost feature. Defaults to
-                :data:`~brails.aggregators.points_to_polygons.nsi_footprint_join.REPLACEMENT_COST`.
+                :data:`~brails.constants.REPLACEMENT_COST`.
             gross_area_key (str, optional):
                 The feature a building's own value is divided by, in square
                 feet. Defaults to
-                :data:`~brails.aggregators.points_to_polygons.nsi_footprint_join.GROSS_AREA`.
+                :data:`~brails.constants.GROSS_AREA`.
             occupancy_key (str, optional):
                 The occupancy class feature. Defaults to
-                :data:`~brails.utils.world_values.OCCUPANCY_KEY`.
+                :data:`~brails.constants.OCCUPANCY_KEY`.
             stories_key (str, optional):
                 The story count feature. Defaults to
-                :data:`~brails.utils.world_values.STORIES_KEY`.
+                :data:`~brails.constants.STORIES_KEY`.
             source_string_key (str, optional):
                 The feature holding the source string. Defaults to
-                :data:`~brails.types.asset_inventory.SOURCE_STRING_FEATURE`.
+                :data:`~brails.constants.SOURCE_STRING_FEATURE`.
             source_features (Sequence[str], optional):
                 The features the source string covers, in its order.
                 Defaults to

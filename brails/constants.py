@@ -86,3 +86,27 @@ TRACT_GEOID_LENGTH = 11
 
 # The geographic CRS asset coordinates are stored in.
 GEOGRAPHIC_CRS = 'EPSG:4326'
+
+# SimCenter feature names shared by several modules
+OCCUPANCY_KEY = 'OccupancyClass'
+UNITS_KEY = 'NumberOfUnits'
+STORIES_KEY = 'NumberOfStories'
+PLAN_AREA_KEY = 'PlanArea'
+GROSS_AREA = 'GrossArea'
+YEAR_BUILT_KEY = 'YearBuilt'
+BUILDING_TYPE_KEY = 'BuildingType'
+REPLACEMENT_COST = 'ReplacementCost'
+
+# SimCenter feature names of a Hazus earthquake inventory
+DESIGN_LEVEL_KEY = 'DesignLevel'
+STRUCTURE_TYPE_KEY = 'StructureType'
+HEIGHT_CLASS_KEY = 'HeightClass'
+
+# SimCenter source string that captures data provenance
+SOURCE_STRING_FEATURE = 'SourceString'
+
+# Feature holding, per world, the id of the donor whose values a target kept.
+IMPUTATION_DONOR_KEY = 'ImputationDonor'
+
+# Feature holding number of stories inferred from height.
+STORIES_FROM_HEIGHT_KEY = 'StoriesFromHeight'

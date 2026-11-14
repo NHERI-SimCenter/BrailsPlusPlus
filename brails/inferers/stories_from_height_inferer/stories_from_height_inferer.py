@@ -52,7 +52,11 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
-from brails.constants import DEFAULT_UNITS, FOOTPRINT_PROVIDER_FEATURE
+from brails.constants import (
+    DEFAULT_UNITS,
+    FOOTPRINT_PROVIDER_FEATURE,
+    STORIES_FROM_HEIGHT_KEY,
+)
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INFEASIBLE,
     DIAGNOSIS_INVALID,
@@ -70,9 +74,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from brails.types.asset_inventory import AssetInventory
-
-# The feature the inferer writes the height's story count to by default.
-STORIES_FROM_HEIGHT_KEY = 'StoriesFromHeight'
 
 # The feature naming a footprint's provider, which keys the scales.
 PROVIDER_KEY = FOOTPRINT_PROVIDER_FEATURE

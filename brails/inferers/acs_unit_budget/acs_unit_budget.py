@@ -54,23 +54,25 @@ from sklearn.neighbors import BallTree
 
 from brails.aggregators.points_to_polygons.nsi_footprint_join import (
     COUNT_BANDS,
-    GROSS_AREA,
     UNIT_CLASSES,
     UNIT_MIDPOINTS,
     unit_contribution,
 )
-from brails.constants import BLOCK_GROUP_KEY, GEOGRAPHIC_CRS, GEOID_LENGTH
+from brails.constants import (
+    BLOCK_GROUP_KEY,
+    GEOGRAPHIC_CRS,
+    GEOID_LENGTH,
+    GROSS_AREA,
+    OCCUPANCY_KEY,
+    STORIES_KEY,
+    UNITS_KEY,
+)
 from brails.types.asset_inventory import Asset, AssetInventory, is_missing_value
 from brails.utils.asset_id import EARTH_RADIUS_M
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
 from brails.utils.source_updates import WITHHELD_COLUMNS
 from brails.utils.unit_converter import UNIT_TO_METER
-from brails.utils.world_values import (
-    OCCUPANCY_KEY,
-    STORIES_KEY,
-    UNITS_KEY,
-    collapse_realizations,
-)
+from brails.utils.world_values import collapse_realizations
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Mapping, Sequence
@@ -212,8 +214,8 @@ class UnitBudgetResult(NamedTuple):
 
     Attributes:
         imputed (AssetInventory):
-            :data:`~brails.utils.world_values.OCCUPANCY_KEY` and
-            :data:`~brails.utils.world_values.UNITS_KEY` of each dwelling
+            :data:`~brails.constants.OCCUPANCY_KEY` and
+            :data:`~brails.constants.UNITS_KEY` of each dwelling
             and mobile home, and the class alone of each reached footprint
             made a mobile home, with the allocation's number of possible
             worlds, stored by
@@ -384,9 +386,9 @@ class BlockGroupUnitBudget:
     Each target has a capacity, the whole number of units its gross floor
     area holds at :attr:`min_unit_area_sqft` square feet per unit. The gross
     floor area is the target's
-    :data:`~brails.aggregators.points_to_polygons.nsi_footprint_join.GROSS_AREA`
+    :data:`~brails.constants.GROSS_AREA`
     in square feet where it holds a positive number, else its plan area
-    times its :data:`~brails.utils.world_values.STORIES_KEY` where that is
+    times its :data:`~brails.constants.STORIES_KEY` where that is
     a positive number, else its plan area alone. The candidates are the
     targets with plan area and a capacity of at least one unit.
 

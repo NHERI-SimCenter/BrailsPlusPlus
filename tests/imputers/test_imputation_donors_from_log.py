@@ -41,6 +41,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 import pytest
 
+from brails.constants import IMPUTATION_DONOR_KEY
 from brails.imputers.observed_donor_imputer.donor_records import (
     LOG_COLUMNS,
     OUTCOME_DONOR,
@@ -51,7 +52,6 @@ from brails.imputers.observed_donor_imputer.donor_records import (
     ROUND_STATUS,
 )
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
-    IMPUTATION_DONOR_KEY,
     imputation_donors_from_log,
 )
 from brails.utils.stage_freeze import StageFreeze

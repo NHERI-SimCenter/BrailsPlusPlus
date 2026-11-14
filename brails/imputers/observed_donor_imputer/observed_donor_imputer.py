@@ -58,6 +58,12 @@ import pandas as pd
 from sklearn.metrics import DistanceMetric
 
 from brails.aggregators.points_to_polygons.nsi_footprint_join import UNIT_CLASSES
+from brails.constants import (
+    IMPUTATION_DONOR_KEY,
+    OCCUPANCY_KEY,
+    STORIES_KEY,
+    UNITS_KEY,
+)
 from brails.imputers.imputation import Imputation
 from brails.imputers.observed_donor_imputer.donor_pool import (
     _STATUS_INSIDE,
@@ -96,12 +102,7 @@ from brails.imputers.observed_donor_imputer.donor_search import (
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.asset_id import EARTH_RADIUS_M
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
-from brails.utils.world_values import (
-    OCCUPANCY_KEY,
-    STORIES_KEY,
-    UNITS_KEY,
-    collapse_realizations,
-)
+from brails.utils.world_values import collapse_realizations
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Iterable, Mapping, Sequence
@@ -148,10 +149,6 @@ DEFAULT_DONOR_CAP_M = 2000.0
 DEFAULT_LOCATION_SCALE_M = 100.0
 DEFAULT_AREA_WEIGHT = 1.0
 DEFAULT_STORIES_WEIGHT = 1.0
-
-# Feature of the inventory imputation_donors_from_log builds, holding, per
-# world, the id of the donor whose values a target kept.
-IMPUTATION_DONOR_KEY = 'ImputationDonor'
 
 # The great-circle distance the donor pool's tree measures, for one pair.
 _HAVERSINE = DistanceMetric.get_metric('haversine')

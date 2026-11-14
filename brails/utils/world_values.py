@@ -32,10 +32,10 @@
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 
 """
-Feature names and the per-world storage rule of imputed values.
+The per-world storage rule of imputed values.
 
-The observed-donor imputer and the block-group unit budget write the same
-features and store per-world values the same way.
+The observed-donor imputer, the unit budget and the value imputer store
+per-world values by this rule.
 
 .. autosummary::
 
@@ -48,10 +48,6 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-OCCUPANCY_KEY = 'OccupancyClass'
-UNITS_KEY = 'NumberOfUnits'
-STORIES_KEY = 'NumberOfStories'
 
 
 def collapse_realizations(realizations: Sequence[Any]) -> Any:  # noqa: ANN401

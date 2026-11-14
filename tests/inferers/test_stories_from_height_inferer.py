@@ -42,6 +42,7 @@ import numpy as np
 import pytest
 
 import brails.inferers
+from brails.constants import STORIES_FROM_HEIGHT_KEY
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INFEASIBLE,
     DIAGNOSIS_INVALID,
@@ -50,7 +51,6 @@ from brails.inferers.inference_diagnosis import (
 )
 from brails.inferers.stories_from_height_inferer.stories_from_height_inferer import (
     HEIGHT_SCALES_FILE,
-    STORIES_FROM_HEIGHT_KEY,
     StoriesFromHeightInferer,
 )
 from brails.utils import Importer

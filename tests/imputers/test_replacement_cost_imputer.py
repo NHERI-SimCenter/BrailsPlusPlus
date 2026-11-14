@@ -43,6 +43,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from brails.constants import IMPUTATION_DONOR_KEY
 from brails.imputers import ObservedDonorImputer, ReplacementCostImputer
 from brails.imputers.imputation import Imputation
 from brails.imputers.observed_donor_imputer.donor_records import (
@@ -63,7 +64,6 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     DEFAULT_DONOR_K,
     DEFAULT_LOCATION_SCALE_M,
     DEFAULT_STORIES_WEIGHT,
-    IMPUTATION_DONOR_KEY,
     imputation_donors_from_log,
 )
 from brails.imputers.replacement_cost.replacement_cost_imputer import (

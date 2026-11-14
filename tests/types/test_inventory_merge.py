@@ -44,13 +44,13 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 import pytest
 
+from brails.constants import SOURCE_STRING_FEATURE
 from brails.exceptions import BrailsError
 from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
     MAX_REPORTED_WORLD_PROBLEMS,
     SOURCE_CODE_NONE,
     SOURCE_CODES,
-    SOURCE_STRING_FEATURE,
     AssetInventory,
 )
 from brails.types.housing_unit_inventory import HousingUnitInventory

@@ -44,11 +44,17 @@ import pandas as pd
 import pytest
 
 from brails.aggregators.points_to_polygons.nsi_footprint_join import (
-    GROSS_AREA,
     UNIT_MIDPOINTS,
     count_band,
 )
-from brails.constants import BLOCK_GROUP_KEY
+from brails.constants import (
+    BLOCK_GROUP_KEY,
+    GROSS_AREA,
+    OCCUPANCY_KEY,
+    SOURCE_STRING_FEATURE,
+    STORIES_KEY,
+    UNITS_KEY,
+)
 from brails.inferers import BlockGroupUnitBudget
 from brails.inferers.acs_unit_budget.acs_unit_budget import (
     B25024_BINS,
@@ -68,14 +74,9 @@ from brails.inferers.acs_unit_budget.acs_unit_budget import (
     PURPOSE_UNIT_BUDGET,
     UnitBudgetResult,
 )
-from brails.types.asset_inventory import (
-    SOURCE_STRING_FEATURE,
-    Asset,
-    AssetInventory,
-)
+from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import Importer
 from brails.utils.source_updates import WITHHELD_COLUMNS, apply_to_sources
-from brails.utils.world_values import OCCUPANCY_KEY, STORIES_KEY, UNITS_KEY
 from tests.imputers.donor_fixtures import (
     BG_A,
     BG_B,

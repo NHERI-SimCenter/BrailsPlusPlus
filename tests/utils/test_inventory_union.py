@@ -39,9 +39,9 @@ from copy import deepcopy
 
 import pytest
 
+from brails.constants import OCCUPANCY_KEY, STORIES_KEY, UNITS_KEY
 from brails.types.asset_inventory import AssetInventory
 from brails.utils.inventory_union import union_disjoint
-from brails.utils.world_values import OCCUPANCY_KEY, STORIES_KEY, UNITS_KEY
 from tests.imputers.donor_fixtures import asset, features_of, inventory
 
 OCC = OCCUPANCY_KEY
