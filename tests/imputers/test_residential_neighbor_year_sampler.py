@@ -49,7 +49,7 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     OUTCOME_FEWER_THAN_K,
 )
 from brails.imputers.residential_neighbor_year_sampler.residential_neighbor_year_sampler import (
-    NeighborYearSampler,
+    ResidentialNeighborYearSampler,
 )
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INFEASIBLE,
@@ -179,7 +179,7 @@ def _point(east: float, north: float, **features: Any) -> tuple[list, dict]:
     return [list(lonlat(east, north))], dict(features)
 
 
-def _sampler(freeze: StageFreeze, **kwargs: Any) -> NeighborYearSampler:
+def _sampler(freeze: StageFreeze, **kwargs: Any) -> ResidentialNeighborYearSampler:
     """
     Build a sampler on the fixture seed and fit it on the stage.
 
@@ -190,10 +190,12 @@ def _sampler(freeze: StageFreeze, **kwargs: Any) -> NeighborYearSampler:
             Overrides of the constructor arguments.
 
     Returns:
-        NeighborYearSampler:
+        ResidentialNeighborYearSampler:
             The fitted sampler.
     """
-    return NeighborYearSampler(**{'seed': SEED, **kwargs}).fit(freeze, STAGE)
+    return ResidentialNeighborYearSampler(**{'seed': SEED, **kwargs}).fit(
+        freeze, STAGE
+    )
 
 
 # ---------------------------------------------------------------------
@@ -204,9 +206,9 @@ def test_fit_reads_a_freeze_and_a_frozen_stage() -> None:
     """An inventory in place of the freeze, or an unfrozen stage, raises."""
     freeze, stage = _frozen(_donors())
     with pytest.raises(TypeError, match='StageFreeze'):
-        NeighborYearSampler(seed=SEED).fit(stage, STAGE)
+        ResidentialNeighborYearSampler(seed=SEED).fit(stage, STAGE)
     with pytest.raises(LookupError):
-        NeighborYearSampler(seed=SEED).fit(freeze, 'step4')
+        ResidentialNeighborYearSampler(seed=SEED).fit(freeze, 'step4')
 
 
 def test_fit_reads_the_held_stage_and_changes_nothing() -> None:
@@ -606,7 +608,7 @@ def test_check_is_pure() -> None:
 
 def test_calls_before_fit_raise() -> None:
     """Checking or drawing an unfitted sampler is a programming error."""
-    sampler = NeighborYearSampler(seed=SEED)
+    sampler = ResidentialNeighborYearSampler(seed=SEED)
     targets = inventory(_targets())
     for call in (sampler.check, sampler.draw, sampler.picks, sampler.infer):
         with pytest.raises(RuntimeError, match='fit'):
@@ -648,22 +650,28 @@ def test_infer_writes_years_and_raises_with_a_preview() -> None:
 
 def test_the_arguments() -> None:
     """The k and cap default to the donor imputer's, and bad arguments raise."""
-    sampler = NeighborYearSampler()
+    sampler = ResidentialNeighborYearSampler()
     assert (sampler.k, sampler.cap_m) == (DEFAULT_DONOR_K, DEFAULT_DONOR_CAP_M)
     assert isinstance(sampler.seed, int)
     with pytest.raises(ValueError, match='k'):
-        NeighborYearSampler(k=0)
+        ResidentialNeighborYearSampler(k=0)
     with pytest.raises(ValueError, match='cap_m'):
-        NeighborYearSampler(cap_m=0)
+        ResidentialNeighborYearSampler(cap_m=0)
     with pytest.raises(ValueError, match='seed'):
-        NeighborYearSampler(world=1)
+        ResidentialNeighborYearSampler(world=1)
     with pytest.raises(ValueError, match='at least 0'):
-        NeighborYearSampler(seed=SEED, world=-1)
-    passed = NeighborYearSampler(k=2, cap_m=500.0)
+        ResidentialNeighborYearSampler(seed=SEED, world=-1)
+    passed = ResidentialNeighborYearSampler(k=2, cap_m=500.0)
     assert (passed.k, passed.cap_m) == (2, 500.0)
 
 
 def test_the_sampler_is_exported_and_discoverable() -> None:
     """The class is exported from the package and found by Importer."""
-    assert brails.imputers.NeighborYearSampler is NeighborYearSampler
-    assert Importer().get_class('NeighborYearSampler') is NeighborYearSampler
+    assert (
+        brails.imputers.ResidentialNeighborYearSampler
+        is ResidentialNeighborYearSampler
+    )
+    assert (
+        Importer().get_class('ResidentialNeighborYearSampler')
+        is ResidentialNeighborYearSampler
+    )

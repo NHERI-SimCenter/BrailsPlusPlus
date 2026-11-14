@@ -1,9 +1,9 @@
-Neighbor year sampler
-=====================
+Residential neighbor year sampler
+=================================
 
-``NeighborYearSampler`` copies to a building the construction year of a
-nearby residential building that holds one in the same possible world. It
-runs the donor search of ``ObservedDonorImputer``, in
+``ResidentialNeighborYearSampler`` copies to a building the construction
+year of a nearby residential building that holds one in the same possible
+world. It runs the donor search of ``ObservedDonorImputer``, in
 ``brails/imputers/observed_donor_imputer/observed_donor_imputer.py``, on the
 residential buildings of a frozen stage, and takes its defaults from that
 module. ``residential_neighbor_year_sampler.py`` beside this page holds the

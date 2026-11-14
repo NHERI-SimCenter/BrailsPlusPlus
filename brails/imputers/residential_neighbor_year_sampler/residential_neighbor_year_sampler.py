@@ -36,7 +36,7 @@ Copy construction years to buildings from their residential neighbors.
 
 .. autosummary::
 
-      NeighborYearSampler
+      ResidentialNeighborYearSampler
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ if TYPE_CHECKING:
 NEIGHBOR_YEAR_PURPOSE_PREFIX = 'year_built_neighbor'
 
 
-class NeighborYearSampler(InferenceEngine):
+class ResidentialNeighborYearSampler(InferenceEngine):
     """
     Copy to each building the construction year of a nearby residential one.
 
@@ -194,7 +194,7 @@ class NeighborYearSampler(InferenceEngine):
     # -----------------------------------------------------------------
     # Fit
 
-    def fit(self, freeze: StageFreeze, stage: str) -> NeighborYearSampler:
+    def fit(self, freeze: StageFreeze, stage: str) -> ResidentialNeighborYearSampler:
         """
         Take the donors from one world of a frozen stage.
 
@@ -210,7 +210,7 @@ class NeighborYearSampler(InferenceEngine):
                 The name of the frozen stage.
 
         Returns:
-            NeighborYearSampler:
+            ResidentialNeighborYearSampler:
                 This sampler, fitted.
 
         Raises:
@@ -286,7 +286,7 @@ class NeighborYearSampler(InferenceEngine):
             RuntimeError:
                 If the sampler has not been fitted.
         """
-        donors = self._require_fit()
+        donors = self._get_donors()
         if self._donor_frame is not None:
             return self._donor_frame.copy()
         pool = self._imputer.pool(donors)
@@ -304,7 +304,7 @@ class NeighborYearSampler(InferenceEngine):
         )
         return self._donor_frame.copy()
 
-    def _require_fit(self) -> AssetInventory:
+    def _get_donors(self) -> AssetInventory:
         """
         Return the fitted donors, or raise if there are none.
 
@@ -318,7 +318,7 @@ class NeighborYearSampler(InferenceEngine):
         """
         if self._donors is None:
             raise RuntimeError(
-                'NeighborYearSampler must be fitted with fit() first.'
+                'ResidentialNeighborYearSampler must be fitted with fit() first.'
             )
         return self._donors
 
@@ -354,7 +354,7 @@ class NeighborYearSampler(InferenceEngine):
             RuntimeError:
                 If the sampler has not been fitted.
         """
-        pool = self._imputer.pool(self._require_fit(), input_inventory)
+        pool = self._imputer.pool(self._get_donors(), input_inventory)
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
             _, features = input_inventory.get_asset_features(asset_id)
@@ -525,7 +525,7 @@ class NeighborYearSampler(InferenceEngine):
                 assets, or draws no donor, which happens only when the
                 inventory is not a realization of the fitted stage.
         """
-        pool = self._imputer.pool(self._require_fit(), input_inventory)
+        pool = self._imputer.pool(self._get_donors(), input_inventory)
         assets = {}
         failures = {}
         for asset_id in input_inventory.get_asset_ids():
