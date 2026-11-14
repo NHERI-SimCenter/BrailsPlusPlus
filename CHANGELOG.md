@@ -57,6 +57,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **Merge of stacked Overture footprints** (`StackedFootprintMerge` in `brails/aggregators/stacked_footprints/stacked_footprints.py`). A footprint nested in a larger one merges into it when Overture's stacking signal holds, and the merged set is re-keyed by `assign_asset_ids`.
 
 ### Changed
+- **BRAILS is compatible with the records of the NSI 2026 Base only.**
 - **`med_yr_blt` from NSI now maps to `YearBuiltTractMedian`.** It is the median year built of the structures in a Census tract, so every building in a tract carries the same value. The converted path no longer emits `YearBuilt` at all. The legacy `nsi2brailsmap` path is unchanged and still maps `med_yr_blt` to `YearBuilt`, so the two conventions coexist for now.
 - **`sqft` from NSI now maps to `GrossArea`, not `PlanArea`.** NSI reports the structure's estimated floor area. `NSIFootprintJoin` writes the stated and summed areas under `GrossArea`, and no NSI field becomes `PlanArea`.
 - **`ReplacementCost` from NSI is now `fullrep`, not `val_struct`.** `fullrep` is NSI's full, not depreciated, replacement value, and `NSIFootprintJoin` writes and sums it. `val_struct`, the depreciated value, passes through under its NSI name.

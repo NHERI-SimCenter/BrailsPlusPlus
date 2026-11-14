@@ -270,7 +270,8 @@ class NSIFileReader:
 
     The table may be one written by :meth:`NSI_Parser.get_raw_data
     <brails.scrapers.nsi_parser.nsi_parser.NSI_Parser.get_raw_data>` with
-    ``raw_parquet_path``.
+    ``raw_parquet_path``. BRAILS is compatible with the records of the NSI
+    2026 Base only.
 
     To import the :class:`NSIFileReader` class, use:
 

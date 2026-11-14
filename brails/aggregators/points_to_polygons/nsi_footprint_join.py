@@ -529,6 +529,8 @@ class NSIFootprintJoin:
             points (AssetInventory):
                 NSI point assets keyed by ``fd_id``, with features under NSI
                 names, as :class:`~brails.scrapers.NSIFileReader` reads them.
+                BRAILS is compatible with the records of the NSI 2026 Base
+                only.
 
         Returns:
             NSIJoinResult:

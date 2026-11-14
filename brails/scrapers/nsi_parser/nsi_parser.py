@@ -74,12 +74,14 @@ API_ENDPOINT = 'https://nsi.sec.usace.army.mil/nsiapi/structures?bbox='
 
 class NSI_Parser:
     """
-    A class for interacting with the National Structural Inventory (NSI) data.
+    A class for interacting with the National Structure Inventory (NSI) data.
 
     This class provides methods for fetching and processing NSI data,
     including mapping the data to building footprints, extracting relevant
     attributes, and generating inventory outputs in formats compatible with
     BRAILS and other GIS applications.
+
+    BRAILS is compatible with the records of the NSI 2026 Base only.
 
     Key responsibilities of this class include:
     - Fetching NSI data for given bounding box coordinates.
