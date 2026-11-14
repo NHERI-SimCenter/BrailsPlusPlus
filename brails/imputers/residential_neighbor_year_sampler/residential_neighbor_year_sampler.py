@@ -92,34 +92,20 @@ class ResidentialNeighborYearSampler(InferenceEngine):
     """
     Copy to each building the construction year of a nearby residential one.
 
-    The donors are the residential buildings of one world of a frozen stage
-    that hold a year, whatever its source. The sampler works in five
-    steps.
+    :meth:`fit` takes as donors the buildings of one world of a frozen
+    stage that are in
+    :data:`~brails.inferers.acs_year_built_sampler.acs_year_built_sampler.RESIDENTIAL_CLASSES`
+    and hold a whole-number year, whatever its source. :meth:`draw` copies
+    to each building the year of a donor near it, or of one in its block
+    group where none lies within ``cap_m``, and :meth:`picks` reports the
+    donor each building draws. The README beside this module states the
+    method, the defaults and the scope.
 
-    1. :meth:`fit` reads the stage and takes as donors its assets whose
-       ``occupancy_key`` is among
-       :data:`~brails.inferers.acs_year_built_sampler.acs_year_built_sampler.RESIDENTIAL_CLASSES`,
-       whose ``year_built_key`` is a whole number, an integer or an
-       integral float, and whose coordinates enclose an area.
-    2. Each call of :meth:`check`, :meth:`draw` or :meth:`picks` indexes
-       those donors and the sites of the inventory's assets.
-    3. Each asset draws one donor among the ``k`` nearest within ``cap_m``,
-       by the great-circle distance between centroids, with weights one
-       over the distance.
-    4. An asset with no donor within ``cap_m`` draws one donor of its block
-       group, read from :data:`~brails.constants.BLOCK_GROUP_KEY`, with
-       equal weights. In a block group that covers a large area the donor
-       may lie beyond the cap.
-    5. The donor's year is copied.
-
-    Steps 3 and 4 are the draw of
-    :meth:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.ObservedDonorImputer.draw`,
-    run with the residential status on a distance of location alone and
-    with the labels of :data:`NEIGHBOR_YEAR_PURPOSE_PREFIX`. A draw depends
-    on the asset's id and coordinates, its block group, the seed, the
-    world, the iteration, ``k``, ``cap_m`` and the donors, and never on
-    processing order or on another asset's draw. The README beside this module states the
-    defaults and the scope.
+    A draw depends on the asset's id and coordinates, its block group, the
+    seed, the world, the iteration, ``k``, ``cap_m`` and the donors, and
+    never on processing order or on another asset's draw; its uniforms
+    carry the labels of :data:`NEIGHBOR_YEAR_PURPOSE_PREFIX`. :meth:`check`
+    refuses a building it cannot draw for and says why.
 
     The sampler writes ``year_built_key`` whether or not one is already
     there; keeping an observed year is the caller's decision.
@@ -279,8 +265,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
                 with the centroid's ``lon`` and ``lat``, the block group
                 under :data:`~brails.constants.BLOCK_GROUP_KEY` (``None``
                 where the donor holds none) and the year under
-                ``year_built_key``. A copy, built on the first read after
-                each fit.
+                ``year_built_key``. A copy.
 
         Raises:
             RuntimeError:
@@ -544,8 +529,8 @@ class ResidentialNeighborYearSampler(InferenceEngine):
             )
         rows = []
         for asset_id, features in assets.items():
-            # status=True keeps the residential donors in place of the
-            # status round, since the asset's own class lies outside it
+            # status=True matches the residential donors; the asset's own
+            # class lies outside them and would match none
             pick = self._imputer.draw(
                 pool,
                 asset_id,
