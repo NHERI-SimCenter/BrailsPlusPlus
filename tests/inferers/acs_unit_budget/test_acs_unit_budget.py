@@ -49,9 +49,9 @@ from brails.aggregators.points_to_polygons.nsi_footprint_join import (
 )
 from brails.constants import (
     BLOCK_GROUP_KEY,
-    GROSS_AREA,
+    GROSS_AREA_KEY,
     OCCUPANCY_KEY,
-    SOURCE_STRING_FEATURE,
+    SOURCE_STRING_KEY,
     STORIES_KEY,
     UNITS_KEY,
 )
@@ -705,7 +705,7 @@ class TestRelabel:
         )
         rp = merged.inventory['rp'].features
         assert rp[OCC] == 'RES2'
-        assert rp[SOURCE_STRING_FEATURE][:2] == 'IN'
+        assert rp[SOURCE_STRING_KEY][:2] == 'IN'
         assert reached.inventory['rp'].features[OCC] == 'RES1'
 
     def test_without_relabel_sources(self) -> None:
@@ -1033,8 +1033,8 @@ class TestCapacity:
         rows = table({BG_A: {'002': (1, 1)}})
         targets = inventory(
             {
-                'g': asset(0, 0, **in_bg(**{GROSS_AREA: 5000.0, STORIES: 3})),
-                'z': asset(100, 0, **in_bg(**{GROSS_AREA: 0.0, STORIES: 3})),
+                'g': asset(0, 0, **in_bg(**{GROSS_AREA_KEY: 5000.0, STORIES: 3})),
+                'z': asset(100, 0, **in_bg(**{GROSS_AREA_KEY: 0.0, STORIES: 3})),
             }
         )
         log = budget(rows, []).allocate(targets, inventory({})).log

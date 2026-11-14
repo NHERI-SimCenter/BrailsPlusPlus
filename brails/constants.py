@@ -50,10 +50,10 @@ R_EARTH_KM = 6371
 
 # The provenance feature the footprint scrapers write, naming the provider
 # of each footprint.
-FOOTPRINT_PROVIDER_FEATURE = 'footprint_provider'
+FOOTPRINT_PROVIDER_FEATURE_KEY = 'footprint_provider'
 
 # The features holding each footprint provider's own ids, by the value the
-# footprint scrapers record as FOOTPRINT_PROVIDER_FEATURE. The first of them
+# footprint scrapers record as FOOTPRINT_PROVIDER_FEATURE_KEY. The first of them
 # ranks footprints of equal geometry and identifies a dropped footprint.
 PROVIDER_ID_FEATURES: Dict[str, Tuple[str, ...]] = {
     'usa_structures': ('usa_build_id', 'usa_uuid'),
@@ -70,7 +70,7 @@ PROVIDER_FEATURES: Tuple[str, ...] = (
         for id_features in PROVIDER_ID_FEATURES.values()
         for feature in id_features
     ),
-    FOOTPRINT_PROVIDER_FEATURE,
+    FOOTPRINT_PROVIDER_FEATURE_KEY,
 )
 
 # The features the census tract scraper writes, holding an asset's Census
@@ -92,10 +92,10 @@ OCCUPANCY_KEY = 'OccupancyClass'
 UNITS_KEY = 'NumberOfUnits'
 STORIES_KEY = 'NumberOfStories'
 PLAN_AREA_KEY = 'PlanArea'
-GROSS_AREA = 'GrossArea'
+GROSS_AREA_KEY = 'GrossArea'
 YEAR_BUILT_KEY = 'YearBuilt'
 BUILDING_TYPE_KEY = 'BuildingType'
-REPLACEMENT_COST = 'ReplacementCost'
+REPLACEMENT_COST_KEY = 'ReplacementCost'
 
 # SimCenter feature names of a Hazus earthquake inventory
 DESIGN_LEVEL_KEY = 'DesignLevel'
@@ -103,7 +103,7 @@ STRUCTURE_TYPE_KEY = 'StructureType'
 HEIGHT_CLASS_KEY = 'HeightClass'
 
 # SimCenter source string that captures data provenance
-SOURCE_STRING_FEATURE = 'SourceString'
+SOURCE_STRING_FEATURE_KEY = 'SourceString'
 
 # Feature holding, per world, the id of the donor whose values a target kept.
 IMPUTATION_DONOR_KEY = 'ImputationDonor'

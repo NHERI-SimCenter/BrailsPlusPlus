@@ -54,7 +54,7 @@ from brails.aggregators.points_to_polygons.nsi_footprint_join import (
     point_class,
     unit_contribution,
 )
-from brails.constants import SOURCE_STRING_FEATURE
+from brails.constants import SOURCE_STRING_KEY
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_sampling_height_band,
     get_hazus_story_count,
@@ -190,7 +190,7 @@ class PairRedraw:
         occupancy_key: str = 'OccupancyClass',
         stories_key: str = 'NumberOfStories',
         units_key: str = 'NumberOfUnits',
-        source_string_key: str = SOURCE_STRING_FEATURE,
+        source_string_key: str = SOURCE_STRING_KEY,
         source_features: Sequence[str] = HAZUS_EQ_SOURCE_FEATURES,
         world: int = DEFAULT_WORLD,
     ) -> None:
@@ -216,7 +216,7 @@ class PairRedraw:
                 The unit count feature. Defaults to ``'NumberOfUnits'``.
             source_string_key (str, optional):
                 The feature holding the source string. Defaults to
-                :data:`SOURCE_STRING_FEATURE`.
+                :data:`SOURCE_STRING_KEY`.
             source_features (Sequence[str], optional):
                 The features the source string covers, in its order.
                 Defaults to :data:`HAZUS_EQ_SOURCE_FEATURES`.

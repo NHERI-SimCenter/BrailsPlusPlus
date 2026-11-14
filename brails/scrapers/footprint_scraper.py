@@ -54,7 +54,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from numpy import append, arctan2, cos, deg2rad, diff, pi, sin, sqrt
 from shapely.geometry import Polygon
 
-from brails.constants import FOOTPRINT_PROVIDER_FEATURE, PROVIDER_ID_FEATURES
+from brails.constants import FOOTPRINT_PROVIDER_KEY, PROVIDER_ID_FEATURES
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.types.region_boundary import RegionBoundary
 from brails.utils import UnitConverter
@@ -505,7 +505,7 @@ class FootprintScraper(ABC):
         """
         if provider is not None:
             for asset_features in features:
-                asset_features[FOOTPRINT_PROVIDER_FEATURE] = provider
+                asset_features[FOOTPRINT_PROVIDER_KEY] = provider
         id_features = PROVIDER_ID_FEATURES.get(provider, ())
         id_feature = id_features[0] if id_features else None
 

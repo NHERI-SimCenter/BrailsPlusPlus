@@ -53,11 +53,11 @@ import pandas as pd
 
 from brails.constants import (
     BLOCK_GROUP_KEY,
-    GROSS_AREA,
+    GROSS_AREA_KEY,
     IMPUTATION_DONOR_KEY,
     OCCUPANCY_KEY,
-    REPLACEMENT_COST,
-    SOURCE_STRING_FEATURE,
+    REPLACEMENT_COST_KEY,
+    SOURCE_STRING_KEY,
     STORIES_KEY,
 )
 from brails.imputers.imputation import Imputation
@@ -210,11 +210,11 @@ class ReplacementCostImputer(Imputation):
         location_scale_m: float = DEFAULT_LOCATION_SCALE_M,
         area_weight: float = DEFAULT_AREA_WEIGHT,
         stories_weight: float = DEFAULT_STORIES_WEIGHT,
-        value_key: str = REPLACEMENT_COST,
-        gross_area_key: str = GROSS_AREA,
+        value_key: str = REPLACEMENT_COST_KEY,
+        gross_area_key: str = GROSS_AREA_KEY,
         occupancy_key: str = OCCUPANCY_KEY,
         stories_key: str = STORIES_KEY,
-        source_string_key: str = SOURCE_STRING_FEATURE,
+        source_string_key: str = SOURCE_STRING_KEY,
         source_features: Sequence[str] = HAZUS_EQ_SOURCE_FEATURES,
     ) -> None:
         """
@@ -245,11 +245,11 @@ class ReplacementCostImputer(Imputation):
                 :data:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.DEFAULT_STORIES_WEIGHT`.
             value_key (str, optional):
                 The replacement cost feature. Defaults to
-                :data:`~brails.constants.REPLACEMENT_COST`.
+                :data:`~brails.constants.REPLACEMENT_COST_KEY`.
             gross_area_key (str, optional):
                 The feature a building's own value is divided by, in square
                 feet. Defaults to
-                :data:`~brails.constants.GROSS_AREA`.
+                :data:`~brails.constants.GROSS_AREA_KEY`.
             occupancy_key (str, optional):
                 The occupancy class feature. Defaults to
                 :data:`~brails.constants.OCCUPANCY_KEY`.
@@ -258,7 +258,7 @@ class ReplacementCostImputer(Imputation):
                 :data:`~brails.constants.STORIES_KEY`.
             source_string_key (str, optional):
                 The feature holding the source string. Defaults to
-                :data:`~brails.constants.SOURCE_STRING_FEATURE`.
+                :data:`~brails.constants.SOURCE_STRING_KEY`.
             source_features (Sequence[str], optional):
                 The features the source string covers, in its order.
                 Defaults to

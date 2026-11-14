@@ -54,7 +54,7 @@ import pandas as pd
 
 from brails.constants import (
     DEFAULT_UNITS,
-    FOOTPRINT_PROVIDER_FEATURE,
+    FOOTPRINT_PROVIDER_KEY,
     STORIES_FROM_HEIGHT_KEY,
 )
 from brails.inferers.inference_diagnosis import (
@@ -76,7 +76,7 @@ if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
 
 # The feature naming a footprint's provider, which keys the scales.
-PROVIDER_KEY = FOOTPRINT_PROVIDER_FEATURE
+PROVIDER_KEY = FOOTPRINT_PROVIDER_KEY
 
 # The one provider whose scales may be given per source of the height: an
 # Overture footprint names the source of its height in SOURCES_KEY, as the

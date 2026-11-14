@@ -44,7 +44,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 import pytest
 
-from brails.constants import SOURCE_STRING_FEATURE
+from brails.constants import SOURCE_STRING_KEY
 from brails.exceptions import BrailsError
 from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
@@ -186,7 +186,7 @@ class TestThreeSourceMerge:
             g1['DesignLevel'],
             g1['StructureType'],
         ) == (1931, 2, 'MC', 'W1')
-        assert g1[SOURCE_STRING_FEATURE] == '--NLID--'
+        assert g1[SOURCE_STRING_KEY] == '--NLID--'
 
     @pytest.mark.parametrize('marker', [None, float('nan'), pd.NA, pd.NaT, 'NA', ''])
     def test_missing_values_never_win(
@@ -202,7 +202,7 @@ class TestThreeSourceMerge:
 
         g1 = merged.inventory['g1'].features
         assert g1['YearBuilt'] == 1950
-        assert g1[SOURCE_STRING_FEATURE] == '---F----'
+        assert g1[SOURCE_STRING_KEY] == '---F----'
 
     def test_zero_is_a_value_and_the_empty_string_is_missing(
         self, build_inventory: Build
@@ -218,7 +218,7 @@ class TestThreeSourceMerge:
         g1 = merged.inventory['g1'].features
         assert g1['NumberOfUnits'] == 0
         assert g1['DesignLevel'] == 'HC'
-        assert g1[SOURCE_STRING_FEATURE] == '-L--F---'
+        assert g1[SOURCE_STRING_KEY] == '-L--F---'
 
     def test_no_value_anywhere_leaves_the_marker(
         self, build_inventory: Build
@@ -231,7 +231,7 @@ class TestThreeSourceMerge:
         # g3: YearBuilt None in local, NumberOfStories None in the footprint.
         assert merged.inventory['g3'].features['YearBuilt'] is None
         assert merged.inventory['g3'].features['NumberOfStories'] is None
-        assert merged.inventory['g3'].features[SOURCE_STRING_FEATURE][2:4] == '--'
+        assert merged.inventory['g3'].features[SOURCE_STRING_KEY][2:4] == '--'
 
     def test_a_feature_nobody_holds_keeps_the_first_marker(
         self, build_inventory: Build
@@ -262,7 +262,7 @@ class TestThreeSourceMerge:
         spine, _ = three_sources(build_inventory)
         merged = spine.merge({}, ['footprint'], name='footprint')
         assert merged.inventory['g2'].features['NumberOfStories'] == 3
-        assert merged.inventory['g2'].features[SOURCE_STRING_FEATURE] == '--F-----'
+        assert merged.inventory['g2'].features[SOURCE_STRING_KEY] == '--F-----'
 
     def test_vector_features_are_the_union(self, build_inventory: Build) -> None:
         """The result declares every source's vector features once."""
@@ -318,7 +318,7 @@ class TestSourceString:
         )
         merged = merge_three(build_inventory)
         strings = {
-            asset_id: asset.features[SOURCE_STRING_FEATURE]
+            asset_id: asset.features[SOURCE_STRING_KEY]
             for asset_id, asset in merged.inventory.items()
         }
         assert strings == {
@@ -337,8 +337,8 @@ class TestSourceString:
         g1_forward = merge_three(build_inventory, source_features=forward)
         g1_backward = merge_three(build_inventory, source_features=backward)
 
-        assert g1_forward.inventory['g1'].features[SOURCE_STRING_FEATURE] == 'NNL'
-        assert g1_backward.inventory['g1'].features[SOURCE_STRING_FEATURE] == 'LNN'
+        assert g1_forward.inventory['g1'].features[SOURCE_STRING_KEY] == 'NNL'
+        assert g1_backward.inventory['g1'].features[SOURCE_STRING_KEY] == 'LNN'
 
     def test_an_iterator_of_features_is_read_once(
         self, build_inventory: Build
@@ -348,13 +348,13 @@ class TestSourceString:
 
         merged = merge_three(build_inventory, source_features=iter(forward))
 
-        assert merged.inventory['g1'].features[SOURCE_STRING_FEATURE] == 'NNL'
+        assert merged.inventory['g1'].features[SOURCE_STRING_KEY] == 'NNL'
 
     def test_only_codes_and_the_none_marker(self, build_inventory: Build) -> None:
         """Every character is an uppercase source code or the none marker."""
         allowed = set(SOURCE_CODES.values()) | {SOURCE_CODE_NONE}
         for asset in merge_three(build_inventory).inventory.values():
-            string = asset.features[SOURCE_STRING_FEATURE]
+            string = asset.features[SOURCE_STRING_KEY]
             assert len(string) == len(HAZUS_EQ_SOURCE_FEATURES)
             assert set(string) <= allowed
             assert re.fullmatch(r'[A-Z-]+', string)
@@ -386,7 +386,7 @@ class TestSourceString:
             source_features=['YearBuilt', 'DesignLevel'],
         )
 
-        assert merged.inventory['g1'].features[SOURCE_STRING_FEATURE] == (
+        assert merged.inventory['g1'].features[SOURCE_STRING_KEY] == (
             code + SOURCE_CODE_NONE
         )
 
@@ -396,7 +396,7 @@ class TestSourceString:
         """source_features=None writes no source string."""
         merged = merge_three(build_inventory, source_features=None)
         assert all(
-            SOURCE_STRING_FEATURE not in asset.features
+            SOURCE_STRING_KEY not in asset.features
             for asset in merged.inventory.values()
         )
 
@@ -410,8 +410,8 @@ class TestSourceString:
         merged = spine.merge({'nsi': nsi}, ['nsi', 'footprint'], name='footprint')
 
         assert (
-            merged.inventory['g1'].features[SOURCE_STRING_FEATURE]
-            == merged.inventory['g2'].features[SOURCE_STRING_FEATURE]
+            merged.inventory['g1'].features[SOURCE_STRING_KEY]
+            == merged.inventory['g2'].features[SOURCE_STRING_KEY]
             == '---N----'
         )
 
@@ -439,7 +439,7 @@ class TestWorldInvariance:
         g1 = merged.inventory['g1'].features
         g2 = merged.inventory['g2'].features
         assert g1['YearBuilt'] == [1921, 1934, 1950]
-        assert g1[SOURCE_STRING_FEATURE] == g2[SOURCE_STRING_FEATURE] == '---D----'
+        assert g1[SOURCE_STRING_KEY] == g2[SOURCE_STRING_KEY] == '---D----'
         assert merged.n_pw == 3
 
     def test_each_world_merged_alone_gives_the_same_string(
@@ -464,7 +464,7 @@ class TestWorldInvariance:
             )
             features = single.inventory['g1'].features
             assert features['YearBuilt'] == g1['YearBuilt'][world]
-            assert features[SOURCE_STRING_FEATURE] == g1[SOURCE_STRING_FEATURE]
+            assert features[SOURCE_STRING_KEY] == g1[SOURCE_STRING_KEY]
 
     def test_a_list_counts_as_a_value_whatever_it_holds(
         self, build_inventory: Build
@@ -477,7 +477,7 @@ class TestWorldInvariance:
             {'drawn': drawn}, ['drawn', 'footprint'], name='footprint'
         )
 
-        assert merged.inventory['g1'].features[SOURCE_STRING_FEATURE] == '---D----'
+        assert merged.inventory['g1'].features[SOURCE_STRING_KEY] == '---D----'
 
     def test_one_world_sources_mix_with_many(self, build_inventory: Build) -> None:
         """Sources with one world merge with sources with several."""
@@ -617,7 +617,7 @@ class TestRefusals:
         ('source_features', 'error', 'match'),
         [
             (['YearBuilt', 'YearBuilt'], ValueError, 'repeats'),
-            ([SOURCE_STRING_FEATURE], ValueError, 'cannot include'),
+            ([SOURCE_STRING_KEY], ValueError, 'cannot include'),
             ('YearBuilt', TypeError, "not the string 'YearBuilt'"),
         ],
     )

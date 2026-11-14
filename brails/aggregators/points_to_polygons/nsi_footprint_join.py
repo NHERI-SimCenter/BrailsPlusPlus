@@ -55,7 +55,7 @@ import numpy as np
 import pandas as pd
 import shapely
 
-from brails.constants import GROSS_AREA, REPLACEMENT_COST
+from brails.constants import GROSS_AREA_KEY, REPLACEMENT_COST_KEY
 from brails.scrapers.nsi_parser.nsi_conventions import to_simcenter
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
@@ -1066,8 +1066,8 @@ def _footprint_values(
     for name in (
         'Longitude',
         'Latitude',
-        GROSS_AREA,
-        REPLACEMENT_COST,
+        GROSS_AREA_KEY,
+        REPLACEMENT_COST_KEY,
         UNITS_FIELD,
         ID_FIELD,
     ):
@@ -1093,7 +1093,10 @@ def _footprint_values(
     else:
         observed['OccupancyClass'] = footprint_class
 
-    for field, name in ((AREA_FIELD, GROSS_AREA), (VALUE_FIELD, REPLACEMENT_COST)):
+    for field, name in (
+        (AREA_FIELD, GROSS_AREA_KEY),
+        (VALUE_FIELD, REPLACEMENT_COST_KEY),
+    ):
         stated = [
             value
             for value in (

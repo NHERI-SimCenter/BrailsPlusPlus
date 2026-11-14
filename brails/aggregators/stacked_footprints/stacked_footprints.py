@@ -53,7 +53,7 @@ from shapely.geometry import MultiPolygon, Polygon
 
 from brails.constants import (
     DEFAULT_UNITS,
-    FOOTPRINT_PROVIDER_FEATURE,
+    FOOTPRINT_PROVIDER_KEY,
     PROVIDER_ID_FEATURES,
 )
 from brails.inferers.stories_from_height_inferer.stories_from_height_inferer import (
@@ -582,13 +582,13 @@ def _footprints(
                 'writes them.'
             )
             raise ValueError(msg)  # noqa: TRY004
-        provider = asset.features.get(FOOTPRINT_PROVIDER_FEATURE)
+        provider = asset.features.get(FOOTPRINT_PROVIDER_KEY)
         if provider != OVERTURE_PROVIDER or is_missing_value(
             asset.features.get(OVERTURE_ID_FEATURE)
         ):
             msg = (
                 f'The asset {key!r} is not an Overture footprint: the merge '
-                f'needs {FOOTPRINT_PROVIDER_FEATURE} {OVERTURE_PROVIDER!r} '
+                f'needs {FOOTPRINT_PROVIDER_KEY} {OVERTURE_PROVIDER!r} '
                 f'and an {OVERTURE_ID_FEATURE}.'
             )
             raise ValueError(msg)

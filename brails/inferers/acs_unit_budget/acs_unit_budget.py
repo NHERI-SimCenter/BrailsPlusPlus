@@ -62,7 +62,7 @@ from brails.constants import (
     BLOCK_GROUP_KEY,
     GEOGRAPHIC_CRS,
     GEOID_LENGTH,
-    GROSS_AREA,
+    GROSS_AREA_KEY,
     OCCUPANCY_KEY,
     STORIES_KEY,
     UNITS_KEY,
@@ -141,7 +141,7 @@ OUTCOME_DROPPED = 'dropped'
 OUTCOME_NONRESIDENTIAL = 'nonresidential'
 OUTCOME_NO_ACS = 'no_acs'
 
-# Where a site's gross floor area comes from: its GROSS_AREA, its plan area
+# Where a site's gross floor area comes from: its GROSS_AREA_KEY, its plan area
 # times its STORIES_KEY, or its plan area alone, one story.
 AREA_FROM_GROSS_AREA = 'gross_area'
 AREA_FROM_STORIES = 'stories'
@@ -386,7 +386,7 @@ class BlockGroupUnitBudget:
     Each target has a capacity, the whole number of units its gross floor
     area holds at :attr:`min_unit_area_sqft` square feet per unit. The gross
     floor area is the target's
-    :data:`~brails.constants.GROSS_AREA`
+    :data:`~brails.constants.GROSS_AREA_KEY`
     in square feet where it holds a positive number, else its plan area
     times its :data:`~brails.constants.STORIES_KEY` where that is
     a positive number, else its plan area alone. The candidates are the
@@ -719,7 +719,7 @@ class BlockGroupUnitBudget:
             # else plan area, each where a positive finite number is held.
             held = {
                 key: float(value)
-                for key in (GROSS_AREA, STORIES_KEY)
+                for key in (GROSS_AREA_KEY, STORIES_KEY)
                 if isinstance(
                     value := asset.features.get(key),
                     (int, float, np.integer, np.floating),
@@ -728,13 +728,13 @@ class BlockGroupUnitBudget:
                 and math.isfinite(value)
                 and value > 0
             }
-            stories = None if GROSS_AREA in held else held.get(STORIES_KEY)
+            stories = None if GROSS_AREA_KEY in held else held.get(STORIES_KEY)
             gross_sqft = held.get(
-                GROSS_AREA, area / UNIT_TO_METER['ft'] ** 2 * (stories or 1.0)
+                GROSS_AREA_KEY, area / UNIT_TO_METER['ft'] ** 2 * (stories or 1.0)
             )
             source = (
                 AREA_FROM_GROSS_AREA
-                if GROSS_AREA in held
+                if GROSS_AREA_KEY in held
                 else AREA_FROM_PLAN_AREA
                 if stories is None
                 else AREA_FROM_STORIES

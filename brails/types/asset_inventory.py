@@ -76,8 +76,8 @@ from brails.constants import (
     DESIGN_LEVEL_KEY,
     HEIGHT_CLASS_KEY,
     OCCUPANCY_KEY,
-    REPLACEMENT_COST,
-    SOURCE_STRING_FEATURE,
+    REPLACEMENT_COST_KEY,
+    SOURCE_STRING_KEY,
     STORIES_KEY,
     STRUCTURE_TYPE_KEY,
     UNITS_KEY,
@@ -124,7 +124,7 @@ HAZUS_EQ_SOURCE_FEATURES: tuple[str, ...] = (
     DESIGN_LEVEL_KEY,
     STRUCTURE_TYPE_KEY,
     HEIGHT_CLASS_KEY,
-    REPLACEMENT_COST,
+    REPLACEMENT_COST_KEY,
 )
 
 # String BRAILS readers, the footprint scrapers among them, write for an
@@ -297,7 +297,7 @@ def _check_source_features(source_features: Sequence[str], order: list[str]) -> 
             If ``source_features`` is a single string.
         ValueError:
             If ``source_features`` repeats a feature or names
-            :data:`SOURCE_STRING_FEATURE`, or a label has no code in
+            :data:`SOURCE_STRING_KEY`, or a label has no code in
             :data:`SOURCE_CODES`.
     """
     if isinstance(source_features, str):
@@ -310,9 +310,9 @@ def _check_source_features(source_features: Sequence[str], order: list[str]) -> 
     )
     if repeated:
         raise ValueError(f'source_features repeats {repeated}.')
-    if SOURCE_STRING_FEATURE in source_features:
+    if SOURCE_STRING_KEY in source_features:
         raise ValueError(
-            f'source_features cannot include {SOURCE_STRING_FEATURE!r}.'
+            f'source_features cannot include {SOURCE_STRING_KEY!r}.'
         )
     uncoded = sorted(set(order) - set(SOURCE_CODES))
     if uncoded:
@@ -1198,7 +1198,7 @@ class AssetInventory:
         source in ``precedence`` that has it.
 
         Unless ``source_features`` is ``None``, each asset also receives
-        the feature :data:`SOURCE_STRING_FEATURE`: one character per
+        the feature :data:`SOURCE_STRING_KEY`: one character per
         feature of ``source_features``, in that order, holding the
         :data:`SOURCE_CODES` code of the source the value came from, or
         :data:`SOURCE_CODE_NONE` where no source holds one.
@@ -1236,10 +1236,10 @@ class AssetInventory:
                 If ``name`` labels one of ``others``; if ``precedence``
                 omits a label, repeats one or names a label that is not a
                 source; if ``source_features`` repeats a feature or names
-                :data:`SOURCE_STRING_FEATURE`; if a source string is
+                :data:`SOURCE_STRING_KEY`; if a source string is
                 requested and a label has no code in
                 :data:`SOURCE_CODES`; if any source already carries
-                :data:`SOURCE_STRING_FEATURE`; if a source holds an asset
+                :data:`SOURCE_STRING_KEY`; if a source holds an asset
                 id that this inventory lacks; if two sources hold
                 different numbers of possible worlds above one; or if a
                 source holds a housing unit inventory.
@@ -1300,7 +1300,7 @@ class AssetInventory:
 
             features = {key: deepcopy(values[key]) for key in keys}
             if source_features is not None:
-                features[SOURCE_STRING_FEATURE] = ''.join(
+                features[SOURCE_STRING_KEY] = ''.join(
                     SOURCE_CODES[winners[feature]]
                     if feature in winners
                     else SOURCE_CODE_NONE
@@ -1423,14 +1423,14 @@ class AssetInventory:
             label
             for label in order
             if any(
-                SOURCE_STRING_FEATURE in asset.features
+                SOURCE_STRING_KEY in asset.features
                 for asset in sources[label].inventory.values()
             )
         ]
         if carrying:
             raise ValueError(
                 f'Source(s) {carrying} already carry '
-                f'{SOURCE_STRING_FEATURE!r}, which describes an earlier '
+                f'{SOURCE_STRING_KEY!r}, which describes an earlier '
                 'merge. Merge the per-source inventories in one call, or '
                 'remove the feature first.'
             )
