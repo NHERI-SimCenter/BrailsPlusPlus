@@ -36,7 +36,7 @@ Allocate a block group's census housing units to footprints without records.
 
 .. autosummary::
 
-      BlockGroupUnitBudget
+      ACSUnitBudget
       UnitBudgetResult
 """
 
@@ -210,7 +210,7 @@ def _class_range(occupancy: str) -> tuple[int, int | None]:
 
 class UnitBudgetResult(NamedTuple):
     """
-    The result of :meth:`BlockGroupUnitBudget.allocate`.
+    The result of :meth:`ACSUnitBudget.allocate`.
 
     Attributes:
         imputed (AssetInventory):
@@ -242,7 +242,7 @@ class UnitBudgetResult(NamedTuple):
             columns of :data:`DIAGNOSTIC_COLUMNS`. ``generated_units`` holds
             the units the budget placed in that world, ``total_units`` those
             and the reached units, ``lower`` and ``upper`` the estimate less
-            and plus :attr:`BlockGroupUnitBudget.moe_factor` times the
+            and plus :attr:`ACSUnitBudget.moe_factor` times the
             margin, and ``outside`` whether the total lies beyond them. The
             margin of a bin summing two table lines, and of the total, is
             the root of the summed squared margins.
@@ -347,7 +347,7 @@ class _BudgetGroup(NamedTuple):
 
 class _BudgetCall(NamedTuple):
     """
-    The inputs of one :meth:`BlockGroupUnitBudget.allocate` call.
+    The inputs of one :meth:`ACSUnitBudget.allocate` call.
 
     Attributes:
         reached (AssetInventory):
@@ -359,7 +359,7 @@ class _BudgetCall(NamedTuple):
         chances (dict):
             The targets' residential probabilities.
         relabel_sources (Mapping | None):
-            As :meth:`BlockGroupUnitBudget.allocate` takes it.
+            As :meth:`ACSUnitBudget.allocate` takes it.
         state (_BudgetAllocation):
             The allocation being built.
     """
@@ -372,7 +372,7 @@ class _BudgetCall(NamedTuple):
     state: _BudgetAllocation
 
 
-class BlockGroupUnitBudget:
+class ACSUnitBudget:
     """
     Allocate each block group's B25024 residual units to unreached footprints.
 
@@ -1613,7 +1613,7 @@ def _read_b25024(table: pd.DataFrame) -> dict[str, _BudgetRow]:
 
     Args:
         table (pandas.DataFrame):
-            The table, as :class:`BlockGroupUnitBudget` takes it.
+            The table, as :class:`ACSUnitBudget` takes it.
 
     Returns:
         dict[str, _BudgetRow]:
@@ -1700,7 +1700,7 @@ def _mh_park_lonlat(points: Any) -> np.ndarray:  # noqa: ANN401
 
     Args:
         points (Any):
-            As :class:`BlockGroupUnitBudget` takes them.
+            As :class:`ACSUnitBudget` takes them.
 
     Returns:
         numpy.ndarray:

@@ -73,7 +73,7 @@ order the result does not depend on. Its floor area in square feet is its
 plan area times its ``NumberOfStories`` in the world where that is a finite
 number above zero, logged as ``AREA_FROM_STORIES``, and otherwise its plan
 area as one story, logged as ``AREA_FROM_PLAN_AREA``. This is the gross floor
-area ``BlockGroupUnitBudget`` reads for a footprint without a ``GrossArea``.
+area ``ACSUnitBudget`` reads for a footprint without a ``GrossArea``.
 The budget reads a ``GrossArea`` first, and this imputer never does. A
 building whose coordinates enclose no area gets no value
 (``OUTCOME_NO_AREA``).

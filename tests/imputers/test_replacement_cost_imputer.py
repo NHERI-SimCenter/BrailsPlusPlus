@@ -74,7 +74,7 @@ from brails.imputers.replacement_cost.replacement_cost_imputer import (
     OUTCOME_VALUE_CODES,
     ReplacementCostResult,
 )
-from brails.inferers import BlockGroupUnitBudget
+from brails.inferers import ACSUnitBudget
 from brails.inferers.acs_unit_budget.acs_unit_budget import (
     AREA_FROM_GROSS_AREA,
     AREA_FROM_PLAN_AREA,
@@ -96,7 +96,7 @@ from tests.imputers.donor_fixtures import (
 
 SQFT = 0.3048**2
 
-# The columns of an empty B25024 table for BlockGroupUnitBudget.
+# The columns of an empty B25024 table for ACSUnitBudget.
 ACS_COLUMNS = [GEOID_COLUMN] + [
     f'B25024_{line:03d}{kind}' for line in range(2, 11) for kind in 'EM'
 ]
@@ -656,7 +656,7 @@ class TestUnitBudgetFloorArea:
             'text': target(240.0, NumberOfStories='NA'),
         }
         buildings = inventory(records)
-        budget = BlockGroupUnitBudget(
+        budget = ACSUnitBudget(
             pd.DataFrame(columns=ACS_COLUMNS),
             [],
             imputer=ObservedDonorImputer(seed=1),
@@ -674,7 +674,7 @@ class TestUnitBudgetFloorArea:
     def test_departure_on_gross_area(self) -> None:
         """The budget reads GrossArea and the imputer does not."""
         buildings = inventory({'g': target(0.0, GrossArea=500.0, NumberOfStories=3)})
-        budget = BlockGroupUnitBudget(
+        budget = ACSUnitBudget(
             pd.DataFrame(columns=ACS_COLUMNS),
             [],
             imputer=ObservedDonorImputer(seed=1),

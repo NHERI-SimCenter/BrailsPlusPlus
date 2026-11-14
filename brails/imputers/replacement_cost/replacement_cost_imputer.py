@@ -684,7 +684,7 @@ class ReplacementCostImputer(Imputation):
             ValueError:
                 If the coordinates cannot be read as a footprint.
         """
-        # BlockGroupUnitBudget's gross floor area on a footprint without a
+        # ACSUnitBudget's gross floor area on a footprint without a
         # GrossArea; the budget reads GrossArea first, and this never does.
         try:
             with_area = AssetInventory.has_area(asset.coordinates)

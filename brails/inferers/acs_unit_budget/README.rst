@@ -1,7 +1,7 @@
-Block-group unit budget
-=======================
+ACS unit budget
+===============
 
-``BlockGroupUnitBudget`` places the housing units a census table counts in a
+``ACSUnitBudget`` places the housing units a census table counts in a
 block group, less those of the footprints that already hold observed records,
 on the remaining footprints. The tables it packages, ``B25024_BINS``,
 ``MOBILE_HOME_BIN`` and ``BIN_CLASSES``, are in ``acs_unit_budget.py``

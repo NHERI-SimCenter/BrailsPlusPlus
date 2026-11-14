@@ -31,7 +31,7 @@
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 
-"""Tests for the block-group unit budget."""
+"""Tests for the ACS unit budget."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ from brails.constants import (
     STORIES_KEY,
     UNITS_KEY,
 )
-from brails.inferers import BlockGroupUnitBudget
+from brails.inferers import ACSUnitBudget
 from brails.inferers.acs_unit_budget.acs_unit_budget import (
     B25024_BINS,
     BIN_CLASSES,
@@ -240,9 +240,7 @@ def scene() -> tuple[pd.DataFrame, list, AssetInventory, AssetInventory]:
     return rows, [lonlat(*MH_PARK)], targets, reached
 
 
-def budget(
-    rows: pd.DataFrame, mh_parks: list, **kwargs: Any
-) -> BlockGroupUnitBudget:
+def budget(rows: pd.DataFrame, mh_parks: list, **kwargs: Any) -> ACSUnitBudget:
     """
     Build a budget on the fixture imputer and seed.
 
@@ -255,12 +253,12 @@ def budget(
             Constructor overrides.
 
     Returns:
-        BlockGroupUnitBudget:
+        ACSUnitBudget:
             The budget.
     """
     options = {'imputer': imputer(), 'seed': SEED}
     options.update(kwargs)
-    return BlockGroupUnitBudget(rows, mh_parks, **options)
+    return ACSUnitBudget(rows, mh_parks, **options)
 
 
 def run(
@@ -1207,4 +1205,4 @@ class TestImporter:
 
     def test_importer(self) -> None:
         """The Importer resolves the class."""
-        assert Importer().get_class('BlockGroupUnitBudget') is BlockGroupUnitBudget
+        assert Importer().get_class('ACSUnitBudget') is ACSUnitBudget
