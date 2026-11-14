@@ -38,7 +38,7 @@
 # 07-13-2025
 
 """
-This module define the base class for scraping OvertureMaps data.
+Base class for reading Overture Maps data.
 
 .. autosummary::
 
@@ -90,26 +90,12 @@ TYPE_THEME_MAP = {
 
 class OvertureMapsScraper(ABC):
     """
-    A base class for accessing and processing data from Overture Maps.
+    Base class of the Overture Maps scrapers, with the release lookup.
 
-    This is a base class and is **not intended to be instantiated directly**.
-    To use it, either:
-
-    - Import and instantiate a subclass
-      (e.g., ``Importer().get_class('OvertureMapsFootprintScraper')``)
-    - Or subclass it yourself and implement additional logic.
-
-    Direct imports of this base class are typically only needed when creating
-    new Overture Maps scrapers.
-
-    Provided static methods include:
-
-    - Fetching release version names from the Overture Maps release index.
-    - Constructing S3 paths to specific dataset partitions.
-    - Reading datasets from S3, or from local Parquet files, into an Arrow
-      table with optional spatial filtering.
-    - Normalizing bounding box coordinates to a consistent format.
-    - Formatting source metadata from NumPy arrays or lists of dictionaries.
+    The class is not instantiated directly, and
+    :class:`~brails.scrapers.overture_maps_scraper.overture_maps_footprint_scraper.OvertureMapsFootprintScraper`
+    derives from it. The README beside this module, "Releases", states how
+    a release is resolved.
     """
 
     # Releases the S3 bucket holds, cached after the first listing.
@@ -118,12 +104,10 @@ class OvertureMapsScraper(ABC):
     @staticmethod
     def fetch_release_names(print_releases: bool = False) -> List[str]:
         """
-        Fetch the list of release names from the OvertureMaps releases YAML.
+        Fetch the release names from Overture's published release list.
 
-        These are the releases Overture has published, which is not the same
-        set as the releases that can be read: the S3 bucket retains only the
-        most recent few, and the YAML can lag behind the bucket. Use
-        :meth:`fetch_available_releases` to find out what is readable.
+        The list need not match the releases the S3 bucket holds, which
+        :meth:`fetch_available_releases` gives.
 
         Args:
             print_releases (bool, optional):
@@ -132,6 +116,10 @@ class OvertureMapsScraper(ABC):
         Returns:
             List[str]:
                 A list of release version strings.
+
+        Raises:
+            OSError:
+                If the list cannot be fetched, as ``urllib.error.URLError``.
         """
         with urllib.request.urlopen(OVERTURE_RELEASES_URL) as resp:
             text = resp.read().decode("utf-8")
@@ -147,19 +135,21 @@ class OvertureMapsScraper(ABC):
     @staticmethod
     def fetch_available_releases(refresh: bool = False) -> List[str]:
         """
-        List the releases the OvertureMaps S3 bucket currently holds.
-
-        The bucket is the authority on what can be read: it retains only the
-        most recent few releases.
+        List the releases the Overture S3 bucket currently holds.
 
         Args:
             refresh (bool, optional):
-                List the bucket again instead of reusing the cached result.
-                Defaults to ``False``.
+                List the bucket again instead of reusing the result cached
+                by the first listing. Defaults to ``False``.
 
         Returns:
             List[str]:
-                Release names, newest first.
+                Release names, in reverse order, which is newest first for
+                date-named releases.
+
+        Raises:
+            OSError:
+                If the bucket cannot be listed.
         """
         if OvertureMapsScraper._available_releases is not None and not refresh:
             return list(OvertureMapsScraper._available_releases)
@@ -185,14 +175,15 @@ class OvertureMapsScraper(ABC):
         """
         Determine which release to read, checking it against the bucket.
 
-        A release that is no longer in the bucket is rejected, because a
-        named release is a claim about which data was used and substituting
-        another one invalidates it.
+        Where the bucket cannot be listed or lists no release, a warning is
+        printed, ``requested`` is returned unchecked, and without it the
+        first release of the published list is returned.
 
         Args:
             requested (str, optional):
-                The release the caller asked for. When omitted, the newest
-                release in the bucket is used.
+                The release to read. When omitted, the first release
+                :meth:`fetch_available_releases` gives, with a printed
+                notice.
 
         Returns:
             str:
@@ -200,8 +191,13 @@ class OvertureMapsScraper(ABC):
 
         Raises:
             ValueError:
-                If ``requested`` names a release the bucket does not hold, or
-                if no release can be determined at all.
+                If the bucket holds no release named ``requested``, or if
+                the bucket cannot be listed or lists no release and the
+                published list is empty.
+            OSError:
+                If the bucket cannot be listed or lists no release,
+                ``requested`` is omitted and the published list cannot be
+                fetched.
         """
         listing_error = None
         try:
@@ -259,6 +255,10 @@ class OvertureMapsScraper(ABC):
         Returns:
             Tuple[float, float, float, float]:
                 Bounding box reordered as (xmin, ymin, xmax, ymax).
+
+        Raises:
+            ValueError:
+                If ``bbox`` is not a tuple or list of four elements.
         """
         if not (isinstance(bbox, (tuple, list)) and len(bbox) == 4):
             raise ValueError(
@@ -276,14 +276,18 @@ class OvertureMapsScraper(ABC):
         Return the S3 path of the Overture dataset to use.
 
         Args:
-            overture_type (str):
-                The overture sub-partition type.
             release (str):
                 The release version string.
+            overture_type (str):
+                The Overture type, a key of ``TYPE_THEME_MAP``.
 
         Returns:
             str:
                 The full S3 path string.
+
+        Raises:
+            KeyError:
+                If ``overture_type`` is not a key of ``TYPE_THEME_MAP``.
         """
         theme = TYPE_THEME_MAP[overture_type]
         return f"{S3_BASE_PATH}/{release}/theme={theme}/type={overture_type}/"

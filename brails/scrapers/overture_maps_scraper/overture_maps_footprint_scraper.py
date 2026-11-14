@@ -38,7 +38,7 @@
 # 08-14-2025
 
 """
-This module define the concrete class for scraping OvertureMaps footprint data.
+Scraper of Overture Maps building footprints.
 
 .. autosummary::
 
@@ -79,85 +79,83 @@ DIMENSIONAL_ATTR = {'height': 'm',
 
 class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
     """
-    Scraper for extracting Overture Maps buildings.
+    Scraper of the Overture Maps buildings in a region.
 
-    The scraper reads Overture's ``building`` type only. Overture's
-    ``building_part`` type describes portions of a building that is already
-    present as a ``building`` row, such as a tower above its podium, and is
-    not read.
-
-    This class extends
-    :class:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OvertureMapsScraper`
-    and :class:`~brails.scrapers.footprint_scraper.FootprintScraper`, and
-    provides methods to load and filter Overture asset
-    datasets based on a region boundary. Assets are stored in an
-    :class:`~brails.types.asset_inventory.AssetInventory` and can be exported
-    as GeoJSON. The rows are read from the Overture S3 bucket, or from local
-    GeoParquet files given as ``'local_path'``. :meth:`download` writes
-    the rows of a region to such a file.
+    The rows come from the Overture S3 bucket, or from local GeoParquet
+    files given as ``'local_path'``, which :meth:`download` writes. Only
+    rows of Overture's ``building`` type are read. The README beside this
+    module states what is read and how the release is resolved.
 
     Attributes:
-        units (str):
-            Length unit used for spatial calculations. Parsed from
-            ``input_dict`` or defaults to ft.
+        units (dict):
+            The units parsed from ``input_dict``. ``units['length']`` is the
+            length unit of plan areas and heights.
         inventory (AssetInventory):
-            Stores the assets retrieved by the scraper.
+            The inventory :meth:`get_footprints` adds its assets to.
         overture_release (str):
-            The specific Overture Maps release being used. Falls back to the
-            newest release the S3 bucket holds if not specified in
-            ``input_dict``. With ``'local_path'``, the release declared in
-            ``input_dict`` or recorded in the files.
+            The Overture release read.
         local_paths (list of str or None):
             The local files read in place of the S3 bucket, or ``None``.
+
+    Example:
+        With ``region``, ``scraper_class`` and ``scraper`` as in the example
+        of :meth:`get_footprints`, record the release an inventory was built
+        from and name it in a later run, to read the same release for as
+        long as the bucket holds it:
+
+        >>> release = scraper.overture_release
+        >>> later = scraper_class({'overtureRelease': release})
+
+        Read Parquet files that record no release, naming the release they
+        hold, here ``files_release``:
+
+        >>> local = scraper_class(
+        ...     {
+        ...         'local_path': ['buildings_west.parquet',
+        ...                        'buildings_east.parquet'],
+        ...         'overtureRelease': files_release,
+        ...     }
+        ... )
+        >>> inventory = local.get_footprints(region)
     """
 
     def __init__(self, input_dict: Dict[str, Any] = None):
         """
-        Initialize the class with user-defined or default settings.
-
-        This constructor sets the unit system, initializes an empty asset
-        inventory, and determines which Overture Maps release to use.
-        Configuration options can be provided via the optional ``input_dict``.
+        Set the units and the source, and resolve the release.
 
         Args:
             input_dict (dict, optional):
-                A configuration dictionary that may include:
+                Scraper options, all optional:
 
-                - 'length' (str): Length unit to use (e.g., 'ft', 'm').
-                  Defaults to the unit defined in ``DEFAULT_UNITS`` if not
-                  provided.
-                - 'overtureRelease' (str): Specific Overture Maps release name
-                  to use, checked against the releases the S3 bucket holds. If
-                  omitted, the newest available release is selected, with a
-                  notice. See
-                  :meth:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OvertureMapsScraper.resolve_release`.
-                - 'id_scheme' (str) and 'min_area' (float): described in
-                  :class:`~brails.scrapers.footprint_scraper.FootprintScraper`.
-                - 'local_path' (str or sequence of str): GeoParquet files of
-                  Overture ``building`` rows, such as files written by
-                  :meth:`download`, read in place of the S3 bucket. Each
-                  file must hold Overture's ``bbox`` column. The bucket is
-                  not contacted, and the release is not checked against it.
-                  The release is ``'overtureRelease'``, or without it the
-                  release :meth:`download` recorded in every file. The
-                  releases given must agree.
+                - ``'length'`` (str): the length unit, such as ``'ft'`` or
+                  ``'m'``. Defaults to ``DEFAULT_UNITS['length']``.
+                - ``'overtureRelease'`` (str): the release to read. Without
+                  ``'local_path'`` it is checked by
+                  :meth:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OvertureMapsScraper.resolve_release`,
+                  which also gives the default.
+                - ``'id_scheme'`` (str) and ``'min_area'`` (float): described
+                  in :class:`~brails.scrapers.footprint_scraper.FootprintScraper`.
+                - ``'local_path'`` (str or sequence of str): GeoParquet files
+                  of Overture ``building`` rows read in place of the S3
+                  bucket, which is then not contacted. Each file must hold
+                  Overture's ``bbox`` column, and a file without it fails
+                  when it is read. The release is ``'overtureRelease'`` or
+                  the one each file records. The README beside this module,
+                  "Local files and their release", states the rules.
 
         Raises:
             FileNotFoundError:
                 If a file of ``'local_path'`` does not exist.
             ValueError:
-                If ``'local_path'`` names no file, or a path that is not a
-                Parquet file, or a file holding a ``building_id`` column,
-                which only Overture's ``building_part`` rows have; if
-                ``'overtureRelease'`` is absent and a file records no
-                release; or if the files and ``'overtureRelease'`` name more
-                than one release.
-
-        Notes:
-            - Units are parsed and validated through
-              :meth:`~brails.utils.unit_converter.UnitConverter.parse_units`.
-            - An empty :class:AssetInventory` is created upon initialization.
-            - If ``input_dict`` is not provided, all defaults will be used.
+                If ``'length'`` or ``'weight'`` is not a supported unit, or
+                ``'id_scheme'`` or ``'min_area'`` is invalid; if
+                ``'local_path'`` names no file, a path that is not a Parquet
+                file, or a file holding a ``building_id`` column; if no
+                release is known for a file; if the files and
+                ``'overtureRelease'`` name more than one release; or,
+                without ``'local_path'``, as ``resolve_release`` raises it.
+            OSError:
+                Without ``'local_path'``, as ``resolve_release`` raises it.
         """
         input_dict = input_dict or {}
         
@@ -238,70 +236,42 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
 
     def get_footprints(self, region: RegionBoundary) -> AssetInventory:
         """
-        Retrieve Overture building assets within a specified region.
+        Retrieve the Overture buildings whose geometry intersects a region.
 
-        This method loads the Overture rows of the 'building' type that are
-        within the boundary of the given region, from the S3 bucket or from
-        the files of ``'local_path'``. Resulting assets are saved as an
-        :class:`~brails.types.asset_inventory.AssetInventory`.
+        The assets are added to ``self.inventory``. Each carries its row's
+        columns as features, with ``id`` as ``overture_id``, heights in
+        ``units['length']`` and ``names`` dropped. A building found in
+        several local files becomes one asset. The README beside this
+        module, "The features of an asset", lists every change.
 
         Args:
-            region (RegionBoundary)
-                A BRAILS++ region boundary object defining the coordinate
-                information for the region of interest.
+            region (RegionBoundary):
+                The region whose buildings are retrieved.
 
         Returns:
-            AssetInventory: An inventory of assets within the specified region.
+            AssetInventory:
+                ``self.inventory``, with the buildings of the region added.
 
         Raises:
             ValueError:
-                If a local file holds rows of a type other than 'building'.
-
-        Notes:
-            - Only assets that intersect the provided region are included.
-            - A building found in several local files becomes one asset.
-            - Columns named "names" are dropped to avoid GeoJSON export issues.
-            - Asset attributes exclude ``None`` and ``NaN`` values.
-            - The inventory is stored in ``self.inventory`` and also returned.
+                If a local file holds rows of a type other than 'building',
+                or, under ``'geohash'`` or with ``'min_area'`` above 0, if a
+                vertex lies outside EPSG:4326.
 
         Example:
-            First import the BRAILS++ :class:`~brails.utils.importer.Importer`
-            class.
+            Read the buildings of Berkeley, California, from the release
+            ``resolve_release`` picks:
 
             >>> from brails import Importer
             >>> importer = Importer()
-
-            Create a region boundary object for Berkeley, CA.
-
-            >>> region_data = {"type": "locationName", "data": 'Berkeley, CA'}
-            >>> region_boundary_class = importer.get_class('RegionBoundary')
-            >>> region_boundary_object = region_boundary_class(region_data)
-
-            Get building inventory data using the '2024-07-22.0' release of
-            Overture Maps for Berkeley, CA.
-
+            >>> region = importer.get_class('RegionBoundary')(
+            ...     {'type': 'locationName', 'data': 'Berkeley, CA'}
+            ... )
             >>> scraper_class = importer.get_class(
-            ... 'OvertureMapsFootprintScraper'
+            ...     'OvertureMapsFootprintScraper'
             ... )
-            >>> scraper_object = scraper_class(
-            ...     input_dict={'overtureRelease': '2024-07-22.0'}
-            ... )
-            No length unit specified. Using default: 'ft'.
-            No weight unit specified. Using default: 'lb'.
-            >>> inventory = scraper_object.get_footprints(
-            ...     region_boundary_object
-            ... )
-            Searching for Berkeley, CA...
-            Found Berkeley, Alameda County, California, United States
-            Reading dataset batches: 339it [00:39,  8.49it/s]
-            Finding the assets within the specified area...
-            Found a total of ... assets within the specified area.
-
-            Write the obtained inventory in ``berkeley_buildings.geojson``.
-
-            >>> _ = inventory.write_to_geojson('berkeley_buildings.geojson')
-            Wrote ... assets to /home/bacetiner/Documents/SoftwareTesting/
-            berkeley_buildings.geojson
+            >>> scraper = scraper_class({'length': 'ft'})
+            >>> inventory = scraper.get_footprints(region)
         """
         bpoly, _,  _ = region.get_boundary()
         bbox = bpoly.bounds
@@ -323,7 +293,6 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
         intersecting_rows['sources'] = intersecting_rows['sources'].apply(
             self._format_sources)
 
-        # TODO: Figure out how to parse names
         # Drop problematic columns for GeoJSON export:
         intersecting_rows.drop(columns=["names"], inplace=True)
 
@@ -386,21 +355,14 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
         """
         Write the Overture building rows of a region to a GeoParquet file.
 
-        The rows written are those whose geometry intersects the boundary
-        of the region, read from the S3 bucket or from the files of
-        ``'local_path'``. They keep every column of the release with its
-        Arrow type, and gain ``theme`` and ``type``, the constant string
-        columns that the bucket holds as partition values. The file is
-        GeoParquet 1.1.0: WKB geometry in OGC:CRS84, Overture's ``bbox``
-        column declared as the covering, and zstd compression. Its schema
-        metadata keeps the metadata of the rows read and records, under
-        ``BRAILS_METADATA_KEY``, the release and the source read: the S3
-        path, or the names of the local files.
-
-        A scraper given the file as ``'local_path'`` reads its release from
-        it, and its ``get_footprints`` over the same region gives the
-        inventory this scraper's ``get_footprints`` gives. The method builds
-        no inventory and leaves ``self.inventory`` unchanged.
+        The rows are those whose geometry intersects the region, read from
+        the S3 bucket or from the files of ``'local_path'``, with every
+        column they hold and the ``theme`` and ``type`` columns. The file
+        records the release under ``BRAILS_METADATA_KEY``. With the same
+        options, a scraper reading it as ``'local_path'`` builds the same
+        inventory over the same region. ``self.inventory`` is left
+        unchanged. The README beside this module, "The file download
+        writes", states the format and the metadata.
 
         Args:
             region (RegionBoundary):
@@ -417,40 +379,17 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
                 If a local file holds rows of a type other than 'building'.
 
         Example:
-            Write the buildings of Berkeley, CA from the '2026-10-21.0'
-            release, then build the inventory from the file.
+            With ``region``, ``scraper_class`` and ``scraper`` as in the
+            example of :meth:`get_footprints`, download the region once and
+            build inventories from the file, without reading the bucket
+            again, keyed by geohash:
 
-            >>> from brails import Importer
-            >>> importer = Importer()
-            >>> region_boundary_object = importer.get_class('RegionBoundary')(
-            ...     {'type': 'locationName', 'data': 'Berkeley, CA'}
+            >>> count = scraper.download(region, 'berkeley_buildings.parquet')
+            >>> local = scraper_class(
+            ...     {'local_path': 'berkeley_buildings.parquet',
+            ...      'id_scheme': 'geohash'}
             ... )
-            >>> scraper_class = importer.get_class(
-            ...     'OvertureMapsFootprintScraper'
-            ... )
-            >>> scraper_object = scraper_class(
-            ...     input_dict={'overtureRelease': '2026-10-21.0'}
-            ... )
-            No length unit specified. Using default: 'ft'.
-            No weight unit specified. Using default: 'lb'.
-            >>> count = scraper_object.download(
-            ...     region_boundary_object, 'berkeley_buildings.parquet'
-            ... )
-            Searching for Berkeley, CA...
-            Found Berkeley, Alameda County, California, United States
-            Reading dataset batches: ...
-            Wrote ... Overture buildings to berkeley_buildings.parquet
-            >>> local_scraper = scraper_class(
-            ...     input_dict={'local_path': 'berkeley_buildings.parquet'}
-            ... )
-            No length unit specified. Using default: 'ft'.
-            No weight unit specified. Using default: 'lb'.
-            >>> inventory = local_scraper.get_footprints(region_boundary_object)
-            Searching for Berkeley, CA...
-            Found Berkeley, Alameda County, California, United States
-            Reading dataset batches: ...
-            Finding the assets within the specified area...
-            Found a total of ... assets within the specified area.
+            >>> inventory = local.get_footprints(region)
         """
         bpoly, _, _ = region.get_boundary()
         table = self._read_buildings(bpoly.bounds)
