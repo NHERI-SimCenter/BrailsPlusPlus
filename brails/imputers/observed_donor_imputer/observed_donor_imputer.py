@@ -141,6 +141,12 @@ PURPOSE_BATCH = 'observed_donor_batch'
 DEFAULT_DONOR_K = 20
 DEFAULT_DONOR_CAP_M = 2000.0
 
+# Default terms of the donor distance: the meters of separation counted as
+# one unit, and the weights of the plan-area and story-count terms.
+DEFAULT_LOCATION_SCALE_M = 100.0
+DEFAULT_AREA_WEIGHT = 1.0
+DEFAULT_STORIES_WEIGHT = 1.0
+
 # The great-circle distance the donor pool's tree measures, for one pair.
 _HAVERSINE = DistanceMetric.get_metric('haversine')
 
@@ -222,10 +228,10 @@ class ObservedDonorImputer(Imputation):
         validated: Sequence[str] | None = None,
         k: int = DEFAULT_DONOR_K,
         cap_m: float = DEFAULT_DONOR_CAP_M,
-        location_scale_m: float = 100.0,
-        area_weight: float = 1.0,
+        location_scale_m: float = DEFAULT_LOCATION_SCALE_M,
+        area_weight: float = DEFAULT_AREA_WEIGHT,
         stories_key: str | None = STORIES_KEY,
-        stories_weight: float = 1.0,
+        stories_weight: float = DEFAULT_STORIES_WEIGHT,
         max_attempts: int = 5,
         n_batches: int = 1,
         seed: int | None = None,
@@ -272,10 +278,10 @@ class ObservedDonorImputer(Imputation):
                 Defaults to :data:`DEFAULT_DONOR_CAP_M`.
             location_scale_m (float, optional):
                 Meters of separation counted as one unit of distance.
-                Defaults to 100.
+                Defaults to :data:`DEFAULT_LOCATION_SCALE_M`.
             area_weight (float, optional):
                 Weight of the squared difference of log plan areas.
-                Defaults to 1.
+                Defaults to :data:`DEFAULT_AREA_WEIGHT`.
             stories_key (str | None, optional):
                 The feature holding the story count the distance compares,
                 on targets and donors alike. A side without a count there
@@ -283,7 +289,7 @@ class ObservedDonorImputer(Imputation):
                 Defaults to :data:`STORIES_KEY`.
             stories_weight (float, optional):
                 Weight of the squared difference of story counts.
-                Defaults to 1.
+                Defaults to :data:`DEFAULT_STORIES_WEIGHT`.
             max_attempts (int, optional):
                 Number of repair attempts before giving up or scanning the
                 nearest donors. Defaults to 5.

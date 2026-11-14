@@ -69,8 +69,11 @@ from brails.imputers.observed_donor_imputer.donor_records import (
     ROUND_STATUS,
 )
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
+    DEFAULT_AREA_WEIGHT,
     DEFAULT_DONOR_CAP_M,
     DEFAULT_DONOR_K,
+    DEFAULT_LOCATION_SCALE_M,
+    DEFAULT_STORIES_WEIGHT,
     ObservedDonorImputer,
 )
 from brails.inferers.acs_unit_budget.acs_unit_budget import (
@@ -301,9 +304,9 @@ class ReplacementCostImputer(Imputation):
         seed: int | None = None,
         k: int = DEFAULT_DONOR_K,
         cap_m: float = DEFAULT_DONOR_CAP_M,
-        location_scale_m: float = 100.0,
-        area_weight: float = 1.0,
-        stories_weight: float = 1.0,
+        location_scale_m: float = DEFAULT_LOCATION_SCALE_M,
+        area_weight: float = DEFAULT_AREA_WEIGHT,
+        stories_weight: float = DEFAULT_STORIES_WEIGHT,
         value_key: str = REPLACEMENT_COST,
         gross_area_key: str = GROSS_AREA,
         occupancy_key: str = OCCUPANCY_KEY,
@@ -327,16 +330,16 @@ class ReplacementCostImputer(Imputation):
                 :data:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.DEFAULT_DONOR_CAP_M`.
             location_scale_m (float, optional):
                 Meters of separation counted as one unit of the neighbor
-                draw's distance. Defaults to 100, the observed-donor
-                imputer's default.
+                draw's distance. Defaults to
+                :data:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.DEFAULT_LOCATION_SCALE_M`.
             area_weight (float, optional):
                 Weight of the squared difference of log plan areas in that
-                distance. Defaults to 1, the observed-donor imputer's
-                default.
+                distance. Defaults to
+                :data:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.DEFAULT_AREA_WEIGHT`.
             stories_weight (float, optional):
                 Weight of the squared difference of the ``stories_key``
-                counts in that distance. Defaults to 1, the observed-donor
-                imputer's default.
+                counts in that distance. Defaults to
+                :data:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.DEFAULT_STORIES_WEIGHT`.
             value_key (str, optional):
                 The replacement cost feature. Defaults to
                 :data:`~brails.aggregators.points_to_polygons.nsi_footprint_join.REPLACEMENT_COST`.

@@ -58,8 +58,11 @@ from brails.imputers.observed_donor_imputer.donor_records import (
     ROUND_REPAIR,
 )
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
+    DEFAULT_AREA_WEIGHT,
     DEFAULT_DONOR_CAP_M,
     DEFAULT_DONOR_K,
+    DEFAULT_LOCATION_SCALE_M,
+    DEFAULT_STORIES_WEIGHT,
 )
 from brails.imputers.replacement_cost.replacement_cost_imputer import (
     IMPUTATION_DONOR_KEY,
@@ -931,7 +934,7 @@ class TestSameClassNeighborDraw:
         assert logged(result, 't')['donor_id'] == 'near'
 
     def test_k_and_defaults(self) -> None:
-        """With k 1 the nearest is drawn, and defaults are the donor imputer's."""
+        """With k 1 the nearest is drawn, and defaults are the donor constants."""
         buildings = inventory(
             {
                 **{
@@ -944,16 +947,18 @@ class TestSameClassNeighborDraw:
         result = run(buildings, donor_stage(buildings, {}, n_pw=30), k=1)
         assert set(column(result, 't', 'donor_id')) == {'c1'}
         default = ReplacementCostImputer()
-        donor_default = ObservedDonorImputer()
-        assert (default.k, default.cap_m) == (DEFAULT_DONOR_K, DEFAULT_DONOR_CAP_M)
         assert (
+            default.k,
+            default.cap_m,
             default.location_scale_m,
             default.area_weight,
             default.stories_weight,
         ) == (
-            donor_default.location_scale_m,
-            donor_default.area_weight,
-            donor_default.stories_weight,
+            DEFAULT_DONOR_K,
+            DEFAULT_DONOR_CAP_M,
+            DEFAULT_LOCATION_SCALE_M,
+            DEFAULT_AREA_WEIGHT,
+            DEFAULT_STORIES_WEIGHT,
         )
 
     def test_seed_recorded(self) -> None:

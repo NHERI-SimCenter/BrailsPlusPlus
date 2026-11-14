@@ -168,7 +168,9 @@ excludes a class that was itself imputed or drawn.
 
 The draw's defaults are not yet calibrated for the value: ``k`` and ``cap_m``
 default to ``DEFAULT_DONOR_K`` and ``DEFAULT_DONOR_CAP_M``, and
-``location_scale_m``, ``area_weight`` and ``stories_weight`` to 100 meters, 1
-and 1, the observed-donor imputer's own defaults. A caller passes all five to
-the constructor, and a run that also imputes class and stories should pass the
-values it gives the observed-donor imputer.
+``location_scale_m``, ``area_weight`` and ``stories_weight`` to
+``DEFAULT_LOCATION_SCALE_M``, ``DEFAULT_AREA_WEIGHT`` and
+``DEFAULT_STORIES_WEIGHT``, 100 meters, 1 and 1, the observed-donor imputer's
+own defaults. A caller passes all five to the constructor, and a run that also
+imputes class and stories should pass the values it gives the observed-donor
+imputer.
