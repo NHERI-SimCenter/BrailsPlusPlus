@@ -191,8 +191,9 @@ Stacked footprints
 ``StackedFootprintMerge`` merges the Overture outlines of one building, such
 as a podium and the towers drawn on it, into one asset. Its class docstring
 states the rule step by step, and its thresholds are constants in
-``stacked_footprints.py`` beside this page. This section states where the
-thresholds come from and what the rule leaves unmerged.
+``brails/aggregators/stacked_footprints/stacked_footprints.py``. This
+section states where the thresholds come from and what the rule leaves
+unmerged.
 
 The thresholds
 ~~~~~~~~~~~~~~

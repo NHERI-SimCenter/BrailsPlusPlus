@@ -69,7 +69,7 @@ from brails.utils.unit_converter import UNIT_TO_METER, UnitConverter
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-# The thresholds and the stacking signal: README.rst beside this module,
+# The thresholds and the stacking signal: brails/compilers/README.rst,
 # "Stacked footprints".
 NEST_MIN = 0.9  # share of the smaller footprint inside the larger
 COPY_IOU = 0.75  # intersection over union of two drawings of one building
@@ -182,9 +182,9 @@ class StackedFootprintMerge:
        either keying keeps the key the Overture scraper gave it.
 
     A union is at least as large as its head, so the merge leaves no
-    footprint below an area floor the scraper applied. The README beside
-    this module states where the thresholds come from and what the rule
-    leaves unmerged.
+    footprint below an area floor the scraper applied.
+    ``brails/compilers/README.rst`` states where the thresholds come from
+    and what the rule leaves unmerged.
     """
 
     def __init__(self, *, length_unit: str = DEFAULT_UNITS['length']) -> None:

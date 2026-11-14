@@ -130,6 +130,8 @@ include = [
     "tests/aggregators/points_to_polygons/basic/test_basic_points_to_polygons.py",
     "brails/aggregators/points_to_polygons/nsi_footprint_join.py",
     "tests/aggregators/points_to_polygons/test_nsi_footprint_join.py",
+    "brails/aggregators/stacked_footprints/stacked_footprints.py",
+    "tests/aggregators/stacked_footprints/test_stacked_footprints.py",
 
     "brails/aggregators/housing_units/pyncoda/pyncoda_housing_units.py",
     "brails/aggregators/housing_units/pyncoda/supporting_data/FIPS_lookup_generator.py",

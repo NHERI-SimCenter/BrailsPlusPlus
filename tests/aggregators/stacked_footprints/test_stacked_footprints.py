@@ -45,8 +45,7 @@ import pytest
 import shapely
 from shapely.geometry import Polygon
 
-import brails.compilers
-from brails.compilers.stacked_footprints import (
+from brails.aggregators.stacked_footprints.stacked_footprints import (
     PARTS_COLUMNS,
     RULE_COPY,
     RULE_STACKED,
@@ -560,7 +559,6 @@ def test_the_input_inventory_is_unchanged() -> None:
     } == before
 
 
-def test_discovered_and_not_exported() -> None:
-    """The Importer finds the class, which the package does not export."""
+def test_discovered() -> None:
+    """The Importer finds the class."""
     assert Importer().get_class('StackedFootprintMerge') is StackedFootprintMerge
-    assert 'StackedFootprintMerge' not in brails.compilers.__all__
