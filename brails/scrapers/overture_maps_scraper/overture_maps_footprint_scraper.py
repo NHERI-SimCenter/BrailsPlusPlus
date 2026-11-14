@@ -60,7 +60,8 @@ from brails.types.asset_inventory import AssetInventory
 from brails.utils import GeoTools, UnitConverter
 from brails.scrapers.footprint_scraper import FootprintScraper
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import \
-    OvertureMapsScraper, TYPE_THEME_MAP
+    OvertureMapsScraper, TYPE_THEME_MAP, OVERTURE_ID_KEY, \
+    OVERTURE_PROVIDER, SOURCES_KEY
 
 # Define global variables:
 OVERTURE_TYPE = 'building'
@@ -290,7 +291,7 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
         intersecting_rows = dataset[np.asarray(intersects_mask, dtype=bool)].copy()
 
         # Format sources
-        intersecting_rows['sources'] = intersecting_rows['sources'].apply(
+        intersecting_rows[SOURCES_KEY] = intersecting_rows[SOURCES_KEY].apply(
             self._format_sources)
 
         # Drop problematic columns for GeoJSON export:
@@ -301,7 +302,7 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
             intersecting_rows["geometry"].apply(
                 GeoTools.geometry_to_list_of_lists
         )
-        intersecting_rows["overture_id"] = intersecting_rows["id"]
+        intersecting_rows[OVERTURE_ID_KEY] = intersecting_rows["id"]
         intersecting_rows.reset_index(drop=True, inplace=True)
 
         # Assemble the features of each footprint:
@@ -339,7 +340,7 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
             list(intersecting_rows["geometry_coords"]),
             features,
             self.units['length'],
-            provider='overture',
+            provider=OVERTURE_PROVIDER,
             centroids=[
                 geometry.centroid for geometry in intersecting_rows["geometry"]
             ],

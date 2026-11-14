@@ -66,6 +66,12 @@ from brails.inferers.inference_diagnosis import (
     preview_failures,
 )
 from brails.inferers.inference_engine import InferenceEngine
+from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
+    HEIGHT_PROPERTY,
+    OVERTURE_PROVIDER,
+    SOURCES_KEY,
+    SOURCES_SEPARATOR,
+)
 from brails.types.asset_inventory import _is_missing_value, is_probabilistic_feature
 from brails.utils.unit_converter import UNIT_TO_METER, UnitConverter
 
@@ -78,14 +84,6 @@ if TYPE_CHECKING:
 # The feature naming a footprint's provider, which keys the scales.
 PROVIDER_KEY = FOOTPRINT_PROVIDER_KEY
 
-# The one provider whose scales may be given per source of the height: an
-# Overture footprint names the source of its height in SOURCES_KEY, as the
-# dataset of the entry whose ``property`` is HEIGHT_PROPERTY, else of the
-# first entry without a ``property``.
-OVERTURE_PROVIDER = 'overture'
-SOURCES_KEY = 'sources'
-HEIGHT_PROPERTY = '/properties/height'
-
 # Height scales shipped with the package, described in the README beside it.
 HEIGHT_SCALES_FILE = Path(__file__).with_name('height_scales.json')
 
@@ -97,18 +95,21 @@ class StoriesFromHeightInferer(InferenceEngine):
     """
     Infer each asset's story count from its footprint height.
 
-    The count is ``max(1, floor(h / s + 0.5))`` for the height ``h`` and
-    the scale ``s`` that applies to it, in one length unit, rounded half up
-    and at least one. The scales are keyed by the footprint's provider, its
-    :data:`PROVIDER_KEY` value. A provider's entry holds one scale for all
-    its heights, or one scale per source of the height, a form only the
-    :data:`OVERTURE_PROVIDER` entry may take. For a provider in that form
-    the source is the ``dataset`` of the :data:`SOURCES_KEY` entry whose
-    ``property`` is :data:`HEIGHT_PROPERTY`, else of the first entry without
-    a ``property``. A footprint without a provider, or whose sources name no
-    height source, gives no count. Neither does one whose provider or source
-    the scales do not list, nor a count above the trusted maximum of its
-    scale.
+    The count is ``max(1, floor(h / s + 0.5))`` for the height ``h`` and the
+    scale ``s`` that applies to it, in one length unit, rounded half up and at
+    least one. The scales are keyed by the footprint's provider, its
+    :data:`PROVIDER_KEY` value. A provider's entry holds one scale for all its
+    heights, or one scale per source of the height, a form only the
+    :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OVERTURE_PROVIDER`
+    entry may take. For a provider in that form the source is the ``dataset``
+    of the
+    :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.SOURCES_KEY`
+    entry whose ``property`` is
+    :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.HEIGHT_PROPERTY`,
+    else of the first entry without a ``property``. A footprint without a
+    provider, or whose sources name no height source, gives no count. Neither
+    does one whose provider or source the scales do not list, nor a count above
+    the trusted maximum of its scale.
 
     The packaged scales calibrate the three sources of Overture's heights.
     Another provider's heights take an entry of their own in ``scales``.
@@ -140,18 +141,18 @@ class StoriesFromHeightInferer(InferenceEngine):
                 The unit of the height. Defaults to the length unit of
                 :data:`brails.constants.DEFAULT_UNITS`.
             scales (Mapping[str, Any] | str | os.PathLike[str] | None, optional):
-                ``None`` for :data:`HEIGHT_SCALES_FILE`, the path of a file
-                of that form, or a mapping of that form: exactly the keys
-                ``length_unit``, the unit of the scales, and ``providers``,
-                a mapping from :data:`PROVIDER_KEY` value to an entry. An
-                entry holds either ``scale`` and ``max_stories``, or
-                ``sources``, a mapping from source to
-                ``{'scale': ..., 'max_stories': ...}``, which only the
-                :data:`OVERTURE_PROVIDER` entry may hold. ``max_stories``
-                is ``None`` for no trusted maximum. Read once, here.
-                Passing ``scales`` replaces the packaged file, and
-                footprints of two providers whose heights differ in key or
-                unit take two inferers.
+                ``None`` for :data:`HEIGHT_SCALES_FILE`, the path of a file of
+                that form, or a mapping of that form: exactly the keys
+                ``length_unit``, the unit of the scales, and ``providers``, a
+                mapping from :data:`PROVIDER_KEY` value to an entry. An entry
+                holds either ``scale`` and ``max_stories``, or ``sources``, a
+                mapping from source to ``{'scale': ..., 'max_stories': ...}``,
+                which only the
+                :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OVERTURE_PROVIDER`
+                entry may hold. ``max_stories`` is ``None`` for no trusted
+                maximum. Read once, here. Passing ``scales`` replaces the
+                packaged file, and footprints of two providers whose heights
+                differ in key or unit take two inferers.
 
         Raises:
             ValueError:
@@ -179,16 +180,16 @@ class StoriesFromHeightInferer(InferenceEngine):
         """
         Diagnose every asset without writing anything.
 
-        An asset is ``OK`` when its height gives a count. A missing or
-        unusable height, a missing or non-string provider, and sources that
-        name no height source where the provider's scales are per source
-        are invalid. A per-world height, provider or sources is
-        unsupported, by the inventory's rule for list values: a list under
-        :data:`SOURCES_KEY` holds one value per world unless the inventory
-        declares that key a vector feature. A provider or source without a
-        scale and a count above the trusted maximum are infeasible, with
-        nothing to relax. What the asset holds under ``stories_key`` is not
-        read.
+        An asset is ``OK`` when its height gives a count. A missing or unusable
+        height, a missing or non-string provider, and sources that name no
+        height source where the provider's scales are per source are invalid. A
+        per-world height, provider or sources is unsupported, by the
+        inventory's rule for list values: a list under
+        :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.SOURCES_KEY`
+        holds one value per world unless the inventory declares that key a
+        vector feature. A provider or source without a scale and a count above
+        the trusted maximum are infeasible, with nothing to relax. What the
+        asset holds under ``stories_key`` is not read.
 
         Args:
             input_inventory (AssetInventory):
@@ -290,7 +291,8 @@ class StoriesFromHeightInferer(InferenceEngine):
         Args:
             features (Mapping[str, Any]):
                 The asset's features in one world, so a list under
-                :data:`SOURCES_KEY` is read as that world's entries.
+                :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.SOURCES_KEY`
+                is read as that world's entries.
 
         Returns:
             int | None:
@@ -515,8 +517,9 @@ def _parse_sources(value: object) -> list[dict[str, Any]]:
     Args:
         value (object):
             The string the Overture scraper writes (``key: value`` pairs
-            joined by ``, ``, entries joined by ``; ``), or a list or array
-            of dictionaries.
+            joined by ``, ``, entries joined by
+            :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.SOURCES_SEPARATOR`),
+            or a list or array of dictionaries.
 
     Returns:
         list[dict[str, Any]]:
@@ -527,7 +530,7 @@ def _parse_sources(value: object) -> list[dict[str, Any]]:
         if _is_missing_value(value):
             return []
         entries = []
-        for text in value.split('; '):
+        for text in value.split(SOURCES_SEPARATOR):
             starts = list(_SOURCES_PAIR.finditer(text))
             entry = {}
             for position, match in enumerate(starts):

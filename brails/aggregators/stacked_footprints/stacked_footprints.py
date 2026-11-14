@@ -51,15 +51,16 @@ import pandas as pd
 import shapely
 from shapely.geometry import MultiPolygon, Polygon
 
-from brails.constants import (
-    DEFAULT_UNITS,
-    FOOTPRINT_PROVIDER_KEY,
-    PROVIDER_ID_FEATURES,
-)
-from brails.inferers.stories_from_height_inferer.stories_from_height_inferer import (
+from brails.constants import DEFAULT_UNITS, FOOTPRINT_PROVIDER_KEY
+from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
+    CLASS_KEY,
+    HEIGHT_KEY,
     HEIGHT_PROPERTY,
+    NUM_FLOORS_KEY,
+    OVERTURE_ID_KEY,
     OVERTURE_PROVIDER,
     SOURCES_KEY,
+    SOURCES_SEPARATOR,
 )
 from brails.types.asset_inventory import Asset, AssetInventory, is_missing_value
 from brails.utils.asset_id import assign_asset_ids
@@ -75,16 +76,10 @@ COPY_IOU = 0.75  # intersection over union of two drawings of one building
 PART_TALLER_M = 3.0  # meters, compared after conversion from the length unit
 ROOF_CLASS = 'roof'
 
-OVERTURE_ID_FEATURE = PROVIDER_ID_FEATURES[OVERTURE_PROVIDER][0]
-HEIGHT_FEATURE = 'height'
-FLOORS_FEATURE = 'num_floors'
-CLASS_FEATURE = 'class'
-SOURCES_FEATURE = SOURCES_KEY
 PART_IDS_FEATURE = 'overture_part_ids'
 PART_IDS_SEPARATOR = ';'
-# The separator of the entries of the Overture scraper's sources string.
-SOURCES_SEPARATOR = '; '
-# An entry of that string whose property is the height.
+# An entry of the Overture scraper's sources string whose property is the
+# height.
 _HEIGHT_ENTRY = re.compile(
     rf'(?:^|, )property: {re.escape(HEIGHT_PROPERTY)}(?:, |$)'
 )
@@ -201,16 +196,14 @@ class StackedFootprintMerge:
 
         Raises:
             ValueError:
-                If the inventory holds more than one possible world, an
-                asset key is not a string, an asset lacks
-                ``footprint_provider`` :data:`OVERTURE_PROVIDER` or an
-                ``overture_id``, or its footprint is not a polygon with
+                If the inventory holds more than one possible world, an asset
+                key is not a string, an asset lacks ``footprint_provider``
+                :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OVERTURE_PROVIDER`
+                or an ``overture_id``, or its footprint is not a polygon with
                 area.
         """
         keys, features, polygons = _footprints(inventory)
-        ids = [
-            str(asset_features[OVERTURE_ID_FEATURE]) for asset_features in features
-        ]
+        ids = [str(asset_features[OVERTURE_ID_KEY]) for asset_features in features]
         geometries = np.array(polygons, dtype=object)
         area = shapely.area(geometries)
 
@@ -281,12 +274,12 @@ class StackedFootprintMerge:
                         'plan_area_m2': AssetInventory.centroid_and_plan_area(
                             inventory.inventory[keys[part]].coordinates
                         )[2],
-                        'height': features[part].get(HEIGHT_FEATURE, np.nan),
-                        'num_floors': features[part].get(FLOORS_FEATURE, np.nan),
-                        'class': features[part].get(CLASS_FEATURE),
-                        'merged_height': asset_features.get(HEIGHT_FEATURE, np.nan),
+                        'height': features[part].get(HEIGHT_KEY, np.nan),
+                        'num_floors': features[part].get(NUM_FLOORS_KEY, np.nan),
+                        'class': features[part].get(CLASS_KEY),
+                        'merged_height': asset_features.get(HEIGHT_KEY, np.nan),
                         'merged_num_floors': asset_features.get(
-                            FLOORS_FEATURE, np.nan
+                            NUM_FLOORS_KEY, np.nan
                         ),
                     }
                 )
@@ -350,15 +343,15 @@ class StackedFootprintMerge:
             # climb ends at the top of the nest.
             while top in container:
                 top = container[top]
-            small_height = features[small].get(HEIGHT_FEATURE)
-            top_height = features[top].get(HEIGHT_FEATURE)
+            small_height = features[small].get(HEIGHT_KEY)
+            top_height = features[top].get(HEIGHT_KEY)
             taller = not is_missing_value(small_height) and (
                 is_missing_value(top_height)
                 or small_height > top_height + self._taller
             )
             roof = ROOF_CLASS in (
-                features[small].get(CLASS_FEATURE),
-                features[top].get(CLASS_FEATURE),
+                features[small].get(CLASS_KEY),
+                features[top].get(CLASS_KEY),
             )
             if taller or roof:
                 groups.setdefault(top, []).append(small)
@@ -391,7 +384,7 @@ class StackedFootprintMerge:
         merged[PART_IDS_FEATURE] = PART_IDS_SEPARATOR.join(
             sorted(ids[member] for member in members)
         )
-        for key in (HEIGHT_FEATURE, FLOORS_FEATURE, SOURCES_FEATURE):
+        for key in (HEIGHT_KEY, NUM_FLOORS_KEY, SOURCES_KEY):
             merged.pop(key, None)
 
         # The first of the tallest parts, the head before its members.
@@ -399,27 +392,27 @@ class StackedFootprintMerge:
             (
                 part
                 for part in parts
-                if not is_missing_value(features[part].get(HEIGHT_FEATURE))
+                if not is_missing_value(features[part].get(HEIGHT_KEY))
             ),
-            key=lambda part: features[part][HEIGHT_FEATURE],
+            key=lambda part: features[part][HEIGHT_KEY],
             default=None,
         )
         if tallest is not None:
-            merged[HEIGHT_FEATURE] = features[tallest][HEIGHT_FEATURE]
+            merged[HEIGHT_KEY] = features[tallest][HEIGHT_KEY]
         floor_counts = [
-            features[part][FLOORS_FEATURE]
+            features[part][NUM_FLOORS_KEY]
             for part in parts
-            if not is_missing_value(features[part].get(FLOORS_FEATURE))
+            if not is_missing_value(features[part].get(NUM_FLOORS_KEY))
         ]
         if floor_counts:
-            merged[FLOORS_FEATURE] = max(floor_counts)
+            merged[NUM_FLOORS_KEY] = max(floor_counts)
 
         # The stories inferer takes the height's source from the first entry
         # whose property is the height, wherever it stands, so only the
         # tallest part keeps such entries.
         entries = []
         for part in dict.fromkeys(p for p in (tallest, *parts) if p is not None):
-            value = features[part].get(SOURCES_FEATURE)
+            value = features[part].get(SOURCES_KEY)
             if isinstance(value, str) and not is_missing_value(value):
                 entries.extend(
                     entry
@@ -427,7 +420,7 @@ class StackedFootprintMerge:
                     if part == tallest or not _HEIGHT_ENTRY.search(entry)
                 )
         if entries:
-            merged[SOURCES_FEATURE] = SOURCES_SEPARATOR.join(entries)
+            merged[SOURCES_KEY] = SOURCES_SEPARATOR.join(entries)
         return merged
 
 
@@ -535,7 +528,7 @@ def _copy_keepers(
         keeper, *others = sorted(
             members,
             key=lambda position: (
-                is_missing_value(features[position].get(HEIGHT_FEATURE)),
+                is_missing_value(features[position].get(HEIGHT_KEY)),
                 -area[position],
                 ids[position],
             ),
@@ -584,12 +577,12 @@ def _footprints(
             raise ValueError(msg)  # noqa: TRY004
         provider = asset.features.get(FOOTPRINT_PROVIDER_KEY)
         if provider != OVERTURE_PROVIDER or is_missing_value(
-            asset.features.get(OVERTURE_ID_FEATURE)
+            asset.features.get(OVERTURE_ID_KEY)
         ):
             msg = (
                 f'The asset {key!r} is not an Overture footprint: the merge '
                 f'needs {FOOTPRINT_PROVIDER_KEY} {OVERTURE_PROVIDER!r} '
-                f'and an {OVERTURE_ID_FEATURE}.'
+                f'and an {OVERTURE_ID_KEY}.'
             )
             raise ValueError(msg)
         geometry = asset.get_geometry()

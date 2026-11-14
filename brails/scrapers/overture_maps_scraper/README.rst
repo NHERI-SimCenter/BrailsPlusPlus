@@ -85,8 +85,8 @@ columns of its row, with these changes:
   ``'overture'``.
 - ``geometry`` and ``bbox`` are not features, and ``names`` is dropped.
 - ``sources`` becomes one string. The non-empty fields of each source are
-  written as ``key: value`` pairs joined by commas, and the sources are joined
-  by semicolons.
+  written as ``key: value`` pairs joined by a comma and a space, and the
+  sources are joined by ``SOURCES_SEPARATOR``.
 - ``height``, ``min_height`` and ``roof_height``, which ``DIMENSIONAL_ATTR``
   lists as meters, are converted to the scraper's length unit, ``'length'``
   in ``input_dict``, feet by default. A value that cannot be converted keeps

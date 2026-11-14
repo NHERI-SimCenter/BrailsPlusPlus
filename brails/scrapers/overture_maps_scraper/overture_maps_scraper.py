@@ -64,6 +64,8 @@ from shapely.geometry.base import BaseGeometry
 
 import numpy as np
 
+from brails.constants import PROVIDER_ID_FEATURES
+
 # Global constants for base paths, URLs, and type-theme mapping:
 S3_BASE_PATH = 'overturemaps-us-west-2/release'
 OVERTURE_RELEASES_URL = ('https://raw.githubusercontent.com/OvertureMaps/data/'
@@ -86,6 +88,24 @@ TYPE_THEME_MAP = {
     "land_use": "base",
     "water": "base",
 }
+
+# The footprint_provider value of an Overture footprint, and the feature
+# holding its Overture id.
+OVERTURE_PROVIDER = 'overture'
+OVERTURE_ID_KEY = PROVIDER_ID_FEATURES[OVERTURE_PROVIDER][0]
+
+# Overture's building columns that other modules read: the height, the
+# number of floors, the class and the sources.
+HEIGHT_KEY = 'height'
+NUM_FLOORS_KEY = 'num_floors'
+CLASS_KEY = 'class'
+SOURCES_KEY = 'sources'
+
+# The separator of the entries of the sources string that _format_sources
+# writes, and the property an entry names when it is the source of the
+# height.
+SOURCES_SEPARATOR = '; '
+HEIGHT_PROPERTY = '/properties/height'
 
 
 class OvertureMapsScraper(ABC):
@@ -373,7 +393,8 @@ class OvertureMapsScraper(ABC):
         Format a NumPy array or list of dictionaries into a single string.
 
         Each dictionary's non-empty values are formatted as key: value pairs,
-        separated by commas. Multiple dictionaries are separated by semicolons.
+        joined by a comma and a space. Multiple dictionaries are joined by
+        SOURCES_SEPARATOR.
 
         Args:
             sources_array (Union[np.ndarray, List[Dict]]):
@@ -405,4 +426,4 @@ class OvertureMapsScraper(ABC):
                 if parts:
                     formatted_parts.append(", ".join(parts))
 
-        return "; ".join(formatted_parts) if formatted_parts else None
+        return SOURCES_SEPARATOR.join(formatted_parts) if formatted_parts else None
