@@ -70,15 +70,11 @@ def test_the_defaults_are_the_named_constants() -> None:
 
 
 def test_location_alone_ignores_plan_area_and_stories() -> None:
-    """
-    The distance is the distance in meters, whatever the areas and counts.
-
-    Five residential donors lie 5 to 25 m from a target. Their plan areas and
-    story counts are set twice, in a different order the second time, and
-    every draw over the worlds is the same both times.
-    """
+    """The distance is in meters and ignores plan areas and story counts."""
     target = {'t': asset(0.0, 0.0, 10.0, OccupancyClass='COM1', NumberOfStories=2)}
     picks = []
+    # five donors 5 to 25 m away, given other areas and stories, ranked
+    # differently, the second time
     for sides, stories in (
         ((6, 8, 10, 12, 14), (1, 2, 3, 4, 5)),
         ((30, 20, 4, 9, 3), (9, 1, 6, 2, 8)),
@@ -109,12 +105,8 @@ def test_location_alone_ignores_plan_area_and_stories() -> None:
 
 
 def test_a_given_status_keeps_only_its_donors() -> None:
-    """
-    A target drawn with the residential status copies only such donors.
-
-    The target is non-residential. It copies from residential donors within
-    the cap and, without one there, from those of its block group.
-    """
+    """A target drawn with the residential status copies only such donors."""
+    # c0 and c1, non-residential, lie nearer than r0 and r1 to near
     records = {
         'c0': asset(100.0, 0.0, OccupancyClass='COM1', YearBuilt=1960),
         'c1': asset(0.0, 150.0, OccupancyClass='IND1', YearBuilt=1961),
@@ -123,6 +115,7 @@ def test_a_given_status_keeps_only_its_donors() -> None:
     }
     for features in records.values():
         features[1]['BLOCKGROUP_GEOID'] = BG_A
+    # one target within the cap, one beyond it that falls back to block group A
     targets = {
         'near': asset(0.0, 0.0, OccupancyClass='COM1', BLOCKGROUP_GEOID=BG_A),
         'far': asset(10000.0, 0.0, OccupancyClass='COM1', BLOCKGROUP_GEOID=BG_A),
@@ -149,13 +142,9 @@ def test_a_given_status_keeps_only_its_donors() -> None:
 
 
 def test_a_prefix_forms_the_labels_of_both_picks() -> None:
-    """
-    With a prefix, each pick is the one the prefixed label's uniform implies.
-
-    The donor round picks between donors at 100 m and 300 m with weights
-    1/100 and 1/300. The fallback picks one of three block-group donors with
-    equal weights, in ascending order of their ids.
-    """
+    """With a prefix, each pick is the one the prefixed label's uniform implies."""
+    # donors at 100 m and 300 m for the donor round, and g0 to g2, of equal
+    # weight and in id order, for the fallback
     records = {
         'a': asset(100.0, 0.0, OccupancyClass='RES1', YearBuilt=1950),
         'b': asset(300.0, 0.0, OccupancyClass='RES1', YearBuilt=1960),
@@ -231,12 +220,8 @@ def test_only_the_k_nearest_are_drawn() -> None:
 
 
 def test_a_tie_in_distance_goes_to_the_lower_id() -> None:
-    """
-    Donors at one distance rank by their ids as strings.
-
-    With k 1, of two donors at one place, ``d10`` is always drawn, since it
-    precedes ``d9`` as a string.
-    """
+    """Donors at one distance rank by their ids as strings."""
+    # with k 1, d10 wins because it precedes d9 as a string
     records = {
         'd9': asset(100.0, 0.0, OccupancyClass='RES1', YearBuilt=1950),
         'd10': asset(100.0, 0.0, OccupancyClass='RES1', YearBuilt=1960),

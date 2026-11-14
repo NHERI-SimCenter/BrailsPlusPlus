@@ -297,7 +297,7 @@ class TestJointCopy:
     """A target takes its donor's rate, scaled to its own floor area."""
 
     def test_value_scaled_to_the_floor_area(self) -> None:
-        """The value is the donor's rate times the target's gross floor area."""
+        """The value is the donor's rate times the target's floor area."""
         buildings = inventory(
             {'d': nsi_building(500.0, 450000.0, 1800.0), 't': target(0.0)}
         )
@@ -418,14 +418,9 @@ class TestUnitBudgetFloorArea:
     """The floor area is the gross floor area the unit budget reads."""
 
     def test_same_area_and_source(self) -> None:
-        """
-        The two agree on every footprint both measure.
-
-        They differ on purpose where one gives no floor area: a footprint
-        without area and without a gross area has none here and a plan area
-        of zero in the budget, and unreadable coordinates raise in the
-        budget even with a gross area, which this rule reads first.
-        """
+        """Floor area and its source match the unit budget's on these footprints."""
+        # not covered: a footprint with neither area nor gross area, which the
+        # budget gives a zero area, and unreadable coordinates, on which it raises
         records = {
             'gross': target(0.0, GrossArea=500.0, NumberOfStories=3),
             'stories': target(30.0, NumberOfStories=3),
@@ -570,7 +565,7 @@ class TestSeparateDraw:
         ],
     )
     def test_buildings_never_drawn(self, excluded: dict[str, Any]) -> None:
-        """An imputed or drawn class, no gross area or an imputed value excludes."""
+        """An imputed class or value, a drawn class or no gross area bars a donor."""
         buildings = inventory(
             {
                 'x': nsi_building(10.0, 999.0, 1.0, **excluded),
@@ -639,7 +634,7 @@ class TestSeparateDraw:
         assert set(result.log['donor_id']) == {'big'}
 
     def test_k_and_defaults(self) -> None:
-        """With k 1 the nearest is drawn; k and the cap default to the imputer's."""
+        """With k 1 the nearest is drawn, and defaults are the donor imputer's."""
         buildings = inventory(
             {
                 **{
@@ -675,8 +670,9 @@ def labeled_draws(
     Return the donors of two targets, one per label, in every world.
 
     ``near`` has five candidates within the cap and draws under the donor
-    label. ``bg`` lies in block group A, 2.5 km from every candidate, and
-    draws under the fallback label from three buildings of that block group.
+    label. ``bg`` lies in block group A, beyond the cap of every candidate,
+    and draws under the fallback label from three buildings of that block
+    group.
 
     Args:
         seed (int, optional):
@@ -754,7 +750,7 @@ class TestLabels:
         ('block_group', 'expected'), [(BG_B, None), (BG_A, 'edge')]
     )
     def test_just_beyond_the_cap(self, block_group: str, expected: Any) -> None:
-        """A building 2,001 m away is drawn only as its block group's fallback."""
+        """A building just past the cap is drawn only in the target's block group."""
         buildings = inventory(
             {
                 'edge': nsi_building(
@@ -797,7 +793,7 @@ class TestImpute:
 class TestProvenance:
     """After the merge the value carries the code of its source."""
 
-    def test_eighth_character(self) -> None:
+    def test_replacement_cost_code_names_the_value_source(self) -> None:
         """A donor value is coded I, NSI's N or R, and a target without one -."""
         records = {
             'n': asset(0.0, 0.0),

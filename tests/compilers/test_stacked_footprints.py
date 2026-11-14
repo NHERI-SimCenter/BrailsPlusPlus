@@ -322,7 +322,7 @@ def test_a_nest_merges_into_its_outermost_footprint() -> None:
 
 
 def test_copies_keep_one_drawing() -> None:
-    """Of two drawings of one building the keeper has a height, then the larger area."""
+    """Copies keep the drawing with a height, else the larger one."""
     # Each pair overlaps at an intersection over union of about 0.8.
     with_height = box(0.0, 0.0, 10.0, 10.0)
     larger = box(1.0, 0.0, 10.0, 10.5)
@@ -347,8 +347,7 @@ def test_copies_keep_one_drawing() -> None:
 
 def test_copies_inside_a_nest_merge_through_their_keeper() -> None:
     """Of two drawings of a tower on a podium only the kept one is a part."""
-    # The drawings overlap at an intersection over union of 0.94, and the
-    # larger is kept; the dropped one's height must not reach the podium.
+    # Copies at an intersection over union of 0.94, of which the larger is kept.
     kept = box(15.5, 0.3, 10.0, 10.4)
     inventory = inventory_of(
         overture('podium', PODIUM),
@@ -381,7 +380,7 @@ def test_copies_inside_a_nest_merge_through_their_keeper() -> None:
 
 def test_a_part_below_the_floor_lends_no_height(mocker: MockerFixture) -> None:
     """The scraper's floor removes a small part before the merge sees it."""
-    shed = box(-10.0, 10.0, 5.0, 5.0)  # 25 m2, under the 450 sq ft floor
+    shed = box(-10.0, 10.0, 5.0, 5.0)  # 25 m2, under DEFAULT_MIN_AREA_SQFT
     footprints = [PODIUM, TOWER, shed]
     mocker.patch.object(
         OvertureMapsFootprintScraper, 'resolve_release', return_value='2026-07-22.0'

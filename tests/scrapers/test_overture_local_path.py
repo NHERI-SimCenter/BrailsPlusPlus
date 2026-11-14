@@ -219,8 +219,6 @@ def bucket(mocker: MockerFixture, local_file: str) -> type:
     """
     Serve the local file's rows as the S3 bucket read gives them.
 
-    A read with local paths still reads the files.
-
     Args:
         mocker (MockerFixture):
             Fixture used to patch the release lookup and the read.

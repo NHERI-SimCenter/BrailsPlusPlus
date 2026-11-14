@@ -210,12 +210,7 @@ def test_fit_reads_a_freeze_and_a_frozen_stage() -> None:
 
 
 def test_fit_reads_the_held_stage_and_changes_nothing() -> None:
-    """
-    The draw leaves the freeze intact, and a refit sees a changed stage.
-
-    Changing a donor's year in one world after the fit is detected by the
-    manifest, and a sampler fitted again draws the changed year.
-    """
+    """The draw leaves the freeze intact, and a refit sees a changed stage."""
     records = {
         'r': asset(100.0, 0.0, OccupancyClass='RES1', YearBuilt=[1950, 1960, 1970]),
     }
@@ -223,6 +218,7 @@ def test_fit_reads_the_held_stage_and_changes_nothing() -> None:
     targets = inventory({'t': asset(0.0, 0.0, OccupancyClass='COM1')})
     assert _sampler(freeze, world=1).draw(targets).loc['t'] == 1960
     freeze.manifest()
+    # a change to the held stage after the fit fails the manifest
     stage.inventory['r'].features['YearBuilt'][1] = 1999
     with pytest.raises(RuntimeError):
         freeze.manifest()
@@ -230,13 +226,9 @@ def test_fit_reads_the_held_stage_and_changes_nothing() -> None:
 
 
 def test_each_world_copies_its_own_residential_year() -> None:
-    """
-    Each world's draw copies its donor's year in that world.
-
-    A nearer non-residential asset, a residential asset without a year,
-    one with a year that is not a whole number and one whose coordinates
-    enclose no area are never donors.
-    """
+    """Each world's draw copies its donor's year in that world."""
+    # only r is a donor: the nearer assets are non-residential, lack a
+    # year, hold a fractional year or enclose no area
     records = {
         'r': asset(300.0, 0.0, OccupancyClass='RES1', YearBuilt=[1950, 1960, 1970]),
         'c': asset(30.0, 0.0, OccupancyClass='COM1', YearBuilt=1900),
@@ -315,13 +307,9 @@ def test_golden_picks() -> None:
 
 
 def test_seed_world_and_iteration_change_picks() -> None:
-    """
-    A second seed, world or iteration changes at least one pick of each label.
-
-    Ten targets have donors within the cap, and ten others, beyond the cap
-    of every donor, fall back to block group B.
-    """
+    """A second seed, world or iteration changes at least one pick of each label."""
     freeze, _ = _frozen(_donors())
+    # ten targets with donors within the cap, ten that fall back to block group B
     near = {f'n{i}': asset(20.0 * i, 0.0, OccupancyClass='COM1') for i in range(10)}
     far = {
         f'f{i}': asset(
@@ -374,12 +362,7 @@ def test_the_distance_is_location_alone() -> None:
 
 
 def test_draws_are_local_to_the_cap_and_the_block_group() -> None:
-    """
-    Changes beyond the cap leave every draw with a candidate within it.
-
-    The target without one keeps its draw when the changes also lie
-    outside its block group.
-    """
+    """Donor changes beyond the cap and the fallback's block group change no draw."""
     base = {
         **_donors(),
         'z1': asset(
@@ -416,11 +399,7 @@ def test_draws_are_local_to_the_cap_and_the_block_group() -> None:
 
 
 def test_a_donor_just_past_the_cap_is_only_a_fallback() -> None:
-    """
-    A donor 2,001 m away is drawn only as its block group's fallback.
-
-    In another block group it is never drawn; in the target's own it is.
-    """
+    """A donor just past the cap is drawn only as its block group's fallback."""
     target = inventory(
         {'t': asset(0.0, 0.0, OccupancyClass='COM1', BLOCKGROUP_GEOID=BG_A)}
     )
@@ -446,12 +425,7 @@ def test_a_donor_just_past_the_cap_is_only_a_fallback() -> None:
 
 
 def test_one_asset_calls_match_the_full_inventory() -> None:
-    """
-    One-asset calls see what the full inventory sees.
-
-    A one-asset check under a placeholder id matches the check under the
-    real id, and a one-asset draw matches the full-inventory draw.
-    """
+    """One-asset draws match the full inventory's, and checks ignore the asset id."""
     freeze, _ = _frozen(_donors())
     sampler = _sampler(freeze)
     targets = _targets()
@@ -479,6 +453,8 @@ def test_one_asset_calls_match_the_full_inventory() -> None:
 # Check and infer
 
 
+# The block group is read only for an asset with no donor within the cap, and
+# coordinates without area, or two failures at once, name nothing.
 @pytest.mark.parametrize(
     ('record', 'diagnosis', 'resolvable_by'),
     [
@@ -533,14 +509,7 @@ def test_each_diagnosis_names_its_feature(
     diagnosis: str,
     resolvable_by: tuple[str, ...],
 ) -> None:
-    """
-    Each refusal has its category and names what alone would admit it.
-
-    A residential class and a block group without donors are infeasible,
-    an absent occupancy or block group is invalid, and coordinates without
-    area are invalid and name nothing. A block group is read only for an
-    asset with no donor within the cap, and two failures name nothing.
-    """
+    """Each verdict has its category and names what alone would admit the asset."""
     sampler = _sampler(_frozen(_donors())[0])
     verdicts = sampler.check(inventory({'x': record}))
     assert verdicts.loc['x', 'diagnosis'] == diagnosis
@@ -565,12 +534,7 @@ def test_the_refusals_say_why() -> None:
 
 
 def test_a_non_residential_year_makes_no_donor() -> None:
-    """
-    A target whose only nearby years are non-residential ones is refused.
-
-    The building with a year within the cap and in the target's block group
-    is COM1, so it is no donor, and check agrees with the draw.
-    """
+    """A target whose only nearby years are non-residential ones is refused."""
     records = {
         'c': asset(
             100.0, 0.0, OccupancyClass='COM1', YearBuilt=1960, BLOCKGROUP_GEOID=BG_C
@@ -592,18 +556,14 @@ def test_a_non_residential_year_makes_no_donor() -> None:
 
 
 def test_an_inventory_from_another_stage_raises_in_the_draw() -> None:
-    """
-    A fitted donor passed as a non-residential target draws no donor.
-
-    Its check counts itself among the donors, the draw excludes it, and
-    picks raises instead of failing on the missing year.
-    """
+    """A fitted donor passed back as a target passes check, then picks raises."""
     records = {
         'r0': asset(
             0.0, 0.0, OccupancyClass='RES1', YearBuilt=1950, BLOCKGROUP_GEOID=BG_A
         ),
     }
     sampler = _sampler(_frozen(records)[0])
+    # check counts the target among the donors, and the draw excludes it
     targets = inventory(
         {'r0': asset(0.0, 0.0, OccupancyClass='COM1', BLOCKGROUP_GEOID=BG_A)}
     )
@@ -687,13 +647,7 @@ def test_infer_writes_years_and_raises_with_a_preview() -> None:
 
 
 def test_the_arguments() -> None:
-    """
-    The sampler's k and cap default to the imputer's, which checks them.
-
-    The values passed reach the imputer, whose attributes the sampler
-    reports. A world other than the default needs the seed of the run, and
-    a negative world is refused.
-    """
+    """The k and cap default to the donor imputer's, and bad arguments raise."""
     sampler = NeighborYearSampler()
     assert (sampler.k, sampler.cap_m) == (DEFAULT_DONOR_K, DEFAULT_DONOR_CAP_M)
     assert isinstance(sampler.seed, int)
