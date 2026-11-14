@@ -551,7 +551,7 @@ def mixed() -> tuple[AssetInventory, AssetInventory]:
                 generator.choice(classes),
                 generator.choice([None, 0, 1, 2, 6]),
                 sqft=generator.choice([None, 800.0, 2400.0]),
-                val_struct=generator.choice([None, 1.5e5, 4.0e5]),
+                fullrep=generator.choice([None, 1.5e5, 4.0e5]),
             )
             for index in range(60)
         )
@@ -787,8 +787,8 @@ class TestPerFootprint:
         """Area and value are summed over the records that state them."""
         shapes = footprints({'A': (0, 0, 10)})
         records = points(
-            nsi(1, 2, 2, 'COM1', sqft=1000.0, val_struct=1.0e5),
-            nsi(2, 5, 5, 'COM2', val_struct=2.0e5),
+            nsi(1, 2, 2, 'COM1', sqft=1000.0, fullrep=1.0e5),
+            nsi(2, 5, 5, 'COM2', fullrep=2.0e5),
             nsi(3, 8, 8, 'COM3', sqft=500.0),
         )
         result = run(shapes, records)
@@ -803,7 +803,8 @@ class TestPerFootprint:
         """A value one record states is NSI's own, in the observed container."""
         shapes = footprints({'A': (0, 0, 10)})
         records = points(
-            nsi(1, 2, 2, 'COM1', val_struct=2.5e5), nsi(2, 5, 5, 'COM2', sqft=700.0)
+            nsi(1, 2, 2, 'COM1', fullrep=2.5e5, val_struct=1.0e5),
+            nsi(2, 5, 5, 'COM2', sqft=700.0),
         )
         result = run(shapes, records)
         observed = features_of(result.observed)['A']

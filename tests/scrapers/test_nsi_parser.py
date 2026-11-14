@@ -82,6 +82,7 @@ def make_record(fd_id: int, lon: float, lat: float, **overrides: object) -> dict
         'num_story': 2,
         'med_yr_blt': 1955,
         'sqft': 1800.0,
+        'fullrep': 650000.0,
         'val_struct': 500000.0,
         'found_type': 'S',
         'found_ht': 1.5,
@@ -111,7 +112,7 @@ def test_to_simcenter_renames_and_unpacks() -> None:
     # A tract median must not reach the inventory as an observed year.
     assert 'YearBuilt' not in converted
     assert converted['GrossArea'] == 1800.0
-    assert converted['ReplacementCost'] == 500000.0
+    assert converted['ReplacementCost'] == 650000.0
     # The general class passes through; nothing invents a specific type.
     assert converted['BuildingType'] == 'W'
     assert 'StructureType' not in converted
@@ -119,6 +120,7 @@ def test_to_simcenter_renames_and_unpacks() -> None:
     assert converted['FoundationType'] == 'S'
     # Unmapped fields pass through with their NSI names.
     assert converted['bldheight'] == 24.0
+    assert converted['val_struct'] == 500000.0
     assert converted['fd_id'] == 11
 
 

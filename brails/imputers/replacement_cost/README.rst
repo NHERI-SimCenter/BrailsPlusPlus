@@ -14,17 +14,22 @@ docstring states the procedure.
 The value and the rate
 ----------------------
 
-The value is ``val_struct`` of the National Structure Inventory (NSI), which
-NSI's technical documentation for the 2026 Base defines as the depreciated
-replacement value of the structure, in August 2025 price levels. It excludes
-contents, which NSI states separately as ``val_cont``, and it is not NSI's
-full replacement value, ``fullrep``, which the join does not use. BRAILS
-applies no price-level adjustment. The NSI footprint join writes
-``val_struct`` as ``ReplacementCost``, coded ``N`` where one record of the
-footprint states it and ``R`` where the join sums several.
+The value is ``fullrep`` of the National Structure Inventory (NSI), which
+NSI's technical documentation for the 2026 Base defines as the full, not
+depreciated, estimated replacement value of the structure. NSI estimates this
+replacement cost new, in August 2025 price levels, as a cost per square foot
+for the occupancy type, which generally falls as the floor area grows, times
+the floor area. The cost is adjusted for the county's construction wages and,
+for single-family homes, for the income of the Census tract relative to that
+of its Census division. The documentation states that no adjustments are made
+"for differences in material costs or differences in regional construction
+practices". The value excludes contents, which NSI states separately as
+``val_cont``, and it is not NSI's depreciated replacement value,
+``val_struct``. BRAILS applies no price-level adjustment. The NSI footprint
+join writes ``fullrep`` as ``ReplacementCost``, coded ``N`` where one record
+of the footprint states it and ``R`` where the join sums several.
 ``NSI_VALUE_CODES`` holds those two codes, so only a value NSI states gives a
-rate. A donor's rate carries the depreciation NSI gave the donor for its age
-and tract.
+rate. A donor's rate therefore carries no depreciation.
 
 The rate is that value divided by the building's ``GrossArea``, which the join
 writes from NSI's ``sqft``, a floor area. The target's floor area follows the
@@ -42,7 +47,7 @@ more at the median r. The ratio has not been measured against the footprints
 the join assigns NSI records to.
 
 Of the 2,243,922 records of the NSI 2026 Base for the nine San Francisco Bay
-Area counties, every record holds a ``val_struct`` and a ``sqft``, and both are
+Area counties, every record holds a ``fullrep`` and a ``sqft``, and both are
 positive.
 
 Scope
@@ -56,20 +61,28 @@ relaxed its class filter for want of donors, or where the target's class came
 from another source, and its rate is used all the same.
 
 Every other target takes the separate draw, which ranks the buildings of the
-target's class by location alone. Location matters within one class: across the
-210 San Francisco tracts of the same records, the tract medians of NSI's value
-per square foot for ``RES1-1SNB`` run from 145 dollars at the tenth percentile
-to 348 at the ninetieth. NSI's rate also falls with floor area within a class
-and varies with the structure's age through its depreciation, and the separate
-draw does not rank by either. The class filter also pools NSI's subtypes, since
-the join keeps only the class before the hyphen. In San Francisco the median
-for ``RES1-1SNB`` is 254 dollars per square foot and for ``RES1-1SWB`` 304. A
-candidate's class must be coded ``L``, ``F``, ``N`` or ``R``
-(``DONOR_CLASS_CODES``), so no value rests on a class that was itself imputed
-or drawn.
+target's class by location alone. Within one county, NSI's rate varies with
+location only for single-family homes, through the tract income adjustment.
+Across the 210 San Francisco tracts that hold a ``RES1-1SNB`` record, the tract
+medians of NSI's value per square foot for that subtype run from 220 dollars at
+the tenth percentile to 428 at the ninetieth. Outside ``RES1``, records of one
+county with the same ``occtype`` and ``sqft`` carry the same rate in each of
+the nine Bay Area counties, and 357,024 of the 687,615 records outside
+``RES1`` share both with another record of their county. Over the 46,183 pairs
+of ``occtype`` and ``sqft`` found outside ``RES1`` in more than one county, the
+rate differs between counties by at most 9.8 percent. Outside ``RES1`` the rate
+falls steeply with floor area. In San Francisco the correlation of its
+logarithm with that of ``sqft`` lies between -0.98 and -0.81 for ``COM1``,
+``COM4``, ``RES3A``, ``RES3C``, ``RES3F`` and ``IND2``, and is -0.06 for
+``RES1-1SNB``. The separate draw does not rank by floor area. The class filter
+also pools NSI's subtypes, since the join keeps only the class before the
+hyphen. In San Francisco the median for ``RES1-1SNB`` is 316 dollars per square
+foot and for ``RES1-1SWB`` 381. A candidate's class must be coded ``L``, ``F``,
+``N`` or ``R`` (``DONOR_CLASS_CODES``), so no value rests on a class that was
+itself imputed or drawn.
 
 The separate draw's defaults, ``DEFAULT_DONOR_K`` and ``DEFAULT_DONOR_CAP_M``,
 are the observed-donor imputer's and are not yet calibrated for the value. A
-calibration against masked NSI values is planned. A caller passes ``k`` and
-``cap_m`` to the constructor, and a run that also imputes class and stories
-should pass the values it gives the observed-donor imputer.
+caller passes ``k`` and ``cap_m`` to the constructor, and a run that also
+imputes class and stories should pass the values it gives the observed-donor
+imputer.

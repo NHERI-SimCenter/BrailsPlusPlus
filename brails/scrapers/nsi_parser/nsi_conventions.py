@@ -106,13 +106,16 @@ NSI_RAW_SCHEMA = pa.schema(
 #
 # sqft becomes GrossArea: NSI reports it as the structure's estimated
 # floor area, not its plan area.
+#
+# fullrep becomes ReplacementCost: NSI reports it as the full, not
+# depreciated, estimated replacement value of the structure.
 NSI_TO_SIMCENTER = {
     'x': 'Longitude',
     'y': 'Latitude',
     'sqft': 'GrossArea',
     'num_story': 'NumberOfStories',
     'med_yr_blt': 'YearBuiltTractMedian',
-    'val_struct': 'ReplacementCost',
+    'fullrep': 'ReplacementCost',
     'bldgtype': 'BuildingType',
     'occtype': 'OccupancyClass',
     'found_type': 'FoundationType',

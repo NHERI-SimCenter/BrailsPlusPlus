@@ -160,7 +160,7 @@ OCCUPANCY_FIELD = 'occtype'
 UNITS_FIELD = 'resunits'
 ID_FIELD = 'fd_id'
 AREA_FIELD = 'sqft'
-VALUE_FIELD = 'val_struct'
+VALUE_FIELD = 'fullrep'
 BLOCK_FIELD = 'cbfips'
 
 # SimCenter names of the summed fields, as to_simcenter writes them.
