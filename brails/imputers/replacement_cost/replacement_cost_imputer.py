@@ -261,7 +261,7 @@ class ReplacementCostResult(NamedTuple):
     The result of a stage run of the replacement cost imputer.
 
     Attributes:
-        imputed (AssetInventory):
+        costs (AssetInventory):
             Every value the run holds, own-rate and local values included:
             the buildings with a value in some world, holding only the value
             feature, with ``None`` in a world without one.
@@ -273,7 +273,7 @@ class ReplacementCostResult(NamedTuple):
             The seed of the same-class neighbor draw.
     """
 
-    imputed: AssetInventory
+    costs: AssetInventory
     log: pd.DataFrame
     seed: int
 
@@ -454,7 +454,7 @@ class ReplacementCostImputer(Imputation):
         output = deepcopy(input_inventory)
         # each building's value, and the value's code in each world
         for asset_id, asset in output.inventory.items():
-            held = result.imputed.inventory.get(asset_id)
+            held = result.costs.inventory.get(asset_id)
             if held is None:
                 asset.features.pop(self.value_key, None)
             else:
@@ -567,10 +567,10 @@ class ReplacementCostImputer(Imputation):
                 values.setdefault(asset_id, {})[position] = value
             rows.extend(world_rows)
 
-        imputed = AssetInventory(vector_features=buildings.vector_features)
+        costs = AssetInventory(vector_features=buildings.vector_features)
         for asset_id in sorted(values, key=str):
             realizations = [values[asset_id].get(p) for p in range(len(worlds))]
-            imputed.add_asset(
+            costs.add_asset(
                 asset_id,
                 Asset(
                     asset_id,
@@ -578,9 +578,9 @@ class ReplacementCostImputer(Imputation):
                     {self.value_key: collapse_realizations(realizations)},
                 ),
             )
-        imputed.n_pw = len(worlds)
+        costs.n_pw = len(worlds)
         return ReplacementCostResult(
-            imputed, pd.DataFrame(rows, columns=list(LOG_COLUMNS)), self.seed
+            costs, pd.DataFrame(rows, columns=list(LOG_COLUMNS)), self.seed
         )
 
     def _impute_world(  # noqa: C901

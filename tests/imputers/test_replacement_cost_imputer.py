@@ -251,7 +251,7 @@ def run(
         freeze, 'stage', 'donors', world=world
     )
     for row in result.log.itertuples():
-        held = result.imputed.inventory.get(row.asset_id)
+        held = result.costs.inventory.get(row.asset_id)
         stored = None if held is None else held.features['ReplacementCost']
         if isinstance(stored, list):
             stored = stored[row.world if world is None else 0]
@@ -329,7 +329,7 @@ def value_of(result: ReplacementCostResult, asset_id: str) -> Any:
         Any:
             The stored value.
     """
-    held = result.imputed.inventory.get(asset_id)
+    held = result.costs.inventory.get(asset_id)
     return None if held is None else held.features['ReplacementCost']
 
 
@@ -731,7 +731,7 @@ class TestOutcomes:
             assert row['outcome'] == OUTCOME_NO_DONOR
             assert pd.isna(row['donor_id'])
             assert math.isnan(row['rate'])
-        assert result.imputed.get_asset_ids() == ['c']
+        assert result.costs.get_asset_ids() == ['c']
 
 
 class TestReport:
@@ -1161,7 +1161,7 @@ class TestWorlds:
         assert stored[0] == pytest.approx(100.0 * plan)
         assert stored[1] is None
         assert stored[2] == pytest.approx(900.0 * plan)
-        assert result.imputed.n_pw == 3
+        assert result.costs.n_pw == 3
         assert column(result, 't', 'outcome') == [
             OUTCOME_IMPUTATION_DONOR,
             OUTCOME_NO_CLASS,
@@ -1178,7 +1178,7 @@ class TestWorlds:
             donors.get_world_realization(2),
             world=2,
         )
-        assert one.imputed.n_pw == 1
+        assert one.costs.n_pw == 1
         for result in (one, scalar):
             assert value_of(result, 't') == value_of(whole, 't')[2]
             pd.testing.assert_frame_equal(
@@ -1218,7 +1218,7 @@ class TestWorlds:
         assert value_of(result, 't') == pytest.approx(
             100.0 * plan_sqft(buildings, 't') * 2
         )
-        assert result.imputed.n_pw == 4
+        assert result.costs.n_pw == 4
 
 
 class TestStagesAndArguments:
