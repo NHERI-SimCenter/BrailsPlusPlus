@@ -63,16 +63,16 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     DEFAULT_DONOR_K,
     DEFAULT_LOCATION_SCALE_M,
     DEFAULT_STORIES_WEIGHT,
+    IMPUTATION_DONOR_KEY,
+    imputation_donors_from_log,
 )
 from brails.imputers.replacement_cost.replacement_cost_imputer import (
-    IMPUTATION_DONOR_KEY,
     OUTCOME_IMPUTATION_DONOR,
     OUTCOME_LOCAL_VALUE,
     OUTCOME_NO_CLASS,
     OUTCOME_OWN_RATE,
     OUTCOME_VALUE_CODES,
     ReplacementCostResult,
-    donor_stage_from_log,
 )
 from brails.inferers import BlockGroupUnitBudget
 from brails.inferers.acs_unit_budget.acs_unit_budget import (
@@ -418,7 +418,7 @@ class TestRateSources:
         ]
         log = pd.DataFrame(rows, columns=list(DONOR_LOG_COLUMNS))
         targets = inventory({'t': target(0.0)})
-        result = run(buildings, donor_stage_from_log(log, targets, n_worlds=1))
+        result = run(buildings, imputation_donors_from_log(log, targets, n_worlds=1))
         assert logged(result, 't')['donor_id'] == 'second'
         assert logged(result, 't')['rate'] == 200.0
 

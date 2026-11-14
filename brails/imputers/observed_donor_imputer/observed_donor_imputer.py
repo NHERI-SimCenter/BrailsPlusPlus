@@ -43,6 +43,7 @@ imported from this module.
 .. autosummary::
 
       ObservedDonorImputer
+      imputation_donors_from_log
 """
 
 from __future__ import annotations
@@ -112,6 +113,7 @@ __all__ = [
     'DonorImputationResult',
     'DonorPool',
     'ObservedDonorImputer',
+    'imputation_donors_from_log',
 ]
 
 # Features the imputer fills by default.
@@ -146,6 +148,10 @@ DEFAULT_DONOR_CAP_M = 2000.0
 DEFAULT_LOCATION_SCALE_M = 100.0
 DEFAULT_AREA_WEIGHT = 1.0
 DEFAULT_STORIES_WEIGHT = 1.0
+
+# Feature of the inventory imputation_donors_from_log builds, holding, per
+# world, the id of the donor whose values a target kept.
+IMPUTATION_DONOR_KEY = 'ImputationDonor'
 
 # The great-circle distance the donor pool's tree measures, for one pair.
 _HAVERSINE = DistanceMetric.get_metric('haversine')
@@ -1787,6 +1793,100 @@ class ObservedDonorImputer(Imputation):
             imputed.add_asset(asset_id, Asset(asset_id, coordinates, features))
         imputed.n_pw = n_worlds
         return imputed
+
+
+def imputation_donors_from_log(
+    log: pd.DataFrame, targets: AssetInventory, *, n_worlds: int
+) -> AssetInventory:
+    """
+    Build the imputation donors from the log of an observed-donor stage run.
+
+    For each target and world the donor named is that of the log row with
+    the highest ``round`` whose ``values`` are not empty, the status round
+    excluded, so the donor named is the one whose values the target kept.
+
+    Args:
+        log (pandas.DataFrame):
+            The log of
+            :meth:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.ObservedDonorImputer.impute_stage`,
+            with the columns of
+            :data:`~brails.imputers.observed_donor_imputer.donor_records.LOG_COLUMNS`.
+        targets (AssetInventory):
+            The targets of that run. Not modified.
+        n_worlds (int):
+            The number of worlds of that run.
+
+    Returns:
+        AssetInventory:
+            One asset per target, in ascending order of the id as a string,
+            with the target's coordinates and :data:`IMPUTATION_DONOR_KEY`
+            holding the donor id per world, ``None`` in a world where the
+            target kept no donor's values or has no log row. A donor equal
+            in every world is stored as a scalar, otherwise as a list, so a
+            target without a donor in any world holds a list of ``None``.
+            The inventory declares ``n_worlds`` possible worlds.
+
+    Raises:
+        ValueError:
+            If ``n_worlds`` is not a positive integer, the log lacks a
+            column, a row's world is not an integer below ``n_worlds``, or
+            a row names an asset that ``targets`` lacks.
+    """
+    if isinstance(n_worlds, bool) or not isinstance(n_worlds, int) or n_worlds < 1:
+        msg = f'n_worlds must be a positive integer, not {n_worlds!r}.'
+        raise ValueError(msg)
+    missing = [column for column in LOG_COLUMNS if column not in log.columns]
+    if missing:
+        msg = f'The log lacks the columns {missing}.'
+        raise ValueError(msg)
+    bad_worlds = sorted(
+        {
+            repr(world)
+            for world in log['world']
+            if not pd.api.types.is_integer(world) or not 0 <= world < n_worlds
+        }
+    )
+    if bad_worlds:
+        msg = (
+            f'The log holds worlds {bad_worlds}, which are not integers from 0 '
+            f'to {n_worlds - 1}.'
+        )
+        raise ValueError(msg)
+    unknown = sorted(
+        {repr(a) for a in log['asset_id'] if a not in targets.inventory}
+    )
+    if unknown:
+        msg = f'The log names assets that the targets lack: {unknown}.'
+        raise ValueError(msg)
+
+    # (target, world) to the round and id of the donor kept so far
+    kept: dict[tuple[Hashable, int], tuple[int, Any]] = {}
+    for asset_id, world, round_number, values, donor_id in zip(
+        log['asset_id'], log['world'], log['round'], log['values'], log['donor_id']
+    ):
+        if round_number == ROUND_STATUS or not values:
+            continue
+        key = (asset_id, int(world))
+        if key not in kept or round_number >= kept[key][0]:
+            kept[key] = (round_number, donor_id)
+
+    stage = AssetInventory()
+    for asset_id in sorted(targets.inventory, key=str):
+        donors = [
+            kept[(asset_id, world)][1] if (asset_id, world) in kept else None
+            for world in range(n_worlds)
+        ]
+        coordinates = deepcopy(targets.inventory[asset_id].coordinates)
+        stage.add_asset(
+            asset_id,
+            Asset(
+                asset_id,
+                coordinates,
+                {IMPUTATION_DONOR_KEY: collapse_realizations(donors)},
+            ),
+        )
+    stage.n_pw = n_worlds
+    return stage
 
 
 def _as_draw(

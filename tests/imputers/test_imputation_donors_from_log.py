@@ -31,7 +31,7 @@
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 
-"""Tests for the donor stage built from an observed-donor stage log."""
+"""Tests for the imputation donors built from an observed-donor stage log."""
 
 from __future__ import annotations
 
@@ -50,10 +50,9 @@ from brails.imputers.observed_donor_imputer.donor_records import (
     ROUND_REPAIR,
     ROUND_STATUS,
 )
-from brails.imputers.replacement_cost.replacement_cost_imputer import (
-    DONOR_STAGE,
+from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     IMPUTATION_DONOR_KEY,
-    donor_stage_from_log,
+    imputation_donors_from_log,
 )
 from brails.utils.stage_freeze import StageFreeze
 from tests.imputers.donor_fixtures import asset, imputer, inventory, world_value
@@ -121,7 +120,7 @@ def targets(*ids: str) -> AssetInventory:
 
 def donors_of(rows: list[dict[str, Any]], n_worlds: int, *ids: str) -> dict:
     """
-    Return the donor stage's value per target for a list of log rows.
+    Return the imputation donors' value per target for a list of log rows.
 
     Args:
         rows (list[dict[str, Any]]):
@@ -135,7 +134,7 @@ def donors_of(rows: list[dict[str, Any]], n_worlds: int, *ids: str) -> dict:
         dict:
             Target id to the stored value of the donor key.
     """
-    stage = donor_stage_from_log(
+    stage = imputation_donors_from_log(
         pd.DataFrame(rows, columns=list(LOG_COLUMNS)),
         targets(*ids),
         n_worlds=n_worlds,
@@ -234,7 +233,7 @@ class TestDonorKept:
             status={'t': False, 'u': False},
             validate=validate,
         )
-        stage = donor_stage_from_log(result.log, stage_targets, n_worlds=n_worlds)
+        stage = imputation_donors_from_log(result.log, stage_targets, n_worlds=n_worlds)
         repaired = result.log[result.log['round'] == ROUND_REPAIR]
         # t has repairs that found a donor, u only exhausted ones
         assert set(repaired.loc[repaired['asset_id'] == 't', 'outcome']) - {
@@ -259,7 +258,7 @@ class TestStage:
     def test_coordinates_copied(self) -> None:
         """Each target keeps its coordinates, copied, and the stage its worlds."""
         stage_targets = targets('t', 'a')
-        stage = donor_stage_from_log(
+        stage = imputation_donors_from_log(
             pd.DataFrame(columns=list(LOG_COLUMNS)), stage_targets, n_worlds=4
         )
         assert stage.get_asset_ids() == ['a', 't']
@@ -292,7 +291,7 @@ class TestStage:
         """A missing column, a world out of range or an unknown asset raises."""
         log = pd.DataFrame(rows, columns=list(LOG_COLUMNS))[list(columns)]
         with pytest.raises(ValueError, match=message):
-            donor_stage_from_log(log, targets('t'), n_worlds=n_worlds)
+            imputation_donors_from_log(log, targets('t'), n_worlds=n_worlds)
 
     def test_rebuilt_stage_has_the_same_digest(self) -> None:
         """A stage rebuilt from the same log freezes to the same digest."""
@@ -300,7 +299,8 @@ class TestStage:
         log = pd.DataFrame(rows, columns=list(LOG_COLUMNS))
         digests = [
             StageFreeze().freeze(
-                DONOR_STAGE, donor_stage_from_log(log, targets('t'), n_worlds=2)
+                'imputation_donors',
+                imputation_donors_from_log(log, targets('t'), n_worlds=2),
             )
             for _ in range(2)
         ]

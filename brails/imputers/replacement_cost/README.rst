@@ -81,11 +81,11 @@ building whose coordinates enclose no area gets no value
 The rate is the first that exists of three. The building's own rate is
 logged as ``OUTCOME_OWN_RATE``. Without one, the building takes the own rate
 of the donor that the donor stage names for it in the world, logged as
-``OUTCOME_IMPUTATION_DONOR``. ``donor_stage_from_log`` names that donor from
-the log of ``ObservedDonorImputer.impute_stage``: the building whose features
-the observed-donor imputer copied to this one, the last re-draw's where its
-validation re-drew. The donor's class is not compared with the building's.
-Without a donor's rate, a building without a class gets no value
+``OUTCOME_IMPUTATION_DONOR``. ``imputation_donors_from_log`` names that donor
+from the log of ``ObservedDonorImputer.impute_stage``: the building whose
+features the observed-donor imputer copied to this one, the last re-draw's
+where its validation re-drew. The donor's class is not compared with the
+building's. Without a donor's rate, a building without a class gets no value
 (``OUTCOME_NO_CLASS``), and one with a class takes the same-class neighbor
 draw.
 
