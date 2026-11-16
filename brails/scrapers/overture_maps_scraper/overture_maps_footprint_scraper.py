@@ -99,18 +99,20 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
             The local files read in place of the S3 bucket, or ``None``.
 
     Example:
-        With ``region``, ``scraper_class`` and ``scraper`` as in the example
-        of :meth:`get_footprints`, record the release an inventory was built
+        With ``region`` and ``scraper`` as in the example of
+        :meth:`get_footprints`, record the release an inventory was built
         from and name it in a later run, to read the same release for as
         long as the bucket holds it:
 
         >>> release = scraper.overture_release
-        >>> later = scraper_class({'overtureRelease': release})
+        >>> later = OvertureMapsFootprintScraper(
+        ...     {'overtureRelease': release}
+        ... )
 
         Read Parquet files that record no release, naming the release they
         hold, here ``files_release``:
 
-        >>> local = scraper_class(
+        >>> local = OvertureMapsFootprintScraper(
         ...     {
         ...         'local_path': ['buildings_west.parquet',
         ...                        'buildings_east.parquet'],
@@ -263,15 +265,12 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
             Read the buildings of Berkeley, California, from the release
             ``resolve_release`` picks:
 
-            >>> from brails import Importer
-            >>> importer = Importer()
-            >>> region = importer.get_class('RegionBoundary')(
+            >>> from brails.scrapers import OvertureMapsFootprintScraper
+            >>> from brails.types import RegionBoundary
+            >>> region = RegionBoundary(
             ...     {'type': 'locationName', 'data': 'Berkeley, CA'}
             ... )
-            >>> scraper_class = importer.get_class(
-            ...     'OvertureMapsFootprintScraper'
-            ... )
-            >>> scraper = scraper_class({'length': 'ft'})
+            >>> scraper = OvertureMapsFootprintScraper({'length': 'ft'})
             >>> inventory = scraper.get_footprints(region)
         """
         bpoly, _,  _ = region.get_boundary()
@@ -380,13 +379,13 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
                 If a local file holds rows of a type other than 'building'.
 
         Example:
-            With ``region``, ``scraper_class`` and ``scraper`` as in the
-            example of :meth:`get_footprints`, download the region once and
-            build inventories from the file, without reading the bucket
-            again, keyed by geohash:
+            With ``region`` and ``scraper`` as in the example of
+            :meth:`get_footprints`, download the region once and build
+            inventories from the file, without reading the bucket again,
+            keyed by geohash:
 
             >>> count = scraper.download(region, 'berkeley_buildings.parquet')
-            >>> local = scraper_class(
+            >>> local = OvertureMapsFootprintScraper(
             ...     {'local_path': 'berkeley_buildings.parquet',
             ...      'id_scheme': 'geohash'}
             ... )
