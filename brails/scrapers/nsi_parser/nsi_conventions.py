@@ -98,6 +98,7 @@ NSI_RAW_SCHEMA = pa.schema(
 
 # NSI field names and the SimCenter feature names assigned to them. Fields
 # that are not listed pass through with their NSI names.
+# The fields and the features they become are described in README.rst.
 #
 # med_yr_blt becomes YearBuiltTractMedian: NSI reports it as the median year
 # built of the structures in the Census tract, so every building in a tract
