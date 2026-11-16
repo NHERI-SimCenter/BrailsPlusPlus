@@ -442,7 +442,6 @@ class TestRateSources:
             {'GrossArea': 0.0},
             {'ReplacementCost': math.inf},
             {'SourceString': source('N', 'I')},
-            {'SourceString': source('N', 'L')},
             {'SourceString': source('N', '-'), 'ReplacementCost': 'NA'},
         ],
     )
@@ -486,14 +485,25 @@ class TestRateSources:
         )
 
     def test_local_value_kept(self) -> None:
-        """A value coded L is kept in every world and gives no rate."""
+        """A value coded L is kept unchanged, and its row logs its own rate."""
+        buildings = inventory(
+            {'l': nsi_building(0.0, 999, 3.0, SourceString=source('N', 'L'))}
+        )
+        result = run(buildings, donor_stage(buildings, {}))
+        assert type(value_of(result, 'l')) is int
+        assert value_of(result, 'l') == 999
+        row = logged(result, 'l')
+        assert (row['outcome'], row['rate']) == (OUTCOME_LOCAL_VALUE, 333.0)
+
+    def test_local_donor_rate(self) -> None:
+        """A local value over its GrossArea is a donor's rate in every world."""
         buildings = inventory(
             {
                 'c': nsi_building(900.0, 40.0, 1.0),
                 'l': nsi_building(
                     0.0,
                     999.0,
-                    1.0,
+                    3.0,
                     NumberOfStories=[1, 3],
                     SourceString=source('N', 'L'),
                 ),
@@ -504,7 +514,33 @@ class TestRateSources:
         result = run(buildings, donor_stage(buildings, {'t': 'l'}))
         assert value_of(result, 'l') == 999.0
         assert column(result, 'l', 'outcome') == [OUTCOME_LOCAL_VALUE] * 2
-        assert set(column(result, 't', 'donor_id')) == {'c'}
+        assert column(result, 't', 'outcome') == [OUTCOME_IMPUTATION_DONOR] * 2
+        assert column(result, 't', 'donor_id') == ['l', 'l']
+        assert column(result, 't', 'rate') == [333.0, 333.0]
+        assert value_of(result, 't') == pytest.approx(
+            333.0 * plan_sqft(buildings, 't') * 2, rel=1e-12
+        )
+
+    def test_local_value_without_gross_area(self) -> None:
+        """A local value without GrossArea gives no rate, and its target draws."""
+        buildings = inventory(
+            {
+                'c': nsi_building(900.0, 40.0, 1.0),
+                'l': nsi_building(0.0, 999.0, None, SourceString=source('N', 'L')),
+                't': target(5.0),
+            }
+        )
+        result = run(buildings, donor_stage(buildings, {'t': 'l'}))
+        assert value_of(result, 'l') == 999.0
+        row = logged(result, 'l')
+        assert row['outcome'] == OUTCOME_LOCAL_VALUE
+        assert math.isnan(row['rate'])
+        row = logged(result, 't')
+        assert (row['outcome'], row['donor_id'], row['rate']) == (
+            OUTCOME_FEWER_THAN_K,
+            'c',
+            40.0,
+        )
 
     def test_no_named_donor(self) -> None:
         """A target the donor stage lacks, or names no donor for, draws."""
@@ -814,6 +850,7 @@ class TestSameClassNeighborDraw:
             {'GrossArea': None},
             {'GrossArea': 0.0},
             {'SourceString': source('N', 'I')},
+            {'SourceString': source('N', 'L'), 'GrossArea': None},
         ],
     )
     def test_buildings_never_drawn(self, excluded: dict[str, Any]) -> None:
@@ -839,6 +876,31 @@ class TestSameClassNeighborDraw:
         )
         result = run(buildings, donor_stage(buildings, {}, n_pw=30))
         assert set(column(result, 't', 'donor_id')) == {'l', 'f'}
+
+    def test_local_value_is_drawn(self) -> None:
+        """A local value over its GrossArea makes its building a candidate."""
+        buildings = inventory(
+            {
+                'l': nsi_building(
+                    10.0,
+                    999.0,
+                    3.0,
+                    NumberOfStories=3,
+                    SourceString=source('N', 'L'),
+                ),
+                't': target(0.0),
+            }
+        )
+        result = run(buildings, donor_stage(buildings, {}))
+        row = logged(result, 't')
+        assert (row['outcome'], row['donor_id'], row['rate']) == (
+            OUTCOME_FEWER_THAN_K,
+            'l',
+            333.0,
+        )
+        assert value_of(result, 't') == pytest.approx(
+            333.0 * plan_sqft(buildings, 't') * 2, rel=1e-12
+        )
 
     def test_block_group_fallback(self) -> None:
         """Without a building within the cap, one of the block group is drawn."""

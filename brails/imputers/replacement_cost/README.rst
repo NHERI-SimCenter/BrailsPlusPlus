@@ -27,30 +27,30 @@ practices". ``fullrep`` excludes contents, which NSI states separately as
 ``val_cont``, and it is not NSI's depreciated replacement value,
 ``val_struct``. BRAILS applies no price-level adjustment. The NSI footprint
 join writes ``fullrep`` as ``ReplacementCost``, coded ``N`` where one record
-of the footprint states it and ``R`` where the join sums several.
-``NSI_VALUE_CODES`` holds those two codes, so only a value NSI states gives a
-rate, and no rate carries a depreciation.
+of the footprint states it and ``R`` where the join sums several. A value
+from a local source, coded ``L``, gives a rate the same way, and
+``RATE_VALUE_CODES`` holds the three codes.
 
-A building's own rate is that value divided by its ``GrossArea``, which the
-join writes from NSI's ``sqft``, a floor area, as the sum over the same
-records. The rate multiplies the building's plan area times its number of
-stories, never its ``GrossArea``, since the rate times ``GrossArea`` is NSI's
-value itself. The two floor areas differ. Over the 165,152 records for San
-Francisco in the NSI 2026 Base, ``sqft`` divided by the area of NSI's own
-footprint (``ftprntsqft``) times its stories (``num_story``) has a median of
-0.9252 and quartiles of 0.5546 and 1.0. The 137,869 records alone on their
-NSI footprint have a median of 1.0 and a lower quartile of 0.706, and the
-27,283 records (16.5 percent) that share a footprint with another record have
-a median of 0.118. For a building with one NSI record whose Overture
-footprint and story count agree with NSI's, the value is therefore NSI's value
-at the median ratio, and 1.42 times NSI's value or more for the quarter of
-such records with a ratio of 0.706 or less. On the 7,849 NSI footprints of San
-Francisco that hold several records (the 27,283 records above), the sum of
-``sqft`` over a footprint's records divided by its area times its stories lies
-between 0.99998 and 1.00002, so where Overture's footprint and story count
-agree with NSI's, the rule returns the join's sum of ``fullrep``. The ratio
-against the footprints the join assigns NSI records to has not been measured.
-No scale factor is applied.
+A building's own rate is its value divided by its ``GrossArea``. For a value
+NSI states, the join writes ``GrossArea`` from NSI's ``sqft``, a floor area,
+as the sum over the same records. The rate multiplies the building's plan area
+times its number of stories, never its ``GrossArea``, since the rate times
+``GrossArea`` is NSI's value itself. The two floor areas differ. Over the
+165,152 records for San Francisco in the NSI 2026 Base, ``sqft`` divided by
+the area of NSI's own footprint (``ftprntsqft``) times its stories
+(``num_story``) has a median of 0.9252 and quartiles of 0.5546 and 1.0. The
+137,869 records alone on their NSI footprint have a median of 1.0 and a lower
+quartile of 0.706, and the 27,283 records (16.5 percent) that share a
+footprint with another record have a median of 0.118. For a building with one
+NSI record whose Overture footprint and story count agree with NSI's, the
+value is therefore NSI's value at the median ratio, and 1.42 times NSI's value
+or more for the quarter of such records with a ratio of 0.706 or less. On the
+7,849 NSI footprints of San Francisco that hold several records (the 27,283
+records above), the sum of ``sqft`` over a footprint's records divided by its
+area times its stories lies between 0.99998 and 1.00002, so where Overture's
+footprint and story count agree with NSI's, the rule returns the join's sum of
+``fullrep``. The ratio against the footprints the join assigns NSI records to
+has not been measured. No scale factor is applied.
 
 Of the 2,243,922 records of the NSI 2026 Base for the nine San Francisco Bay
 Area counties, every record holds a ``fullrep`` and a ``sqft``, and both are
@@ -61,12 +61,13 @@ Procedure
 
 In each world the imputer reads that world's realization of the frozen stage
 and of the donor stage. A building whose ``ReplacementCost`` is coded ``L``
-keeps that value, logged as ``OUTCOME_LOCAL_VALUE``, and never gives a rate.
-The imputer first reads the own rate of every building of the stage, so
-every rate comes from the values as frozen and none from a value the imputer
-writes. A building has an own rate where the code of its
-``ReplacementCost`` is among ``NSI_VALUE_CODES`` and its ``ReplacementCost``
-and ``GrossArea`` are finite numbers above zero.
+keeps that value unchanged, logged as ``OUTCOME_LOCAL_VALUE``. The imputer
+first reads the own rate of every building of the stage, so every rate comes
+from the values as frozen and none from a value the imputer writes. A
+building has an own rate where the code of its ``ReplacementCost`` is among
+``RATE_VALUE_CODES`` and its ``ReplacementCost`` and ``GrossArea`` are finite
+numbers above zero. A local value without a ``GrossArea`` is kept and gives
+no rate.
 
 Each building is then valued in ascending order of its id as a string, an
 order the result does not depend on. Its floor area in square feet is its

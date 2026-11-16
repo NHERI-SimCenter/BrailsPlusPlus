@@ -100,10 +100,16 @@ if TYPE_CHECKING:
 # frozen.
 DONOR_STAGE = 'imputation_donors'
 
-# Source codes of a value NSI states: one record's value, or the sum of the
-# values of several records of one footprint. README.rst beside this module,
-# "The value and the rate".
-NSI_VALUE_CODES = (SOURCE_CODES['nsi'], SOURCE_CODES['derived'])
+# Source codes of a value that gives a rate over its GrossArea: local, NSI
+# and derived. A derived value is the sum of the values of several NSI records
+# of one footprint, and it is also the code this imputer writes for a value
+# from a building's own rate. README.rst beside this module, "The value and
+# the rate".
+RATE_VALUE_CODES = (
+    SOURCE_CODES['local'],
+    SOURCE_CODES['nsi'],
+    SOURCE_CODES['derived'],
+)
 
 # Source codes a candidate's class may carry in the same-class neighbor draw:
 # local, footprint, NSI or derived, never imputed or drawn. README.rst beside
@@ -144,7 +150,8 @@ _RATE_KEY = 'ReplacementCostRate'
 
 # Columns of the log of ReplacementCostImputer.impute_stage. donor_id names the
 # donor or neighbor whose rate a building took, and is missing otherwise (test
-# with pandas.isna).
+# with pandas.isna). rate is the rate the value is computed from, and on the row
+# of a kept local value the building's own rate, where it has one.
 LOG_COLUMNS = (
     'asset_id',
     'world',
@@ -187,13 +194,14 @@ class ReplacementCostImputer(Imputation):
     ``stories_key``, or its plan area alone without a positive story count,
     and never its ``gross_area_key``. Its rate is the first that
     exists of three: its own, ``value_key`` over ``gross_area_key`` where
-    the value's source code is among :data:`NSI_VALUE_CODES`; that of the
-    donor the donor stage names; that of a building of its class drawn by
-    the same-class neighbor draw. Every rate is read from the stage, never
-    from a value the imputer wrote. A value coded local is kept and gives no
-    rate, and every other stated value is replaced. A building without a
-    rate or a floor area gets no value, and the log says why. The section
-    "Procedure" of the README beside this module describes the run.
+    the value's source code is among :data:`RATE_VALUE_CODES` and both are
+    numbers above zero; that of the donor the donor stage names; that of a
+    building of its class drawn by the same-class neighbor draw. Every rate
+    is read from the stage, never from a value the imputer wrote. A value
+    coded local is kept and gives a rate as a value coded NSI does, and
+    every other stated value is replaced. A building without a rate or a
+    floor area gets no value, and the log says why. The section "Procedure"
+    of the README beside this module describes the run.
 
     Every constructor argument is stored as an attribute of the same name,
     read-only by convention, and ``seed`` holds the seed used.
@@ -539,7 +547,10 @@ class ReplacementCostImputer(Imputation):
                 and self._codes(asset_id, asset.features)[value_position]
                 == SOURCE_CODES['local']
             ):
-                row['outcome'] = OUTCOME_LOCAL_VALUE
+                row.update(
+                    outcome=OUTCOME_LOCAL_VALUE,
+                    rate=rates.get(asset_id, math.nan),
+                )
                 values[asset_id] = stated
                 continue
             area, row['area_source'] = self._floor_area(asset_id, asset)
@@ -704,6 +715,10 @@ class ReplacementCostImputer(Imputation):
         """
         Return a building's own value per square foot of its gross area.
 
+        A value gives a rate where its source code is among
+        :data:`RATE_VALUE_CODES` and it and ``gross_area_key`` are numbers
+        above zero.
+
         Args:
             asset_id (Hashable):
                 The building, for the error message.
@@ -722,7 +737,7 @@ class ReplacementCostImputer(Imputation):
         if is_missing_value(features.get(self.value_key)):
             return None
         codes = self._codes(asset_id, features)
-        if codes[self.source_features.index(self.value_key)] not in NSI_VALUE_CODES:
+        if codes[self.source_features.index(self.value_key)] not in RATE_VALUE_CODES:
             return None
         value = _positive(features.get(self.value_key))
         gross = _positive(features.get(self.gross_area_key))
