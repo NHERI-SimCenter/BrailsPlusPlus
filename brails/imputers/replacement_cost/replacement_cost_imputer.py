@@ -88,6 +88,7 @@ from brails.types.asset_inventory import (
     Asset,
     AssetInventory,
     is_missing_value,
+    read_source_string,
 )
 from brails.utils.stage_freeze import StageFreeze
 from brails.utils.unit_converter import UNIT_TO_METER
@@ -344,7 +345,9 @@ class ReplacementCostImputer(Imputation):
         Raises:
             ValueError:
                 As :meth:`impute_stage` raises, or if a building's source
-                string has the wrong length.
+                string is not one that
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads.
         """
         freeze = StageFreeze()
         freeze.freeze('inventory', input_inventory)
@@ -379,7 +382,14 @@ class ReplacementCostImputer(Imputation):
                 strings = [strings] * output.n_pw
             rewritten = []
             for world, string in enumerate(strings):
-                codes = list(self._codes(asset_id, {self.source_string_key: string}))
+                codes = list(
+                    read_source_string(
+                        asset_id,
+                        {self.source_string_key: string},
+                        source_string_key=self.source_string_key,
+                        source_features=self.source_features,
+                    )
+                )
                 codes[position] = OUTCOME_VALUE_CODES.get(
                     outcomes[(asset_id, world)], SOURCE_CODE_NONE
                 )
@@ -433,8 +443,10 @@ class ReplacementCostImputer(Imputation):
                 If a stage holds a number of worlds other than 1 and the
                 other's, the donor stage holds an asset the stage lacks or
                 names a donor the stage lacks, ``world`` is not a world of
-                the stages, the source string of a building holding a value
-                is missing or of the wrong length, or a building's
+                the stages, a building holding a value carries no source
+                string that
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads, or a building's
                 coordinates cannot be read.
         """
         if donor_stage is None:
@@ -549,7 +561,12 @@ class ReplacementCostImputer(Imputation):
             stated = asset.features.get(self.value_key)
             if (
                 not is_missing_value(stated)
-                and self._codes(asset_id, asset.features)[value_position]
+                and read_source_string(
+                    asset_id,
+                    asset.features,
+                    source_string_key=self.source_string_key,
+                    source_features=self.source_features,
+                )[value_position]
                 == SOURCE_CODES['local']
             ):
                 row.update(
@@ -634,7 +651,13 @@ class ReplacementCostImputer(Imputation):
             if (
                 isinstance(occupancy, str)
                 and occupancy in pending
-                and self._codes(asset_id, features)[position] in NEIGHBOR_CLASS_CODES
+                and read_source_string(
+                    asset_id,
+                    features,
+                    source_string_key=self.source_string_key,
+                    source_features=self.source_features,
+                )[position]
+                in NEIGHBOR_CLASS_CODES
             ):
                 candidates.setdefault(occupancy, {})[asset_id] = rates[asset_id]
 
@@ -737,12 +760,18 @@ class ReplacementCostImputer(Imputation):
 
         Raises:
             ValueError:
-                If the building holds a value and its source string is
-                missing or of the wrong length.
+                If the building holds a value and no source string that
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads.
         """
         if is_missing_value(features.get(self.value_key)):
             return None
-        codes = self._codes(asset_id, features)
+        codes = read_source_string(
+            asset_id,
+            features,
+            source_string_key=self.source_string_key,
+            source_features=self.source_features,
+        )
         if codes[self.source_features.index(self.value_key)] not in RATE_VALUE_CODES:
             return None
         value = _positive(features.get(self.value_key))
@@ -750,35 +779,6 @@ class ReplacementCostImputer(Imputation):
         if value is None or gross is None:
             return None
         return value / gross
-
-    def _codes(self, asset_id: Hashable, features: Mapping[str, Any]) -> str:
-        """
-        Return a building's source string.
-
-        Args:
-            asset_id (Hashable):
-                The building, for the error message.
-            features (Mapping[str, Any]):
-                Its features in one world.
-
-        Returns:
-            str:
-                The source string, one code per source feature.
-
-        Raises:
-            ValueError:
-                If the string is missing or its length differs from the
-                number of source features.
-        """
-        codes = features.get(self.source_string_key)
-        if not isinstance(codes, str) or len(codes) != len(self.source_features):
-            msg = (
-                f'Asset {asset_id!r} carries no source string of '
-                f'{len(self.source_features)} codes in '
-                f'{self.source_string_key!r}: {codes!r}.'
-            )
-            raise ValueError(msg)
-        return codes
 
 
 def _draw_inventory(

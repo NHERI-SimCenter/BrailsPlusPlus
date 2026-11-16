@@ -39,12 +39,13 @@
 # 10-22-2025
 
 """
-This module defines classes associated with asset inventories.
+This module defines asset inventories, their assets and the source string reader.
 
 .. autosummary::
 
     AssetInventory
     Asset
+    read_source_string
 """
 
 from __future__ import annotations
@@ -111,8 +112,16 @@ SOURCE_CODES: Mapping[str, str] = MappingProxyType(
     }
 )
 
+# The source label of each code of SOURCE_CODES.
+SOURCE_LABELS: Mapping[str, str] = MappingProxyType(
+    {code: label for label, code in SOURCE_CODES.items()}
+)
+
 # Character of the source string for a feature that no source holds.
 SOURCE_CODE_NONE = '-'
+
+# Characters a source string may hold.
+SOURCE_STRING_CODES = frozenset({*SOURCE_CODES.values(), SOURCE_CODE_NONE})
 
 # Features covered by the source string by default, one character each,
 # in the order a Hazus earthquake inventory is built.
@@ -153,6 +162,58 @@ def _is_missing_value(value: Any) -> bool:  # noqa: ANN401
 
 # Public name of the missing-value test, for code outside this module.
 is_missing_value = _is_missing_value
+
+
+def read_source_string(
+    asset_id: Hashable,
+    features: Mapping[str, Any],
+    *,
+    source_string_key: str = SOURCE_STRING_KEY,
+    source_features: Sequence[str] = HAZUS_EQ_SOURCE_FEATURES,
+) -> str:
+    """
+    Return an asset's source string, checked against the features it covers.
+
+    A string passes when it holds one character per source feature, each
+    one of :data:`SOURCE_STRING_CODES`, as :meth:`AssetInventory.merge`
+    writes it.
+
+    Args:
+        asset_id (Hashable):
+            The asset, named in the error message.
+        features (Mapping[str, Any]):
+            The asset's features in one world.
+        source_string_key (str, optional):
+            The feature holding the source string. Defaults to
+            :data:`~brails.constants.SOURCE_STRING_KEY`.
+        source_features (Sequence[str], optional):
+            The features the string covers, in its order. Defaults to
+            :data:`HAZUS_EQ_SOURCE_FEATURES`.
+
+    Returns:
+        str:
+            The source string, whose character ``i`` codes the source of
+            ``source_features[i]``.
+
+    Raises:
+        ValueError:
+            If the value is missing or not a string, its length differs
+            from the number of source features, or it holds a character
+            outside :data:`SOURCE_STRING_CODES`.
+    """
+    codes = features.get(source_string_key)
+    if (
+        not isinstance(codes, str)
+        or len(codes) != len(source_features)
+        or not set(codes) <= SOURCE_STRING_CODES
+    ):
+        msg = (
+            f'Asset {asset_id!r} carries no source string of '
+            f'{len(source_features)} codes from {sorted(SOURCE_STRING_CODES)} in '
+            f'{source_string_key!r}: {codes!r}.'
+        )
+        raise ValueError(msg)
+    return codes
 
 
 def _is_blank_type(value: Any) -> bool:  # noqa: ANN401

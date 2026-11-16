@@ -44,14 +44,16 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 import pytest
 
-from brails.constants import SOURCE_STRING_KEY
+from brails.constants import OCCUPANCY_KEY, SOURCE_STRING_KEY, YEAR_BUILT_KEY
 from brails.exceptions import BrailsError
 from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
     MAX_REPORTED_WORLD_PROBLEMS,
     SOURCE_CODE_NONE,
     SOURCE_CODES,
+    SOURCE_LABELS,
     AssetInventory,
+    read_source_string,
 )
 from brails.types.housing_unit_inventory import HousingUnitInventory
 
@@ -304,6 +306,12 @@ class TestOrderIndependence:
 class TestSourceString:
     """The characters, their order and their meaning."""
 
+    def test_labels_invert_the_codes(self) -> None:
+        """Each source code maps back to its label."""
+        assert {SOURCE_LABELS[code]: code for code in SOURCE_LABELS} == dict(
+            SOURCE_CODES
+        )
+
     def test_default_features_and_their_order(self, build_inventory: Build) -> None:
         """The declared order is fixed and the string has one character each."""
         assert HAZUS_EQ_SOURCE_FEATURES == (
@@ -414,6 +422,25 @@ class TestSourceString:
             == merged.inventory['g2'].features[SOURCE_STRING_KEY]
             == '---N----'
         )
+
+    def test_the_reader_returns_what_merge_writes(
+        self, build_inventory: Build
+    ) -> None:
+        """read_source_string returns the string merge wrote, under the default and a given feature list."""
+        for kwargs in ({}, {'source_features': [YEAR_BUILT_KEY, OCCUPANCY_KEY]}):
+            merged = merge_three(build_inventory, **kwargs)
+            for asset_id, asset in merged.inventory.items():
+                string = read_source_string(asset_id, asset.features, **kwargs)
+                assert string == asset.features[SOURCE_STRING_KEY]
+
+    @pytest.mark.parametrize(
+        'string', [None, 5, 'N-NL---', 'N-NL---NN', 'N-NL---X', 'N-NL---n']
+    )
+    def test_the_reader_refuses_a_malformed_string(self, string: object) -> None:
+        """A missing value, a wrong length or an unknown code raises."""
+        features = {} if string is None else {SOURCE_STRING_KEY: string}
+        with pytest.raises(ValueError, match="'g1' carries no source string"):
+            read_source_string('g1', features)
 
 
 class TestWorldInvariance:

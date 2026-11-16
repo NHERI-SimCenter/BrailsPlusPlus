@@ -60,7 +60,9 @@ from brails.inferers.hazus_inferer_earthquake.hazus_table_completion import (
 from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
     SOURCE_CODES,
+    SOURCE_LABELS,
     AssetInventory,
+    read_source_string,
 )
 from brails.utils.deterministic_sampling import DEFAULT_WORLD
 from brails.utils.source_updates import FIXED_SOURCES, WITHHELD_COLUMNS
@@ -129,7 +131,6 @@ _DERIVED_CODE = SOURCE_CODES['derived']
 # "The action table".
 _CLASS_CODES = (_NSI_CODE, *_LOCAL_CODES, _IMPUTED_CODE)
 _STORY_CODES = (_NSI_CODE, _DERIVED_CODE, *_LOCAL_CODES, _IMPUTED_CODE)
-_LABEL_OF_CODE = {code: label for label, code in SOURCE_CODES.items()}
 
 
 class PairRedrawResult(NamedTuple):
@@ -286,9 +287,10 @@ class PairRedraw:
         Raises:
             ValueError:
                 If the inventory holds more than one possible world, an
-                asset's source string is missing or of the wrong length, or
-                an implausible pair's source codes fit no row of the action
-                table.
+                asset carries no source string that
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads, or an implausible pair's source codes fit no row of
+                the action table.
         """
         if inventory.n_pw != 1:
             msg = (
@@ -299,7 +301,12 @@ class PairRedraw:
         rows = []
         for asset_id in sorted(inventory.inventory, key=str):
             features = inventory.inventory[asset_id].features
-            codes = self._codes(asset_id, features)
+            codes = read_source_string(
+                asset_id,
+                features,
+                source_string_key=self.source_string_key,
+                source_features=self.source_features,
+            )
             row = self._plan_row(asset_id, features, codes)
             if row is not None:
                 rows.append(row)
@@ -335,7 +342,12 @@ class PairRedraw:
         for row in plan.to_dict('records'):
             asset_id = row['asset_id']
             features = inventory.inventory[asset_id].features
-            codes = self._codes(asset_id, features)
+            codes = read_source_string(
+                asset_id,
+                features,
+                source_string_key=self.source_string_key,
+                source_features=self.source_features,
+            )
             entry = {
                 **row,
                 'world': self.world,
@@ -388,7 +400,7 @@ class PairRedraw:
                 {
                     'asset_id': asset_id,
                     'feature': feature,
-                    'source': _LABEL_OF_CODE[
+                    'source': SOURCE_LABELS[
                         codes[self.source_features.index(feature)]
                     ],
                     'value': features[feature],
@@ -402,35 +414,6 @@ class PairRedraw:
             pd.DataFrame(log, columns=list(LOG_COLUMNS), dtype=object),
             derived,
         )
-
-    def _codes(self, asset_id: Hashable, features: Mapping[str, Any]) -> str:
-        """
-        Return an asset's source string.
-
-        Args:
-            asset_id (Hashable):
-                The asset.
-            features (Mapping[str, Any]):
-                Its features.
-
-        Returns:
-            str:
-                The source string, one code per source feature.
-
-        Raises:
-            ValueError:
-                If the string is missing or its length differs from the
-                number of source features.
-        """
-        codes = features.get(self.source_string_key)
-        if not isinstance(codes, str) or len(codes) != len(self.source_features):
-            msg = (
-                f'Asset {asset_id!r} carries no source string of '
-                f'{len(self.source_features)} codes in '
-                f'{self.source_string_key!r}: {codes!r}.'
-            )
-            raise ValueError(msg)
-        return codes
 
     def _plan_row(
         self, asset_id: Hashable, features: Mapping[str, Any], codes: str
