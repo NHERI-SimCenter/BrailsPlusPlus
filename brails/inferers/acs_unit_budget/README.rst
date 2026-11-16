@@ -6,8 +6,8 @@ block group, less those of the footprints that already hold observed records,
 on the remaining footprints. The tables it packages, ``B25024_BINS``,
 ``MOBILE_HOME_BIN`` and ``BIN_CLASSES``, are in ``acs_unit_budget.py``
 beside this page. The classes, unit ranges and midpoints it reads,
-``UNIT_CLASSES``, ``COUNT_BANDS`` and ``UNIT_MIDPOINTS``, are in
-``brails/aggregators/points_to_polygons/nsi_footprint_join.py``. This page
+``UNIT_COUNT_CLASSES``, ``COUNT_BANDS`` and ``UNIT_MIDPOINTS``, are in
+``brails/utils/unit_count_rules.py``. This page
 states where those tables come from, why the bins take Hazus occupancy
 classes, how the budget allocates the units, and the scope of the defaults.
 The docstrings state what a caller passes and receives.
@@ -38,12 +38,12 @@ the open 50-or-more class a fixed 100 units, which the manual does not give
 and which was not tuned.
 
 The classes are a choice. The same procedure assigns another taxonomy, such as
-one used outside the United States, when ``BIN_CLASSES``, ``UNIT_CLASSES``,
-``COUNT_BANDS`` and ``UNIT_MIDPOINTS`` are replaced, with
-``MOBILE_HOME_CLASS`` and ``RELABEL_CLASS``, and when the reached footprints
-and the imputer's status classes use the same taxonomy. The last three of the
-four tables belong to the NSI footprint join, whose counting of a record's
-units the budget shares, so replacing them changes the join as well. A census
+one used outside the United States, when ``BIN_CLASSES``,
+``UNIT_COUNT_CLASSES``, ``COUNT_BANDS`` and ``UNIT_MIDPOINTS`` are replaced,
+with ``MOBILE_HOME_CLASS`` and ``RELABEL_CLASS``, and when the reached
+footprints and the imputer's status classes use the same taxonomy. The last
+three of the four tables are the unit-count rules, which the NSI footprint
+join applies as well, so replacing them changes the join too. A census
 table of another country replaces ``B25024_BINS`` and ``MOBILE_HOME_BIN`` the
 same way. These are module constants, so either change is a change to the
 code, not an argument.
@@ -67,8 +67,9 @@ footprints as donors, to each target with area that lies in a block group with
 a budget or, under ``drop_without_acs``, is small. A target is small when its
 plan area is under ``threshold_sqft`` and it lies beyond ``mh_park_radius_m``
 of every mobile-home park point. A reached footprint's class is its
-``OccupancyClass``, and its units are its ``NumberOfUnits`` as the NSI
-footprint join's ``unit_contribution`` counts a record's.
+``OccupancyClass``, and its units are its ``NumberOfUnits`` as
+``unit_contribution`` in ``brails/utils/unit_count_rules.py`` counts a
+record's.
 
 The footprints are grouped by the block group they hold under
 ``BLOCKGROUP_GEOID``, and those without one form a group without a budget.

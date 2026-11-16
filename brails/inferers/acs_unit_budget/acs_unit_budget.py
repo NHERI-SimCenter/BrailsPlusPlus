@@ -52,12 +52,6 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import BallTree
 
-from brails.aggregators.points_to_polygons.nsi_footprint_join import (
-    COUNT_BANDS,
-    UNIT_CLASSES,
-    UNIT_MIDPOINTS,
-    unit_contribution,
-)
 from brails.constants import (
     BLOCK_GROUP_KEY,
     GEOGRAPHIC_CRS,
@@ -72,6 +66,12 @@ from brails.utils.asset_id import EARTH_RADIUS_M
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
 from brails.utils.source_updates import WITHHELD_COLUMNS
 from brails.utils.unit_converter import UNIT_TO_METER
+from brails.utils.unit_count_rules import (
+    COUNT_BANDS,
+    UNIT_COUNT_CLASSES,
+    UNIT_MIDPOINTS,
+    unit_contribution,
+)
 from brails.utils.world_values import collapse_realizations
 
 if TYPE_CHECKING:
@@ -196,7 +196,7 @@ def _class_range(occupancy: str) -> tuple[int, int | None]:
     Args:
         occupancy (str):
             A class of
-            :data:`~brails.aggregators.points_to_polygons.nsi_footprint_join.COUNT_BANDS`.
+            :data:`~brails.utils.unit_count_rules.COUNT_BANDS`.
 
     Returns:
         tuple[int, int | None]:
@@ -482,11 +482,11 @@ class ACSUnitBudget:
                 residential occupancy classes, its default.
         """
         status = (imputer.status_key, set(imputer.status_values))
-        if status != (OCCUPANCY_KEY, set(UNIT_CLASSES)):
+        if status != (OCCUPANCY_KEY, set(UNIT_COUNT_CLASSES)):
             msg = (
                 'The budget ranks dwellings by the residential probability and '
                 f'needs an imputer whose status is {OCCUPANCY_KEY} among '
-                f'{UNIT_CLASSES}.'
+                f'{UNIT_COUNT_CLASSES}.'
             )
             raise ValueError(msg)
         if min(threshold_sqft, mh_park_radius_m, moe_factor) < 0:
@@ -538,7 +538,7 @@ class ACSUnitBudget:
                 :data:`~brails.constants.BLOCK_GROUP_KEY`.
                 They are also the imputer's donors. A footprint's units are
                 counted as
-                :func:`~brails.aggregators.points_to_polygons.nsi_footprint_join.unit_contribution`
+                :func:`~brails.utils.unit_count_rules.unit_contribution`
                 counts a record's. Not modified.
             n_worlds (int, optional):
                 The number of possible worlds. Defaults to 1.
@@ -1208,7 +1208,7 @@ class ACSUnitBudget:
             Any:
                 A function of an asset id returning its class, ``None``
                 where missing, and its units as
-                :func:`~brails.aggregators.points_to_polygons.nsi_footprint_join.unit_contribution`
+                :func:`~brails.utils.unit_count_rules.unit_contribution`
                 counts them, zero for a class outside the housing classes.
         """
 

@@ -118,9 +118,10 @@ group's units, below which the raking stops, and ``RAKE_ITERATIONS``,
 10,000, caps the passes.
 Both are settings of the numerical method, not calibrated against data.
 
-The sampler covers ``RESIDENTIAL_CLASSES``: RES1, RES2 and RES3A to RES3F,
-the Hazus single-family, mobile home and multi-family classes. RES4 to RES6
-are not covered, and ``check`` refuses them. A sampler draws for the one
+The sampler covers ``UNIT_COUNT_CLASSES`` of
+``brails/utils/unit_count_rules.py``: RES1, RES2 and RES3A to RES3F, the
+Hazus single-family, mobile home and multi-family classes. RES4 to RES6 are
+not covered, and ``check`` refuses them. A sampler draws for the one
 world it is constructed with, and its fit reads that world's inventory, so
 each world of a study takes its own sampler, with the seed of the run.
 

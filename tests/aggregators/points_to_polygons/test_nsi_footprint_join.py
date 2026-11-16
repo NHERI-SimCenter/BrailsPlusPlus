@@ -51,6 +51,7 @@ from brails.scrapers import NSIFileReader
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import Importer
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
+from brails.utils.unit_count_rules import point_class
 from tests.imputers.donor_fixtures import features_of
 from tests.scrapers.data.nsi_pooled_fixture_generator import (
     FIXTURE_PATH as NSI_SAMPLE,
@@ -193,54 +194,6 @@ class TestClassification:
         assert nfj.parse_occupancy_class(occtype) == expected
 
     @pytest.mark.parametrize(
-        ('units', 'expected'),
-        [
-            (0, 'RES1'),
-            (1.0, 'RES1'),
-            (1.9, 'RES1'),
-            (2, 'RES3A'),
-            (2.9, 'RES3A'),
-            (3, 'RES3B'),
-            (4.9, 'RES3B'),
-            (5, 'RES3C'),
-            (9.9, 'RES3C'),
-            (10, 'RES3D'),
-            (19.9, 'RES3D'),
-            (20, 'RES3E'),
-            (49.9, 'RES3E'),
-            (50, 'RES3F'),
-            (400, 'RES3F'),
-        ],
-    )
-    def test_count_band(self, units: float, expected: str) -> None:
-        """A count falls in the band whose lower bound it has reached."""
-        assert nfj.count_band(units) == expected
-
-    @pytest.mark.parametrize(
-        ('occupancy', 'resunits', 'expected'),
-        [
-            ('RES3B', 4, (4, False)),
-            ('RES3B', 0, (3.5, True)),
-            ('RES3B', -2, (3.5, True)),
-            ('RES3B', None, (3.5, True)),
-            ('RES3B', 'four', (3.5, True)),
-            ('RES1', 0, (1.0, True)),
-            ('RES2', 0, (1.0, True)),
-            ('RES3A', 0, (2.0, True)),
-            ('RES3C', 0, (7.0, True)),
-            ('RES3D', 0, (14.5, True)),
-            ('RES3E', 0, (34.5, True)),
-            ('RES3F', 0, (100.0, True)),
-            ('COM1', 12, (None, False)),
-        ],
-    )
-    def test_unit_contribution(
-        self, occupancy: str, resunits: Any, expected: tuple
-    ) -> None:
-        """A housing record counts its units or its class midpoint."""
-        assert nfj.unit_contribution(occupancy, resunits) == expected
-
-    @pytest.mark.parametrize(
         ('occupancy', 'units', 'expected_class', 'expected_group'),
         [
             ('RES1', 1, 'RES1', 'single'),
@@ -258,7 +211,7 @@ class TestClassification:
         self, occupancy: str, units: Any, expected_class: str, expected_group: str
     ) -> None:
         """The count rule applies per record, and the group follows the class."""
-        classified = nfj.point_class(occupancy, units)
+        classified = point_class(occupancy, units)
         assert classified == expected_class
         assert nfj.walk_group(classified) == expected_group
 

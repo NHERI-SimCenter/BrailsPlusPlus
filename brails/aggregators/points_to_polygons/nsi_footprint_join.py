@@ -61,6 +61,15 @@ from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
 from brails.utils.geo_tools import GeoTools
 from brails.utils.metric_crs import meter_crs
+from brails.utils.unit_count_rules import (
+    COUNTED_FAMILIES,
+    RES3_CLASSES,
+    UNIT_COUNT_CLASSES,
+    count_band,
+    point_class,
+    stated_number,
+    unit_contribution,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -76,42 +85,6 @@ WALK_WORLD = 0
 
 # Default distance cap of the walk in meters.
 DEFAULT_CAP_M = 15.0
-
-# The housing classes, the classes whose records carry a unit count. RES4 to
-# RES6 are residential classes in Hazus but carry no unit count here.
-RES3_CLASSES = ('RES3A', 'RES3B', 'RES3C', 'RES3D', 'RES3E', 'RES3F')
-UNIT_CLASSES = ('RES1', 'RES2', *RES3_CLASSES)
-
-# Lower bound of each count band, the unit ranges of the occupancy classes in
-# the Hazus Inventory Technical Manual, Hazus 7.0 (FEMA, June 2025), Table 4-1,
-# p. 4-2. A unit count falls in the band whose lower bound it has reached.
-COUNT_BANDS = (
-    (50, 'RES3F'),
-    (20, 'RES3E'),
-    (10, 'RES3D'),
-    (5, 'RES3C'),
-    (3, 'RES3B'),
-    (2, 'RES3A'),
-    (0, 'RES1'),
-)
-
-# Families whose class is the count band of the unit count. A RES2 record
-# keeps RES2 whatever its unit count.
-COUNTED_FAMILIES = ('RES1', 'RES3')
-
-# Units a housing record contributes when its resunits is zero, negative or
-# missing: the midpoint of its class's unit band, one dwelling for RES1 and
-# RES2, and a fixed count for the open RES3F band.
-UNIT_MIDPOINTS = {
-    'RES1': 1.0,
-    'RES2': 1.0,
-    'RES3A': 2.0,
-    'RES3B': 3.5,
-    'RES3C': 7.0,
-    'RES3D': 14.5,
-    'RES3E': 34.5,
-    'RES3F': 100.0,
-}
 
 # Walk groups (see walk_group).
 GROUP_SINGLE = 'single'
@@ -252,25 +225,6 @@ def _ordering_key(value: object) -> tuple[int, float, str, str]:
     return (0, number, text, type_name)
 
 
-def _stated_number(value: object) -> float | int | None:
-    """
-    Return a feature value that states a finite number, or None.
-
-    Args:
-        value (object):
-            A raw feature value.
-
-    Returns:
-        float or int or None:
-            The value itself where it is a finite int or float (a bool is
-            not), otherwise None.
-    """
-    if isinstance(value, bool) or not isinstance(value, (int, float, np.number)):
-        return None
-    number = value.item() if isinstance(value, np.number) else value
-    return number if math.isfinite(number) else None
-
-
 def parse_occupancy_class(occtype: object) -> str | None:
     """
     Parse an NSI occupancy code to its class.
@@ -294,80 +248,13 @@ def parse_occupancy_class(occtype: object) -> str | None:
     return head or None
 
 
-def count_band(units: float) -> str:
-    """
-    Return the class of the count band a unit count falls in.
-
-    Args:
-        units (float):
-            A unit count, summed or per record.
-
-    Returns:
-        str:
-            The class of its band in :data:`COUNT_BANDS`.
-    """
-    for lower_bound, name in COUNT_BANDS:
-        if units >= lower_bound:
-            return name
-    return 'RES1'
-
-
-def unit_contribution(
-    occupancy_class: str, resunits: object
-) -> tuple[float | int | None, bool]:
-    """
-    Return the units one NSI record contributes to a count.
-
-    Args:
-        occupancy_class (str):
-            The record's parsed class.
-        resunits (object):
-            The record's ``resunits``, or None where it has none.
-
-    Returns:
-        tuple[float or int or None, bool]:
-            For a housing class (:data:`UNIT_CLASSES`), its
-            ``resunits`` where that is a positive number, otherwise the
-            class midpoint, and whether the midpoint was used. For any
-            other class, None and False.
-    """
-    if occupancy_class not in UNIT_CLASSES:
-        return None, False
-    stated = _stated_number(resunits)
-    if stated is not None and stated > 0:
-        return stated, False
-    return UNIT_MIDPOINTS[occupancy_class], True
-
-
-def point_class(occupancy_class: str, units: float | None) -> str:
-    """
-    Return a record's class after the count rule.
-
-    Args:
-        occupancy_class (str):
-            The record's parsed class.
-        units (float or None):
-            The units it contributes (:func:`unit_contribution`).
-
-    Returns:
-        str:
-            The count band of ``units`` (:func:`count_band`) for a record
-            of :data:`COUNTED_FAMILIES`, otherwise the class itself.
-    """
-    # RES3A to RES3F count as RES3
-    family = 'RES3' if occupancy_class in RES3_CLASSES else occupancy_class
-    if family in COUNTED_FAMILIES and units is not None:
-        return count_band(units)
-    return occupancy_class
-
-
 def walk_group(classified: str) -> str:
     """
     Return the walk group of a class after the count rule.
 
     Args:
         classified (str):
-            A class from :func:`point_class`.
+            A class from :func:`~brails.utils.unit_count_rules.point_class`.
 
     Returns:
         str:
@@ -432,17 +319,21 @@ class NSIFootprintJoin:
     is returned as unlinked.
 
     A point's class is its parsed ``occtype`` after the count rule (see
-    :func:`point_class`), and its walk group follows from that class (see
-    :func:`walk_group`). The join reads footprint geometry only, so
-    footprint features held per possible world do not change it.
+    :func:`~brails.utils.unit_count_rules.point_class`), and its walk
+    group follows from that class (see :func:`walk_group`). The join reads
+    footprint geometry only, so footprint features held per possible world
+    do not change it.
 
     Per footprint, the units are the sum of the housing records'
-    contributions (see :func:`unit_contribution`). The governing record is
-    chosen among every record the footprint receives, inside or by the
-    walk: a housing class (:data:`UNIT_CLASSES`) first, then the largest
-    stated ``sqft``, a record stating none ranking last, then the lowest
-    ``fd_id``. The footprint's class is the count band of the units where
-    the governing record's family is in :data:`COUNTED_FAMILIES`, and
+    contributions (see
+    :func:`~brails.utils.unit_count_rules.unit_contribution`). The
+    governing record is chosen among every record the footprint receives,
+    inside or by the walk: a housing class
+    (:data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`) first,
+    then the largest stated ``sqft``, a record stating none ranking last,
+    then the lowest ``fd_id``. The footprint's class is the count band of
+    the units where the governing record's family is in
+    :data:`~brails.utils.unit_count_rules.COUNTED_FAMILIES`, and
     otherwise the governing record's class.
 
     To import the :class:`NSIFootprintJoin` class, use:
@@ -482,7 +373,7 @@ class NSIFootprintJoin:
             TypeError:
                 If ``seed`` is neither None nor an integer.
         """
-        cap = _stated_number(cap_m)
+        cap = stated_number(cap_m)
         if cap is None or cap < 0:
             raise ValueError(
                 f'cap_m must be a finite number of meters >= 0: {cap_m!r}'
@@ -746,8 +637,8 @@ class NSIFootprintJoin:
             if (
                 len(coordinates) != 1
                 or len(coordinates[0]) != 2  # noqa: PLR2004
-                or _stated_number(coordinates[0][0]) is None
-                or _stated_number(coordinates[0][1]) is None
+                or stated_number(coordinates[0][0]) is None
+                or stated_number(coordinates[0][1]) is None
             ):
                 not_points.append(fd_id)
                 continue
@@ -972,9 +863,9 @@ def _governing_key(record: _Point) -> tuple[bool, bool, float, tuple]:
             ``sqft`` (a record stating none after every record that states
             one), then the lowest ``fd_id``.
     """
-    area = _stated_number(record.features.get(AREA_FIELD))
+    area = stated_number(record.features.get(AREA_FIELD))
     return (
-        record.nsi_class not in UNIT_CLASSES,
+        record.nsi_class not in UNIT_COUNT_CLASSES,
         area is None,
         0.0 if area is None else -float(area),
         _ordering_key(record.fd_id),
@@ -1012,8 +903,8 @@ def _footprint_class(lead: _Point, units: float | None) -> tuple[str, bool]:
         tuple[str, bool]:
             The count band of ``units`` and True where ``units`` is not None
             and the governing record's family is in
-            :data:`COUNTED_FAMILIES`, otherwise the governing record's class
-            and False.
+            :data:`~brails.utils.unit_count_rules.COUNTED_FAMILIES`,
+            otherwise the governing record's class and False.
     """
     # RES3A to RES3F count as RES3
     family = 'RES3' if lead.nsi_class in RES3_CLASSES else lead.nsi_class
@@ -1102,7 +993,7 @@ def _footprint_values(
         stated = [
             value
             for value in (
-                _stated_number(member.features.get(field)) for member in members
+                stated_number(member.features.get(field)) for member in members
             )
             if value is not None
         ]

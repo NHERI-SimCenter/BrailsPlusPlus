@@ -57,7 +57,6 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import DistanceMetric
 
-from brails.aggregators.points_to_polygons.nsi_footprint_join import UNIT_CLASSES
 from brails.constants import (
     IMPUTATION_DONOR_KEY,
     OCCUPANCY_KEY,
@@ -102,6 +101,7 @@ from brails.imputers.observed_donor_imputer.donor_search import (
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.asset_id import EARTH_RADIUS_M
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
+from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from brails.utils.world_values import collapse_realizations
 
 if TYPE_CHECKING:
@@ -126,10 +126,6 @@ REQUIRED_DONOR_FEATURES = (OCCUPANCY_KEY, STORIES_KEY)
 # Features whose copy makes a target subject to validation by default, of
 # those the imputer fills.
 VALIDATED_FEATURES = (OCCUPANCY_KEY, STORIES_KEY)
-
-# Occupancy classes that count as residential, the default status values:
-# the classes of the single and multi-family walk groups of NSIFootprintJoin.
-RESIDENTIAL_CLASSES = UNIT_CLASSES
 
 # Name of the default status, which enters the purpose labels of its round.
 RESIDENTIAL_STATUS_NAME = 'residential'
@@ -226,7 +222,7 @@ class ObservedDonorImputer(Imputation):
         soft_filters: Sequence[str] = (OCCUPANCY_KEY,),
         required: Sequence[str] = REQUIRED_DONOR_FEATURES,
         status_key: str = OCCUPANCY_KEY,
-        status_values: Sequence[Any] = RESIDENTIAL_CLASSES,
+        status_values: Sequence[Any] = UNIT_COUNT_CLASSES,
         status_name: str = RESIDENTIAL_STATUS_NAME,
         validated: Sequence[str] | None = None,
         k: int = DEFAULT_DONOR_K,
@@ -260,7 +256,8 @@ class ObservedDonorImputer(Imputation):
                 :data:`OCCUPANCY_KEY`.
             status_values (Sequence[Any], optional):
                 The values of ``status_key`` that give an asset the status.
-                Defaults to :data:`RESIDENTIAL_CLASSES`.
+                Defaults to
+                :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`.
             status_name (str, optional):
                 The name of the status, which forms the purpose labels of
                 its round, ``f'{PURPOSE_DONOR}_{status_name}'`` and that

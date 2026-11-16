@@ -69,6 +69,7 @@ from brails.utils.deterministic_sampling import (
     keyed_uniforms,
     require_run_seed,
 )
+from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
@@ -131,21 +132,6 @@ SIZE_CLASS_BOUNDS = (1, 4, 19, 49)
 # SIZE_CLASSES whatever its unit count: RES2, "Mobile Home" in Hazus
 # Inventory Technical Manual 6.1, Table 4-1 (p. 4-2).
 MANUFACTURED_CLASS = 'RES2'
-
-# The occupancy classes the sampler covers: the single-family, mobile home
-# and multi-family classes of Hazus Inventory Technical Manual 6.1, Table
-# 4-1 (p. 4-2), whose dwellings the B25127 housing units describe. The
-# table's other residential classes, RES4 to RES6, are not covered.
-RESIDENTIAL_CLASSES = (
-    'RES1',
-    'RES2',
-    'RES3A',
-    'RES3B',
-    'RES3C',
-    'RES3D',
-    'RES3E',
-    'RES3F',
-)
 
 # B25127's cells: (year bin of COARSE_YEARS, class of SIZE_CLASSES,
 # (owner-occupied variable, renter-occupied variable)). The two tenures
@@ -440,7 +426,8 @@ class ACSYearBuiltSampler(InferenceEngine):
     or :meth:`draw` on a one-asset inventory reads that asset's
     distribution in the fitted inventory.
 
-    The sampler covers :data:`RESIDENTIAL_CLASSES`. It writes
+    The sampler covers
+    :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`. It writes
     ``year_built_key`` whether or not one is already there; keeping an
     observed year is the caller's decision.
     """
@@ -960,7 +947,7 @@ class ACSYearBuiltSampler(InferenceEngine):
                 f'{self.occupancy_key} is absent or not a string: {occupancy!r}',
                 None,
             )
-        if occupancy not in RESIDENTIAL_CLASSES:
+        if occupancy not in UNIT_COUNT_CLASSES:
             return (
                 None,
                 f'{self.occupancy_key} {occupancy!r} is outside the '

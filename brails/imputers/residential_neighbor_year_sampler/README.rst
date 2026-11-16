@@ -27,8 +27,9 @@ The method
 ``select_donors`` reads one world of a frozen stage: the world the sampler
 is constructed with where the stage holds several, the stage as it is where
 it holds one. It takes as donors the buildings whose ``occupancy_key`` is in
-``RESIDENTIAL_CLASSES`` and whose ``year_built_key`` holds a whole number,
-an integer or an integral float, whatever its source. An asset whose
+``UNIT_COUNT_CLASSES``, in ``brails/utils/unit_count_rules.py``, and whose
+``year_built_key`` holds a whole number, an integer or an integral float,
+whatever its source. An asset whose
 ``occupancy_key`` or ``year_built_key`` still holds one value per world in
 the world read, as in a stage of one world that holds a list, is refused.
 
@@ -71,7 +72,7 @@ Scope
 
 Where the donors' years were drawn, by ``ACSYearBuiltSampler`` or another
 sampler, a copied year rests on a draw. The sampler draws for buildings
-outside ``RESIDENTIAL_CLASSES``, the classes ``ACSYearBuiltSampler``
+outside ``UNIT_COUNT_CLASSES``, the classes ``ACSYearBuiltSampler``
 covers, RES4 to RES6 included, and refuses a building inside them.
 
 NSI's tract median year, ``YearBuiltTractMedian``, is not the year of a

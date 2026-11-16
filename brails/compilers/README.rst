@@ -138,19 +138,18 @@ imputation stage. It is given the asset's residential status, it may not
 change the asset's local and footprint features, and once its attempts are
 spent or no untried candidate is left it scans the nearest donors.
 
-An asset is residential when its class is one of ``UNIT_CLASSES``: RES1,
-RES2 and RES3A to RES3F. A candidate donor passes when its values hold every
-re-drawn feature, its class is a string with the asset's residential status,
-and its class and the story count form a plausible pair. The story count is
-the donor's own where the count is re-drawn, and the donor fails if
+An asset is residential when its class is one of ``UNIT_COUNT_CLASSES``:
+RES1, RES2 and RES3A to RES3F. A candidate donor passes when its values hold
+every re-drawn feature, its class is a string with the asset's residential
+status, and its class and the story count form a plausible pair. The story
+count is the donor's own where the count is re-drawn, and the donor fails if
 ``get_hazus_story_count`` refuses it. Otherwise the count is the one the
 asset keeps: its own, or the height count that replaces it. For a
 residential asset, the class must also agree with the asset's unit count
-(``NumberOfUnits`` by default) under the count rule of the NSI footprint
-join, ``point_class`` in
-``brails/aggregators/points_to_polygons/nsi_footprint_join.py``. Under that
-rule a RES1 or RES3 class must be the class of the band the unit count falls
-in, and a missing or non-positive count agrees with every class.
+(``NumberOfUnits`` by default) under the count rule that the NSI footprint
+join applies, ``point_class`` in ``brails/utils/unit_count_rules.py``. Under
+that rule a RES1 or RES3 class must be the class of the band the unit count
+falls in, and a missing or non-positive count agrees with every class.
 
 A draw that finds a donor gives the asset new values for the re-drawn
 features, and the values they replace are withheld, each with the label of

@@ -49,11 +49,6 @@ from typing import TYPE_CHECKING, Any, Callable, NamedTuple
 
 import pandas as pd
 
-from brails.aggregators.points_to_polygons.nsi_footprint_join import (
-    UNIT_CLASSES,
-    point_class,
-    unit_contribution,
-)
 from brails.constants import SOURCE_STRING_KEY
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_sampling_height_band,
@@ -69,6 +64,11 @@ from brails.types.asset_inventory import (
 )
 from brails.utils.deterministic_sampling import DEFAULT_WORLD
 from brails.utils.source_updates import FIXED_SOURCES, WITHHELD_COLUMNS
+from brails.utils.unit_count_rules import (
+    UNIT_COUNT_CLASSES,
+    point_class,
+    unit_contribution,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Mapping, Sequence
@@ -201,7 +201,8 @@ class PairRedraw:
             imputer (ObservedDonorImputer):
                 The imputer whose :meth:`~ObservedDonorImputer.draw` supplies
                 the donors. Its status must be the default,
-                ``occupancy_key`` among :data:`UNIT_CLASSES`.
+                ``occupancy_key`` among
+                :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`.
             donors (AssetInventory):
                 The observed donors of the world, with one possible world.
             stories_inferer (StoriesFromHeightInferer):
@@ -246,10 +247,10 @@ class PairRedraw:
             msg = f'source_features lacks {missing}.'
             raise ValueError(msg)
         status = (imputer.status_key, set(imputer.status_values))
-        if status != (occupancy_key, set(UNIT_CLASSES)):
+        if status != (occupancy_key, set(UNIT_COUNT_CLASSES)):
             msg = (
                 'The re-draw passes residential statuses and needs an imputer '
-                f'whose status is {occupancy_key} among {UNIT_CLASSES}.'
+                f'whose status is {occupancy_key} among {UNIT_COUNT_CLASSES}.'
             )
             raise ValueError(msg)
         self.imputer = imputer
@@ -528,7 +529,7 @@ class PairRedraw:
             DonorDraw:
                 The imputer's draw.
         """
-        residential = row['occupancy'] in UNIT_CLASSES
+        residential = row['occupancy'] in UNIT_COUNT_CLASSES
         protected = tuple(
             feature
             for feature, code in zip(self.source_features, codes)
@@ -605,7 +606,7 @@ class PairRedraw:
             )
             if not isinstance(occupancy, str) or stories is None:
                 return False
-            if (occupancy in UNIT_CLASSES) != residential:
+            if (occupancy in UNIT_COUNT_CLASSES) != residential:
                 return False
             if is_implausible(occupancy, stories):
                 return False

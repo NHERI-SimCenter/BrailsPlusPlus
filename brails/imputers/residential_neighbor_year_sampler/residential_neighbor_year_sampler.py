@@ -57,9 +57,6 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     OUTCOME_FEWER_THAN_K,
     ObservedDonorImputer,
 )
-from brails.inferers.acs_year_built_sampler.acs_year_built_sampler import (
-    RESIDENTIAL_CLASSES,
-)
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INFEASIBLE,
     DIAGNOSIS_INVALID,
@@ -76,6 +73,7 @@ from brails.utils.deterministic_sampling import (
     require_run_seed,
 )
 from brails.utils.stage_freeze import StageFreeze
+from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 
 if TYPE_CHECKING:
     from collections.abc import Hashable
@@ -94,7 +92,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
     :meth:`select_donors` takes as donors the buildings of one world of a
     frozen stage that are in
-    :data:`~brails.inferers.acs_year_built_sampler.acs_year_built_sampler.RESIDENTIAL_CLASSES`
+    :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`
     and hold a whole-number year, whatever its source. :meth:`draw` copies
     to each building the year of a donor near it, or of one in its block
     group where none lies within ``cap_m``, and :meth:`draw_details`
@@ -159,7 +157,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
             soft_filters=(),
             required=(occupancy_key, year_built_key),
             status_key=occupancy_key,
-            status_values=RESIDENTIAL_CLASSES,
+            status_values=UNIT_COUNT_CLASSES,
             k=k,
             cap_m=cap_m,
             location_scale_m=1.0,
@@ -250,7 +248,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
             )
             # an asset without area is left to the donor search, which
             # never draws it
-            if occupancy in RESIDENTIAL_CLASSES and whole:
+            if occupancy in UNIT_COUNT_CLASSES and whole:
                 donors.add_asset(asset_id, asset)
         self._donors = donors
         self._donor_frame = None
@@ -394,7 +392,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
                     f'{self.occupancy_key} is absent or not a string: {occupancy!r}',
                 )
             )
-        elif occupancy in RESIDENTIAL_CLASSES:
+        elif occupancy in UNIT_COUNT_CLASSES:
             uncovered.append(
                 (
                     self.occupancy_key,

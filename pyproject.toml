@@ -184,10 +184,12 @@ include = [
     "brails/utils/id_preview.py",
     "tests/utils/test_metric_crs.py",
     "brails/utils/source_updates.py",
+    "brails/utils/unit_count_rules.py",
     "brails/utils/world_values.py",
     "brails/utils/inventory_union.py",
     "tests/utils/test_source_updates.py",
     "tests/utils/test_inventory_union.py",
+    "tests/utils/test_unit_count_rules.py",
 
     "brails/validators/**/*.py",
     "tests/validators/**/*.py",

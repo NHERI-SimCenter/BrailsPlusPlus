@@ -54,7 +54,6 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     OUTCOME_RELAXED,
     PURPOSE_RESIDENTIAL,
     PURPOSE_RESIDENTIAL_FALLBACK,
-    RESIDENTIAL_CLASSES,
     ROUND_DONOR,
     ROUND_REPAIR,
     ROUND_STATUS,
@@ -63,6 +62,7 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import Importer
 from brails.utils.asset_id import EARTH_RADIUS_M
+from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from tests.imputers.donor_fixtures import (
     BG_A,
     BG_B,
@@ -408,7 +408,7 @@ class TestTwoRounds:
         rows = result.log[result.log['round'] == ROUND_STATUS]
         return {
             row.asset_id: grid[row.donor_id][1]['OccupancyClass']
-            in RESIDENTIAL_CLASSES
+            in UNIT_COUNT_CLASSES
             for row in rows.itertuples(index=False)
         }
 
@@ -441,10 +441,10 @@ class TestTwoRounds:
         for world in range(40):
             status = (
                 grid[one.loc[world, 'donor_id']][1]['OccupancyClass']
-                in RESIDENTIAL_CLASSES
+                in UNIT_COUNT_CLASSES
             )
             copied = two.loc[world, 'values']['OccupancyClass']
-            assert (copied in RESIDENTIAL_CLASSES) == status
+            assert (copied in UNIT_COUNT_CLASSES) == status
             seen.add(status)
         assert seen == {True, False}
 
@@ -1554,7 +1554,7 @@ class TestStatusPartition:
             imp.validated,
         ) == (
             'OccupancyClass',
-            RESIDENTIAL_CLASSES,
+            UNIT_COUNT_CLASSES,
             'residential',
             ('OccupancyClass', 'NumberOfStories'),
         )

@@ -43,10 +43,6 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 import pytest
 
-from brails.aggregators.points_to_polygons.nsi_footprint_join import (
-    UNIT_MIDPOINTS,
-    count_band,
-)
 from brails.constants import (
     BLOCK_GROUP_KEY,
     GROSS_AREA_KEY,
@@ -77,6 +73,7 @@ from brails.inferers.acs_unit_budget.acs_unit_budget import (
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import Importer
 from brails.utils.source_updates import WITHHELD_COLUMNS, apply_to_sources
+from brails.utils.unit_count_rules import UNIT_MIDPOINTS, count_band
 from tests.imputers.donor_fixtures import (
     BG_A,
     BG_B,
