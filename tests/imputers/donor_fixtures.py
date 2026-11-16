@@ -39,12 +39,12 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from brails.constants import EARTH_RADIUS_M
 from brails.imputers import ObservedDonorImputer
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     ROUND_DONOR,
 )
 from brails.types.asset_inventory import Asset, AssetInventory
-from brails.utils.asset_id import EARTH_RADIUS_M
 
 LON0 = -122.0
 LAT0 = 38.0

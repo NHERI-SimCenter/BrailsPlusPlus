@@ -53,7 +53,11 @@ import pandas as pd
 from sklearn.neighbors import BallTree
 
 from brails.constants import (
+    AREA_FROM_GROSS_AREA,
+    AREA_FROM_PLAN_AREA,
+    AREA_FROM_STORIES,
     BLOCK_GROUP_KEY,
+    EARTH_RADIUS_M,
     GEOGRAPHIC_CRS,
     GEOID_LENGTH,
     GROSS_AREA_KEY,
@@ -62,7 +66,6 @@ from brails.constants import (
     UNITS_KEY,
 )
 from brails.types.asset_inventory import Asset, AssetInventory, is_missing_value
-from brails.utils.asset_id import EARTH_RADIUS_M
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
 from brails.utils.source_updates import WITHHELD_COLUMNS
 from brails.utils.unit_converter import UNIT_TO_METER
@@ -140,12 +143,6 @@ OUTCOME_DWELLING = 'dwelling'
 OUTCOME_DROPPED = 'dropped'
 OUTCOME_NONRESIDENTIAL = 'nonresidential'
 OUTCOME_NO_ACS = 'no_acs'
-
-# Where a site's gross floor area comes from: its GROSS_AREA_KEY, its plan area
-# times its STORIES_KEY, or its plan area alone, one story.
-AREA_FROM_GROSS_AREA = 'gross_area'
-AREA_FROM_STORIES = 'stories'
-AREA_FROM_PLAN_AREA = 'plan_area'
 
 # Kinds of budget gap. A candidate shortfall without a bin counts the
 # structures beyond the number of candidates, and one with a bin the
@@ -255,10 +252,11 @@ class UnitBudgetResult(NamedTuple):
             One row per target and per reached footprint made a mobile
             home, with the columns of :data:`LOG_COLUMNS`.
             ``gross_area_source`` says where the gross floor area comes
-            from (:data:`AREA_FROM_GROSS_AREA`, :data:`AREA_FROM_STORIES`
-            or :data:`AREA_FROM_PLAN_AREA`), ``stories`` is the story count
-            that multiplied the plan area, NaN where none did, and
-            ``capacity`` the units the gross floor area holds.
+            from (:data:`~brails.constants.AREA_FROM_GROSS_AREA`,
+            :data:`~brails.constants.AREA_FROM_STORIES` or
+            :data:`~brails.constants.AREA_FROM_PLAN_AREA`), ``stories`` is
+            the story count that multiplied the plan area, NaN where none
+            did, and ``capacity`` the units the gross floor area holds.
         seed (int):
             The seed of the per-world order.
     """
@@ -307,8 +305,9 @@ class _BudgetSite(NamedTuple):
             The whole number of units the gross floor area holds.
         gross_source (str):
             Where the gross floor area comes from:
-            :data:`AREA_FROM_GROSS_AREA`, :data:`AREA_FROM_STORIES` or
-            :data:`AREA_FROM_PLAN_AREA`.
+            :data:`~brails.constants.AREA_FROM_GROSS_AREA`,
+            :data:`~brails.constants.AREA_FROM_STORIES` or
+            :data:`~brails.constants.AREA_FROM_PLAN_AREA`.
         stories (float):
             The story count that multiplied the plan area, NaN where none
             did.

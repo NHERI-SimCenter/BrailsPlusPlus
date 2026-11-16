@@ -58,6 +58,7 @@ import pandas as pd
 from sklearn.metrics import DistanceMetric
 
 from brails.constants import (
+    EARTH_RADIUS_M,
     IMPUTATION_DONOR_KEY,
     OCCUPANCY_KEY,
     STORIES_KEY,
@@ -99,7 +100,6 @@ from brails.imputers.observed_donor_imputer.donor_search import (
     _DonorPick,
 )
 from brails.types.asset_inventory import Asset, AssetInventory
-from brails.utils.asset_id import EARTH_RADIUS_M
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from brails.utils.world_values import collapse_realizations

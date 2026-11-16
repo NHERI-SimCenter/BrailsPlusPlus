@@ -41,7 +41,7 @@ from typing import Any
 
 import pytest
 
-from brails.constants import BLOCK_GROUP_KEY
+from brails.constants import BLOCK_GROUP_KEY, EARTH_RADIUS_M
 from brails.imputers import ObservedDonorImputer
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     OUTCOME_BLOCK_GROUP,
@@ -61,7 +61,6 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
 )
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import Importer
-from brails.utils.asset_id import EARTH_RADIUS_M
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from tests.imputers.donor_fixtures import (
     BG_A,

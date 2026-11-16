@@ -59,7 +59,9 @@ from typing import Any, NamedTuple
 
 GEOHASH_PRECISION = 10
 SUFFIX_SEPARATOR = '-'
-EARTH_RADIUS_M = 6371008.8
+# brails.constants.EARTH_RADIUS_M, repeated so that the module imports the
+# standard library only.
+_EARTH_RADIUS_M = 6371008.8
 
 GEOHASH_ALPHABET = '0123456789bcdefghjkmnpqrstuvwxyz'
 BITS_PER_CHARACTER = 5
@@ -324,7 +326,7 @@ def _centroid_and_plan_area(geometry: object) -> tuple[float, float, float]:
     square_degrees = (
         math.fsum(abs(double_area) for double_area, _, _ in moments) / 2.0
     )
-    meters_per_degree = math.pi * EARTH_RADIUS_M / 180.0
+    meters_per_degree = math.pi * _EARTH_RADIUS_M / 180.0
     area = square_degrees * meters_per_degree**2 * math.cos(math.radians(latitude))
     return longitude, latitude, area
 

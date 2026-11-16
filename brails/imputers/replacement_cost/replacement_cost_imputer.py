@@ -52,6 +52,8 @@ import numpy as np
 import pandas as pd
 
 from brails.constants import (
+    AREA_FROM_PLAN_AREA,
+    AREA_FROM_STORIES,
     BLOCK_GROUP_KEY,
     GROSS_AREA_KEY,
     IMPUTATION_DONOR_KEY,
@@ -78,10 +80,6 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     DEFAULT_STORIES_WEIGHT,
     ObservedDonorImputer,
     imputation_donors_from_log,
-)
-from brails.inferers.acs_unit_budget.acs_unit_budget import (
-    AREA_FROM_PLAN_AREA,
-    AREA_FROM_STORIES,
 )
 from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
@@ -675,9 +673,9 @@ class ReplacementCostImputer(Imputation):
         Returns:
             tuple[float | None, str | None]:
                 The floor area in square feet and one of
-                :data:`~brails.inferers.acs_unit_budget.acs_unit_budget.AREA_FROM_STORIES`
+                :data:`~brails.constants.AREA_FROM_STORIES`
                 and
-                :data:`~brails.inferers.acs_unit_budget.acs_unit_budget.AREA_FROM_PLAN_AREA`,
+                :data:`~brails.constants.AREA_FROM_PLAN_AREA`,
                 or ``(None, None)`` without a plan area.
 
         Raises:

@@ -41,8 +41,8 @@ import math
 import pytest
 from shapely.geometry import Polygon
 
+from brails.constants import EARTH_RADIUS_M
 from brails.types.asset_inventory import AssetInventory
-from brails.utils.asset_id import EARTH_RADIUS_M
 
 # A 0.0002 by 0.0002 degree footprint in San Francisco and its plan area.
 GOLDEN_RING = [

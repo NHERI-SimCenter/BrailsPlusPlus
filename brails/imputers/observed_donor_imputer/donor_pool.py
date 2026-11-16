@@ -47,8 +47,8 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 import numpy as np
 from sklearn.neighbors import BallTree
 
+from brails.constants import EARTH_RADIUS_M
 from brails.types.asset_inventory import _is_missing_value, is_probabilistic_feature
-from brails.utils.asset_id import EARTH_RADIUS_M
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Iterable, Mapping, Sequence

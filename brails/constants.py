@@ -46,7 +46,12 @@ DEFAULT_UNITS: Dict[str, str] = {
     'weight': 'lb',
 }
 
+# Earth's radius: R_EARTH_KM, in kilometers, is the rounded value GeoTools
+# uses; EARTH_RADIUS_M is the mean radius in meters that the asset ids
+# (through a copy in asset_id.py) and the distances of the donor search and
+# the unit budget use.
 R_EARTH_KM = 6371
+EARTH_RADIUS_M = 6371008.8
 
 # The provenance feature the footprint scrapers write, naming the provider
 # of each footprint.
@@ -110,3 +115,10 @@ IMPUTATION_DONOR_KEY = 'ImputationDonor'
 
 # Feature holding number of stories inferred from height.
 STORIES_FROM_HEIGHT_KEY = 'StoriesFromHeight'
+
+# Where a building's gross area comes from, as the unit budget and the
+# replacement cost imputer log it: its GROSS_AREA_KEY, its plan area times
+# its STORIES_KEY, or its plan area as one story.
+AREA_FROM_GROSS_AREA = 'gross_area'
+AREA_FROM_STORIES = 'stories'
+AREA_FROM_PLAN_AREA = 'plan_area'

@@ -1559,7 +1559,7 @@ class AssetInventory:
         Shapely centroid that :meth:`Asset.get_centroid` returns. The plan
         area is the exterior rings' shoelace area in square
         degrees scaled to a sphere of radius
-        :data:`brails.utils.asset_id.EARTH_RADIUS_M` at the centroid's
+        :data:`brails.constants.EARTH_RADIUS_M` at the centroid's
         latitude. Neither depends on a ring's starting vertex, orientation
         or closing vertex, or on the order of the parts.
 

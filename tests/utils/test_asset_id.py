@@ -44,6 +44,7 @@ from pathlib import Path
 import pytest
 from shapely.geometry import MultiPolygon, Polygon
 
+from brails.constants import EARTH_RADIUS_M
 from brails.utils import asset_id
 from brails.utils.asset_id import (
     GEOHASH_PRECISION,
@@ -64,7 +65,7 @@ GOLDEN_RING = [
 ]
 GOLDEN_ID = '9q8yyk8zrd'
 
-METERS_PER_DEGREE_LAT = math.pi * asset_id.EARTH_RADIUS_M / 180.0
+METERS_PER_DEGREE_LAT = math.pi * EARTH_RADIUS_M / 180.0
 
 
 def rectangle(
@@ -256,3 +257,8 @@ def test_the_module_imports_the_standard_library_only() -> None:
         elif isinstance(node, ast.ImportFrom):
             modules.add((node.module or '').split('.')[0])
     assert modules <= {'__future__', 'collections', 'math', 'typing'}
+
+
+def test_the_module_radius_is_the_shared_constant() -> None:
+    """The module's Earth radius equals brails.constants.EARTH_RADIUS_M."""
+    assert asset_id._EARTH_RADIUS_M == EARTH_RADIUS_M
