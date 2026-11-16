@@ -120,8 +120,8 @@ def source(occupancy: str = 'I', value: str = '-', stories: str = 'I') -> str:
 
     Returns:
         str:
-            The eight codes: the given class, stories and value codes, and
-            ``-`` for the other five features.
+            The eight codes: the given occupancy class, stories and value
+            codes, and ``-`` for the other five features.
     """
     return f'{occupancy}-{stories}----{value}'
 
@@ -130,7 +130,7 @@ def nsi_building(
     east: float, value: float, gross: float, occupancy: str = 'COM1', **features: Any
 ) -> tuple[list, dict[str, Any]]:
     """
-    Return a one-story building whose class and value NSI states.
+    Return a one-story building whose occupancy class and value NSI states.
 
     Args:
         east (float):
@@ -138,9 +138,9 @@ def nsi_building(
         value (float):
             Its replacement cost.
         gross (float):
-            Its gross floor area in square feet.
+            Its ``GrossArea`` in square feet.
         occupancy (str, optional):
-            Its class. Defaults to ``'COM1'``.
+            Its occupancy class. Defaults to ``'COM1'``.
         **features (Any):
             Other features, which override these.
 
@@ -164,13 +164,13 @@ def nsi_building(
 
 def target(east: float, occupancy: Any = 'COM1', **features: Any) -> tuple:
     """
-    Return a two-story building without a value, its class and stories imputed.
+    Return an unvalued two-story building, occupancy class and stories imputed.
 
     Args:
         east (float):
             Meters east of the origin.
         occupancy (Any, optional):
-            Its class. Defaults to ``'COM1'``.
+            Its occupancy class. Defaults to ``'COM1'``.
         **features (Any):
             Other features, which override these.
 
@@ -338,7 +338,7 @@ class TestRateSources:
 
     @pytest.mark.parametrize('code', ['N', 'R'])
     def test_own_rate(self, code: str) -> None:
-        """A value NSI states gives a rate, times the building's floor area."""
+        """A value NSI states gives a rate, times its plan area and story count."""
         buildings = inventory(
             {
                 'n': nsi_building(
@@ -368,7 +368,7 @@ class TestRateSources:
         assert logged(result, 'n')['rate'] == 100.0
 
     def test_donor_rate(self) -> None:
-        """A target takes its donor's rate times its own floor area."""
+        """A target takes its donor's rate times its plan area and story count."""
         buildings = inventory(
             {'d': nsi_building(500.0, 450000.0, 1800.0), 't': target(0.0)}
         )
@@ -381,7 +381,7 @@ class TestRateSources:
         assert math.isnan(row['distance_m'])
 
     def test_donor_rate_before_the_neighbor(self) -> None:
-        """The named donor's rate wins over a nearer building and another class."""
+        """A named donor farther away and of another occupancy class still wins."""
         buildings = inventory(
             {
                 'near': nsi_building(10.0, 100.0, 1.0),
@@ -446,7 +446,7 @@ class TestRateSources:
         ],
     )
     def test_named_donor_without_a_rate(self, donor: dict[str, Any]) -> None:
-        """A donor without a positive NSI value and gross area means a draw."""
+        """A donor without a positive NSI value and GrossArea means a draw."""
         buildings = inventory(
             {
                 'd': nsi_building(10.0, 100.0, 1.0, **donor),
@@ -459,7 +459,7 @@ class TestRateSources:
         assert logged(result, 't')['rate'] == 40.0
 
     def test_own_rate_whatever_the_class_code(self) -> None:
-        """A building with a class coded I or D still has its own rate."""
+        """A building whose occupancy class is coded I or D has its own rate."""
         buildings = inventory(
             {
                 'i': nsi_building(0.0, 100.0, 1.0, SourceString=source('I', 'N')),
@@ -597,11 +597,11 @@ class TestRateSources:
         )
 
 
-class TestFloorArea:
-    """The floor area is the plan area times the world's story count."""
+class TestFootprintGrossArea:
+    """The gross area from the footprint is the plan area times the story count."""
 
     @pytest.mark.parametrize('gross', [7.0, 1.0e6, None])
-    def test_gross_area_never_the_floor_area(self, gross: Any) -> None:
+    def test_gross_area_feature_never_multiplies_a_rate(self, gross: Any) -> None:
         """GrossArea divides a building's own value and never multiplies a rate."""
         buildings = inventory(
             {
@@ -613,11 +613,11 @@ class TestFloorArea:
         for asset_id, stories in (('n', 3), ('t', 4)):
             row = logged(result, asset_id)
             assert row['area_source'] == AREA_FROM_STORIES
-            assert row['floor_area_sqft'] == pytest.approx(
+            assert row['footprint_gross_area_sqft'] == pytest.approx(
                 plan_sqft(buildings, asset_id) * stories
             )
             assert value_of(result, asset_id) == pytest.approx(
-                100.0 * row['floor_area_sqft']
+                100.0 * row['footprint_gross_area_sqft']
             )
 
     def test_value_follows_the_worlds_stories(self) -> None:
@@ -648,8 +648,12 @@ class TestFloorArea:
         result = run(buildings, donor_stage(buildings, {'t': 'd'}))
         row = logged(result, 't')
         assert row['area_source'] == AREA_FROM_PLAN_AREA
-        assert row['floor_area_sqft'] == pytest.approx(plan_sqft(buildings, 't'))
-        assert value_of(result, 't') == pytest.approx(100.0 * row['floor_area_sqft'])
+        assert row['footprint_gross_area_sqft'] == pytest.approx(
+            plan_sqft(buildings, 't')
+        )
+        assert value_of(result, 't') == pytest.approx(
+            100.0 * row['footprint_gross_area_sqft']
+        )
 
     def test_no_area(self) -> None:
         """A building without a plan area gets no value, its GrossArea unread."""
@@ -674,11 +678,11 @@ class TestFloorArea:
         assert value_of(result, 'n') is None
 
 
-class TestUnitBudgetFloorArea:
-    """The floor area is the unit budget's on a footprint without GrossArea."""
+class TestUnitBudgetGrossArea:
+    """The gross area is the unit budget's on a footprint without GrossArea."""
 
     def test_same_area_and_source(self) -> None:
-        """Floor area and its source match the unit budget's on these footprints."""
+        """Gross area and its source match the unit budget's on these footprints."""
         # not covered: a footprint with neither area nor gross area, which the
         # budget gives a zero area, and unreadable coordinates, on which it raises
         records = {
@@ -700,7 +704,7 @@ class TestUnitBudgetFloorArea:
         sites = budget._sites(buildings)
         imputer = ReplacementCostImputer()
         for asset_id in records:
-            area, source_name = imputer._floor_area(
+            area, source_name = imputer._footprint_gross_area(
                 asset_id, buildings.inventory[asset_id]
             )
             site = sites[asset_id]
@@ -716,7 +720,7 @@ class TestUnitBudgetFloorArea:
             imputer=ObservedDonorImputer(seed=1),
         )
         assert budget._sites(buildings)['g'].gross_source == AREA_FROM_GROSS_AREA
-        area, source_name = ReplacementCostImputer()._floor_area(
+        area, source_name = ReplacementCostImputer()._footprint_gross_area(
             'g', buildings.inventory['g']
         )
         assert source_name == AREA_FROM_STORIES
@@ -728,7 +732,7 @@ class TestOutcomes:
 
     @pytest.mark.parametrize('occupancy', [None, 'NA', '', 3])
     def test_no_class(self, occupancy: Any) -> None:
-        """Without a class, own rate or donor's rate, a building gets none."""
+        """Without an occupancy class, own rate or donor's rate, it gets none."""
         buildings = inventory(
             {
                 'c': nsi_building(10.0, 100.0, 1.0),
@@ -741,7 +745,7 @@ class TestOutcomes:
         assert value_of(result, 't') is None
 
     def test_class_read_only_by_the_neighbor_draw(self) -> None:
-        """The class is read only by the neighbor draw."""
+        """The occupancy class is read only by the neighbor draw."""
         buildings = inventory(
             {
                 'n': nsi_building(10.0, 100.0, 1.0, OccupancyClass=None),
@@ -815,10 +819,10 @@ class TestReport:
 
 
 class TestSameClassNeighborDraw:
-    """A building without its own or its donor's rate draws one of its class."""
+    """A building without an own or donor's rate draws one of its occupancy class."""
 
     def test_class_filter(self) -> None:
-        """A nearer building of another class is never drawn."""
+        """A nearer building of another occupancy class is never drawn."""
         buildings = inventory(
             {
                 'res': nsi_building(10.0, 999.0, 1.0, occupancy='RES1'),
@@ -830,7 +834,7 @@ class TestSameClassNeighborDraw:
         assert set(column(result, 't', 'donor_id')) == {'c'}
 
     def test_class_of_each_world(self) -> None:
-        """A target whose class differs between worlds draws that world's class."""
+        """A target draws from the occupancy class it has in each world."""
         buildings = inventory(
             {
                 'com': nsi_building(10.0, 40.0, 1.0),
@@ -854,7 +858,7 @@ class TestSameClassNeighborDraw:
         ],
     )
     def test_buildings_never_drawn(self, excluded: dict[str, Any]) -> None:
-        """An imputed or drawn class, an imputed value or no gross area bars it."""
+        """Occupancy class coded I or D, value coded I or no GrossArea bars it."""
         buildings = inventory(
             {
                 'x': nsi_building(10.0, 999.0, 1.0, **excluded),
@@ -866,7 +870,7 @@ class TestSameClassNeighborDraw:
         assert set(column(result, 't', 'donor_id')) == {'c'}
 
     def test_local_and_footprint_classes_are_drawn(self) -> None:
-        """A building whose class is local or from the footprint is a candidate."""
+        """A local or footprint occupancy class makes a building a candidate."""
         buildings = inventory(
             {
                 'l': nsi_building(10.0, 40.0, 1.0, SourceString=source('L', 'N')),
@@ -1199,8 +1203,8 @@ class TestWorlds:
 
         Returns:
             tuple[AssetInventory, AssetInventory]:
-                The stage, whose target's stories and class differ by
-                world, and the donor stage, whose donor does.
+                The stage, whose target's stories and occupancy class
+                differ by world, and the donor stage, whose donor does.
         """
         buildings = inventory(
             {

@@ -32,7 +32,7 @@
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 
 """
-Value a building as a rate per square foot times its floor area.
+Value a building as a rate times the gross area computed from its footprint.
 
 .. autosummary::
 
@@ -111,9 +111,9 @@ RATE_VALUE_CODES = (
     SOURCE_CODES['derived'],
 )
 
-# Source codes a candidate's class may carry in the same-class neighbor draw:
-# local, footprint, NSI or derived, never imputed or drawn. README.rst beside
-# this module, "Scope".
+# Source codes a candidate's occupancy class may carry in the same-class
+# neighbor draw: local, footprint, NSI or derived, never imputed or drawn.
+# README.rst beside this module, "Scope".
 NEIGHBOR_CLASS_CODES = tuple(
     SOURCE_CODES[label] for label in ('local', 'footprint', 'nsi', 'derived')
 )
@@ -152,6 +152,9 @@ _RATE_KEY = 'ReplacementCostRate'
 # donor or neighbor whose rate a building took, and is missing otherwise (test
 # with pandas.isna). rate is the rate the value is computed from, and on the row
 # of a kept local value the building's own rate, where it has one.
+# footprint_gross_area_sqft is the gross area computed from the footprint that
+# the rate multiplies, never the GrossArea feature, and area_source says how it
+# was computed.
 LOG_COLUMNS = (
     'asset_id',
     'world',
@@ -159,7 +162,7 @@ LOG_COLUMNS = (
     'donor_id',
     'distance_m',
     'rate',
-    'floor_area_sqft',
+    'footprint_gross_area_sqft',
     'area_source',
 )
 
@@ -188,20 +191,21 @@ class ReplacementCostResult(NamedTuple):
 
 class ReplacementCostImputer(Imputation):
     """
-    Value every building as a rate per square foot times its floor area.
+    Value every building as a rate times the gross area computed from its footprint.
 
-    In each world, a building's floor area is its plan area times its
-    ``stories_key``, or its plan area alone without a positive story count,
-    and never its ``gross_area_key``. Its rate is the first that
-    exists of three: its own, ``value_key`` over ``gross_area_key`` where
-    the value's source code is among :data:`RATE_VALUE_CODES` and both are
-    numbers above zero; that of the donor the donor stage names; that of a
-    building of its class drawn by the same-class neighbor draw. Every rate
-    is read from the stage, never from a value the imputer wrote. A value
-    coded local is kept and gives a rate as a value coded NSI does, and
-    every other stated value is replaced. A building without a rate or a
-    floor area gets no value, and the log says why. The section "Procedure"
-    of the README beside this module describes the run.
+    In each world, a building's gross area is computed from its footprint:
+    its plan area times its ``stories_key``, or its plan area alone without
+    a positive story count. It is never its ``gross_area_key``. Its rate is
+    the first that exists of three: its own, ``value_key`` over
+    ``gross_area_key`` where the value's source code is among
+    :data:`RATE_VALUE_CODES` and both are numbers above zero; that of the
+    donor the donor stage names; that of a building of its occupancy class
+    drawn by the same-class neighbor draw. Every rate is read from the
+    stage, never from a value the imputer wrote. A value coded local is kept
+    and gives a rate as a value coded NSI does, and every other stated value
+    is replaced. A building without a rate or a gross area gets no value,
+    and the log says why. The section "Procedure" of the README beside this
+    module describes the run.
 
     Every constructor argument is stored as an attribute of the same name,
     read-only by convention, and ``seed`` holds the seed used.
@@ -404,8 +408,8 @@ class ReplacementCostImputer(Imputation):
             freeze (StageFreeze):
                 The freeze holding both stages.
             stage (str):
-                The frozen stage holding the buildings, their classes,
-                stories, geometry, values and source strings.
+                The frozen stage holding the buildings, their occupancy
+                classes, stories, geometry, values and source strings.
             donor_stage (str):
                 The frozen stage that
                 :func:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.imputation_donors_from_log`
@@ -527,7 +531,8 @@ class ReplacementCostImputer(Imputation):
 
         values: dict[Hashable, Any] = {}
         rows: dict[Hashable, dict[str, Any]] = {}
-        # class to the buildings of the neighbor draw, with their log rows
+        # occupancy class to the buildings of the neighbor draw, with their
+        # log rows
         pending: dict[str, list[tuple[Hashable, dict[str, Any]]]] = {}
         value_position = self.source_features.index(self.value_key)
         for asset_id in sorted(buildings.inventory, key=str):
@@ -538,7 +543,7 @@ class ReplacementCostImputer(Imputation):
                 world=world,
                 distance_m=math.nan,
                 rate=math.nan,
-                floor_area_sqft=math.nan,
+                footprint_gross_area_sqft=math.nan,
             )
             rows[asset_id] = row
             stated = asset.features.get(self.value_key)
@@ -553,11 +558,11 @@ class ReplacementCostImputer(Imputation):
                 )
                 values[asset_id] = stated
                 continue
-            area, row['area_source'] = self._floor_area(asset_id, asset)
+            area, row['area_source'] = self._footprint_gross_area(asset_id, asset)
             if area is None:
                 row['outcome'] = OUTCOME_NO_AREA
                 continue
-            row['floor_area_sqft'] = area
+            row['footprint_gross_area_sqft'] = area
             if asset_id in rates:
                 row.update(outcome=OUTCOME_OWN_RATE, rate=rates[asset_id])
                 values[asset_id] = rates[asset_id] * area
@@ -588,7 +593,7 @@ class ReplacementCostImputer(Imputation):
         if pending:
             drawn = self._same_class_neighbor_rate(buildings, rates, pending, world)
             for asset_id, rate in drawn.items():
-                values[asset_id] = rate * rows[asset_id]['floor_area_sqft']
+                values[asset_id] = rate * rows[asset_id]['footprint_gross_area_sqft']
         return values, list(rows.values())
 
     def _same_class_neighbor_rate(
@@ -599,11 +604,12 @@ class ReplacementCostImputer(Imputation):
         world: int,
     ) -> dict[Hashable, float]:
         """
-        Draw a building of its class for each building without a rate yet.
+        Draw a building of its occupancy class for each building without a rate yet.
 
-        Each class builds one pool over the world's buildings of that class
-        with a class code among :data:`NEIGHBOR_CLASS_CODES` and their own
-        rate, and records the sites of the buildings that draw.
+        Each occupancy class builds one pool over the world's buildings of
+        that occupancy class that have their own rate and whose occupancy
+        class carries a source code among :data:`NEIGHBOR_CLASS_CODES`, and
+        records the sites of the buildings that draw.
 
         Args:
             buildings (AssetInventory):
@@ -611,8 +617,8 @@ class ReplacementCostImputer(Imputation):
             rates (Mapping[Hashable, float]):
                 Each building's own rate in the world, where it has one.
             pending (Mapping[str, list[tuple[Hashable, dict[str, Any]]]]):
-                Per class, each building that draws, with its log row, which
-                the draw completes.
+                Per occupancy class, each building that draws, with its log
+                row, which the draw completes.
             world (int):
                 The world the draw reads.
 
@@ -669,11 +675,11 @@ class ReplacementCostImputer(Imputation):
                     drawn[asset_id] = row['rate']
         return drawn
 
-    def _floor_area(
+    def _footprint_gross_area(
         self, asset_id: Hashable, asset: Asset
     ) -> tuple[float | None, str | None]:
         """
-        Return a building's floor area and where it comes from.
+        Return a building's gross area from its footprint and where it comes from.
 
         Args:
             asset_id (Hashable):
@@ -683,7 +689,7 @@ class ReplacementCostImputer(Imputation):
 
         Returns:
             tuple[float | None, str | None]:
-                The floor area in square feet and one of
+                The gross area in square feet and one of
                 :data:`~brails.constants.AREA_FROM_STORIES`
                 and
                 :data:`~brails.constants.AREA_FROM_PLAN_AREA`,
@@ -693,8 +699,8 @@ class ReplacementCostImputer(Imputation):
             ValueError:
                 If the coordinates cannot be read as a footprint.
         """
-        # ACSUnitBudget's gross floor area on a footprint without a
-        # GrossArea; the budget reads GrossArea first, and this never does.
+        # ACSUnitBudget's gross area on a footprint without a GrossArea;
+        # the budget reads GrossArea first, and this never does.
         try:
             with_area = AssetInventory.has_area(asset.coordinates)
         except ValueError as error:
@@ -782,13 +788,13 @@ def _draw_inventory(
     stories_key: str,
 ) -> AssetInventory:
     """
-    Write buildings of one class in the features the neighbor draw reads.
+    Write buildings of one occupancy class in the features the draw reads.
 
     Args:
         buildings (AssetInventory):
             The stage's realization of the world.
         occupancy (str):
-            The class.
+            The occupancy class.
         members (Mapping[Hashable, float | None]):
             The buildings, each with its rate, or ``None`` for one that draws.
         stories_key (str):
@@ -796,9 +802,9 @@ def _draw_inventory(
 
     Returns:
         AssetInventory:
-            One asset per member, sharing its coordinates, with the class,
-            the story count and the block group where the building holds
-            them, and the rate.
+            One asset per member, sharing its coordinates, with the
+            occupancy class, the story count and the block group where the
+            building holds them, and the rate.
     """
     inventory = AssetInventory()
     for asset_id, rate in members.items():

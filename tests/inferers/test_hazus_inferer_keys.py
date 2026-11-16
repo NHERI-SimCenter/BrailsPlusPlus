@@ -45,7 +45,7 @@ from brails.types.asset_inventory import AssetInventory
 
 
 def test_area_key_defaults_to_gross_area() -> None:
-    """Both inferers read the floor area from ``GrossArea`` by default."""
+    """Both inferers read the gross area from ``GrossArea`` by default."""
     inventory = AssetInventory()
     assert HazusInferer(inventory).grossArea_key == 'GrossArea'
     assert HazusInfererEarthquake(inventory).grossArea_key == 'GrossArea'

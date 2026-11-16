@@ -88,8 +88,8 @@ if TYPE_CHECKING:
 PURPOSE_UNIT_BUDGET = 'unit_budget'
 
 # The B25024 structure-size bins, by label, with the table lines each sums.
-# The table and the Hazus classes the bins take: README.rst beside this
-# module, "The census table and the classes".
+# The table and the Hazus occupancy classes the bins take: README.rst beside
+# this module, "The census table and the occupancy classes".
 B25024_BINS = {
     '1': ('002', '003'),
     '2': ('004',),
@@ -101,8 +101,8 @@ B25024_BINS = {
 }
 
 # The Hazus occupancy class of each bin. The unit ranges of the B25024 bins
-# are the count bands of the Hazus classes (COUNT_BANDS), so a bin's range
-# is its class's band.
+# are the count bands of the Hazus occupancy classes (COUNT_BANDS), so a
+# bin's range is its occupancy class's band.
 BIN_CLASSES = {
     '1': 'RES1',
     '2': 'RES3A',
@@ -121,11 +121,12 @@ MOBILE_HOME_BIN = '010'
 MOBILE_HOME_LABEL = 'mobile_home'
 TOTAL_LABEL = 'total'
 
-# The class and unit count a mobile home receives.
+# The occupancy class and unit count a mobile home receives.
 MOBILE_HOME_CLASS = 'RES2'
 MOBILE_HOME_UNITS = 1
 
-# The class of a reached footprint the mobile-home rule may reclassify.
+# The occupancy class of a reached footprint the mobile-home rule may
+# reclassify.
 RELABEL_CLASS = 'RES1'
 
 # The table name and the block-group column of the B25024 table.
@@ -188,11 +189,11 @@ DIAGNOSTIC_COLUMNS = (
 
 def _class_range(occupancy: str) -> tuple[int, int | None]:
     """
-    Return the unit counts a dwelling of a housing class may hold.
+    Return the unit counts a dwelling of a housing occupancy class may hold.
 
     Args:
         occupancy (str):
-            A class of
+            An occupancy class of
             :data:`~brails.utils.unit_count_rules.COUNT_BANDS`.
 
     Returns:
@@ -212,14 +213,13 @@ class UnitBudgetResult(NamedTuple):
     Attributes:
         imputed (AssetInventory):
             :data:`~brails.constants.OCCUPANCY_KEY` and
-            :data:`~brails.constants.UNITS_KEY` of each dwelling
-            and mobile home, and the class alone of each reached footprint
-            made a mobile home, with the allocation's number of possible
-            worlds, stored by
-            :func:`~brails.utils.world_values.collapse_realizations`.
+            :data:`~brails.constants.UNITS_KEY` of each dwelling and mobile
+            home, and the occupancy class alone of each reached footprint made
+            a mobile home, with the allocation's number of possible worlds,
+            stored by :func:`~brails.utils.world_values.collapse_realizations`.
         withheld (pandas.DataFrame):
-            The class of each reached footprint made a mobile home, which
-            the caller removes from its source before merging, with the
+            The occupancy class of each reached footprint made a mobile home,
+            which the caller removes from its source before merging, with the
             columns of :data:`~brails.utils.source_updates.WITHHELD_COLUMNS`,
             as :func:`~brails.utils.source_updates.apply_to_sources` takes
             them, empty when ``allocate`` names no ``relabel_sources``.
@@ -251,12 +251,12 @@ class UnitBudgetResult(NamedTuple):
         log (pandas.DataFrame):
             One row per target and per reached footprint made a mobile
             home, with the columns of :data:`LOG_COLUMNS`.
-            ``gross_area_source`` says where the gross floor area comes
-            from (:data:`~brails.constants.AREA_FROM_GROSS_AREA`,
+            ``gross_area_source`` says where the gross area comes from
+            (:data:`~brails.constants.AREA_FROM_GROSS_AREA`,
             :data:`~brails.constants.AREA_FROM_STORIES` or
             :data:`~brails.constants.AREA_FROM_PLAN_AREA`), ``stories`` is
             the story count that multiplied the plan area, NaN where none
-            did, and ``capacity`` the units the gross floor area holds.
+            did, and ``capacity`` the units the gross area holds.
         seed (int):
             The seed of the per-world order.
     """
@@ -300,11 +300,11 @@ class _BudgetSite(NamedTuple):
             Distance to the nearest mobile-home park point in meters,
             infinite without area or mobile-home park points.
         gross_m2 (float):
-            The gross floor area in square meters.
+            The gross area in square meters.
         capacity (int):
-            The whole number of units the gross floor area holds.
+            The whole number of units the gross area holds.
         gross_source (str):
-            Where the gross floor area comes from:
+            Where the gross area comes from:
             :data:`~brails.constants.AREA_FROM_GROSS_AREA`,
             :data:`~brails.constants.AREA_FROM_STORIES` or
             :data:`~brails.constants.AREA_FROM_PLAN_AREA`.
@@ -374,19 +374,19 @@ class ACSUnitBudget:
     """
     Allocate each block group's B25024 residual units to unreached footprints.
 
-    The census table B25024 counts a block group's housing units by the
-    number of units in their structure, in the structure-size bins of
-    :data:`B25024_BINS` and a mobile-home line. A footprint is reached when
-    an observed record gives it a class. The others, the targets, receive
-    what the counts leave once the reached footprints' units are
-    subtracted: :meth:`allocate` makes some of them
-    :data:`MOBILE_HOME_CLASS` mobile homes and some dwellings with a class
-    of :data:`BIN_CLASSES` in each possible world, drops the small targets
-    left and passes the others to the non-residential stage. The README
-    beside this module states the method, the tables and the defaults.
+    The census table B25024 counts a block group's housing units by the number
+    of units in their structure, in the structure-size bins of
+    :data:`B25024_BINS` and a mobile-home line. A footprint is reached when an
+    observed record gives it an occupancy class. The others, the targets,
+    receive what the counts leave once the reached footprints' units are
+    subtracted: :meth:`allocate` makes some of them :data:`MOBILE_HOME_CLASS`
+    mobile homes and some dwellings with an occupancy class of
+    :data:`BIN_CLASSES` in each possible world, drops the small targets left
+    and passes the others to the non-residential stage. The README beside this
+    module states the method, the tables and the defaults.
 
-    Each target has a capacity, the whole number of units its gross floor area
-    holds at :attr:`min_unit_area_sqft` square feet per unit. The gross floor
+    Each target has a capacity, the whole number of units its gross area
+    holds at :attr:`min_unit_area_sqft` square feet per unit. The gross
     area is the target's :data:`~brails.constants.GROSS_AREA_KEY` in square
     feet where it holds a positive number, else its plan area times its
     :data:`~brails.constants.STORIES_KEY` where that is a positive number, else
@@ -458,7 +458,7 @@ class ACSUnitBudget:
                 The multiple of the margin of error that bounds the
                 diagnostic.
             min_unit_area_sqft (float, optional):
-                The gross floor area in square feet a housing unit needs,
+                The gross area in square feet a housing unit needs,
                 which sets each target's capacity.
             drop_without_acs (bool, optional):
                 Whether, in a block group without a budget, a target under
@@ -532,19 +532,18 @@ class ACSUnitBudget:
                 holding :data:`~brails.constants.BLOCK_GROUP_KEY`.
                 Not modified.
             reached (AssetInventory):
-                The reached footprints with their class and unit count,
-                with one possible world, each holding
-                :data:`~brails.constants.BLOCK_GROUP_KEY`.
-                They are also the imputer's donors. A footprint's units are
-                counted as
-                :func:`~brails.utils.unit_count_rules.unit_contribution`
-                counts a record's. Not modified.
+                The reached footprints with their occupancy class and unit
+                count, with one possible world, each holding
+                :data:`~brails.constants.BLOCK_GROUP_KEY`. They are also the
+                imputer's donors. A footprint's units are counted as
+                :func:`~brails.utils.unit_count_rules.unit_contribution` counts
+                a record's. Not modified.
             n_worlds (int, optional):
                 The number of possible worlds. Defaults to 1.
             relabel_sources (Mapping[Hashable, str], optional):
                 The reached footprints the mobile-home rule may reclassify,
-                each with the label of the source holding its class, which
-                the withheld row names. Only those of class
+                each with the label of the source holding its occupancy class,
+                which the withheld row names. Only those of occupancy class
                 :data:`RELABEL_CLASS` are eligible. ``None``, the default,
                 admits none.
 
@@ -657,7 +656,7 @@ class ACSUnitBudget:
                 )
                 ids.append(asset_id)
                 lonlat.append((lat, lon))
-            # The gross floor area: GrossArea, else plan area times stories,
+            # The gross area: GrossArea, else plan area times stories,
             # else plan area, each where a positive finite number is held.
             held = {
                 key: float(value)
@@ -976,8 +975,8 @@ class ACSUnitBudget:
                 candidates' order, both the same in every world.
         """
         labels = list(B25024_BINS)
-        # The midpoints of the Hazus classes: README.rst beside this module,
-        # "The census table and the classes".
+        # The midpoints of the Hazus occupancy classes: README.rst beside this
+        # module, "The census table and the occupancy classes".
         needed = [residual[b] / UNIT_MIDPOINTS[BIN_CLASSES[b]] for b in labels]
         # half up, not round()'s half to even
         wanted = math.floor(math.fsum(needed) + 0.5)
@@ -1197,7 +1196,7 @@ class ACSUnitBudget:
     @staticmethod
     def _class_and_units(call: _BudgetCall) -> Any:  # noqa: ANN401
         """
-        Return a reader of a reached footprint's class and counted units.
+        Return a reader of a reached footprint's occupancy class and counted units.
 
         Args:
             call (_BudgetCall):
@@ -1205,10 +1204,11 @@ class ACSUnitBudget:
 
         Returns:
             Any:
-                A function of an asset id returning its class, ``None``
-                where missing, and its units as
-                :func:`~brails.utils.unit_count_rules.unit_contribution`
-                counts them, zero for a class outside the housing classes.
+                A function of an asset id returning its occupancy class,
+                ``None`` where missing, and its units as
+                :func:`~brails.utils.unit_count_rules.unit_contribution` counts
+                them, zero for an occupancy class outside the housing occupancy
+                classes.
         """
 
         def read(asset_id: Hashable) -> tuple[str | None, float]:
@@ -1249,7 +1249,8 @@ class _BudgetAllocation:
         n_worlds (int):
             The number of worlds.
         classes (dict):
-            Per asset given a class, the class per world.
+            Per asset given an occupancy class, the occupancy class per
+            world.
         units (dict):
             Per asset given a unit count, the count per world.
         residential (dict):
@@ -1282,7 +1283,7 @@ class _BudgetAllocation:
         self, asset_id: Hashable, world: int, occupancy: str, units: int
     ) -> None:
         """
-        Give a dwelling its class and units in one world.
+        Give a dwelling its occupancy class and units in one world.
 
         Args:
             asset_id (Hashable):
@@ -1290,7 +1291,7 @@ class _BudgetAllocation:
             world (int):
                 The world.
             occupancy (str):
-                The class.
+                The occupancy class.
             units (int):
                 The unit count.
         """
@@ -1316,7 +1317,7 @@ class _BudgetAllocation:
         self, asset_id: Hashable, site: _BudgetSite, source: str, previous: str
     ) -> None:
         """
-        Make a reached footprint a mobile home and withhold its class.
+        Make a reached footprint a mobile home and withhold its occupancy class.
 
         Its unit count is left to its source.
 
@@ -1326,9 +1327,9 @@ class _BudgetAllocation:
             site (_BudgetSite):
                 Its site.
             source (str):
-                The label of the source holding its class.
+                The label of the source holding its occupancy class.
             previous (str):
-                The class withheld.
+                The occupancy class withheld.
         """
         self.classes[asset_id] = [MOBILE_HOME_CLASS] * self.n_worlds
         self.withheld.append(

@@ -271,7 +271,7 @@ def test_get_raw_data_applies_simcenter_format(
 def test_a_parsed_record_carries_its_gross_area(
     canned_fetch: Callable[..., None],
 ) -> None:
-    """NSI's floor area becomes GrossArea, and nothing becomes PlanArea."""
+    """NSI's sqft becomes GrossArea, and nothing becomes PlanArea."""
     canned_fetch([make_record(11, 0.0005, 0.0005, ftprntsqft=900)])
 
     inventory = NSI_Parser().get_raw_data(Region(), simcenter_format=True)

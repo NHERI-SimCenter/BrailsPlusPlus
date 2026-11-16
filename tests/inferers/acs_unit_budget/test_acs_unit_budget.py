@@ -491,7 +491,7 @@ class TestTotalDeficit:
 
 
 class TestCandidacy:
-    """Candidacy is decided once, and class and units vary by world."""
+    """Candidacy is decided once, and occupancy class and units vary by world."""
 
     def test_same_dwellings_every_world(self) -> None:
         """Every world holds the same dwellings, and their bins differ."""
@@ -519,7 +519,7 @@ class TestCandidacy:
                 assert world_value(six[asset_id][key], 0) == value
 
     def test_class_is_band_of_units(self) -> None:
-        """Every dwelling's class is the count band of its units."""
+        """Every dwelling's occupancy class is the count band of its units."""
         result = run(n_worlds=6)
         for asset_id, features in features_of(result.imputed).items():
             if not asset_id.startswith('t'):
@@ -674,7 +674,7 @@ class TestRelabel:
     """Reached RES1 footprints near mobile-home parks may become mobile homes."""
 
     def test_withheld_and_coded_imputed(self) -> None:
-        """The source's class is withheld, and the merge codes RES2 imputed."""
+        """The source's occupancy class is withheld and RES2 is coded imputed."""
         rows, mh_parks, targets, reached = scene()
         result = budget(rows, mh_parks).allocate(
             targets, reached, relabel_sources=RELABEL
@@ -827,7 +827,7 @@ class TestReading:
             budget(table({BG_A: {}}), []).allocate(targets, inventory({}))
 
     def test_bins_and_classes(self) -> None:
-        """Each bin's class holds every unit count of the bin."""
+        """Each bin's occupancy class holds every unit count of the bin."""
         for label, occupancy in BIN_CLASSES.items():
             low, _, high = label.rstrip('+').partition('-')
             assert count_band(int(low)) == occupancy
@@ -852,7 +852,7 @@ class TestKeyedAssignment:
     """The per-world assignment is keyed, ordered and local."""
 
     def test_golden(self) -> None:
-        """The classes of the dwellings at the fixture seed are pinned."""
+        """The occupancy classes of the dwellings at the fixture seed are pinned."""
         features = features_of(run().imputed)
         observed = {
             a: [world_value(features[a][OCC], w) for w in range(WORLDS)]
@@ -866,7 +866,7 @@ class TestKeyedAssignment:
         assert PURPOSE_UNIT_BUDGET == 'unit_budget'
 
     def test_seed_sensitivity(self) -> None:
-        """Another seed moves at least one dwelling's class."""
+        """Another seed moves at least one dwelling's occupancy class."""
         assert features_of(run(seed=OTHER_SEED).imputed) != features_of(
             run().imputed
         )
@@ -982,7 +982,7 @@ class TestDisjointOutputs:
 
 
 class TestCapacity:
-    """No dwelling holds more units than its gross floor area allows."""
+    """No dwelling holds more units than its gross area allows."""
 
     def test_over_capacity_recorded_and_warned(self) -> None:
         """A 50-plus residual too large for its footprints is reported."""
@@ -1008,7 +1008,7 @@ class TestCapacity:
         assert set(result.nonresidential) == {'s1', 's2'}
 
     def test_stories_multiply_capacity(self) -> None:
-        """The plan area times the story count gives the gross floor area."""
+        """The plan area times the story count gives the gross area."""
         rows = table({BG_A: {'002': (1, 1)}})
         targets = inventory(
             {'tall': asset(0, 0, **in_bg(**{STORIES: 3})), 'low': empty(100, 0)}
@@ -1024,7 +1024,7 @@ class TestCapacity:
         assert (sources['tall'], sources['low']) == ('stories', 'plan_area')
 
     def test_gross_area_first(self) -> None:
-        """A usable GrossArea gives the gross floor area before the stories."""
+        """A usable GrossArea gives the gross area before the stories."""
         rows = table({BG_A: {'002': (1, 1)}})
         targets = inventory(
             {
@@ -1088,7 +1088,7 @@ class TestCapacity:
 
 
 class TestCapacityOrder:
-    """Gross floor area weights the per-world order and gates mobile homes."""
+    """Gross area weights the per-world order and gates mobile homes."""
 
     def test_fallback_takes_the_largest(self) -> None:
         """Where none holds the share, the bin goes to the largest capacity."""

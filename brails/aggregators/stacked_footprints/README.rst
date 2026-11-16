@@ -109,7 +109,7 @@ holds its member this way.
 
 A merged asset takes the tallest part's height over the whole union, with
 the tallest part's source of that height, and the story count and height
-class inferred from the height then apply to all of it. A floor area taken
-as plan area times story count overstates the floor area of a podium with
+class inferred from the height then apply to all of it. A gross area taken
+as plan area times story count overstates the gross area of a podium with
 a tower on part of it. The ``parts`` table of ``StackedMergeResult`` keeps
 each part's plan area and height.

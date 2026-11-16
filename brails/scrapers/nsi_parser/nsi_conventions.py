@@ -105,7 +105,7 @@ NSI_RAW_SCHEMA = pa.schema(
 # YearBuiltSampler to draw a per-building year from it.
 #
 # sqft becomes GrossArea: NSI reports it as the structure's estimated
-# floor area, not its plan area.
+# square footage, its gross area, not its plan area.
 #
 # fullrep becomes ReplacementCost: NSI reports it as the full, not
 # depreciated, estimated replacement value of the structure.

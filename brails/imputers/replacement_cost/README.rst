@@ -1,12 +1,12 @@
 Replacement cost imputer
 ========================
 
-``ReplacementCostImputer`` values every building, in each world, as a rate
-per square foot times the building's floor area, and keeps a value from a
-local source. Its constants are in ``replacement_cost_imputer.py`` beside
-this page, and the defaults of its same-class neighbor draw,
-``DEFAULT_DONOR_K`` and ``DEFAULT_DONOR_CAP_M``, are in
-``brails/imputers/observed_donor_imputer/observed_donor_imputer.py``. This
+``ReplacementCostImputer`` values every building, in each world, as a rate per
+square foot times the building's gross area computed from its footprint, and
+keeps a value from a local source. Its constants are in
+``replacement_cost_imputer.py`` beside this page, and the defaults of its
+same-class neighbor draw, ``DEFAULT_DONOR_K`` and ``DEFAULT_DONOR_CAP_M``, are
+in ``brails/imputers/observed_donor_imputer/observed_donor_imputer.py``. This
 page states what the value and the rate are measured in and what the NSI
 records they come from hold, the procedure, and the scope of the rates and of
 the defaults.
@@ -18,39 +18,40 @@ The rates come from ``fullrep`` of the National Structure Inventory (NSI),
 which NSI's technical documentation for the 2026 Base defines as the full, not
 depreciated, estimated replacement value of the structure. NSI estimates this
 replacement cost new, in August 2025 price levels, as a cost per square foot
-for the occupancy type, which generally falls as the floor area grows, times
-the floor area. The cost is adjusted for the county's construction wages and,
-for single-family homes, for the income of the Census tract relative to that
-of its Census division. The documentation states that no adjustments are made
-"for differences in material costs or differences in regional construction
-practices". ``fullrep`` excludes contents, which NSI states separately as
-``val_cont``, and it is not NSI's depreciated replacement value,
-``val_struct``. BRAILS applies no price-level adjustment. The NSI footprint
-join writes ``fullrep`` as ``ReplacementCost``, coded ``N`` where one record
-of the footprint states it and ``R`` where the join sums several. A value
-from a local source, coded ``L``, gives a rate the same way, and
+for the occupancy type, which generally falls as the square footage grows,
+times the square footage. The cost is adjusted for the county's construction
+wages and, for single-family homes, for the income of the Census tract
+relative to that of its Census division. The documentation states that no
+adjustments are made "for differences in material costs or differences in
+regional construction practices". ``fullrep`` excludes contents, which NSI
+states separately as ``val_cont``, and it is not NSI's depreciated replacement
+value, ``val_struct``. BRAILS applies no price-level adjustment. The NSI
+footprint join writes ``fullrep`` as ``ReplacementCost``, coded ``N`` where
+one record of the footprint states it and ``R`` where the join sums several. A
+value from a local source, coded ``L``, gives a rate the same way, and
 ``RATE_VALUE_CODES`` holds the three codes.
 
 A building's own rate is its value divided by its ``GrossArea``. For a value
-NSI states, the join writes ``GrossArea`` from NSI's ``sqft``, a floor area,
-as the sum over the same records. The rate multiplies the building's plan area
+NSI states, the join writes ``GrossArea`` from ``sqft``, NSI's gross area, as
+the sum over the same records. The rate multiplies the building's plan area
 times its number of stories, never its ``GrossArea``, since the rate times
-``GrossArea`` is NSI's value itself. The two floor areas differ. Over the
-165,152 records for San Francisco in the NSI 2026 Base, ``sqft`` divided by
-the area of NSI's own footprint (``ftprntsqft``) times its stories
-(``num_story``) has a median of 0.9252 and quartiles of 0.5546 and 1.0. The
-137,869 records alone on their NSI footprint have a median of 1.0 and a lower
-quartile of 0.706, and the 27,283 records (16.5 percent) that share a
-footprint with another record have a median of 0.118. For a building with one
-NSI record whose Overture footprint and story count agree with NSI's, the
-value is therefore NSI's value at the median ratio, and 1.42 times NSI's value
-or more for the quarter of such records with a ratio of 0.706 or less. On the
-7,849 NSI footprints of San Francisco that hold several records (the 27,283
-records above), the sum of ``sqft`` over a footprint's records divided by its
-area times its stories lies between 0.99998 and 1.00002, so where Overture's
-footprint and story count agree with NSI's, the rule returns the join's sum of
-``fullrep``. The ratio against the footprints the join assigns NSI records to
-has not been measured. No scale factor is applied.
+``GrossArea`` is the building's own value again. ``GrossArea`` and the gross
+area computed from the footprint differ. Over the 165,152 records for San
+Francisco in the NSI 2026 Base, ``sqft`` divided by the area of NSI's own
+footprint (``ftprntsqft``) times its stories (``num_story``) has a median of
+0.9252 and quartiles of 0.5546 and 1.0. The 137,869 records alone on their NSI
+footprint have a median of 1.0 and a lower quartile of 0.706, and the 27,283
+records (16.5 percent) that share a footprint with another record have a
+median of 0.118. For a building with one NSI record whose Overture footprint
+and story count agree with NSI's, the value is therefore NSI's value at the
+median ratio, and 1.42 times NSI's value or more for the quarter of such
+records with a ratio of 0.706 or less. On the 7,849 NSI footprints of San
+Francisco that hold several records (the 27,283 records above), the sum of
+``sqft`` over a footprint's records divided by its area times its stories lies
+between 0.99998 and 1.00002, so where Overture's footprint and story count
+agree with NSI's, the rule returns the join's sum of ``fullrep``. The ratio
+against the footprints the join assigns NSI records to has not been measured.
+No scale factor is applied.
 
 Of the 2,243,922 records of the NSI 2026 Base for the nine San Francisco Bay
 Area counties, every record holds a ``fullrep`` and a ``sqft``, and both are
@@ -70,14 +71,14 @@ numbers above zero. A local value without a ``GrossArea`` is kept and gives
 no rate.
 
 Each building is then valued in ascending order of its id as a string, an
-order the result does not depend on. Its floor area in square feet is its
-plan area times its ``NumberOfStories`` in the world where that is a finite
-number above zero, logged as ``AREA_FROM_STORIES``, and otherwise its plan
-area as one story, logged as ``AREA_FROM_PLAN_AREA``. This is the gross floor
-area ``ACSUnitBudget`` reads for a footprint without a ``GrossArea``.
-The budget reads a ``GrossArea`` first, and this imputer never does. A
-building whose coordinates enclose no area gets no value
-(``OUTCOME_NO_AREA``).
+order the result does not depend on. Its gross area in square feet, computed
+from the footprint, is its plan area times its ``NumberOfStories`` in the
+world where that is a finite number above zero, logged as
+``AREA_FROM_STORIES``, and otherwise its plan area as one story, logged as
+``AREA_FROM_PLAN_AREA``. This is the gross area ``ACSUnitBudget`` reads for a
+footprint without a ``GrossArea``. The budget reads a ``GrossArea`` first, and
+this imputer never does. A building whose coordinates enclose no area gets no
+value (``OUTCOME_NO_AREA``).
 
 The rate is the first that exists of three. The building's own rate is
 logged as ``OUTCOME_OWN_RATE``. Without one, the building takes the own rate
@@ -111,7 +112,7 @@ seed and the world, never on the order of the buildings, under the labels
 that ``NEIGHBOR_PURPOSE_PREFIX`` forms, ``same_class_neighbor:observed_donor``
 and ``same_class_neighbor:observed_donor_fallback``.
 
-The value is the rate times the floor area, a float, not rounded. A building
+The value is the rate times that gross area, a float, not rounded. A building
 without a rate gets no value. Every stated value other than a local one is
 replaced. The log holds one row per building and world, and
 ``OUTCOME_VALUE_CODES`` gives the source code of the value by the row's
@@ -142,7 +143,7 @@ counties, and 357,024 of the 687,615 records outside ``RES1`` share both with
 another record of their county. Over the 46,183 pairs of ``occtype`` and
 ``sqft`` found outside ``RES1`` in more than one county, the rate differs
 between counties by at most 9.8 percent. Outside ``RES1`` the rate falls
-slightly and consistently with floor area. Over all San Francisco records of
+slightly and consistently with gross area. Over all San Francisco records of
 ``COM1``, ``COM4``, ``RES3A``, ``RES3C``, ``RES3F`` and ``IND2``, doubling
 ``sqft`` lowers the rate by 2.4 to 3.9 percent within each class, and the
 correlation of the logarithms lies between -0.98 and -0.81. For

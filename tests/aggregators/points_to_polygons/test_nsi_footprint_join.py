@@ -657,7 +657,7 @@ class TestPerFootprint:
         assert derived['NumberOfUnits'] == 5.5
         assert derived['OccupancyClass'] == 'RES3C'
 
-    def test_housing_governs_before_floor_area(self) -> None:
+    def test_housing_governs_before_gross_area(self) -> None:
         """A housing record governs a larger non-residential one."""
         shapes = footprints({'A': (0, 0, 10)})
         records = points(
@@ -668,7 +668,7 @@ class TestPerFootprint:
         assert observed['NSIGoverningRecord'] == 2
         assert observed['NSIOccupancyClass'] == 'RES3B'
 
-    def test_largest_floor_area_then_lowest_fd_id(self) -> None:
+    def test_largest_gross_area_then_lowest_fd_id(self) -> None:
         """Among housing records, the largest sqft governs, then the lowest id."""
         shapes = footprints({'A': (0, 0, 10), 'B': (40, 0, 10)})
         records = points(
@@ -714,7 +714,7 @@ class TestPerFootprint:
         assert observed['NSIReach'] == 'walk'
         assert features_of(result.derived)['A']['OccupancyClass'] == 'RES3B'
 
-    def test_unstated_floor_area_ranks_last(self) -> None:
+    def test_unstated_gross_area_ranks_last(self) -> None:
         """A record whose sqft is not a number ranks below a stated one."""
         shapes = footprints({'A': (0, 0, 10)})
         records = points(
