@@ -336,9 +336,7 @@ class DonorPool:
         self.status_values = tuple(status_values)
         self._sites = dict(targets)
         self._sites.update(zip(self.donor_ids, sites))
-        self.donor_index = {
-            asset_id: i for i, asset_id in enumerate(self.donor_ids)
-        }
+        self.donor_index = {asset_id: i for i, asset_id in enumerate(self.donor_ids)}
         self.block_group_donors: dict[str, list[int]] = {}
         for index, block_group in enumerate(self.block_group):
             if block_group is not None:

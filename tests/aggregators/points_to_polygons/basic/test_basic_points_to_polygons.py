@@ -625,9 +625,7 @@ def _point(east_offset: float, north_offset: float = 5.0) -> object:
     Returns:
         object: A shapely Point.
     """
-    return Point(
-        SF_ORIGIN_EASTING + east_offset, SF_ORIGIN_NORTHING + north_offset
-    )
+    return Point(SF_ORIGIN_EASTING + east_offset, SF_ORIGIN_NORTHING + north_offset)
 
 
 def test_buffer_distance_is_ground_meters(
@@ -672,7 +670,9 @@ def test_overlapping_containment_prefers_the_smaller_polygon(
     make_inventory: Callable[[list[Asset]], AssetInventory],
 ) -> None:
     """A point inside two footprints belongs to the smaller one."""
-    big = Asset('big', _wgs84_coords(_square(0.0, size=40.0)), features={'id': 'big'})
+    big = Asset(
+        'big', _wgs84_coords(_square(0.0, size=40.0)), features={'id': 'big'}
+    )
     small = Asset(
         'small', _wgs84_coords(_square(0.0, size=12.0)), features={'id': 'small'}
     )
@@ -715,11 +715,19 @@ def test_matching_is_deterministic_under_reordering(
 ) -> None:
     """Insertion order does not change which pairs are matched."""
     polygons = [
-        Asset(f'poly_{i}', _wgs84_coords(_square(30.0 * i)), features={'id': f'poly_{i}'})
+        Asset(
+            f'poly_{i}',
+            _wgs84_coords(_square(30.0 * i)),
+            features={'id': f'poly_{i}'},
+        )
         for i in range(4)
     ]
     points = [
-        Asset(f'pt_{i}', _wgs84_coords(_point(30.0 * i + 14.0)), features={'id': f'pt_{i}'})
+        Asset(
+            f'pt_{i}',
+            _wgs84_coords(_point(30.0 * i + 14.0)),
+            features={'id': f'pt_{i}'},
+        )
         for i in range(4)
     ]
 

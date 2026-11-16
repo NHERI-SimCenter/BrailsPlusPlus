@@ -155,9 +155,7 @@ def test_the_diagnosis_frame_carries_the_shared_columns(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
     """A caller reads one shape whichever inferer it screened with."""
-    inventory = build_inventory(
-        {'a': {'StructureType': 'C1', 'NumberOfStories': 2}}
-    )
+    inventory = build_inventory({'a': {'StructureType': 'C1', 'NumberOfStories': 2}})
     verdicts = HazusEQHeightClassInferer().check(inventory)
     assert list(verdicts.columns) == ['diagnosis', 'detail', 'resolvable_by']
     assert verdicts.loc['a', 'detail'] == ''
@@ -168,8 +166,10 @@ def test_the_diagnosis_frame_carries_the_shared_columns(
     ('features', 'expected'),
     [
         ({'NumberOfStories': 2}, 'no StructureType'),
-        ({'StructureType': 'W3', 'NumberOfStories': 2},
-         'not a Hazus structure type'),
+        (
+            {'StructureType': 'W3', 'NumberOfStories': 2},
+            'not a Hazus structure type',
+        ),
         ({'StructureType': 'C1'}, 'no NumberOfStories'),
         ({'StructureType': 'C1', 'NumberOfStories': 'two'}, 'not a number'),
         ({'StructureType': 'C1', 'NumberOfStories': 0}, 'one or more'),
@@ -219,12 +219,8 @@ def test_infer_writes_a_null_rather_than_nothing(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
     """A null height class is a value the damage library expects to see."""
-    inventory = build_inventory(
-        {'a': {'StructureType': 'W1', 'NumberOfStories': 2}}
-    )
-    _, written = HazusEQHeightClassInferer().infer(
-        inventory
-    ).get_asset_features('a')
+    inventory = build_inventory({'a': {'StructureType': 'W1', 'NumberOfStories': 2}})
+    _, written = HazusEQHeightClassInferer().infer(inventory).get_asset_features('a')
     assert 'HeightClass' in written
     assert written['HeightClass'] is None
 

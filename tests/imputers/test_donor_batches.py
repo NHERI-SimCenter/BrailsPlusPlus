@@ -114,7 +114,6 @@ def frozen_donors(records: dict[str, tuple[list, dict[str, Any]]]) -> StageFreez
     return freeze
 
 
-
 class SpyFreeze(StageFreeze):
     """A freeze that records each freeze in an event list."""
 

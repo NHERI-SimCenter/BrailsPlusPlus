@@ -249,9 +249,7 @@ class HazusEQHeightClassInferer(InferenceEngine):
                 'height class',
                 None,
             )
-        if is_probabilistic_feature(
-            self.stories_key, stories, vector_features
-        ):
+        if is_probabilistic_feature(self.stories_key, stories, vector_features):
             return (
                 DIAGNOSIS_UNSUPPORTED,
                 f'{self.stories_key} holds one value per world; multi-world '
@@ -280,9 +278,7 @@ class HazusEQHeightClassInferer(InferenceEngine):
         return DIAGNOSIS_OK, '', self._class_of(bands, int(story_count))
 
     @staticmethod
-    def _class_of(
-        bands: dict[str, tuple[int, int | None]], stories: int
-    ) -> str:
+    def _class_of(bands: dict[str, tuple[int, int | None]], stories: int) -> str:
         """
         Select the height class a story count falls in.
 

@@ -120,5 +120,3 @@ def union_disjoint(*inventories: AssetInventory) -> AssetInventory:
         union.add_asset(asset_id, asset)
     union.n_pw = worlds.pop() if worlds else 1
     return union
-
-

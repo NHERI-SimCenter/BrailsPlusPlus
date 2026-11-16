@@ -484,8 +484,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         )
         type_rows = [types for types, _ in signatures]
         drawn = [
-            type_rows[code][position]
-            for code, position in zip(codes, positions)
+            type_rows[code][position] for code, position in zip(codes, positions)
         ]
         return pd.Series(drawn, index=asset_ids, name=self.structure_type_key)
 
@@ -546,9 +545,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             return failure
         types, weights = self._candidates(frame)
         if sum(weights) > 0:
-            return _Verdict(
-                DIAGNOSIS_OK, types=tuple(types), weights=tuple(weights)
-            )
+            return _Verdict(DIAGNOSIS_OK, types=tuple(types), weights=tuple(weights))
         return _Verdict(
             DIAGNOSIS_INFEASIBLE,
             self._describe(frame),
@@ -615,9 +612,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             band, failure = self._read_band(features, vector_features)
             if failure is not None:
                 return None, failure
-        general_type, failure = self._read_general_type(
-            features, vector_features
-        )
+        general_type, failure = self._read_general_type(features, vector_features)
         if failure is not None:
             return None, failure
         return (
@@ -670,9 +665,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             tuple[str, _Verdict | None]:
                 The era and None, or an empty string and a verdict.
         """
-        year, failure = self._read(
-            features, self.year_built_key, vector_features
-        )
+        year, failure = self._read(features, self.year_built_key, vector_features)
         if failure is not None:
             return '', failure
         try:
@@ -712,9 +705,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             tuple[str, _Verdict | None]:
                 The band and None, or an empty string and a verdict.
         """
-        stories, failure = self._read(
-            features, self.stories_key, vector_features
-        )
+        stories, failure = self._read(features, self.stories_key, vector_features)
         if failure is not None:
             return '', failure
         try:
@@ -754,9 +745,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         value = features.get(self.building_type_key)
         if value is None:
             return '', None
-        if is_probabilistic_feature(
-            self.building_type_key, value, vector_features
-        ):
+        if is_probabilistic_feature(self.building_type_key, value, vector_features):
             return '', _Verdict(
                 DIAGNOSIS_UNSUPPORTED,
                 f'{self.building_type_key} holds one value per world; '
@@ -867,9 +856,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
                 If a driver cannot be read, since the features then
                 select no cell.
         """
-        frame, failure = self._read_frame(
-            features, vector_features or frozenset()
-        )
+        frame, failure = self._read_frame(features, vector_features or frozenset())
         if failure is not None:
             raise ValueError(
                 f'The features select no cell of the {self.region} tables: '
@@ -992,9 +979,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             resolvable.append(self.stories_key)
         if self._year_resolves(frame):
             resolvable.append(self.year_built_key)
-        if frame.general_type and self._drawable(
-            frame._replace(general_type='')
-        ):
+        if frame.general_type and self._drawable(frame._replace(general_type='')):
             resolvable.append(self.building_type_key)
         return tuple(resolvable)
 
@@ -1098,7 +1083,6 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         if frame.general_type:
             stated.append(f'{self.building_type_key} {frame.general_type}')
         stated.append(f'{self.design_level_key} {frame.design_level}')
-        return (
-            f'the {self.region} tables give no structure type for '
-            + ', '.join(stated)
+        return f'the {self.region} tables give no structure type for ' + ', '.join(
+            stated
         )

@@ -394,7 +394,9 @@ class TestRawPullFile:
         assert read.get_asset_ids() == sorted(pulled.get_asset_ids())
         assert len(read.inventory) == len(features)
         floats = {
-            field.name for field in NSI_RAW_SCHEMA if pa.types.is_floating(field.type)
+            field.name
+            for field in NSI_RAW_SCHEMA
+            if pa.types.is_floating(field.type)
         }
         for asset_id in read.get_asset_ids():
             _, read_features = read.get_asset_features(asset_id)

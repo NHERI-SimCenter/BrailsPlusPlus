@@ -381,9 +381,7 @@ class TestDigest:
         """A float32 keeps its rounding."""
         as_32 = inventory([('a', [[-122.4, 37.7]], {'x': np.float32(0.1)})])
         as_64 = inventory([('a', [[-122.4, 37.7]], {'x': 0.1})])
-        rounded = inventory(
-            [('a', [[-122.4, 37.7]], {'x': float(np.float32(0.1))})]
-        )
+        rounded = inventory([('a', [[-122.4, 37.7]], {'x': float(np.float32(0.1))})])
         assert digest_of(as_32) != digest_of(as_64)
         assert digest_of(as_32) == digest_of(rounded)
 
@@ -391,9 +389,7 @@ class TestDigest:
         """Integer and string ids are distinct."""
         as_int = inventory([(1, [[-122.4, 37.7]], {})])
         as_str = inventory([('1', [[-122.4, 37.7]], {})])
-        both = inventory(
-            [('1', [[-122.4, 37.7]], {}), (1, [[-122.4, 37.7]], {})]
-        )
+        both = inventory([('1', [[-122.4, 37.7]], {}), (1, [[-122.4, 37.7]], {})])
         reversed_both = inventory(
             [(1, [[-122.4, 37.7]], {}), ('1', [[-122.4, 37.7]], {})]
         )

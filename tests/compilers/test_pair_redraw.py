@@ -222,9 +222,7 @@ class StubDraw:
             }
         )
         forced = self.outcomes.get(asset_id)
-        candidates = (
-            RESIDENTIAL_CANDIDATES if status else NON_RESIDENTIAL_CANDIDATES
-        )
+        candidates = RESIDENTIAL_CANDIDATES if status else NON_RESIDENTIAL_CANDIDATES
         # The pick as (donor id, values, attempts, outcome).
         pick = (None, {}, len(candidates), OUTCOME_EXHAUSTED)
         if asset_id in self.values:
@@ -751,7 +749,10 @@ class TestHeightCount:
             }
         ]
         log = result.log.loc[0]
-        assert (log['action'], log['outcome']) == (ACTION_REPLACE_STORIES, OUTCOME_LOGGED)
+        assert (log['action'], log['outcome']) == (
+            ACTION_REPLACE_STORIES,
+            OUTCOME_LOGGED,
+        )
 
     def test_replace_and_redraw_the_class(
         self, imputer: ObservedDonorImputer

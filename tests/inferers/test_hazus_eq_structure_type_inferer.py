@@ -244,8 +244,7 @@ def test_a_single_family_home_needs_no_story_count(
     """RES1 is tabulated by state and era, with no height dimension."""
     inventory = build_inventory({'a': dict(HOME)})
     assert _inferer().check(inventory).loc['a', 'diagnosis'] == DIAGNOSIS_OK
-    assert _inferer().draw(inventory)['a'] in {'W1', 'S3', 'S5', 'C2', 'RM1',
-                                               'URM'}
+    assert _inferer().draw(inventory)['a'] in {'W1', 'S3', 'S5', 'C2', 'RM1', 'URM'}
 
 
 def test_a_home_outside_the_west_coast_needs_no_year(
@@ -399,9 +398,7 @@ def test_a_restriction_down_to_one_type_draws_it_every_time(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
     """Weights are renormalized after a restriction, not left short."""
-    drawn = set(
-        _spread(build_inventory, dict(HOME, BuildingType='W'), count=50)
-    )
+    drawn = set(_spread(build_inventory, dict(HOME, BuildingType='W'), count=50))
     assert drawn == {'W1'}
 
 
@@ -417,7 +414,10 @@ def test_a_masonry_walkup_above_low_code_is_diagnosed(
     row = _inferer().check(inventory).loc['a']
     assert row['diagnosis'] == DIAGNOSIS_INFEASIBLE
     assert row['resolvable_by'] == (
-        'OccupancyClass', 'NumberOfStories', 'YearBuilt', 'BuildingType'
+        'OccupancyClass',
+        'NumberOfStories',
+        'YearBuilt',
+        'BuildingType',
     )
 
 
@@ -456,8 +456,11 @@ def test_nothing_is_offered_where_the_lookup_could_not_run(
     """A feature cannot be relaxed into an invalid or unsupported lookup."""
     inventory = build_inventory(
         {
-            'no_driver': {'NumberOfStories': 2, 'YearBuilt': 1960,
-                          'DesignLevel': 'Moderate-Code'},
+            'no_driver': {
+                'NumberOfStories': 2,
+                'YearBuilt': 1960,
+                'DesignLevel': 'Moderate-Code',
+            },
             'unusable': dict(STORE, NumberOfStories=0),
             'unsupported': dict(STORE, OccupancyClass=['COM1', 'COM1']),
         },
@@ -593,7 +596,11 @@ def test_every_resolvable_feature_admits_the_asset_on_its_own(
                             build_inventory, inferer, features, key, values
                         )
                         assert works == (key in offered), (
-                            occupancy, band, era, letter, key
+                            occupancy,
+                            band,
+                            era,
+                            letter,
+                            key,
                         )
     assert checked > 100
 
@@ -606,7 +613,9 @@ def test_a_wood_high_rise_is_diagnosed(
     row = _inferer().check(inventory).loc['a']
     assert row['diagnosis'] == DIAGNOSIS_INFEASIBLE
     assert row['resolvable_by'] == (
-        'OccupancyClass', 'NumberOfStories', 'BuildingType'
+        'OccupancyClass',
+        'NumberOfStories',
+        'BuildingType',
     )
     assert 'YearBuilt' not in row['resolvable_by']
 
@@ -629,7 +638,8 @@ def test_a_home_without_a_story_count_cannot_change_occupancy(
     verdicts = _inferer().check(inventory)
     assert verdicts.loc['no_stories', 'resolvable_by'] == ('BuildingType',)
     assert verdicts.loc['with_stories', 'resolvable_by'] == (
-        'OccupancyClass', 'BuildingType'
+        'OccupancyClass',
+        'BuildingType',
     )
 
 
@@ -662,20 +672,40 @@ def test_a_state_without_a_home_row_is_refused(state: str) -> None:
 @pytest.mark.parametrize(
     ('features', 'expected'),
     [
-        ({'NumberOfStories': 2, 'YearBuilt': 1960,
-          'DesignLevel': 'Moderate-Code'}, 'no OccupancyClass'),
+        (
+            {
+                'NumberOfStories': 2,
+                'YearBuilt': 1960,
+                'DesignLevel': 'Moderate-Code',
+            },
+            'no OccupancyClass',
+        ),
         (dict(STORE, OccupancyClass='CAFE'), 'has no row'),
-        ({'OccupancyClass': 'COM1', 'YearBuilt': 1960,
-          'DesignLevel': 'Moderate-Code'}, 'no NumberOfStories'),
+        (
+            {
+                'OccupancyClass': 'COM1',
+                'YearBuilt': 1960,
+                'DesignLevel': 'Moderate-Code',
+            },
+            'no NumberOfStories',
+        ),
         (dict(STORE, NumberOfStories='two'), 'not a number'),
         (dict(STORE, NumberOfStories=0), 'one or more'),
         (dict(STORE, NumberOfStories=2.5), 'whole number'),
-        ({'OccupancyClass': 'COM1', 'NumberOfStories': 2,
-          'DesignLevel': 'Moderate-Code'}, 'no YearBuilt'),
+        (
+            {
+                'OccupancyClass': 'COM1',
+                'NumberOfStories': 2,
+                'DesignLevel': 'Moderate-Code',
+            },
+            'no YearBuilt',
+        ),
         (dict(STORE, YearBuilt=2050), 'sits outside'),
         (dict(STORE, YearBuilt='old'), 'not a number'),
-        ({'OccupancyClass': 'COM1', 'NumberOfStories': 2,
-          'YearBuilt': 1960}, 'no DesignLevel'),
+        (
+            {'OccupancyClass': 'COM1', 'NumberOfStories': 2, 'YearBuilt': 1960},
+            'no DesignLevel',
+        ),
         (dict(STORE, DesignLevel='HighCode'), 'not a Hazus design level'),
         (dict(STORE, BuildingType='X'), 'not a Hazus general building type'),
     ],
@@ -691,8 +721,14 @@ def test_unusable_drivers_are_diagnosed(
 
 
 @pytest.mark.parametrize(
-    'key', ['OccupancyClass', 'NumberOfStories', 'YearBuilt', 'DesignLevel',
-            'BuildingType']
+    'key',
+    [
+        'OccupancyClass',
+        'NumberOfStories',
+        'YearBuilt',
+        'DesignLevel',
+        'BuildingType',
+    ],
 )
 def test_a_per_world_driver_is_diagnosed(
     build_inventory: Callable[..., AssetInventory], key: str
@@ -822,9 +858,7 @@ def test_draws_survive_subsetting(
     """Debugging one asset must not change the type it draws."""
     features = {f'asset_{index}': dict(STORE) for index in range(20)}
     whole = _inferer().draw(build_inventory(features))
-    part = _inferer().draw(
-        build_inventory({'asset_7': features['asset_7']})
-    )
+    part = _inferer().draw(build_inventory({'asset_7': features['asset_7']}))
     assert part['asset_7'] == whole['asset_7']
 
 
@@ -873,9 +907,7 @@ def test_keys_may_be_passed_in(
     inventory = build_inventory(features)
     keys = asset_key_digest(inventory.get_asset_ids())
     inferer = _inferer()
-    assert inferer.draw(inventory, asset_keys=keys).equals(
-        inferer.draw(inventory)
-    )
+    assert inferer.draw(inventory, asset_keys=keys).equals(inferer.draw(inventory))
 
 
 def test_mismatched_keys_are_refused(
@@ -932,9 +964,7 @@ def test_infer_names_the_assets_it_cannot_draw_for(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
     """Failing loudly is the point; a silent skip would look complete."""
-    inventory = build_inventory(
-        {'good': dict(STORE), 'bad': dict(WOOD_TOWER)}
-    )
+    inventory = build_inventory({'good': dict(STORE), 'bad': dict(WOOD_TOWER)})
     with pytest.raises(ValueError, match='bad'):
         _inferer().infer(inventory)
 
@@ -994,9 +1024,7 @@ def test_an_unpublished_cell_is_told_apart_from_an_emptied_row() -> None:
 
 def test_an_unreadable_driver_has_no_cell_to_ask_about() -> None:
     """A driver that cannot be read selects no cell, and the question raises."""
-    features = {
-        key: value for key, value in STORE.items() if key != 'DesignLevel'
-    }
+    features = {key: value for key, value in STORE.items() if key != 'DesignLevel'}
 
     with pytest.raises(ValueError, match='no DesignLevel'):
         _inferer().cell_is_unpublished(features)
@@ -1021,9 +1049,7 @@ def test_a_filled_cell_draws_only_the_types_of_its_row(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
     """At Pre-Code no type is barred, and the draw stays within the filled row."""
-    row = get_completed_west_coast_weights()['EDU1']['mid_rise'][
-        '1950_to_1970'
-    ]
+    row = get_completed_west_coast_weights()['EDU1']['mid_rise']['1950_to_1970']
     types = get_hazus_occ_type_mapping()[0]['West Coast']['mid_rise']
     weighted = {t for t, weight in zip(types, row) if weight > 0}
     features = dict(SCHOOL, DesignLevel='Pre-Code')
@@ -1057,9 +1083,10 @@ def test_a_filled_cell_reports_its_fill() -> None:
     """``cell_fill`` returns the route of a filled cell, None for a printed one."""
     inferer = _inferer(complete_tables=True)
     routes = get_west_coast_fill_routes()
-    assert inferer.cell_fill(dict(SCHOOL)) == routes[
-        ('EDU1', 'mid_rise', '1950_to_1970')
-    ]
+    assert (
+        inferer.cell_fill(dict(SCHOOL))
+        == routes[('EDU1', 'mid_rise', '1950_to_1970')]
+    )
     assert inferer.cell_fill(dict(STORE)) is None
     assert inferer.cell_fill(dict(HOME)) is None
 

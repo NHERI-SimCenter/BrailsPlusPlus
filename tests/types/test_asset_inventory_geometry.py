@@ -162,9 +162,17 @@ class TestCentroidAndPlanArea:
 
     def test_errors_name_the_input_at_fault(self) -> None:
         """An empty polygon, projected coordinates and no area raise."""
-        with pytest.raises(ValueError, match='A Polygon footprint has no coordinates'):
-            AssetInventory.centroid_and_plan_area({'type': 'Polygon', 'coordinates': []})
-        projected = [[551000.0, 4180000.0], [551010.0, 4180000.0], [551010.0, 4180010.0]]
+        with pytest.raises(
+            ValueError, match='A Polygon footprint has no coordinates'
+        ):
+            AssetInventory.centroid_and_plan_area(
+                {'type': 'Polygon', 'coordinates': []}
+            )
+        projected = [
+            [551000.0, 4180000.0],
+            [551010.0, 4180000.0],
+            [551010.0, 4180010.0],
+        ]
         with pytest.raises(ValueError, match='EPSG:4326'):
             AssetInventory.centroid_and_plan_area(projected)
         collinear = [[-122.41, 37.78], [-122.4099, 37.78], [-122.4098, 37.78]]

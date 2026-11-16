@@ -215,13 +215,7 @@ def assign_design_levels(
     # A boolean survives numeric coercion as 0 or 1 and would be dated
     # Pre-Code, so it is refused on its type.
     boolean = year_built.map(lambda value: isinstance(value, bool))
-    invalid = (
-        years.isna()
-        | (years <= 0)
-        | (years % 1 != 0)
-        | too_large
-        | boolean
-    )
+    invalid = years.isna() | (years <= 0) | (years % 1 != 0) | too_large | boolean
     if invalid.any():
         offenders = list(year_built.index[invalid])
         raise ValueError(
@@ -350,9 +344,7 @@ class HazusEQDesignLevelInferer(InferenceEngine):
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
             _, features = input_inventory.get_asset_features(asset_id)
-            rows[asset_id] = self._resolve(
-                features, input_inventory.vector_features
-            )
+            rows[asset_id] = self._resolve(features, input_inventory.vector_features)
         return diagnosis_frame(rows)
 
     def _resolve(
@@ -379,9 +371,7 @@ class HazusEQDesignLevelInferer(InferenceEngine):
                 f'no {self.year_built_key}',
                 (self.year_built_key,),
             )
-        if is_probabilistic_feature(
-            self.year_built_key, year, vector_features
-        ):
+        if is_probabilistic_feature(self.year_built_key, year, vector_features):
             return (
                 DIAGNOSIS_UNSUPPORTED,
                 f'{self.year_built_key} holds one value per world; '
@@ -480,9 +470,7 @@ class HazusEQDesignLevelInferer(InferenceEngine):
                 the assets and their details.
         """
         verdicts = self.check(input_inventory)
-        failed = verdicts.loc[
-            verdicts['diagnosis'] != DIAGNOSIS_OK, 'detail'
-        ]
+        failed = verdicts.loc[verdicts['diagnosis'] != DIAGNOSIS_OK, 'detail']
         if not failed.empty:
             reasons = preview_failures(failed)
             raise ValueError(

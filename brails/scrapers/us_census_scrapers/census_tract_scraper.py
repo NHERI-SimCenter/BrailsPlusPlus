@@ -85,7 +85,6 @@ LEVELS = (LEVEL_TRACT, LEVEL_BLOCK_GROUP)
 TIE_COLUMNS = ('asset_id', 'geoid', 'polygons')
 
 
-
 class CensusTractScraper:
     """
     A class to get census tract and block-group data from the US Census.
@@ -327,7 +326,11 @@ class CensusTractScraper:
             msg = 'inventory must be an instance of AssetInventory.'
             raise TypeError(msg)
         levels = tuple(levels)
-        if not levels or len(set(levels)) != len(levels) or set(levels) - set(LEVELS):
+        if (
+            not levels
+            or len(set(levels)) != len(levels)
+            or set(levels) - set(LEVELS)
+        ):
             msg = (
                 f'levels must name one or both of {LEVELS} once each, not '
                 f'{levels!r}.'
@@ -391,7 +394,9 @@ class CensusTractScraper:
         """
         asset_ids = sorted(inventory.inventory, key=str)
         points = shapely.points(
-            np.array([_reference_point(inventory.inventory[a], a) for a in asset_ids])
+            np.array(
+                [_reference_point(inventory.inventory[a], a) for a in asset_ids]
+            )
         )
         if frame is None:
             url = (
@@ -549,7 +554,9 @@ def _read_polygons(
         )
         raise ValueError(msg)
     frame = polygons
-    if not CRS.from_user_input(frame.crs).equals(CRS.from_user_input(GEOGRAPHIC_CRS)):
+    if not CRS.from_user_input(frame.crs).equals(
+        CRS.from_user_input(GEOGRAPHIC_CRS)
+    ):
         frame = frame.to_crs(GEOGRAPHIC_CRS)
     return lengths[found.pop()], (
         np.array(geoids, dtype=object),

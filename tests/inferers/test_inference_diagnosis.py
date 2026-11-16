@@ -72,16 +72,13 @@ def test_no_ids_produce_an_empty_preview() -> None:
 def test_a_short_set_of_failures_is_shown_whole() -> None:
     """Each asset is named with what stands in its way."""
     failures = pd.Series({'a': 'no YearBuilt', 'b': 'no OccupancyClass'})
-    assert preview_failures(failures) == (
-        'a (no YearBuilt), b (no OccupancyClass)'
-    )
+    assert preview_failures(failures) == ('a (no YearBuilt), b (no OccupancyClass)')
 
 
 def test_a_long_set_of_failures_is_cut_and_counted() -> None:
     """The count covers the assets the message leaves out."""
     failures = pd.Series(
-        {f'asset_{index}': 'no YearBuilt'
-         for index in range(PREVIEW_LIMIT + 3)}
+        {f'asset_{index}': 'no YearBuilt' for index in range(PREVIEW_LIMIT + 3)}
     )
     shown = preview_failures(failures)
     assert shown.count('asset_') == PREVIEW_LIMIT

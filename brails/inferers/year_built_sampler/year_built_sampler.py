@@ -218,9 +218,7 @@ def sample_years(
             not cover the assets being drawn for.
     """
     centers = medians.map(_as_center).to_numpy(dtype=float)
-    usable = (
-        np.isfinite(centers) & (centers >= floor) & (centers <= cap)
-    )
+    usable = np.isfinite(centers) & (centers >= floor) & (centers <= cap)
     if not np.all(usable):
         unusable = list(medians.index[~usable])
         raise ValueError(
@@ -315,8 +313,7 @@ class YearBuiltSampler(InferenceEngine):
             raise ValueError(f'sigma must be positive, got {sigma!r}.')
         if cap <= floor:
             raise ValueError(
-                f'cap must sit above floor, got floor={floor!r} and '
-                f'cap={cap!r}.'
+                f'cap must sit above floor, got floor={floor!r} and cap={cap!r}.'
             )
         self.sigma = float(sigma)
         self.seed = secrets.randbits(_SEED_BITS) if seed is None else int(seed)
@@ -345,9 +342,7 @@ class YearBuiltSampler(InferenceEngine):
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
             _, features = input_inventory.get_asset_features(asset_id)
-            rows[asset_id] = self._resolve(
-                features, input_inventory.vector_features
-            )
+            rows[asset_id] = self._resolve(features, input_inventory.vector_features)
         return diagnosis_frame(rows)
 
     def _resolve(
@@ -374,9 +369,7 @@ class YearBuiltSampler(InferenceEngine):
                 f'no {self.median_key}',
                 (self.median_key,),
             )
-        if is_probabilistic_feature(
-            self.median_key, median, vector_features
-        ):
+        if is_probabilistic_feature(self.median_key, median, vector_features):
             return (
                 DIAGNOSIS_UNSUPPORTED,
                 f'{self.median_key} holds one value per world; '
@@ -484,9 +477,7 @@ class YearBuiltSampler(InferenceEngine):
                 their diagnoses.
         """
         verdicts = self.check(input_inventory)
-        failed = verdicts.loc[
-            verdicts['diagnosis'] != DIAGNOSIS_OK, 'detail'
-        ]
+        failed = verdicts.loc[verdicts['diagnosis'] != DIAGNOSIS_OK, 'detail']
         if not failed.empty:
             reasons = preview_failures(failed)
             raise ValueError(

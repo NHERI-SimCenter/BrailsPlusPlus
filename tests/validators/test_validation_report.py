@@ -76,9 +76,7 @@ def test_by_asset_collapses_worlds_and_deduplicates() -> None:
     report.add('A1', 0, ['$.DesignLevel: bad', '$.HeightClass: bad'])
     report.add('A1', 1, ['$.DesignLevel: bad'])
 
-    assert report.by_asset() == {
-        'A1': ['$.DesignLevel: bad', '$.HeightClass: bad']
-    }
+    assert report.by_asset() == {'A1': ['$.DesignLevel: bad', '$.HeightClass: bad']}
 
 
 def test_by_world_groups_by_world() -> None:

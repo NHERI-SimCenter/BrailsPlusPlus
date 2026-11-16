@@ -182,8 +182,7 @@ def to_simcenter(properties: dict) -> dict:
             conventions. The input is not modified.
     """
     converted = {
-        NSI_TO_SIMCENTER.get(key, key): value
-        for key, value in properties.items()
+        NSI_TO_SIMCENTER.get(key, key): value for key, value in properties.items()
     }
 
     building_type = converted.get('BuildingType')

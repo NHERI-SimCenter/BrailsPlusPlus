@@ -349,9 +349,7 @@ def test_b25127_cells_cover_each_class_and_bin_once() -> None:
 
 def test_bins_tile_the_year_range() -> None:
     """The B25034 bins run without gaps and fill the B25127 bins in order."""
-    for (_, _, last, _), (_, first, _, _) in zip(
-        B25034_BINS[:-1], B25034_BINS[1:]
-    ):
+    for (_, _, last, _), (_, first, _, _) in zip(B25034_BINS[:-1], B25034_BINS[1:]):
         assert first == last + 1
     members = [m for _, group in COARSE_YEARS for m in group]
     assert members == [row[0] for row in B25034_BINS]
@@ -488,18 +486,16 @@ def test_fit_leaves_the_inventory_unchanged(
     inventory = build_inventory(_neighborhood())
     before = copy.deepcopy(inventory.inventory)
     _sampler().fit(inventory)
-    assert {
-        k: v.features for k, v in inventory.inventory.items()
-    } == {k: v.features for k, v in before.items()}
+    assert {k: v.features for k, v in inventory.inventory.items()} == {
+        k: v.features for k, v in before.items()
+    }
 
 
 def test_fit_refuses_one_value_per_world(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
     """A per-world list in a driver is the caller's error in fit."""
-    inventory = build_inventory(
-        {'a': _asset(['RES1', 'RES3A'], 1, BG_A)}, n_pw=2
-    )
+    inventory = build_inventory({'a': _asset(['RES1', 'RES3A'], 1, BG_A)}, n_pw=2)
     with pytest.raises(ValueError, match='one value per world'):
         _sampler().fit(inventory)
 
@@ -817,7 +813,9 @@ def test_configured_keys_are_read_and_named(
 ) -> None:
     """The keys given to the sampler are the ones read and diagnosed."""
     sampler = _sampler(
-        occupancy_key='occ', units_key='units', block_group_key='bg',
+        occupancy_key='occ',
+        units_key='units',
+        block_group_key='bg',
         year_built_key='year',
     )
     inventory = build_inventory(
@@ -828,8 +826,9 @@ def test_configured_keys_are_read_and_named(
     assert verdicts.loc['b', 'resolvable_by'] == ()
     lone = sampler.check(build_inventory({'c': {'occ': 'RES1', 'bg': BG_A}}))
     assert lone.loc['c', 'resolvable_by'] == ('units',)
-    output = sampler.infer(build_inventory({'a': {'occ': 'RES1', 'units': 1,
-                                                  'bg': BG_A}}))
+    output = sampler.infer(
+        build_inventory({'a': {'occ': 'RES1', 'units': 1, 'bg': BG_A}})
+    )
     assert 'year' in output.get_asset_features('a')[1]
 
 
@@ -882,9 +881,7 @@ def test_infer_writes_years_and_raises_with_a_preview(
         assert output.get_asset_features(asset_id)[1]['YearBuilt'] == year
     assert inventory.get_asset_features('a1-0')[1]['YearBuilt'] == 1900
 
-    failing = build_inventory(
-        {f'c{k}': _asset('COM1', 1, BG_A) for k in range(12)}
-    )
+    failing = build_inventory({f'c{k}': _asset('COM1', 1, BG_A) for k in range(12)})
     with pytest.raises(ValueError, match='and 2 more'):
         sampler.infer(failing)
 

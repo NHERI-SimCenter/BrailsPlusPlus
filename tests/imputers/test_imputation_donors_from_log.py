@@ -233,7 +233,9 @@ class TestDonorKept:
             status={'t': False, 'u': False},
             validate=validate,
         )
-        stage = imputation_donors_from_log(result.log, stage_targets, n_worlds=n_worlds)
+        stage = imputation_donors_from_log(
+            result.log, stage_targets, n_worlds=n_worlds
+        )
         repaired = result.log[result.log['round'] == ROUND_REPAIR]
         # t has repairs that found a donor, u only exhausted ones
         assert set(repaired.loc[repaired['asset_id'] == 't', 'outcome']) - {

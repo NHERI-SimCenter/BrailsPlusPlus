@@ -156,9 +156,7 @@ class TestResidentialProbability:
         )
         targets = inventory({'t': target(0, 0), 'u': target(0, 50, bg=BG_B)})
         model = imputer()
-        chance = model.status_probability(
-            model.pool(donors, targets), ['t', 'u']
-        )
+        chance = model.status_probability(model.pool(donors, targets), ['t', 'u'])
         assert chance['t'] == pytest.approx(1 / 3)
         assert chance['u'] == 1.0
 
@@ -203,9 +201,7 @@ class TestResidentialProbability:
         )
         targets = inventory({'t': target(0, 0)})
         model = imputer(k=4)
-        chance = model.status_probability(model.pool(donors, targets), ['t'])[
-            't'
-        ]
+        chance = model.status_probability(model.pool(donors, targets), ['t'])['t']
         worlds = 2000
         log = model.impute_stage(targets, donors, n_worlds=worlds).log
         picks = log.loc[log['round'] == ROUND_STATUS, 'donor_id']

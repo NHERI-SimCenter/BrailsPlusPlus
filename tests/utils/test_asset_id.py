@@ -85,7 +85,9 @@ def rectangle(
 def footprint_row(count: int, lat: float = 37.77) -> list[list[list[float]]]:
     """Return a row of 12 m square footprints 20 m apart."""
     step = 20.0 / (METERS_PER_DEGREE_LAT * math.cos(math.radians(lat)))
-    return [rectangle(-122.45 + index * step, lat, 12.0, 12.0) for index in range(count)]
+    return [
+        rectangle(-122.45 + index * step, lat, 12.0, 12.0) for index in range(count)
+    ]
 
 
 def test_geohash_matches_the_published_example() -> None:
@@ -120,9 +122,10 @@ def test_id_ignores_the_order_of_multipolygon_parts() -> None:
     """Reordering a multipolygon's parts leaves its id unchanged."""
     first = rectangle(-122.41, 37.78, 10.0, 8.0)
     second = rectangle(-122.4098, 37.7801, 6.0, 6.0)
-    assert assign_asset_ids(
-        [MultiPolygon([Polygon(second), Polygon(first)])]
-    ).ids == assign_asset_ids([[first, second]]).ids
+    assert (
+        assign_asset_ids([MultiPolygon([Polygon(second), Polygon(first)])]).ids
+        == assign_asset_ids([[first, second]]).ids
+    )
 
 
 def test_a_hole_does_not_change_the_id() -> None:

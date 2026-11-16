@@ -61,7 +61,10 @@ class TestUnion:
         one.n_pw, other.n_pw = 1, 2
         union = union_disjoint(one, other)
         assert list(union.inventory) == ['a', 'b']
-        assert features_of(union) == {'a': {UNITS: 1}, 'b': {OCC: 'RES1', STORIES: 2}}
+        assert features_of(union) == {
+            'a': {UNITS: 1},
+            'b': {OCC: 'RES1', STORIES: 2},
+        }
         assert union.inventory['b'].coordinates == one.inventory['b'].coordinates
         assert union.n_pw == 2
 

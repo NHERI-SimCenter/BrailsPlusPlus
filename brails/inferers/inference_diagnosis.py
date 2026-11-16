@@ -83,7 +83,6 @@ DIAGNOSIS_INFEASIBLE = 'infeasible'
 DIAGNOSIS_COLUMNS = ('diagnosis', 'detail', 'resolvable_by')
 
 
-
 def diagnosis_frame(rows: dict) -> pd.DataFrame:
     """
     Build a diagnosis frame from per-asset verdicts.

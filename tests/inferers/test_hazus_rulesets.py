@@ -251,6 +251,7 @@ def test_type_lists_stay_within_the_structure_types() -> None:
         for row in region_lists.values():
             assert set(row) <= set(STRUCTURE_TYPES)
 
+
 # ---------------------------------------------------------------------
 # get_hazus_state_region_mapping
 

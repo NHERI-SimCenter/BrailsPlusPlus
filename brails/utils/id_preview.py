@@ -32,7 +32,6 @@
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 
 
-
 """
 Format asset ids for an error message.
 

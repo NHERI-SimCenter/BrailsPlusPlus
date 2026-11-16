@@ -203,8 +203,7 @@ def _iter_features(
             The identifier and features of each asset.
     """
     return [
-        (asset_id, asset.features)
-        for asset_id, asset in inventory.inventory.items()
+        (asset_id, asset.features) for asset_id, asset in inventory.inventory.items()
     ]
 
 

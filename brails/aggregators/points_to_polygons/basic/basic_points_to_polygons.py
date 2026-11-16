@@ -224,9 +224,9 @@ class BasicPointsToPolygonsAllocator:
         # footprints belongs to the smallest one that holds it, and a polygon
         # holding several points keeps the most central. Ids break remaining
         # ties so the result does not depend on the order sjoin returned.
-        candidates['rank_area'] = (
-            poly_metric.geometry.area.reindex(candidates['polygon_id']).to_numpy()
-        )
+        candidates['rank_area'] = poly_metric.geometry.area.reindex(
+            candidates['polygon_id']
+        ).to_numpy()
         candidates['rank_distance'] = self._pairwise_distance(
             poly_metric.geometry.centroid,
             point_metric.geometry,

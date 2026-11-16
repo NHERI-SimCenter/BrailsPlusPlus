@@ -128,7 +128,9 @@ def _to_ring(points: Sequence[Any]) -> Ring:
     ring: Ring = []
     for point in points:
         if not _is_point(point):
-            raise ValueError(f'A footprint vertex is not a coordinate pair: {point!r}.')
+            raise ValueError(
+                f'A footprint vertex is not a coordinate pair: {point!r}.'
+            )
         lon, lat = float(point[0]), float(point[1])
         if not (math.isfinite(lon) and math.isfinite(lat)):
             raise ValueError(f'A footprint vertex is not finite: {point!r}.')
@@ -192,7 +194,9 @@ def _exterior_rings(geometry: object) -> list[Ring]:
             return [_to_ring(geometry)]
         return [_to_ring(ring) for ring in geometry]
 
-    raise ValueError(f'A footprint geometry is empty or not recognized: {geometry!r}.')
+    raise ValueError(
+        f'A footprint geometry is empty or not recognized: {geometry!r}.'
+    )
 
 
 def _origin(rings: list[Ring]) -> Point:
@@ -236,7 +240,9 @@ def _ring_moments(ring: Ring, origin: Point) -> tuple[float, float, float]:
     return math.fsum(crosses), math.fsum(moments_x), math.fsum(moments_y)
 
 
-def _parts(geometry: object) -> tuple[list[Ring], Point, list[tuple[float, float, float]]]:
+def _parts(
+    geometry: object,
+) -> tuple[list[Ring], Point, list[tuple[float, float, float]]]:
     """Return the rings, the translation origin and each ring's moments."""
     rings = _exterior_rings(geometry)
     origin = _origin(rings)
@@ -315,7 +321,9 @@ def _centroid_and_plan_area(geometry: object) -> tuple[float, float, float]:
     """
     _, origin, moments = _parts(geometry)
     longitude, latitude = _centroid_of(origin, moments)
-    square_degrees = math.fsum(abs(double_area) for double_area, _, _ in moments) / 2.0
+    square_degrees = (
+        math.fsum(abs(double_area) for double_area, _, _ in moments) / 2.0
+    )
     meters_per_degree = math.pi * EARTH_RADIUS_M / 180.0
     area = square_degrees * meters_per_degree**2 * math.cos(math.radians(latitude))
     return longitude, latitude, area
@@ -346,8 +354,14 @@ def geohash(lon: float, lat: float, precision: int = GEOHASH_PRECISION) -> str:
             If a coordinate is outside its range or the precision is not a
             positive integer.
     """
-    if not isinstance(precision, int) or isinstance(precision, bool) or precision < 1:
-        raise ValueError(f'Geohash precision must be a positive integer, not {precision!r}.')
+    if (
+        not isinstance(precision, int)
+        or isinstance(precision, bool)
+        or precision < 1
+    ):
+        raise ValueError(
+            f'Geohash precision must be a positive integer, not {precision!r}.'
+        )
     try:
         _to_ring([(lon, lat)])
     except ValueError as error:
@@ -363,7 +377,9 @@ def geohash(lon: float, lat: float, precision: int = GEOHASH_PRECISION) -> str:
     bit_count = 0
     is_longitude = True
     while len(characters) < precision:
-        interval, value = (lon_interval, lon) if is_longitude else (lat_interval, lat)
+        interval, value = (
+            (lon_interval, lon) if is_longitude else (lat_interval, lat)
+        )
         midpoint = (interval[0] + interval[1]) / 2.0
         if value >= midpoint:
             bits = (bits << 1) | 1
@@ -499,8 +515,11 @@ def _resolve_collision_set(
         if len(same_area) == 1:
             position = same_area[0]
             ids[position] = f'{cell}{SUFFIX_SEPARATOR}{area}'
-            log.append(_log_entry(position, cell, area, None, ids[position],
-                                  REASON_COLLISION))
+            log.append(
+                _log_entry(
+                    position, cell, area, None, ids[position], REASON_COLLISION
+                )
+            )
             continue
 
         keys = {
@@ -522,7 +541,8 @@ def _resolve_collision_set(
         for rank, position in enumerate(ranked, start=1):
             ids[position] = f'{cell}{SUFFIX_SEPARATOR}{area}{SUFFIX_SEPARATOR}{rank}'
             reason = (
-                REASON_IDENTICAL if key_counts[keys[position]] > 1
+                REASON_IDENTICAL
+                if key_counts[keys[position]] > 1
                 else REASON_EQUAL_AREA
             )
             log.append(_log_entry(position, cell, area, rank, ids[position], reason))

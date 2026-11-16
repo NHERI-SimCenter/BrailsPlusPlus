@@ -270,9 +270,7 @@ def test_check_and_assign_design_levels_agree(
         'negative': -1,
         'absent': None,
     }
-    features = {
-        asset_id: {'YearBuilt': year} for asset_id, year in unusable.items()
-    }
+    features = {asset_id: {'YearBuilt': year} for asset_id, year in unusable.items()}
     features['whole'] = {'YearBuilt': 1950}
     verdicts = HazusEQDesignLevelInferer().check(build_inventory(features))
     flagged = verdicts.index[verdicts['diagnosis'] != DIAGNOSIS_OK]
@@ -289,9 +287,7 @@ def test_a_named_feature_resolves_the_asset(
     (feature,) = inferer.check(
         build_inventory({'a': {'OccupancyClass': 'RES1'}})
     ).loc['a', 'resolvable_by']
-    supplied = build_inventory(
-        {'a': {'OccupancyClass': 'RES1', feature: 1950}}
-    )
+    supplied = build_inventory({'a': {'OccupancyClass': 'RES1', feature: 1950}})
     assert inferer.check(supplied).loc['a', 'diagnosis'] == DIAGNOSIS_OK
 
 
@@ -299,9 +295,7 @@ def test_draw_assigns_a_level_to_every_asset(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
     """Drawing for assets that passed gives a named series on their index."""
-    inventory = build_inventory(
-        {'a': {'YearBuilt': 1930}, 'b': {'YearBuilt': 1990}}
-    )
+    inventory = build_inventory({'a': {'YearBuilt': 1930}, 'b': {'YearBuilt': 1990}})
     levels = HazusEQDesignLevelInferer().draw(inventory)
     assert levels.name == 'DesignLevel'
     assert list(levels.index) == list(inventory.get_asset_ids())
@@ -332,9 +326,9 @@ def test_a_year_of_9999_is_usable_and_two_to_the_63_is_not(
     verdicts = HazusEQDesignLevelInferer().check(inventory)
     assert verdicts.loc['ordinary', 'diagnosis'] == DIAGNOSIS_OK
     assert verdicts.loc['past_it', 'diagnosis'] == DIAGNOSIS_INVALID
-    assert assign_design_levels(
-        pd.Series({'a': 9999}, dtype=object)
-    ).tolist() == ['High-Code']
+    assert assign_design_levels(pd.Series({'a': 9999}, dtype=object)).tolist() == [
+        'High-Code'
+    ]
 
 
 @pytest.mark.parametrize(
@@ -353,9 +347,7 @@ def test_check_and_assign_agree_at_the_top_of_the_integer_range(
 ) -> None:
     """The two entry points read the same years around the integer bound."""
     inventory = build_inventory({'a': {'YearBuilt': year}})
-    diagnosis = HazusEQDesignLevelInferer().check(inventory).loc[
-        'a', 'diagnosis'
-    ]
+    diagnosis = HazusEQDesignLevelInferer().check(inventory).loc['a', 'diagnosis']
     years = pd.Series({'a': year}, dtype=object)
     if level is None:
         assert diagnosis == DIAGNOSIS_INVALID
@@ -464,9 +456,9 @@ def test_bad_zone_fails_at_construction() -> None:
 def test_importer_finds_the_inferer() -> None:
     """The class is discoverable through the Importer by its unique name."""
     importer = Importer()
-    assert importer.get_class(
-        'HazusEQDesignLevelInferer'
-    ) is HazusEQDesignLevelInferer
+    assert (
+        importer.get_class('HazusEQDesignLevelInferer') is HazusEQDesignLevelInferer
+    )
 
 
 def test_package_level_import() -> None:

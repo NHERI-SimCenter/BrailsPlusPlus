@@ -863,7 +863,9 @@ class TestTigerwebBlockGroups:
         assert table.empty
         assert BLOCK_GROUP_KEY not in inv.inventory['a'].features
 
-    def test_tract_level_queries_the_tract_layer(self, mocker: MockerFixture) -> None:
+    def test_tract_level_queries_the_tract_layer(
+        self, mocker: MockerFixture
+    ) -> None:
         """With the tract level alone, the tract layer is queried."""
         tract = _feature_for_polygon(EAST[:11], two_halves()[EAST])
         mock_fetch = mocker.patch.object(
@@ -875,7 +877,9 @@ class TestTigerwebBlockGroups:
         assert mock_fetch.call_args.kwargs['url'] == CENSUS_TRACT_QUERY_URL
         assert result.inventory['a'].features == {'name': 'a', TRACT_KEY: EAST[:11]}
 
-    @pytest.mark.parametrize(('inside', 'queries'), [('a_inside', 2), ('z_inside', 1)])
+    @pytest.mark.parametrize(
+        ('inside', 'queries'), [('a_inside', 2), ('z_inside', 1)]
+    )
     def test_shared_edge_does_not_depend_on_order(
         self, mocker: MockerFixture, inside: str, queries: int
     ) -> None:
@@ -898,7 +902,9 @@ class TestTigerwebBlockGroups:
                 else [features[EAST]]
             ),
         )
-        inv = inventory({inside: square(-121.995, 38.0), 'm_edge': square(-122.0, 38.0)})
+        inv = inventory(
+            {inside: square(-121.995, 38.0), 'm_edge': square(-122.0, 38.0)}
+        )
         result, table = CensusTractScraper().get_census_geographies(inv)
 
         assert assigned(result) == {inside: EAST, 'm_edge': min(WEST, EAST)}

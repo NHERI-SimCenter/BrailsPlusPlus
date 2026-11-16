@@ -226,7 +226,9 @@ def test_a_record_without_an_id_raises(
 # ---------------------------------------------------------------------
 
 
-def test_get_raw_data_returns_untouched_nsi_fields(canned_fetch: Callable[..., None]) -> None:
+def test_get_raw_data_returns_untouched_nsi_fields(
+    canned_fetch: Callable[..., None],
+) -> None:
     """By default the raw path keeps NSI names and values as served."""
     canned_fetch([make_record(11, 0.0005, 0.0005)])
 
@@ -241,7 +243,9 @@ def test_get_raw_data_returns_untouched_nsi_fields(canned_fetch: Callable[..., N
     assert 'StructureType' not in features
 
 
-def test_get_raw_data_applies_simcenter_format(canned_fetch: Callable[..., None]) -> None:
+def test_get_raw_data_applies_simcenter_format(
+    canned_fetch: Callable[..., None],
+) -> None:
     """With the flag on, each record goes through the conversion."""
     canned_fetch(
         [
@@ -406,7 +410,5 @@ def test_live_nsi_schema_matches_the_fixture() -> None:
     live = fetch_sample()
 
     live_fields = set(live['features'][0]['properties'])
-    fixture_fields = {
-        field for record in load_fixture_records() for field in record
-    }
+    fixture_fields = {field for record in load_fixture_records() for field in record}
     assert live_fields == fixture_fields

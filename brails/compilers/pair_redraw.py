@@ -358,7 +358,13 @@ class PairRedraw:
                 if pool is None:
                     pool = self.imputer.pool(self.donors, inventory)
                 draw = self._draw(
-                    pool, asset_id, features, codes, row, drawn_features, kept_stories
+                    pool,
+                    asset_id,
+                    features,
+                    codes,
+                    row,
+                    drawn_features,
+                    kept_stories,
                 )
                 entry.update(
                     outcome=draw.outcome,

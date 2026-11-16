@@ -126,7 +126,9 @@ def test_a_subclass_must_implement_validate() -> None:
 # ---------------------------------------------------------------------
 
 
-def test_accepts_a_conformant_inventory(build_inventory: Callable[..., AssetInventory], validator: SchemaValidator) -> None:
+def test_accepts_a_conformant_inventory(
+    build_inventory: Callable[..., AssetInventory], validator: SchemaValidator
+) -> None:
     """An inventory that satisfies the schema yields an empty report."""
     inventory = build_inventory(
         {
@@ -150,7 +152,9 @@ def test_accepts_a_conformant_inventory(build_inventory: Callable[..., AssetInve
     assert report.n_assets == 2
 
 
-def test_reports_a_missing_height_class(build_inventory: Callable[..., AssetInventory], validator: SchemaValidator) -> None:
+def test_reports_a_missing_height_class(
+    build_inventory: Callable[..., AssetInventory], validator: SchemaValidator
+) -> None:
     """C1 requires a height class, so omitting it is a violation."""
     inventory = build_inventory(
         {'A1': {'StructureType': 'C1', 'DesignLevel': 'Low-Code'}}
@@ -162,7 +166,9 @@ def test_reports_a_missing_height_class(build_inventory: Callable[..., AssetInve
     assert 'HeightClass' in ' '.join(report.by_asset()['A1'])
 
 
-def test_reports_an_invalid_enum_value(build_inventory: Callable[..., AssetInventory], validator: SchemaValidator) -> None:
+def test_reports_an_invalid_enum_value(
+    build_inventory: Callable[..., AssetInventory], validator: SchemaValidator
+) -> None:
     """A value outside the schema's enumeration is a violation."""
     inventory = build_inventory(
         {'A1': {'StructureType': 'NotAType', 'DesignLevel': 'Low-Code'}}
@@ -173,7 +179,9 @@ def test_reports_an_invalid_enum_value(build_inventory: Callable[..., AssetInven
     assert 'StructureType' in ' '.join(report.by_asset()['A1'])
 
 
-def test_reports_a_conditional_violation(build_inventory: Callable[..., AssetInventory], validator: SchemaValidator) -> None:
+def test_reports_a_conditional_violation(
+    build_inventory: Callable[..., AssetInventory], validator: SchemaValidator
+) -> None:
     """URM caps the design level and the height class."""
     inventory = build_inventory(
         {
@@ -214,7 +222,9 @@ def test_raw_nsi_attributes_are_mass_nonconformant(
         assert 'StructureType' in ' '.join(messages)
 
 
-def test_does_not_modify_the_inventory(build_inventory: Callable[..., AssetInventory], validator: SchemaValidator) -> None:
+def test_does_not_modify_the_inventory(
+    build_inventory: Callable[..., AssetInventory], validator: SchemaValidator
+) -> None:
     """Validation is read-only."""
     inventory = build_inventory(
         {'A1': {'StructureType': 'URM', 'DesignLevel': 'High-Code'}}
@@ -237,7 +247,9 @@ def test_rejects_a_non_inventory(validator: SchemaValidator) -> None:
 # ---------------------------------------------------------------------
 
 
-def test_validates_every_world(build_inventory: Callable[..., AssetInventory], validator: SchemaValidator) -> None:
+def test_validates_every_world(
+    build_inventory: Callable[..., AssetInventory], validator: SchemaValidator
+) -> None:
     """A violation in one world alone is reported against that world."""
     inventory = build_inventory(
         {
@@ -277,7 +289,9 @@ def test_reports_a_violation_present_in_every_world(
     assert len(report.by_asset()['A1']) == len(report.by_world()[0]['A1'])
 
 
-def test_rejects_ragged_realizations(build_inventory: Callable[..., AssetInventory], validator: SchemaValidator) -> None:
+def test_rejects_ragged_realizations(
+    build_inventory: Callable[..., AssetInventory], validator: SchemaValidator
+) -> None:
     """Features must agree with the inventory's number of worlds."""
     inventory = build_inventory(
         {'A1': {'StructureType': ['W1', 'URM', 'C1']}}, n_pw=2
@@ -287,7 +301,9 @@ def test_rejects_ragged_realizations(build_inventory: Callable[..., AssetInvento
         validator.validate(inventory)
 
 
-def test_returns_a_validation_report(build_inventory: Callable[..., AssetInventory], validator: SchemaValidator) -> None:
+def test_returns_a_validation_report(
+    build_inventory: Callable[..., AssetInventory], validator: SchemaValidator
+) -> None:
     """The documented return type is what comes back."""
     report = validator.validate(build_inventory({}))
 

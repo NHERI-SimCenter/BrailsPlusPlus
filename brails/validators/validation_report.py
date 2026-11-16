@@ -159,9 +159,7 @@ class ValidationReport:
         for asset_id, worlds in self._violations.items():
             seen: list[str] = []
             for messages in worlds.values():
-                seen.extend(
-                    message for message in messages if message not in seen
-                )
+                seen.extend(message for message in messages if message not in seen)
             collapsed[asset_id] = seen
 
         return collapsed

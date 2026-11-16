@@ -257,9 +257,7 @@ class TestDistance:
                 {'OccupancyClass': 'RES1', 'NumberOfStories': 1},
             )
         }
-        result = imputer().impute_stage(
-            inventory(targets), inventory(records)
-        )
+        result = imputer().impute_stage(inventory(targets), inventory(records))
         row = result.log.iloc[0]
         lon1, lat1, area1 = AssetInventory.centroid_and_plan_area(target_coords)
         lon2, lat2, area2 = AssetInventory.centroid_and_plan_area(donor_coords)
@@ -301,9 +299,7 @@ class TestDistance:
             for n in (1, 3, 6)
         }
         targets = {'t': asset(0.0, 0.0, OccupancyClass='RES1', NumberOfStories=4)}
-        result = imputer(k=1).impute_stage(
-            inventory(targets), inventory(records)
-        )
+        result = imputer(k=1).impute_stage(inventory(targets), inventory(records))
         assert result.log.iloc[0]['donor_id'] == 's3'
 
 
@@ -927,7 +923,8 @@ class TestRepairs:
         _, _, features = self.setup_draw()
         imp = imputer(k=1)
         pool = imp.pool(
-            inventory(labeled_donors()), inventory({'t': asset(0.0, 0.0, **features)})
+            inventory(labeled_donors()),
+            inventory({'t': asset(0.0, 0.0, **features)}),
         )
         draw = imp.draw(
             pool,
@@ -1445,7 +1442,10 @@ class TestFallbackRounds:
             inventory(targets), inventory(records), validate=implausible
         )
         repair = result.log[result.log['round'] == ROUND_REPAIR].iloc[0]
-        assert (repair['donor_id'], repair['outcome']) == ('far', OUTCOME_BLOCK_GROUP)
+        assert (repair['donor_id'], repair['outcome']) == (
+            'far',
+            OUTCOME_BLOCK_GROUP,
+        )
         assert repair['distance_m'] > 2000.0
         assert result.imputed.get_asset_features('t')[1] == {'NumberOfStories': 1}
 

@@ -91,9 +91,7 @@ def test_draws_survive_subsetting() -> None:
     full = keyed_uniforms(
         asset_key_digest(['a', 'b', 'c']), seed=5, purpose='year_built'
     )
-    alone = keyed_uniforms(
-        asset_key_digest(['b']), seed=5, purpose='year_built'
-    )
+    alone = keyed_uniforms(asset_key_digest(['b']), seed=5, purpose='year_built')
     assert alone[0] == full[1]
 
 
@@ -320,9 +318,7 @@ def test_frequencies_follow_the_weights() -> None:
 def test_group_codes_must_have_weight_vectors() -> None:
     """A code with no distribution behind it is refused."""
     with pytest.raises(ValueError, match='Group codes must index'):
-        grouped_categorical(
-            np.array([0.5]), weights=[[1.0]], groups=np.array([1])
-        )
+        grouped_categorical(np.array([0.5]), weights=[[1.0]], groups=np.array([1]))
 
 
 def test_uniforms_and_codes_must_line_up() -> None:
@@ -336,9 +332,7 @@ def test_uniforms_and_codes_must_line_up() -> None:
 def test_an_empty_weight_vector_is_refused() -> None:
     """Empty weights cannot be used to draw from."""
     with pytest.raises(ValueError, match='is empty'):
-        grouped_categorical(
-            np.array([0.5]), weights=[[]], groups=np.array([0])
-        )
+        grouped_categorical(np.array([0.5]), weights=[[]], groups=np.array([0]))
 
 
 def test_a_vector_of_zeros_is_refused() -> None:
@@ -382,8 +376,7 @@ def test_each_asset_is_compared_against_its_own_row() -> None:
     """
     group_count = 50
     weights = [
-        [100.0, 0.0] if code % 2 else [0.0, 100.0]
-        for code in range(group_count)
+        [100.0, 0.0] if code % 2 else [0.0, 100.0] for code in range(group_count)
     ]
     positions = grouped_categorical(
         np.full(group_count, 0.5),

@@ -597,9 +597,7 @@ class ACSYearBuiltSampler(InferenceEngine):
                 return counts / total, origin, negatives
         return None, None, negatives
 
-    def _conditional(
-        self, tract: str
-    ) -> tuple[np.ndarray | None, str | None, int]:
+    def _conditional(self, tract: str) -> tuple[np.ndarray | None, str | None, int]:
         """
         Build a tract's smoothed B25127 conditional.
 
@@ -684,8 +682,7 @@ class ACSYearBuiltSampler(InferenceEngine):
             )
             if diagnosis == DIAGNOSIS_UNSUPPORTED:
                 raise ValueError(
-                    f'Asset {asset_id}: {detail}. fit takes one world at a '
-                    'time.'
+                    f'Asset {asset_id}: {detail}. fit takes one world at a time.'
                 )
             if diagnosis != DIAGNOSIS_OK:
                 continue
@@ -885,9 +882,7 @@ class ACSYearBuiltSampler(InferenceEngine):
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
             _, features = input_inventory.get_asset_features(asset_id)
-            rows[asset_id] = self._resolve(
-                features, input_inventory.vector_features
-            )
+            rows[asset_id] = self._resolve(features, input_inventory.vector_features)
         return diagnosis_frame(rows)
 
     def _resolve(
@@ -962,8 +957,7 @@ class ACSYearBuiltSampler(InferenceEngine):
         occupancy = features.get(self.occupancy_key)
         if not isinstance(occupancy, str):
             return (
-                f'{self.occupancy_key} is absent or not a string: '
-                f'{occupancy!r}',
+                f'{self.occupancy_key} is absent or not a string: {occupancy!r}',
                 None,
             )
         if occupancy not in RESIDENTIAL_CLASSES:
@@ -1001,9 +995,7 @@ class ACSYearBuiltSampler(InferenceEngine):
             )
         if not fitted or block_group in self._vectors:
             return None, None
-        reason = self._unfitted.get(block_group) or self._missing_table(
-            block_group
-        )
+        reason = self._unfitted.get(block_group) or self._missing_table(block_group)
         if reason is None:
             reason = f'block group {block_group} had no asset in the fit'
         return (

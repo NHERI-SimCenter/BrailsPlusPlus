@@ -259,9 +259,7 @@ def test_the_printed_implausible_agr1_row_is_never_a_source() -> None:
     """
     excluded = ('AGR1', 'mid_rise', 'pre_1950')
     assert PRINTED['AGR1']['mid_rise']['pre_1950']
-    inputs = hazus_table_completion._fallback_inputs(
-        'mid_rise', 'pre_1950', PRINTED
-    )
+    inputs = hazus_table_completion._fallback_inputs('mid_rise', 'pre_1950', PRINTED)
     assert 'AGR1' not in inputs
     assert 'COM1' in inputs
     for fill in ROUTES.values():
@@ -297,9 +295,7 @@ def test_no_empty_cell_has_two_printed_era_neighbors() -> None:
             for index in (position - 1, position + 1)
             if 0 <= index < len(ERAS)
         ]
-        printed = [
-            other for other in neighbors if PRINTED[occupancy][band][other]
-        ]
+        printed = [other for other in neighbors if PRINTED[occupancy][band][other]]
         assert len(printed) < 2
 
 

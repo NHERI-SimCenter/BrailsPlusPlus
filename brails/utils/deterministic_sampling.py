@@ -147,9 +147,7 @@ def _digest(text: str) -> np.uint64:
         np.uint64:
             The first eight bytes of its BLAKE2b digest.
     """
-    raw = hashlib.blake2b(
-        text.encode('utf-8'), digest_size=_DIGEST_BYTES
-    ).digest()
+    raw = hashlib.blake2b(text.encode('utf-8'), digest_size=_DIGEST_BYTES).digest()
     return np.uint64(int.from_bytes(raw, 'little'))
 
 
@@ -258,9 +256,7 @@ def truncated_normal(
     lower_bound = np.asarray(lower, dtype=np.float64)
     upper_bound = np.asarray(upper, dtype=np.float64)
     if np.any(upper_bound <= lower_bound):
-        raise ValueError(
-            'Every upper bound must sit above its lower bound.'
-        )
+        raise ValueError('Every upper bound must sit above its lower bound.')
     center = np.asarray(mean, dtype=np.float64)
     lower_cdf = ndtr((lower_bound - center) / sigma)
     upper_cdf = ndtr((upper_bound - center) / sigma)
@@ -270,12 +266,8 @@ def truncated_normal(
             'its bounds sit too far into the tail of the distribution.'
         )
     probability = lower_cdf + uniforms * (upper_cdf - lower_cdf)
-    probability = np.clip(
-        probability, _PROBABILITY_FLOOR, _PROBABILITY_CEILING
-    )
-    return np.clip(
-        center + sigma * ndtri(probability), lower_bound, upper_bound
-    )
+    probability = np.clip(probability, _PROBABILITY_FLOOR, _PROBABILITY_CEILING)
+    return np.clip(center + sigma * ndtri(probability), lower_bound, upper_bound)
 
 
 def grouped_categorical(
@@ -340,8 +332,10 @@ def grouped_categorical(
     for code, cumulative in enumerate(cumulative_rows):
         grid[code, : cumulative.size] = cumulative
     return (
-        grid[group_codes] <= uniform_values[:, np.newaxis]
-    ).sum(axis=1).astype(np.int64)
+        (grid[group_codes] <= uniform_values[:, np.newaxis])
+        .sum(axis=1)
+        .astype(np.int64)
+    )
 
 
 def _cumulative_weights(row: Sequence[float], code: int) -> np.ndarray:
@@ -377,8 +371,7 @@ def _cumulative_weights(row: Sequence[float], code: int) -> np.ndarray:
     total = values.sum()
     if total <= 0:
         raise ValueError(
-            f'Weight vector {code} sums to {total}, so no category can be '
-            'drawn.'
+            f'Weight vector {code} sums to {total}, so no category can be drawn.'
         )
     cumulative = np.cumsum(values) / total
     # Every entry from the last category of positive weight onward is

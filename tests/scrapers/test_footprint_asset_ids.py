@@ -163,7 +163,9 @@ def test_explicit_floor_applies_under_the_default_scheme() -> None:
     inventory = scraper.get_footprints()
 
     assert inventory.get_asset_ids() == list(range(12))
-    reasons = {entry['position']: entry['reason'] for entry in scraper.asset_id_skipped}
+    reasons = {
+        entry['position']: entry['reason'] for entry in scraper.asset_id_skipped
+    }
     assert reasons == {
         SHED_POSITION: 'below_min_area',
         GARAGE_POSITION: 'below_min_area',
@@ -220,7 +222,10 @@ def test_zero_floor_still_drops_footprints_without_area() -> None:
     assert keys[str(SHED)] == f'{cell}-16'
     assert str(FLAT) not in keys
     assert [entry['reason'] for entry in scraper.asset_id_skipped] == ['zero_area']
-    assert [entry['position'] for entry in scraper.asset_id_log] == [3, SHED_POSITION]
+    assert [entry['position'] for entry in scraper.asset_id_log] == [
+        3,
+        SHED_POSITION,
+    ]
 
 
 def test_floor_is_in_the_scrapers_plan_area_unit() -> None:
@@ -270,10 +275,12 @@ def test_the_tiebreak_does_not_depend_on_the_length_unit() -> None:
             {'id_scheme': 'geohash', 'length': unit}, [square, square]
         )
         inventory = scraper.get_footprints()
-        ranks.append({
-            asset.features['osm_id']: key.rsplit('-', 1)[1]
-            for key, asset in inventory.inventory.items()
-        })
+        ranks.append(
+            {
+                asset.features['osm_id']: key.rsplit('-', 1)[1]
+                for key, asset in inventory.inventory.items()
+            }
+        )
     assert ranks == [{1000: '1', 1001: '2'}] * 2
 
     in_feet = {'type': 'building', 'buildingheight': 32.8, 'footprintArea': 1076}
@@ -328,7 +335,8 @@ def test_usa_scraper_records_its_ids(mocker: MockerFixture) -> None:
     )
     assert features == [(500 + index, f'{{uuid-{index}}}') for index in range(4)]
     assert {
-        asset.features['footprint_provider'] for asset in inventory.inventory.values()
+        asset.features['footprint_provider']
+        for asset in inventory.inventory.values()
     } == {'usa_structures'}
     assert [entry['provider_id'] for entry in scraper.asset_id_skipped] == [504]
 
@@ -343,12 +351,14 @@ def test_osm_scraper_records_its_ids(mocker: MockerFixture) -> None:
             elements.append({'type': 'node', 'id': node_id, 'lon': lon, 'lat': lat})
             nodes.append(node_id)
             node_id += 1
-        elements.append({
-            'type': 'way',
-            'id': 9000 + way_index,
-            'nodes': [*nodes, nodes[0]],
-            'tags': {'building': 'yes'},
-        })
+        elements.append(
+            {
+                'type': 'way',
+                'id': 9000 + way_index,
+                'nodes': [*nodes, nodes[0]],
+                'tags': {'building': 'yes'},
+            }
+        )
     mocker.patch.object(
         osm_footprint_scraper,
         'safe_overpass_json',
@@ -385,20 +395,23 @@ def test_microsoft_scraper_records_its_provider(mocker: MockerFixture) -> None:
         assign_asset_ids([house]).ids[0] for house in HOUSES[:3]
     )
     assert {
-        asset.features['footprint_provider'] for asset in inventory.inventory.values()
+        asset.features['footprint_provider']
+        for asset in inventory.inventory.values()
     } == {'microsoft'}
 
 
 def overture_frame(footprints: list[list[list[float]]]) -> pd.DataFrame:
     """Return Overture rows as the dataset read gives them."""
-    return pd.DataFrame({
-        'id': [f'ov-{index}' for index in range(len(footprints))],
-        'geometry': [Polygon(footprint).wkb for footprint in footprints],
-        'sources': [None] * len(footprints),
-        'names': [None] * len(footprints),
-        'bbox': [None] * len(footprints),
-        'height': [4.0] * len(footprints),
-    })
+    return pd.DataFrame(
+        {
+            'id': [f'ov-{index}' for index in range(len(footprints))],
+            'geometry': [Polygon(footprint).wkb for footprint in footprints],
+            'sources': [None] * len(footprints),
+            'names': [None] * len(footprints),
+            'bbox': [None] * len(footprints),
+            'height': [4.0] * len(footprints),
+        }
+    )
 
 
 def mock_overture(
@@ -417,7 +430,9 @@ def mock_overture(
             return pa.Table.from_pandas(overture_frame(footprints))
         return pa.Table.from_pandas(overture_frame(list(parts)))
 
-    mocker.patch.object(OvertureMapsFootprintScraper, '_read_table', side_effect=read)
+    mocker.patch.object(
+        OvertureMapsFootprintScraper, '_read_table', side_effect=read
+    )
     return OvertureMapsFootprintScraper
 
 
@@ -439,9 +454,9 @@ def test_overture_default_scheme_keeps_positional_keys(
     inventory = scraper.get_footprints(region)
 
     assert inventory.get_asset_ids() == list(range(6))
-    assert [inventory.inventory[key].features['overture_id'] for key in range(6)] == [
-        f'ov-{index}' for index in range(6)
-    ]
+    assert [
+        inventory.inventory[key].features['overture_id'] for key in range(6)
+    ] == [f'ov-{index}' for index in range(6)]
     assert inventory.inventory[0].features['footprint_provider'] == 'overture'
     assert len(scraper.footprints) == len(scraper.centroids) == 6
 
@@ -517,7 +532,9 @@ def test_a_subclass_that_skips_the_base_init_keeps_positional_keys() -> None:
         def __init__(self) -> None:
             self.length_unit = 'ft'
 
-        def get_footprints(self, region: RegionBoundary | None = None) -> AssetInventory:
+        def get_footprints(
+            self, region: RegionBoundary | None = None
+        ) -> AssetInventory:
             del region
             return self._create_asset_inventory(
                 list(FIXTURE), {'buildingheight': [1.0] * len(FIXTURE)}, 'ft'

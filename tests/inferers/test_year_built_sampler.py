@@ -228,9 +228,7 @@ def test_years_are_python_integers(
 ) -> None:
     """A written year is a Python integer."""
     inventory = build_inventory({'a': {'YearBuiltTractMedian': 1962}})
-    _, features = (
-        YearBuiltSampler(sigma=15).infer(inventory).get_asset_features('a')
-    )
+    _, features = YearBuiltSampler(sigma=15).infer(inventory).get_asset_features('a')
     assert type(features['YearBuilt']) is int
 
 
@@ -357,12 +355,8 @@ def _cell_probabilities(
         np.ndarray:
             One probability per year, normalized over the interval.
     """
-    edge = ndtr((years + 0.5 - mean) / sigma) - ndtr(
-        (years - 0.5 - mean) / sigma
-    )
-    total = ndtr((upper + 0.5 - mean) / sigma) - ndtr(
-        (lower - 0.5 - mean) / sigma
-    )
+    edge = ndtr((years + 0.5 - mean) / sigma) - ndtr((years - 0.5 - mean) / sigma)
+    total = ndtr((upper + 0.5 - mean) / sigma) - ndtr((lower - 0.5 - mean) / sigma)
     return edge / total
 
 
@@ -390,9 +384,7 @@ def test_the_sampled_years_match_the_exact_cell_probabilities() -> None:
     )
     years = np.arange(1930, 1996)
     expected = _cell_probabilities(years, mean, sigma, 1800.0, 2026.0)
-    observed = (
-        drawn.value_counts().reindex(years, fill_value=0).to_numpy() / count
-    )
+    observed = drawn.value_counts().reindex(years, fill_value=0).to_numpy() / count
     standard_error = np.sqrt(expected * (1.0 - expected) / count)
     tolerance = 4.0 * standard_error
     assert np.all(np.abs(observed - expected) <= tolerance)
@@ -485,9 +477,7 @@ def test_bounds_missing_an_asset_are_refused() -> None:
     """Silently defaulting the gap would hide the caller's mistake."""
     medians = pd.Series({'a': 1962, 'b': 1962})
     with pytest.raises(ValueError, match='lower carries no bound'):
-        sample_years(
-            medians, sigma=15.0, seed=7, lower=pd.Series({'a': 1900})
-        )
+        sample_years(medians, sigma=15.0, seed=7, lower=pd.Series({'a': 1900}))
 
 
 def test_sample_years_refuses_a_median_outside_the_bounds() -> None:
