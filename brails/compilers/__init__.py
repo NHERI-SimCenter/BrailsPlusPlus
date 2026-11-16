@@ -33,4 +33,6 @@
 
 """Compilers build an inventory out of the sources a method needs."""
 
-__all__ = []
+from .pair_redraw import PairRedraw
+
+__all__ = ['PairRedraw']

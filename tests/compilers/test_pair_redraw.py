@@ -1106,7 +1106,8 @@ def test_merge_codes_the_redrawn_values_as_imputed(
     )
 
 
-def test_discovered_and_not_exported() -> None:
-    """The Importer finds the class, which the package does not export."""
+def test_discovered_and_exported() -> None:
+    """The Importer finds the class, and the package exports it."""
     assert Importer().get_class('PairRedraw') is PairRedraw
-    assert 'PairRedraw' not in brails.compilers.__all__
+    assert 'PairRedraw' in brails.compilers.__all__
+    assert brails.compilers.PairRedraw is PairRedraw
