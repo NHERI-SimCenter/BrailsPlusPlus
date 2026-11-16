@@ -274,7 +274,7 @@ def test_the_largest_uniform_stays_inside_its_own_categories() -> None:
 def test_a_row_that_cannot_sum_to_one_still_draws_inside_itself() -> None:
     """Ten tenths normalize to just under one, and the top cell absorbs it."""
     row = [0.1] * 10
-    assert np.cumsum(row)[-1] / sum(row) < 1.0
+    assert np.cumsum(row)[-1] / np.sum(row) < 1.0
     positions = grouped_categorical(
         np.array([np.nextafter(1.0, 0.0)]),
         weights=[row],
@@ -292,7 +292,7 @@ def test_a_trailing_zero_weight_category_is_never_drawn() -> None:
     zero-weight categories after it.
     """
     row = [0.1] * 10 + [0.0, 0.0]
-    assert np.cumsum(row)[9] / sum(row) < 1.0
+    assert np.cumsum(row)[9] / np.sum(row) < 1.0
     positions = grouped_categorical(
         np.array([np.nextafter(1.0, 0.0)]),
         weights=[row],
