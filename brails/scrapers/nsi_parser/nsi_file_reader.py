@@ -33,8 +33,7 @@
 
 
 """
-Build assets from raw NSI records, store the records as parquet tables and read
-them back as asset inventories.
+Read and write raw NSI records as parquet tables and build assets from them.
 
 .. autosummary::
 
