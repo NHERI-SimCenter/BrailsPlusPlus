@@ -35,10 +35,11 @@
 
 from .compilation_report import CompilationReport
 from .pair_redraw import PairRedraw
-from .resolution_loop import ComposedScreen
+from .resolution_loop import ComposedScreen, ResolutionLoop
 
 __all__ = [
     'CompilationReport',
     'ComposedScreen',
     'PairRedraw',
+    'ResolutionLoop',
 ]

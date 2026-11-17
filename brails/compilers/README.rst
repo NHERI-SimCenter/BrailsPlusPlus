@@ -330,15 +330,60 @@ named once.
 The exclusion category
 ~~~~~~~~~~~~~~~~~~~~~~
 
-A refused asset that the caller excludes is filed under one of the
-categories of ``EXCLUSION_CATEGORIES`` in ``compilation_report.py``, whose
-comment defines each. An unsupported refusal is ``unsupported`` and an
-invalid one ``missing_driver``. An infeasible refusal is ``conflict`` where
-the caller acted on a feature the refusal named and the asset was refused
-again. Otherwise an infeasible refusal at the structure type stage is
-``empty_cell`` where the asset's cell has neither a printed nor a filled
-row, which the structure type inferer's ``cell_fill`` and
+A refused asset that the caller excludes is filed under one of the categories
+of ``EXCLUSION_CATEGORIES`` in ``compilation_report.py``, whose comment defines
+each. An unsupported refusal is ``unsupported`` and an invalid one
+``missing_driver``. An infeasible refusal is ``conflict`` where the caller
+acted on a feature the refusal named and the asset was refused again. The
+resolution loop below is such a caller, and with the structure type inferer in
+BRAILS it does not reach this case. Otherwise an infeasible refusal at the
+structure type stage is ``empty_cell`` where the asset's cell has neither a
+printed nor a filled row, which the structure type inferer's ``cell_fill`` and
 ``cell_is_unpublished`` tell, and ``conflict`` where it has one, since the
-asset's own features then emptied the row. An infeasible refusal at the
-design level stage, which the design level inferer does not give, is
-``undetermined``.
+asset's own features then emptied the row. An infeasible refusal at the design
+level stage, which the design level inferer does not give, is ``undetermined``.
+
+Resolution loop
+---------------
+
+``ResolutionLoop`` admits each asset of one world's merged inventory to the
+structure type draw, or excludes it from that world, and its one action is
+to withhold the general building type, ``BuildingType``, that NSI holds.
+The source it acts on and the stage it records under are
+``WITHHELD_SOURCE`` and ``STAGE_RESOLUTION``, constants in
+``resolution_loop.py``. This section states how the loop runs and what it
+records.
+
+The procedure
+~~~~~~~~~~~~~
+
+``resolve`` first checks ``building_type_sources`` for every asset, then
+screens the inventory once, through ``screen_inventory``. An asset the
+screen passes is admitted as it is, and an unsupported asset is excluded
+without action. Where another refusal names ``BuildingType`` among its
+candidates and ``WITHHELD_SOURCE`` holds the type, the report records the
+type with the action ``withheld``, and the asset is screened again without
+it. An asset that then passes is admitted without the type. A type held by
+any other source is never withheld, nor is one the refusal does not name.
+
+A refused asset the loop did not act on is excluded at the stage that
+refused it, in the category of the section "The exclusion category". An
+asset still refused once its type is withheld, the case of the section
+"Scope" below, has the type recorded again with the action ``restored``,
+and its exclusion is recorded at ``STAGE_RESOLUTION``, as ``conflict``
+where the refusal was infeasible, with a detail holding both refusals.
+Every exclusion keeps the world and the first refusal's diagnosis and
+candidates, and every ``withheld`` and ``restored`` record the world, the
+source and the asset's block group, read from ``block_group_key``
+(``BLOCK_GROUP_KEY`` by default).
+
+Scope
+~~~~~
+
+The structure type inferer in BRAILS names ``BuildingType`` exactly when the
+asset passes without it, so with that inferer a withheld type always admits
+the asset and the ``restored`` path is not reached. The path serves a
+structure type inferer for which the building type is a required driver,
+which BRAILS does not hold. A building type the inferer cannot read refuses
+the asset as invalid and names no feature, so it is not withheld, and the
+asset is filed as ``missing_driver``.

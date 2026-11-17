@@ -59,6 +59,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **Overture sources parser** (`brails/inferers/stories_from_height_inferer/stories_from_height_inferer.py`): `parse_sources` is public, for code that reads a footprint's `sources` as the stories inferer does.
 - **Compilation report** (`brails/compilers/compilation_report.py`, exported from `brails.compilers`): `CompilationReport` records, per world, what a Hazus earthquake compilation did to each asset and why an asset was excluded, with seconds per stage, and writes them with the component logs.
 - **`ComposedScreen`** (`brails/compilers/resolution_loop.py`, exported from `brails.compilers`), which screens an asset against the Hazus earthquake design level and structure type inferers.
+- **`ResolutionLoop`** (`brails/compilers/resolution_loop.py`, exported from `brails.compilers`), which withholds an NSI building type that a refusal of the screen names and screens the asset again.
 
 ### Changed
 - **Python 3.9 is no longer supported.** BRAILS++ requires Python 3.10, 3.11 or 3.12, the versions the tests run on.

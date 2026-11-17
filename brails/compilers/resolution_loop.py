@@ -33,11 +33,13 @@
 
 
 """
-Screen assets against the Hazus earthquake inference chain.
+Screen assets for the Hazus earthquake chain, withholding NSI types to admit them.
 
 .. autosummary::
 
       ComposedScreen
+      ResolutionLoop
+      ResolutionResult
       ScreenVerdict
 """
 
@@ -45,18 +47,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple
 
+from brails.constants import BLOCK_GROUP_KEY
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INVALID,
     DIAGNOSIS_OK,
     DIAGNOSIS_UNSUPPORTED,
 )
-from brails.types.asset_inventory import Asset, AssetInventory
+from brails.types.asset_inventory import (
+    SOURCE_CODES,
+    Asset,
+    AssetInventory,
+    is_missing_value,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     import pandas as pd
 
+    from brails.compilers.compilation_report import CompilationReport
     from brails.inferers.hazus_inferer_earthquake.hazus_eq_design_level_inferer import (
         HazusEQDesignLevelInferer,
     )
@@ -77,6 +86,12 @@ SCREEN_ASSET_ID = 'screened_asset'
 # The coordinate every asset the screen builds carries. An asset requires
 # a valid coordinate and no stage of the screen reads one.
 SCREEN_COORDINATES = ((0.0, 0.0),)
+
+# The stage of the compilation report the loop records under.
+STAGE_RESOLUTION = 'resolution'
+
+# The source whose general building type the loop withholds.
+WITHHELD_SOURCE = 'nsi'
 
 
 class ScreenVerdict(NamedTuple):
@@ -103,6 +118,38 @@ class ScreenVerdict(NamedTuple):
     detail: str = ''
     stage: str = ''
     candidates: tuple[str, ...] = ()
+
+
+class ResolutionResult(NamedTuple):
+    """
+    The assets a resolution run admitted, and the ones it excluded.
+
+    Attributes:
+        resolved (AssetInventory):
+            The admitted assets, with copies of the features they pass the
+            screen with, whose values are shared with the input inventory.
+            A withheld building type is absent. Where the input carries the design level, the
+            structure type draw reads this inventory as it is.
+        excluded (list):
+            The ids of the excluded assets, in the order of the input's
+            ids.
+        given_up (dict):
+            Asset id to the features withheld from its screen, for the
+            admitted assets that gave up any.
+        passed_first_screen (int):
+            Assets admitted with nothing withheld.
+        resolved_by_withholding (int):
+            Assets admitted once their building type was withheld.
+        excluded_count (int):
+            The length of ``excluded``.
+    """
+
+    resolved: AssetInventory
+    excluded: list
+    given_up: dict
+    passed_first_screen: int
+    resolved_by_withholding: int
+    excluded_count: int
 
 
 def _one_asset_inventory(
@@ -353,4 +400,182 @@ class ComposedScreen:
         )
         return ScreenVerdict(
             row['diagnosis'], row['detail'], stage, tuple(candidates)
+        )
+
+
+class ResolutionLoop:
+    """
+    Withhold the NSI building type of a refused asset and screen it again.
+
+    The loop screens one world's merged inventory through
+    :meth:`ComposedScreen.screen_inventory`. Where a refusal names the
+    building type and :data:`WITHHELD_SOURCE` holds it, the type is
+    withheld and the asset screened again, the loop's one action. An
+    unsupported asset is excluded without action. Every other refused
+    asset, and one still refused without its type, is excluded in the
+    world of the screen's structure type inferer. The loop
+    draws nothing and does not change the inventory it reads. The section
+    "Resolution loop" of the README beside this module states what is
+    recorded and how an exclusion is filed.
+    """
+
+    def __init__(
+        self,
+        screen: ComposedScreen,
+        *,
+        block_group_key: str = BLOCK_GROUP_KEY,
+    ) -> None:
+        """
+        Set up the loop with the screen it tests against.
+
+        The building type key and the world are those of the screen's
+        structure type inferer.
+
+        Args:
+            screen (ComposedScreen):
+                The screen every attempt is tested against.
+            block_group_key (str):
+                Feature name holding the asset's Census block group,
+                recorded against every action.
+        """
+        self.screen = screen
+        self.block_group_key = block_group_key
+
+    def resolve(
+        self,
+        inventory: AssetInventory,
+        report: CompilationReport,
+        *,
+        building_type_sources: Mapping[str | int, str],
+    ) -> ResolutionResult:
+        """
+        Admit every asset of one world's inventory, or exclude it.
+
+        ``building_type_sources`` is checked for every asset before the
+        first is screened, so an input the loop refuses leaves the report
+        as it was.
+
+        Args:
+            inventory (AssetInventory):
+                The world's merged inventory of scalar values. Read and not
+                written.
+            report (CompilationReport):
+                Where every action and exclusion is recorded.
+            building_type_sources (Mapping[str | int, str]):
+                Asset id to the label of the source holding the asset's
+                general building type, a key of
+                :data:`~brails.types.asset_inventory.SOURCE_CODES`, for
+                every asset that holds one and no other.
+
+        Returns:
+            ResolutionResult:
+                The admitted assets, the excluded ids, and how the assets
+                were admitted.
+
+        Raises:
+            ValueError:
+                If ``building_type_sources`` lacks an asset that holds a
+                building type, gives one for an asset that holds none, or
+                gives a label that is not a source.
+        """
+        key = self.screen.structure_type_inferer.building_type_key
+        world = self.screen.structure_type_inferer.world
+        for asset_id in inventory.get_asset_ids():
+            _, features = inventory.get_asset_features(asset_id)
+            type_source = building_type_sources.get(asset_id)
+            holds_type = not is_missing_value(features.get(key))
+            if (holds_type and type_source not in SOURCE_CODES) or (
+                not holds_type and type_source is not None
+            ):
+                msg = (
+                    f'building_type_sources gives asset {asset_id!r} '
+                    f'{type_source!r}. An asset that holds a {key} needs the '
+                    f'label of its source, one of {sorted(SOURCE_CODES)}, and '
+                    'an asset that holds none needs no entry.'
+                )
+                raise ValueError(msg)
+
+        vector_features = frozenset(inventory.vector_features)
+        resolved = AssetInventory(vector_features=list(inventory.vector_features))
+        excluded: list = []
+        given_up: dict = {}
+        for asset_id, verdict in self.screen.screen_inventory(inventory).items():
+            _, features = inventory.get_asset_features(asset_id)
+            admitted = dict(features) if verdict.diagnosis == DIAGNOSIS_OK else None
+            # An unsupported asset is excluded without action, whatever its
+            # refusal names.
+            acted_on = (
+                verdict.diagnosis not in (DIAGNOSIS_OK, DIAGNOSIS_UNSUPPORTED)
+                and key in verdict.candidates
+                and building_type_sources.get(asset_id) == WITHHELD_SOURCE
+            )
+            detail = verdict.detail
+            if acted_on:
+                report.record_action(
+                    asset_id,
+                    key,
+                    stage=STAGE_RESOLUTION,
+                    action='withheld',
+                    world=world,
+                    old=features[key],
+                    source=WITHHELD_SOURCE,
+                    reason=(
+                        'the screen named it as a feature whose removal would '
+                        'admit the asset'
+                    ),
+                    block_group=features.get(self.block_group_key),
+                )
+                kept = {
+                    feature: value
+                    for feature, value in features.items()
+                    if feature != key
+                }
+                retry = self.screen.screen(kept, vector_features=vector_features)
+                if retry.diagnosis == DIAGNOSIS_OK:
+                    admitted = kept
+                    given_up[asset_id] = (key,)
+                else:
+                    report.record_action(
+                        asset_id,
+                        key,
+                        stage=STAGE_RESOLUTION,
+                        action='restored',
+                        world=world,
+                        new=features[key],
+                        source=WITHHELD_SOURCE,
+                        reason='withholding it did not admit the asset',
+                        block_group=features.get(self.block_group_key),
+                    )
+                    detail = f'{verdict.detail}; without {key}: {retry.detail}'
+            if admitted is None:
+                excluded.append(asset_id)
+                report.record_exclusion(
+                    asset_id,
+                    world=world,
+                    # An asset the loop took no action on was excluded by
+                    # the stage that refused it.
+                    stage=STAGE_RESOLUTION if acted_on else verdict.stage,
+                    category=_category(
+                        self.screen,
+                        verdict,
+                        features,
+                        acted_on=acted_on,
+                        vector_features=vector_features,
+                    ),
+                    diagnosis=verdict.diagnosis,
+                    detail=detail,
+                    resolvable_by=verdict.candidates,
+                )
+                continue
+            _, coordinates = inventory.get_asset_coordinates(asset_id)
+            resolved.add_asset(asset_id, Asset(asset_id, coordinates, admitted))
+
+        admitted_count = len(resolved.get_asset_ids())
+        return ResolutionResult(
+            resolved=resolved,
+            excluded=excluded,
+            given_up=given_up,
+            passed_first_screen=admitted_count - len(given_up),
+            resolved_by_withholding=len(given_up),
+            excluded_count=len(excluded),
         )
