@@ -293,3 +293,52 @@ A ``PairRedraw`` serves one world: the inventory it reads holds one possible
 world, the donors are that world's observed donors, and its draws run in the
 world it is given. Each world of a study takes its own. The plan and the
 result do not depend on the order of the inventory's assets.
+
+Composed screen
+---------------
+
+``ComposedScreen`` asks the Hazus earthquake inference chain whether it can
+take an asset before a structure type is drawn for it. The chain has two
+stages: the design level inferer reads ``YearBuilt`` and writes
+``DesignLevel``, and the structure type inferer reads both, with the
+occupancy class, the story count and the building type. The stage names
+are ``STAGE_DESIGN_LEVEL`` and ``STAGE_STRUCTURE_TYPE``, constants in
+``resolution_loop.py`` beside this page. This section states how the screen
+runs and how the category of a refused asset is settled.
+
+The procedure
+~~~~~~~~~~~~~
+
+``screen_inventory`` passes the inventory to the design level inferer's
+``check``. An asset that stage refuses takes its refusal and goes no
+further. The other assets are copied, under their own ids and at
+``SCREEN_COORDINATES``, since neither stage reads a location, and where a
+copy holds a year and no design level, the design level inferer's ``draw``
+writes the level the year implies on the copy. The structure type
+inferer's ``check`` then runs over the copies, and an asset it refuses
+takes that refusal. Each stage's ``check`` runs once per call. ``screen``
+runs the same procedure on a one-asset inventory, under
+``SCREEN_ASSET_ID``.
+
+A refusal names the features whose change alone would let its stage produce
+a value, the ``resolvable_by`` of the stage's diagnosis, and the screen
+returns them as the verdict's ``candidates``, in the order the stage named
+them. Neither inferer of the chain names the design level. A stage that did
+would have it returned as the year, from which the level is derived, and
+named once.
+
+The exclusion category
+~~~~~~~~~~~~~~~~~~~~~~
+
+A refused asset that the caller excludes is filed under one of the
+categories of ``EXCLUSION_CATEGORIES`` in ``compilation_report.py``, whose
+comment defines each. An unsupported refusal is ``unsupported`` and an
+invalid one ``missing_driver``. An infeasible refusal is ``conflict`` where
+the caller acted on a feature the refusal named and the asset was refused
+again. Otherwise an infeasible refusal at the structure type stage is
+``empty_cell`` where the asset's cell has neither a printed nor a filled
+row, which the structure type inferer's ``cell_fill`` and
+``cell_is_unpublished`` tell, and ``conflict`` where it has one, since the
+asset's own features then emptied the row. An infeasible refusal at the
+design level stage, which the design level inferer does not give, is
+``undetermined``.
