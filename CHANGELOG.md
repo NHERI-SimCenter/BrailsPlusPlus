@@ -61,6 +61,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **`ComposedScreen`** (`brails/compilers/resolution_loop.py`, exported from `brails.compilers`), which screens an asset against the Hazus earthquake design level and structure type inferers.
 - **`ResolutionLoop`** (`brails/compilers/resolution_loop.py`, exported from `brails.compilers`), which withholds an NSI building type that a refusal of the screen names and screens the asset again.
 - **Composition and assembly of realizations** (`brails/compilers/world_assembly.py`): `compose_source` builds one world's source from frozen stages, and `WorldAssembler`, exported from `brails.compilers`, assembles one-world inventories, with a list only for a feature that differs between worlds.
+- **Hazus earthquake inventory compiler** (`brails/compilers/hazus_eq_inventory_compiler.py`; `HazusEQInventoryCompiler` and `CompilerInputs` exported from `brails.compilers`): `HazusEQInventoryCompiler` joins NSI points to footprints over several possible worlds and records the run in a report, the manifest of its frozen stages and the logs of its components.
 
 ### Changed
 - **Python 3.9 is no longer supported.** BRAILS++ requires Python 3.10, 3.11 or 3.12, the versions the tests run on.

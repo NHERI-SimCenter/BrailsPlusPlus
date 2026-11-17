@@ -78,6 +78,20 @@ PROVIDER_FEATURES: Tuple[str, ...] = (
     FOOTPRINT_PROVIDER_KEY,
 )
 
+# A footprint's release and the datasets of its sources. A footprint of any
+# provider may carry them; only HazusEQInventoryCompiler writes them, for an
+# Overture footprint.
+FOOTPRINT_RELEASE_KEY = 'footprint_release'
+FOOTPRINT_DATASETS_KEY = 'footprint_datasets'
+
+# The features that state where a footprint came from. Unlike
+# PROVIDER_FEATURES, they hold no provider id.
+FOOTPRINT_PROVENANCE_FEATURES: Tuple[str, ...] = (
+    FOOTPRINT_PROVIDER_KEY,
+    FOOTPRINT_RELEASE_KEY,
+    FOOTPRINT_DATASETS_KEY,
+)
+
 # The features the census tract scraper writes, holding an asset's Census
 # tract and block group.
 TRACT_KEY = 'TRACT_GEOID'
@@ -106,6 +120,10 @@ REPLACEMENT_COST_KEY = 'ReplacementCost'
 DESIGN_LEVEL_KEY = 'DesignLevel'
 STRUCTURE_TYPE_KEY = 'StructureType'
 HEIGHT_CLASS_KEY = 'HeightClass'
+
+# Feature HazusEQInventoryCompiler writes to mark, per world, a building
+# excluded from that world.
+EXCLUDED_KEY = 'Excluded'
 
 # SimCenter source string that captures data provenance
 SOURCE_STRING_KEY = 'SourceString'

@@ -440,3 +440,64 @@ list cannot take another value later, since the result could not tell its
 list of positions from one vector value. The rule differs from
 ``collapse_realizations`` in ``brails/utils/world_values.py``, which keeps a
 list where every world holds ``None`` and compares with ``==`` alone.
+
+Hazus earthquake inventory compiler
+-----------------------------------
+
+``HazusEQInventoryCompiler`` builds a Hazus earthquake building inventory of
+one study area from its building footprints, its NSI points and census
+tables, over several possible worlds. The caller gathers the data in a
+``CompilerInputs`` and receives a ``CompilationResult``, which holds the
+inventory with its report, the manifest of its stages and the logs of its
+components. Both classes are in ``hazus_eq_inventory_compiler.py`` beside
+this page. This section states the run in the order the code runs it, the
+stages it freezes and its worlds.
+
+The run
+~~~~~~~
+
+Step 1 takes the footprints as given, keyed by the caller's asset ids. Each
+receives its census block group from the block-group polygons, its plan area in
+square feet as ``PlanArea`` and, if it is an Overture footprint, the release
+and the datasets of its sources, which with the caller's ``footprint_provider``
+make up ``FOOTPRINT_PROVENANCE_FEATURES``. Steps 2 and 3 join the NSI points to
+the footprints with ``NSIFootprintJoin`` and derive their unit counts and
+occupancy classes: the join's observed values form the NSI source, and the
+values it derives, such as an occupancy class set by the count of units, the
+derived source.
+
+A local inventory, which takes precedence over every other source, may hold no
+feature of ``RESERVED_LOCAL_FEATURES`` (``BLOCKGROUP_GEOID``), which the run
+writes for itself and reads back, and ``compile`` refuses one that does.
+
+The output step merges each world's sources in the precedence of
+``PRECEDENCE``: local values first, then the footprint, NSI, derived, imputed
+and drawn values. ``AssetInventory.merge`` writes the source string, as the
+section "The source string" describes. Each building receives ``Excluded``,
+true in a world from which the report lists it as excluded. The worlds are then
+assembled into one inventory.
+
+Frozen stages
+~~~~~~~~~~~~~
+
+The run is a sequence of stages, each frozen when it ends, as the section
+"Stages and freezing" describes. The stage names are the module's ``STAGE_``
+constants. Three kinds of stage are frozen. A part holds the values one step
+adds, such as the join's NSI values. A record holds what a step withholds from
+a source or drops from every source. A view holds the merge of every part and
+record frozen so far, over the worlds, and the last view, the output, is the
+compiled inventory. Every part other than the footprints, and every record,
+holds each footprint's centroid as its coordinates. The footprints and the
+views hold the footprint polygons. A world's source is composed from its parts
+and records by ``compose_source``, and the worlds of a view by
+``WorldAssembler``, as the section "Composition and assembly" states. The run
+ends with the manifest.
+
+Worlds
+~~~~~~
+
+Worlds are numbered as the section "Possible worlds" describes, by the run and
+by every component. A world does not depend on how many worlds the run
+compiles, so world 3 of a run of four worlds equals world 3 of a run of ten. A
+run asked for some worlds computes every world up to the largest asked, and the
+result lists the worlds asked, in ascending order, as ``worlds``.
