@@ -46,17 +46,20 @@ module describes the run.
 
 from __future__ import annotations
 
+import inspect
+import json
 import operator
 import secrets
 import time
+from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
-from brails.aggregators.points_to_polygons.nsi_footprint_join import (
-    NSIFootprintJoin,
-)
+import pandas as pd
+
+from brails.aggregators.points_to_polygons.nsi_footprint_join import NSIFootprintJoin
 from brails.compilers.compilation_report import CompilationReport
 from brails.compilers.world_assembly import WorldAssembler, compose_source
 from brails.constants import (
@@ -64,6 +67,7 @@ from brails.constants import (
     BUILDING_TYPE_KEY,
     DEFAULT_UNITS,
     DESIGN_LEVEL_KEY,
+    DROPPED_KEY,
     EXCLUDED_KEY,
     FOOTPRINT_DATASETS_KEY,
     FOOTPRINT_PROVIDER_KEY,
@@ -76,10 +80,19 @@ from brails.constants import (
     PLAN_AREA_KEY,
     REPLACEMENT_COST_KEY,
     SOURCE_STRING_KEY,
+    STORIES_FROM_HEIGHT_KEY,
     STORIES_KEY,
     STRUCTURE_TYPE_KEY,
     UNITS_KEY,
     YEAR_BUILT_KEY,
+)
+from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
+    ObservedDonorImputer,
+)
+from brails.inferers.acs_unit_budget.acs_unit_budget import (
+    DROP_PROBABILITY,
+    GAP_NO_ACS,
+    ACSUnitBudget,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_design_level_inferer import (
     HazusEQDesignLevelInferer,
@@ -87,7 +100,12 @@ from brails.inferers.hazus_inferer_earthquake.hazus_eq_design_level_inferer impo
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_structure_type_inferer import (
     HazusEQStructureTypeInferer,
 )
+from brails.inferers.hazus_inferer_earthquake.hazus_table_completion import (
+    is_implausible,
+)
+from brails.inferers.inference_diagnosis import DIAGNOSIS_OK
 from brails.inferers.stories_from_height_inferer.stories_from_height_inferer import (
+    StoriesFromHeightInferer,
     parse_sources,
 )
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
@@ -98,16 +116,25 @@ from brails.scrapers.us_census_scrapers.census_tract_scraper import (
     LEVEL_BLOCK_GROUP,
     CensusTractScraper,
 )
-from brails.types.asset_inventory import Asset, AssetInventory, is_missing_value
+from brails.types.asset_inventory import (
+    HAZUS_EQ_SOURCE_FEATURES,
+    SOURCE_CODES,
+    SOURCE_LABELS,
+    Asset,
+    AssetInventory,
+    is_missing_value,
+    read_source_string,
+)
+from brails.utils.inventory_union import union_disjoint
 from brails.utils.stage_freeze import StageFreeze
 from brails.utils.unit_converter import UNIT_TO_METER
+from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 
 if TYPE_CHECKING:
     import os
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Sequence
 
     import geopandas as gpd
-    import pandas as pd
 
 # The number of possible worlds compiled by default.
 DEFAULT_N_WORLDS = 10
@@ -153,7 +180,39 @@ STAGE_FOOTPRINTS = 'footprints'
 STAGE_LOCAL = 'local'
 STAGE_JOIN_NSI = 'join_nsi'
 STAGE_JOIN_DERIVED = 'join_derived'
+STAGE_STEP4_DERIVED = 'step4_derived'
+STAGE_STEP4_DROPPED = 'step4_dropped'
+STAGE_STEP4_WITHHELD = 'step4_withheld'
+STAGE_STEP4_IMPUTED = 'step4_imputed'
+STAGE_STEP4 = 'step4'
 STAGE_OUTPUT = 'output'
+
+# The occupancy class whose NSI story count is kept over the height count.
+NSI_STORIES_CLASS = 'RES1'
+
+# The settings the compiler gives ObservedDonorImputer, which imputer_options
+# override key by key. Their origin is described in README.rst.
+DEFAULT_IMPUTER_OPTIONS: Mapping[str, object] = MappingProxyType(
+    {'k': 10, 'location_scale_m': 500.0, 'area_weight': 2.0}
+)
+
+# The option names the compiler sets itself, which an options mapping may
+# not hold, per configured class.
+_RESERVED_OPTIONS = {
+    # The budget and the pair re-draw need the imputer's default status.
+    'imputer_options': ('seed', 'status_key', 'status_values', 'status_name'),
+    'budget_options': ('b25024', 'mh_park_points', 'imputer', 'seed'),
+}
+
+# Position of each feature in the source string.
+_CODE_POSITION = {
+    feature: position for position, feature in enumerate(HAZUS_EQ_SOURCE_FEATURES)
+}
+
+# The sources whose occupancy class makes a footprint reached, and those of
+# them whose occupancy class the unit budget's mobile-home rule may relabel.
+_REACHED_SOURCES = ('local', 'nsi', 'derived')
+_RELABELED_SOURCES = ('nsi', 'derived')
 
 
 class CompilerInputs(NamedTuple):
@@ -400,6 +459,27 @@ class CompilationResult(NamedTuple):
         self.freeze.save_manifest(path.with_name(f'{path.stem}_manifest.json'))
 
 
+class _Step4(NamedTuple):
+    """
+    What step 4 hands to the steps after it.
+
+    Attributes:
+        imputer (ObservedDonorImputer):
+            The imputer step 4 ran, configured by the compiler's options.
+        stories (StoriesFromHeightInferer):
+            The inferer of story counts from footprint heights.
+        targets (AssetInventory):
+            The imputer's targets, carrying the budget's values.
+        log (pandas.DataFrame):
+            The imputer's log, as ``impute_stage`` returned it.
+    """
+
+    imputer: ObservedDonorImputer
+    stories: StoriesFromHeightInferer
+    targets: AssetInventory
+    log: pd.DataFrame
+
+
 class _WorldSources:
     """
     The frozen parts of each source, and the records that act on them.
@@ -438,6 +518,20 @@ class _WorldSources:
         """
         self.freeze.freeze(stage, inventory)
         self.parts[label].append(stage)
+
+    def add_withheld(self, stage: str, inventory: AssetInventory) -> None:
+        """
+        Freeze a record of withheld values and register it.
+
+        Args:
+            stage (str):
+                The stage name.
+            inventory (AssetInventory):
+                One asset per asset with a withheld value, one feature per
+                withheld feature, holding the label of its source.
+        """
+        self.freeze.freeze(stage, inventory)
+        self.withheld.append(stage)
 
     def merge(self, world: int) -> AssetInventory:
         """
@@ -480,6 +574,71 @@ class _WorldSources:
         return merged
 
 
+def _padded(
+    kept: Sequence[str],
+    centroids: Mapping[str, list[list[float]]],
+    values: Mapping[str, dict[str, Any]],
+    *,
+    n_pw: int = 1,
+    vector_features: Sequence[str] = (),
+) -> AssetInventory:
+    """
+    Build a part or record that holds every footprint the run kept.
+
+    Args:
+        kept (Sequence[str]):
+            The footprints the run kept, in the order the part holds them.
+        centroids (Mapping[str, list[list[float]]]):
+            Each footprint's centroid, the coordinates of its asset.
+        values (Mapping[str, dict[str, Any]]):
+            The features of the assets that hold any, shared with the part.
+        n_pw (int, optional):
+            The part's number of possible worlds.
+        vector_features (Sequence[str], optional):
+            The part's vector features.
+
+    Returns:
+        AssetInventory:
+            One asset per kept footprint, without features where ``values``
+            holds none.
+    """
+    part = AssetInventory(vector_features=list(vector_features))
+    for asset_id in kept:
+        part.inventory[asset_id] = Asset(
+            asset_id, centroids[asset_id], values.get(asset_id, {})
+        )
+    part.n_pw = n_pw
+    return part
+
+
+def _plausible(
+    asset_id: object,  # noqa: ARG001
+    world: int,  # noqa: ARG001
+    features: Mapping[str, Any],
+) -> bool:
+    """
+    Say whether an imputed occupancy class and story count may stand together.
+
+    Args:
+        asset_id (object):
+            The asset, unused.
+        world (int):
+            The world, unused.
+        features (Mapping[str, Any]):
+            The asset's features in that world after the copy.
+
+    Returns:
+        bool:
+            False where both are present and form an implausible pair,
+            otherwise True.
+    """
+    occupancy = features.get(OCCUPANCY_KEY)
+    stories = features.get(STORIES_KEY)
+    if is_missing_value(occupancy) or is_missing_value(stories):
+        return True
+    return not is_implausible(occupancy, stories)
+
+
 class HazusEQInventoryCompiler:
     """
     Compile a Hazus earthquake inventory of one study area over several worlds.
@@ -489,7 +648,8 @@ class HazusEQInventoryCompiler:
     written file.
 
     Every constructor argument is stored as an attribute of the same name,
-    read-only by convention; ``seed`` holds the seed used, never ``None``.
+    read-only by convention; ``seed`` holds the seed used, never ``None``,
+    and the options hold the mappings as resolved.
     """
 
     def __init__(
@@ -502,6 +662,8 @@ class HazusEQInventoryCompiler:
         design_level_method: str = '5.1',
         join_cap_m: float = 15.0,
         projected_crs: object = None,
+        imputer_options: Mapping[str, object] | None = None,
+        budget_options: Mapping[str, object] | None = None,
     ) -> None:
         """
         Configure the compiler and check what can be checked before a run.
@@ -531,17 +693,29 @@ class HazusEQInventoryCompiler:
                 The projected CRS of the join's distances, as
                 :class:`NSIFootprintJoin` takes it. ``None`` estimates a UTM
                 zone from the footprints.
+            imputer_options (Mapping[str, object], optional):
+                Keyword arguments of :class:`ObservedDonorImputer`, each
+                overriding :data:`DEFAULT_IMPUTER_OPTIONS`. The compiler
+                passes the donors directly and sets the seed, so
+                ``n_batches`` and ``seed`` are refused.
+            budget_options (Mapping[str, object], optional):
+                Keyword arguments of :class:`ACSUnitBudget` other than its
+                table, mobile-home park points, imputer and seed, which the
+                compiler passes.
 
         Raises:
             TypeError:
-                If ``seed`` or ``n_worlds`` is not an integer.
+                If ``seed`` or ``n_worlds`` is not an integer, an options
+                argument is not a mapping, or an options mapping names an
+                argument its class does not take or that the compiler sets.
             ValueError:
                 If ``n_worlds`` is below 1; if
                 :class:`HazusEQStructureTypeInferer` refuses the state with
                 its completed tables (a state outside the West Coast region,
                 or one without a RES1 distribution); if the zone or the method
-                is refused by :class:`HazusEQDesignLevelInferer`; or if the
-                join refuses its settings.
+                is refused by :class:`HazusEQDesignLevelInferer`; if
+                ``imputer_options`` holds ``n_batches``; or if the join or
+                the imputer refuses its settings.
             NotImplementedError:
                 If the design level method is not implemented.
         """
@@ -574,6 +748,41 @@ class HazusEQInventoryCompiler:
         )
         self.join_cap_m = join_cap_m
         self.projected_crs = projected_crs
+
+        if 'n_batches' in (imputer_options or {}):
+            msg = (
+                'imputer_options must not hold n_batches: the compiler passes '
+                'the donors directly and runs the imputer without batch '
+                'feedback.'
+            )
+            raise ValueError(msg)
+        resolved = {}
+        for name, given, target in (
+            ('imputer_options', imputer_options, ObservedDonorImputer),
+            ('budget_options', budget_options, ACSUnitBudget),
+        ):
+            if given is not None and not isinstance(given, Mapping):
+                msg = f'{name} must be a mapping, not {type(given).__name__}.'
+                raise TypeError(msg)
+            options = dict(given or {})
+            reserved = [key for key in options if key in _RESERVED_OPTIONS[name]]
+            accepted = inspect.signature(target).parameters
+            unknown = [key for key in options if key not in accepted]
+            if reserved or unknown:
+                msg = (
+                    f'{name} may hold only arguments of {target.__name__} the '
+                    f'compiler does not set: {sorted(reserved + unknown)} are '
+                    'not among them.'
+                )
+                raise TypeError(msg)
+            resolved[name] = options
+        resolved['imputer_options'] = {
+            **DEFAULT_IMPUTER_OPTIONS,
+            **resolved['imputer_options'],
+        }
+        ObservedDonorImputer(**resolved['imputer_options'], seed=self.seed)
+        self.imputer_options = MappingProxyType(resolved['imputer_options'])
+        self.budget_options = MappingProxyType(resolved['budget_options'])
 
     def compile(
         self, inputs: CompilerInputs, *, worlds: Sequence[int] | None = None
@@ -675,6 +884,8 @@ class HazusEQInventoryCompiler:
             'projected_crs': None
             if self.projected_crs is None
             else str(self.projected_crs),
+            'imputer_options': dict(self.imputer_options),
+            'budget_options': dict(self.budget_options),
         }
         report = CompilationReport(self.seed, settings=settings)
         report.set_world_count(n_computed)
@@ -689,6 +900,11 @@ class HazusEQInventoryCompiler:
         started = time.perf_counter()
         self._join(inputs, sources, logs, centroids)
         report.set_timing('join', time.perf_counter() - started)
+
+        started = time.perf_counter()
+        self._step4(inputs, sources, logs, centroids, report, n_computed)
+        report.set_timing(STAGE_STEP4, time.perf_counter() - started)
+        self._view(STAGE_STEP4, sources, report, n_computed)
 
         inventory = self._output(sources, report, n_computed)
 
@@ -813,6 +1029,298 @@ class HazusEQInventoryCompiler:
                     ]
         sources.add_part('nsi', STAGE_JOIN_NSI, result.observed)
         sources.add_part('derived', STAGE_JOIN_DERIVED, result.derived)
+
+    def _step4(  # noqa: C901
+        self,
+        inputs: CompilerInputs,
+        sources: _WorldSources,
+        logs: dict[str, pd.DataFrame],
+        centroids: Mapping[str, list[list[float]]],
+        report: CompilationReport,
+        n_computed: int,
+    ) -> _Step4:
+        """
+        Run step 4: story counts, the unit budget and the donor imputer.
+
+        The section "The run" of the README beside this module states the
+        procedure.
+
+        Args:
+            inputs (CompilerInputs):
+                The study area's data.
+            sources (_WorldSources):
+                The sources, to which the parts and records are added as
+                :data:`STAGE_STEP4_DERIVED`, :data:`STAGE_STEP4_DROPPED`,
+                :data:`STAGE_STEP4_WITHHELD` and :data:`STAGE_STEP4_IMPUTED`.
+            logs (dict[str, pandas.DataFrame]):
+                The logs, which receive the stories, budget and imputer
+                logs.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+            report (CompilationReport):
+                The report, which receives the withheld values and the
+                dropped footprints of every world.
+            n_computed (int):
+                The number of worlds computed.
+
+        Returns:
+            _Step4:
+                The imputer, the stories inferer, the imputer's targets and
+                its log.
+
+        Raises:
+            ValueError:
+                If an asset's source string is not one
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads.
+        """
+        merged = sources.merge(0)
+
+        inferer = StoriesFromHeightInferer(length_unit=inputs.height_unit)
+        verdicts = inferer.check(merged)
+        logs['stories'] = verdicts.rename_axis('asset_id').reset_index()
+        passing = AssetInventory()
+        for asset_id in verdicts.index[verdicts['diagnosis'] == DIAGNOSIS_OK]:
+            passing.inventory[asset_id] = merged.inventory[asset_id]
+        counts = inferer.draw(passing)[STORIES_FROM_HEIGHT_KEY]
+
+        derived: dict[str, dict[str, Any]] = {}
+        withheld: dict[str, dict[str, str]] = {}
+        # (asset id, feature, old, new, source label, stage, reason)
+        actions: list[tuple] = []
+        for asset_id, count in counts.items():
+            features = merged.inventory[asset_id].features
+            values = {STORIES_FROM_HEIGHT_KEY: count}
+            code = read_source_string(asset_id, features)[
+                _CODE_POSITION[STORIES_KEY]
+            ]
+            if is_missing_value(features.get(STORIES_KEY)):
+                values[STORIES_KEY] = count
+            elif (
+                code == SOURCE_CODES['nsi']
+                and features.get(OCCUPANCY_KEY) != NSI_STORIES_CLASS
+            ):
+                values[STORIES_KEY] = count
+                withheld.setdefault(asset_id, {})[STORIES_KEY] = 'nsi'
+                actions.append(
+                    (
+                        asset_id,
+                        STORIES_KEY,
+                        features[STORIES_KEY],
+                        count,
+                        'nsi',
+                        'stories',
+                        'the footprint height gives the story count of an '
+                        f'occupancy class other than {NSI_STORIES_CLASS}',
+                    )
+                )
+            derived[asset_id] = values
+            features.update(values)
+
+        # A footprint is reached where a source holds its occupancy class.
+        # Donors are the reached footprints with a story count.
+        reached, unreached, donors = (
+            AssetInventory(),
+            AssetInventory(),
+            AssetInventory(),
+        )
+        relabel = {}
+        for asset_id, asset in merged.inventory.items():
+            source = SOURCE_LABELS.get(
+                read_source_string(asset_id, asset.features)[
+                    _CODE_POSITION[OCCUPANCY_KEY]
+                ]
+            )
+            if source not in _REACHED_SOURCES:
+                unreached.inventory[asset_id] = asset
+                continue
+            reached.inventory[asset_id] = asset
+            if not is_missing_value(asset.features.get(STORIES_KEY)):
+                donors.inventory[asset_id] = asset
+            if source in _RELABELED_SOURCES:
+                relabel[asset_id] = source
+
+        imputer = ObservedDonorImputer(**self.imputer_options, seed=self.seed)
+        budget = ACSUnitBudget(
+            inputs.b25024_block_groups,
+            inputs.mh_park_points,
+            imputer=imputer,
+            seed=self.seed,
+            **self.budget_options,
+        )
+        allocation = budget.allocate(
+            unreached, reached, n_worlds=n_computed, relabel_sources=relabel
+        )
+        logs['budget'] = allocation.log
+        logs['budget_diagnostic'] = allocation.diagnostic
+        logs['budget_gaps'] = allocation.gaps
+        logs['budget_nonresidential'] = pd.DataFrame(
+            {'asset_id': list(allocation.nonresidential)}, dtype=object
+        )
+        for row in allocation.withheld.itertuples(index=False):
+            withheld.setdefault(row.asset_id, {})[row.feature] = row.source
+            actions.append(
+                (
+                    row.asset_id,
+                    row.feature,
+                    row.value,
+                    allocation.imputed.inventory[row.asset_id].features.get(
+                        row.feature
+                    ),
+                    row.source,
+                    'units',
+                    'a footprint near a mobile-home park point made a mobile home',
+                )
+            )
+        dropped_ids = set(allocation.dropped)
+        no_acs = set(
+            allocation.gaps.loc[allocation.gaps['kind'] == GAP_NO_ACS, 'block_group']
+        )
+
+        targets = AssetInventory()
+        for asset_id, asset in merged.inventory.items():
+            if asset_id in dropped_ids:
+                continue
+            if asset_id in reached.inventory and not is_missing_value(
+                asset.features.get(STORIES_KEY)
+            ):
+                continue
+            features = dict(asset.features)
+            budgeted = allocation.imputed.inventory.get(asset_id)
+            if budgeted is not None:
+                features.update(budgeted.features)
+            targets.inventory[asset_id] = Asset(
+                asset_id, asset.coordinates, features
+            )
+        targets.n_pw = n_computed
+        imputation = imputer.impute_stage(
+            targets,
+            donors,
+            n_worlds=n_computed,
+            status=allocation.residential,
+            validate=_plausible,
+        )
+        imputer_log = imputation.log.copy()
+        imputer_log['values'] = [
+            json.dumps(dict(values), default=str, sort_keys=True)
+            for values in imputer_log['values']
+        ]
+        logs['imputer'] = imputer_log
+        # A reached non-residential footprint is a target for its story
+        # count only, since the join gives units to housing records alone.
+        for asset_id, asset in imputation.imputed.inventory.items():
+            class_of = merged.inventory[asset_id].features.get(OCCUPANCY_KEY)
+            if asset_id in reached.inventory and class_of not in UNIT_COUNT_CLASSES:
+                asset.features.pop(UNITS_KEY, None)
+
+        kept = sorted((a for a in merged.inventory if a not in dropped_ids), key=str)
+        imputed = union_disjoint(allocation.imputed, imputation.imputed)
+        padded = _padded(
+            kept,
+            centroids,
+            {
+                asset_id: asset.features
+                for asset_id, asset in imputed.inventory.items()
+            },
+            n_pw=n_computed,
+            vector_features=imputed.vector_features,
+        )
+
+        derived_part = AssetInventory()
+        for asset_id in sorted(derived, key=str):
+            derived_part.inventory[asset_id] = Asset(
+                asset_id, centroids[asset_id], derived[asset_id]
+            )
+        dropped_record = AssetInventory()
+        for asset_id in sorted(dropped_ids, key=str):
+            dropped_record.inventory[asset_id] = Asset(
+                asset_id, centroids[asset_id], {DROPPED_KEY: True}
+            )
+        withheld_record = AssetInventory()
+        for asset_id in sorted(withheld, key=str):
+            withheld_record.inventory[asset_id] = Asset(
+                asset_id, centroids[asset_id], withheld[asset_id]
+            )
+        sources.add_part('derived', STAGE_STEP4_DERIVED, derived_part)
+        sources.freeze.freeze(STAGE_STEP4_DROPPED, dropped_record)
+        sources.dropped = STAGE_STEP4_DROPPED
+        sources.add_withheld(STAGE_STEP4_WITHHELD, withheld_record)
+        sources.add_part('imputed', STAGE_STEP4_IMPUTED, padded)
+
+        for world in range(n_computed):
+            for asset_id, feature, old, new, label, stage, reason in actions:
+                report.record_action(
+                    asset_id,
+                    feature,
+                    stage=stage,
+                    action='withheld',
+                    world=world,
+                    old=old,
+                    new=new[world] if isinstance(new, list) else new,
+                    source=label,
+                    reason=reason,
+                    block_group=merged.inventory[asset_id].features.get(
+                        BLOCK_GROUP_KEY
+                    ),
+                )
+            for asset_id in sorted(dropped_ids, key=str):
+                block_group = merged.inventory[asset_id].features.get(
+                    BLOCK_GROUP_KEY
+                )
+                detail = (
+                    f'plan area under {budget.threshold_sqft:g} sq ft and '
+                    f'beyond {budget.mh_park_radius_m:g} m of every mobile-home '
+                    'park point, '
+                    + (
+                        'in a block group without B25024 counts, with a '
+                        f'residential probability under {DROP_PROBABILITY:g}'
+                        if block_group in no_acs
+                        else 'not chosen as a dwelling'
+                    )
+                )
+                report.record_exclusion(
+                    asset_id,
+                    world=world,
+                    stage='units',
+                    category='dropped',
+                    detail=detail,
+                )
+        return _Step4(imputer, inferer, targets, imputation.log)
+
+    def _view(
+        self,
+        stage: str,
+        sources: _WorldSources,
+        report: CompilationReport,
+        n_computed: int,
+    ) -> None:
+        """
+        Freeze the merge of every registered source over the worlds.
+
+        The report receives the time of each world's merge under
+        ``f'{stage}_view'`` and that of the freeze under
+        ``f'{stage}_freeze'``.
+
+        Args:
+            stage (str):
+                The view's stage name.
+            sources (_WorldSources):
+                The sources.
+            report (CompilationReport):
+                The report, which receives the timings.
+            n_computed (int):
+                The number of worlds computed.
+        """
+        assembler = WorldAssembler(n_computed)
+        for world in range(n_computed):
+            started = time.perf_counter()
+            assembler.add(world, sources.merge(world))
+            report.set_timing(
+                f'{stage}_view', time.perf_counter() - started, world=world
+            )
+        started = time.perf_counter()
+        sources.freeze.freeze(stage, assembler.result())
+        report.set_timing(f'{stage}_freeze', time.perf_counter() - started)
 
     def _output(
         self,

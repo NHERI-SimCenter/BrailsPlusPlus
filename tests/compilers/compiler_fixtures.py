@@ -36,8 +36,8 @@ A synthetic study area for the compiler tests.
 
 Two block groups of one tract make up the area. The western one holds
 houses, apartments and shops that NSI reaches, and the eastern one mostly
-footprints NSI does not reach. The census tables are empty and no
-mobile-home park point is given. Positions are in meters in UTM zone 10N
+footprints NSI does not reach, around a mobile-home park point. The year
+sampler's census tables are empty. Positions are in meters in UTM zone 10N
 near San Francisco and stored in EPSG:4326.
 Footprint heights are in feet, the scraper's default unit.
 """
@@ -78,6 +78,7 @@ SEED = 20261111
 BG_WEST = '060750101001'
 BG_EAST = '060750101002'
 RELEASE = '2026-10-21.0'
+MH_PARK = (400.0, 200.0)
 
 OSM = 'dataset: OpenStreetMap, record_id: w1'
 MIXED = 'dataset: Microsoft ML Buildings; property: /properties/height, dataset: OpenStreetMap'
@@ -249,6 +250,13 @@ LOCAL = {
 }
 
 
+# B25024 lines per block group, as (estimate, margin).
+B25024_LINES = {
+    BG_WEST: {'002': (14, 3), '004': (2, 2), '006': (8, 3), '010': (1, 1)},
+    BG_EAST: {'002': (8, 3), '004': (2, 2), '010': (4, 2)},
+}
+
+
 def lonlat(x: float, y: float) -> list[float]:
     """
     Return the longitude and latitude of a local metric position.
@@ -349,15 +357,25 @@ def build_inputs(*, reverse: bool = False) -> CompilerInputs:
         crs=GEOGRAPHIC_CRS,
     )
 
+    rows = []
+    for geoid, lines in B25024_LINES.items():
+        row: dict[str, Any] = {'geoid': geoid}
+        for number in range(1, 12):
+            estimate, margin = lines.get(f'{number:03d}', (0, 0))
+            row[f'B25024_{number:03d}E'] = estimate
+            row[f'B25024_{number:03d}M'] = margin
+        rows.append(row)
+    b25024 = pd.DataFrame(rows)
+
     return CompilerInputs(
         footprints=footprints,
         nsi_points=points,
         block_groups=block_groups,
-        b25024_block_groups=pd.DataFrame(),
+        b25024_block_groups=b25024,
         b25034_block_groups=pd.DataFrame(),
         b25034_tracts=pd.DataFrame(),
         b25127_tracts=pd.DataFrame(),
-        mh_park_points=np.empty((0, 2)),
+        mh_park_points=np.array([lonlat(*MH_PARK)]),
         footprint_release=RELEASE,
         local=local,
         study_area='06075',

@@ -130,6 +130,10 @@ EXCLUDED_KEY = 'Excluded'
 NSI_GROSS_AREA_KEY = 'NSIGrossArea'
 LOCAL_GROSS_AREA_KEY = 'LocalGrossArea'
 
+# Feature of HazusEQInventoryCompiler's record of the footprints its unit
+# budget dropped.
+DROPPED_KEY = 'Dropped'
+
 # SimCenter source string that captures data provenance
 SOURCE_STRING_KEY = 'SourceString'
 

@@ -50,12 +50,14 @@ import brails.compilers
 from brails.compilers import hazus_eq_inventory_compiler as hc
 from brails.compilers.hazus_eq_inventory_compiler import (
     ALL_PROPERTIES,
+    DEFAULT_IMPUTER_OPTIONS,
     DEFAULT_PROPERTIES,
     CompilationResult,
     CompilerInputs,
     HazusEQInventoryCompiler,
 )
 from brails.constants import (
+    DROPPED_KEY,
     EXCLUDED_KEY,
     FOOTPRINT_DATASETS_KEY,
     FOOTPRINT_PROVENANCE_FEATURES,
@@ -64,9 +66,12 @@ from brails.constants import (
     GROSS_AREA_KEY,
     LOCAL_GROSS_AREA_KEY,
     NSI_GROSS_AREA_KEY,
+    OCCUPANCY_KEY,
     PLAN_AREA_KEY,
     SOURCE_STRING_KEY,
+    STORIES_FROM_HEIGHT_KEY,
     STORIES_KEY,
+    UNITS_KEY,
 )
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
     OVERTURE_PROVIDER,
@@ -77,10 +82,12 @@ from brails.types.asset_inventory import (
     AssetInventory,
 )
 from brails.utils import Importer
+from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from tests.compilers.compiler_fixtures import (
     FOOTPRINTS,
     LOCAL,
     METRIC_CRS,
+    MH_PARK,
     RELEASE,
     SEED,
     build_inputs,
@@ -89,21 +96,29 @@ from tests.compilers.compiler_fixtures import (
 if TYPE_CHECKING:
     from brails.compilers.compilation_report import CompilationReport
 
+STORIES_CODE = HAZUS_EQ_SOURCE_FEATURES.index(STORIES_KEY)
 FREEZE_ORDER = (
     'footprints',
     'local',
     'join_nsi',
     'join_derived',
+    'step4_derived',
+    'step4_dropped',
+    'step4_withheld',
+    'step4_imputed',
+    'step4',
     'output',
 )
 # The timed units of a run, once and per world.
 TIMED_ONCE = (
     'footprints',
     'join',
+    'step4',
+    'step4_freeze',
     'output_freeze',
     'manifest',
 )
-TIMED_PER_WORLD = ('output',)
+TIMED_PER_WORLD = ('step4_view', 'output')
 SQUARE_FEET_PER_SQUARE_METER = 10.7639
 
 
@@ -178,8 +193,53 @@ def written(path: object) -> dict[str, dict]:
     }
 
 
+def features_in(inventory: AssetInventory, world: int) -> dict[str, dict]:
+    """
+    Return every asset's features in one world, without the empty ones.
+
+    An assembled inventory holds a feature as a list over its worlds, with
+    ``None`` in a world where it has no value, so a realization of a longer
+    run holds ``None`` where a shorter run holds no key. The merges the run
+    builds hold no ``None`` (``test_merge_keys_do_not_depend_on_n_worlds``),
+    and the comparison of realizations leaves ``None`` out.
+
+    Args:
+        inventory (AssetInventory):
+            An inventory of several worlds.
+        world (int):
+            The world.
+
+    Returns:
+        dict[str, dict]:
+            The features of each asset in that world that are not ``None``.
+    """
+    realization = inventory.get_world_realization(world)
+    return {
+        a: {key: value for key, value in asset.features.items() if value is not None}
+        for a, asset in realization.inventory.items()
+    }
+
+
+def rows_of(frame: pd.DataFrame, world: int) -> list[tuple]:
+    """
+    Return the rows of a report frame in one world, without the world.
+
+    Args:
+        frame (pandas.DataFrame):
+            The records or the exclusions of a report.
+        world (int):
+            The world.
+
+    Returns:
+        list[tuple]:
+            The rows, in order, as tuples of text.
+    """
+    kept = frame[frame['world'] == world].drop(columns='world')
+    return [tuple(map(str, row)) for row in kept.itertuples(index=False)]
+
+
 class TestConstructor:
-    """The constructor checks its settings."""
+    """The constructor checks its settings and resolves the imputer's."""
 
     @pytest.mark.parametrize(
         ('arguments', 'error', 'match'),
@@ -192,6 +252,14 @@ class TestConstructor:
             ({'state': 'Guam'}, ValueError, 'no RES1 distribution for Guam'),
             ({'seismic_zone': '9'}, ValueError, 'zone'),
             ({'join_cap_m': -1.0}, ValueError, 'cap_m'),
+            ({'imputer_options': {'k': 0}}, ValueError, 'at least 1'),
+            ({'imputer_options': {'n_batches': 2}}, ValueError, 'donors directly'),
+            ({'imputer_options': {'seed': 1}}, TypeError, 'seed'),
+            ({'imputer_options': {'kk': 1}}, TypeError, 'kk'),
+            ({'imputer_options': [('k', 3)]}, TypeError, 'mapping'),
+            ({'imputer_options': {'status_key': 'x'}}, TypeError, 'status_key'),
+            ({'budget_options': {'imputer': None}}, TypeError, 'imputer'),
+            ({'budget_options': {'radius': 1}}, TypeError, 'radius'),
         ],
     )
     def test_refusals(self, arguments: dict, error: type, match: str | None) -> None:
@@ -199,9 +267,17 @@ class TestConstructor:
         with pytest.raises(error, match=match):
             HazusEQInventoryCompiler(**arguments)
 
-    def test_seed(self) -> None:
-        """Without a seed the compiler draws one and records it."""
-        assert isinstance(HazusEQInventoryCompiler().seed, int)
+    def test_options_and_seed(self) -> None:
+        """The imputer defaults are the compiler's, overridden key by key."""
+        compiler = HazusEQInventoryCompiler(
+            imputer_options={'k': 7}, budget_options={'threshold_sqft': 900.0}
+        )
+        assert isinstance(compiler.seed, int)
+        assert dict(compiler.imputer_options) == {**DEFAULT_IMPUTER_OPTIONS, 'k': 7}
+        assert dict(compiler.budget_options) == {'threshold_sqft': 900.0}
+        assert dict(HazusEQInventoryCompiler().imputer_options) == dict(
+            DEFAULT_IMPUTER_OPTIONS
+        )
 
 
 class TestCompileArguments:
@@ -548,12 +624,13 @@ class TestRandomness:
     """The run depends on the seed alone."""
 
     def test_repeated_and_reordered(self, tmp_path: object) -> None:
-        """One seed gives one file, in any input order."""
+        """One seed gives one file, in any input order; another seed differs."""
         files = []
         for name, inputs, seed in (
             ('first', build_inputs(), SEED),
             ('second', build_inputs(), SEED),
             ('reversed', build_inputs(reverse=True), SEED),
+            ('other', build_inputs(), SEED + 1),
         ):
             result = HazusEQInventoryCompiler(
                 seed=seed, n_worlds=3, projected_crs=METRIC_CRS
@@ -566,8 +643,9 @@ class TestRandomness:
             )
             collection.pop('generated')
             files.append(collection)
-        first, second, reversed_order = files
+        first, second, reversed_order, other = files
         assert first == second == reversed_order
+        assert first != other
 
 
 class TestReport:
@@ -584,6 +662,9 @@ class TestReport:
         } <= timed
         assert summary['manifest_stages'] == list(FREEZE_ORDER)
         assert summary['worlds']['computed'] == 3
+        assert summary['settings']['imputer_options'] == dict(
+            DEFAULT_IMPUTER_OPTIONS
+        )
         assert summary['settings']['study_area'] == '06075'
         assert summary['seed'] == SEED
 
@@ -597,3 +678,306 @@ def test_discovered_and_exported() -> None:
         assert name in brails.compilers.__all__
     assert brails.compilers.HazusEQInventoryCompiler is HazusEQInventoryCompiler
     assert brails.compilers.CompilerInputs is CompilerInputs
+
+
+class TestStep4:
+    """Step 4: story counts, the unit budget and the donor imputer."""
+
+    def test_components_receive_settings(
+        self, study_area: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The run gives the imputer and the budget their options and the seed."""
+        compiler = HazusEQInventoryCompiler(
+            seed=5,
+            n_worlds=1,
+            projected_crs=METRIC_CRS,
+            imputer_options={'k': 7},
+            budget_options={'threshold_sqft': 900.0},
+        )
+        imputer = mock.Mock(wraps=hc.ObservedDonorImputer)
+        budget = mock.Mock(wraps=hc.ACSUnitBudget)
+        monkeypatch.setattr(hc, 'ObservedDonorImputer', imputer)
+        monkeypatch.setattr(hc, 'ACSUnitBudget', budget)
+        compiler.compile(study_area)
+        assert imputer.call_args.kwargs == {
+            **DEFAULT_IMPUTER_OPTIONS,
+            'k': 7,
+            'seed': 5,
+        }
+        assert budget.call_args.kwargs['seed'] == 5
+        assert budget.call_args.kwargs['threshold_sqft'] == 900.0
+
+    def test_stories(self, compiled: object) -> None:
+        """The height count fills a missing count and replaces NSI's off RES1."""
+        result = compiled(n_worlds=1)
+        features = features_in(result.inventory, 0)
+        records = result.report.records
+        stories = records[records['stage'] == 'stories']
+        # RES3C with NSI's 3 stories and a 52 ft height: the height's 4.
+        assert features['p01'][STORIES_KEY] == 4
+        assert features['p01'][SOURCE_STRING_KEY][STORIES_CODE] == 'R'
+        row = stories[stories['asset_id'] == 'p01'].iloc[0]
+        assert (row['feature'], row['action'], row['old'], row['new']) == (
+            STORIES_KEY,
+            'withheld',
+            '3',
+            '4',
+        )
+        assert row['source'] == 'nsi'
+        # COM1 whose NSI count and 13 ft height agree on 1: the height's 1.
+        assert features['c01'][SOURCE_STRING_KEY][STORIES_CODE] == 'R'
+        row = stories[stories['asset_id'] == 'c01'].iloc[0]
+        assert (row['old'], row['new']) == ('1', '1')
+        # RES1 with NSI's 1 story and a 26 ft height: NSI's 1.
+        assert features['h02'][STORIES_KEY] == 1
+        assert features['h02'][STORIES_FROM_HEIGHT_KEY] == 2
+        assert features['h02'][SOURCE_STRING_KEY][STORIES_CODE] == 'N'
+        # COM1 with a local count of 2 and a 52 ft height: the local 2.
+        assert features['l02'][STORIES_KEY] == 2
+        assert features['l02'][STORIES_FROM_HEIGHT_KEY] == 4
+        assert features['l02'][SOURCE_STRING_KEY][STORIES_CODE] == 'L'
+        # RES1 without an NSI count and a 13 ft height: the height's 1.
+        assert features['w02'][STORIES_KEY] == 1
+        assert features['w02'][SOURCE_STRING_KEY][STORIES_CODE] == 'R'
+        withheld = result.freeze.read('step4_withheld').inventory
+        assert withheld['p01'].features == {STORIES_KEY: 'nsi'}
+        assert 'h02' not in withheld
+        assert 'l02' not in withheld
+
+    def test_imputed_targets(self, compiled: object) -> None:
+        """Reached footprints without a story count are imputed one, not units."""
+        result = compiled(n_worlds=3)
+        nonresidential = set(result.logs['budget_nonresidential']['asset_id'])
+        assert nonresidential
+        for world in range(3):
+            features = features_in(result.inventory, world)
+            # RES1 without an NSI count or a height.
+            assert features['w03'][SOURCE_STRING_KEY][STORIES_CODE] == 'I'
+            # COM1 without an NSI count, whose donor may hold units.
+            assert features['c05'][SOURCE_STRING_KEY][STORIES_CODE] == 'I'
+            assert UNITS_KEY not in features['c05']
+            for asset_id in nonresidential:
+                assert features[asset_id][OCCUPANCY_KEY] not in UNIT_COUNT_CLASSES
+
+    def test_local_class_is_reached(self, study_area: object) -> None:
+        """A footprint with a local occupancy class is reached and a story donor."""
+        allocate = hc.ACSUnitBudget.allocate
+        impute = hc.ObservedDonorImputer.impute_stage
+        with (
+            mock.patch.object(
+                hc.ACSUnitBudget, 'allocate', autospec=True, side_effect=allocate
+            ) as allocated,
+            mock.patch.object(
+                hc.ObservedDonorImputer,
+                'impute_stage',
+                autospec=True,
+                side_effect=impute,
+            ) as imputed,
+        ):
+            HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            ).compile(study_area)
+        # l01 is a local RES1 over NSI's COM1 record.
+        assert 'l01' in allocated.call_args.args[2].inventory
+        assert 'l01' not in allocated.call_args.args[1].inventory
+        assert 'l01' in imputed.call_args.args[2].inventory
+
+    def test_validation(self, study_area: object) -> None:
+        """The imputer's copies are checked for implausible pairs."""
+        assert not hc._plausible('a', 0, {OCCUPANCY_KEY: 'RES2', STORIES_KEY: 4})
+        assert hc._plausible('a', 0, {OCCUPANCY_KEY: 'RES2', STORIES_KEY: 1})
+        assert hc._plausible('a', 0, {OCCUPANCY_KEY: 'RES2'})
+        real = hc.ObservedDonorImputer.impute_stage
+        with mock.patch.object(
+            hc.ObservedDonorImputer, 'impute_stage', autospec=True, side_effect=real
+        ) as impute:
+            HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            ).compile(study_area)
+        assert impute.call_args.kwargs['validate'] is hc._plausible
+
+    def test_dropped(self, compiled: object) -> None:
+        """A small unreached footprint far from the park is dropped in every world."""
+        result = compiled(n_worlds=3)
+        assert 'd01' not in result.inventory.inventory
+        rows = result.report.exclusions
+        rows = rows[rows['asset_id'] == 'd01']
+        assert sorted(rows['world']) == [0, 1, 2]
+        assert set(rows['category']) == {'dropped'}
+        assert set(rows['stage']) == {'units'}
+
+    def test_local_values_unchanged(self, compiled: object) -> None:
+        """No local value is withheld or replaced, the mobile-home rule's included."""
+        result = compiled(n_worlds=3)
+        assert math.dist(MH_PARK, FOOTPRINTS['l01'][:2]) < 300.0
+        records = result.report.records
+        assert 'r05' in set(records.loc[records['stage'] == 'units', 'asset_id'])
+        for world in range(3):
+            features = features_in(result.inventory, world)
+            for asset_id, local in LOCAL.items():
+                for key, value in local.items():
+                    # The file keeps a local gross area under a name of its own.
+                    kept = LOCAL_GROSS_AREA_KEY if key == GROSS_AREA_KEY else key
+                    assert features[asset_id][kept] == value
+                    if key in HAZUS_EQ_SOURCE_FEATURES:
+                        code = features[asset_id][SOURCE_STRING_KEY]
+                        assert code[HAZUS_EQ_SOURCE_FEATURES.index(key)] == 'L'
+        touched = set(zip(records['asset_id'], records['feature']))
+        assert not touched & {(a, k) for a, local in LOCAL.items() for k in local}
+
+    def test_every_asset_compiled_or_listed(self, compiled: object) -> None:
+        """In each world every footprint is compiled or has an exclusion row."""
+        result = compiled(n_worlds=3)
+        exclusions = result.report.exclusions
+        for world in range(3):
+            features = features_in(result.inventory, world)
+            compiled_ids = {a for a, f in features.items() if not f[EXCLUDED_KEY]}
+            listed = set(exclusions.loc[exclusions['world'] == world, 'asset_id'])
+            assert not compiled_ids & listed
+            assert compiled_ids | listed == set(FOOTPRINTS)
+        for column in ('stage', 'category', 'detail'):
+            assert exclusions[column].map(bool).all()
+
+    def test_step4_parts(self, compiled: object) -> None:
+        """Each part and record of step 4 holds only what its kind says."""
+        result = compiled(n_worlds=3)
+        read = result.freeze.read
+        kept = set(result.inventory.inventory)
+        assert set(read('step4_dropped').inventory) == {'d01'}
+        assert all(
+            a.features == {DROPPED_KEY: True}
+            for a in read('step4_dropped').inventory.values()
+        )
+        labels = {
+            value
+            for asset in read('step4_withheld').inventory.values()
+            for value in asset.features.values()
+        }
+        assert labels == {'nsi', 'derived'}
+        # The mobile-home rule's relabel of an occupancy class the join derived.
+        assert read('step4_withheld').inventory['r05'].features == {
+            OCCUPANCY_KEY: 'derived'
+        }
+        assert {
+            key
+            for a in read('step4_derived').inventory.values()
+            for key in a.features
+        } == {STORIES_FROM_HEIGHT_KEY, STORIES_KEY}
+        imputed = read('step4_imputed')
+        assert imputed.n_pw == 3
+        assert set(imputed.inventory) == kept
+        assert {k for a in imputed.inventory.values() for k in a.features} <= {
+            OCCUPANCY_KEY,
+            UNITS_KEY,
+            STORIES_KEY,
+        }
+        for stage in (
+            'step4_derived',
+            'step4_dropped',
+            'step4_withheld',
+            'step4_imputed',
+        ):
+            for asset in read(stage).inventory.values():
+                assert len(asset.coordinates) == 1, stage
+        assert set(read('step4').inventory) == kept
+
+
+class TestWorlds:
+    """A world does not depend on the number of worlds compiled."""
+
+    def test_merge_keys_do_not_depend_on_n_worlds(self, study_area: object) -> None:
+        """World 0's last merge holds the same features at one world and seven."""
+        real = hc._WorldSources.merge
+        keys = {}
+        for n_worlds in (1, 7):
+            merges: list = []
+            with mock.patch.object(
+                hc._WorldSources,
+                'merge',
+                autospec=True,
+                side_effect=lambda sources, world, _merges=merges, **kwargs: (
+                    _merges.append((world, real(sources, world, **kwargs)))
+                    or _merges[-1][1]
+                ),
+            ):
+                HazusEQInventoryCompiler(
+                    seed=SEED, n_worlds=n_worlds, projected_crs=METRIC_CRS
+                ).compile(study_area)
+            last = [merged for world, merged in merges if world == 0][-1]
+            keys[n_worlds] = {
+                asset_id: set(asset.features)
+                for asset_id, asset in last.inventory.items()
+            }
+        assert keys[1] == keys[7]
+
+    def test_world_unchanged_when_n_worlds_changes(self, compiled: object) -> None:
+        """World 2 of three worlds and of five are the same, rows included."""
+        three, five = compiled(n_worlds=3), compiled(n_worlds=5)
+        assert features_in(three.inventory, 2) == features_in(five.inventory, 2)
+        for frame in ('records', 'exclusions'):
+            rows = rows_of(getattr(three.report, frame), 2)
+            assert rows == rows_of(getattr(five.report, frame), 2)
+        assert rows_of(three.report.records, 2)
+        assert rows_of(three.report.exclusions, 2)
+
+    def test_worlds_differ(self, compiled: object) -> None:
+        """The study area's imputed values differ between worlds somewhere."""
+        result = compiled(n_worlds=3)
+        assert features_in(result.inventory, 0) != features_in(result.inventory, 1)
+
+    @pytest.mark.parametrize('worlds', [(3,), (2, 5)])
+    def test_subsets(
+        self, compiled: object, tmp_path: object, worlds: tuple
+    ) -> None:
+        """A run asked for some worlds writes them as the full run computes them."""
+        subset, full = compiled(n_worlds=10, worlds=worlds), compiled(n_worlds=10)
+        assert subset.worlds == worlds
+        assert subset.inventory.n_pw == max(worlds) + 1
+        subset.write(
+            tmp_path / 'subset.geojson',
+            keep_partly_excluded=True,
+            extra_properties=ALL_PROPERTIES,
+        )
+        properties = written(tmp_path / 'subset.geojson')
+        compiled_in = {
+            asset_id
+            for world in worlds
+            for asset_id, values in features_in(full.inventory, world).items()
+            if not values[EXCLUDED_KEY]
+        }
+        assert set(properties) == compiled_in
+        for position, world in enumerate(worlds):
+            expected = features_in(full.inventory, world)
+            for asset_id, values in properties.items():
+                for key, value in expected[asset_id].items():
+                    held = values.get(key)
+                    if isinstance(held, list):
+                        held = held[position]
+                    assert held == value or (
+                        isinstance(value, float) and math.isclose(held, value)
+                    ), (asset_id, key)
+        records = pd.read_parquet(tmp_path / 'subset_report.parquet')
+        exclusions = pd.read_parquet(tmp_path / 'subset_report_exclusions.parquet')
+        assert set(records['world']) == set(worlds)
+        assert set(exclusions['world']) == set(worlds)
+        summary = json.loads(
+            (tmp_path / 'subset_report_summary.json').read_text(encoding='utf-8')
+        )
+        assert summary['worlds']['written'] == list(worlds)
+        imputer_log = pd.read_parquet(tmp_path / 'subset_imputer.parquet')
+        assert set(imputer_log['world']) == set(worlds)
+
+    def test_per_world_lists(self, compiled: object, tmp_path: object) -> None:
+        """The file holds a list where worlds differ and a scalar where they agree."""
+        result = compiled(n_worlds=3)
+        result.write(tmp_path / 'run.geojson')
+        properties = written(tmp_path / 'run.geojson')
+        assert properties['h01'][OCCUPANCY_KEY] == 'RES1'
+        lists = [
+            value
+            for values in properties.values()
+            for key, value in values.items()
+            if key in HAZUS_EQ_SOURCE_FEATURES and isinstance(value, list)
+        ]
+        assert lists
+        assert all(len(value) == 3 for value in lists)

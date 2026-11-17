@@ -451,8 +451,8 @@ tables, over several possible worlds. The caller gathers the data in a
 saves the inventory as GeoJSON beside its report, the manifest of its stages
 and the logs of its components. Both classes are in
 ``hazus_eq_inventory_compiler.py`` beside this page. This section states the
-run in the order the code runs it, the stages it freezes, its worlds and the
-file it writes.
+run in the order the code runs it, the stages it freezes, its worlds, the
+file it writes and the settings it gives its components.
 
 The run
 ~~~~~~~
@@ -471,6 +471,28 @@ A local inventory, which takes precedence over every other source, may hold no
 feature of ``RESERVED_LOCAL_FEATURES`` (``BLOCKGROUP_GEOID`` and
 ``NSIGrossArea``), which the run writes for itself and reads back, and
 ``compile`` refuses one that does.
+
+Step 4 completes the story counts, the unit counts and the occupancy classes,
+on the merge of the parts so far. ``StoriesFromHeightInferer`` gives each
+footprint with a usable height the count that height implies, which fills a
+story count no source holds. For an occupancy class other than
+``NSI_STORIES_CLASS`` (RES1) that count also replaces NSI's, which is withheld.
+A RES1 building keeps NSI's count. ``ACSUnitBudget`` then allocates each
+block group's census housing units to the footprints that no source gives an
+occupancy class, as ``brails/inferers/acs_unit_budget/README.rst`` states. It
+reads a footprint's ``GrossArea`` feature first as its gross area, a local one
+included, so a local inventory's gross areas can change the occupancy classes,
+unit counts and draws of this step and of the steps after it. It makes some
+footprints near mobile-home park points mobile homes, relabeling only an
+occupancy class that NSI or the join gave, and drops the small footprints it
+leaves unused. The report lists the dropped footprints in every world.
+``ObservedDonorImputer`` fills what is still missing from observed donors, as
+the section "Donors" describes, and gives a target whose copy forms an
+implausible pair of occupancy class and story count another donor. The
+residential occupancy classes of this section are those of
+``UNIT_COUNT_CLASSES`` (RES1, RES2 and the RES3 classes). A reached footprint
+outside them is a target for its story count alone, since the join gives units
+to housing records only.
 
 The output step merges each world's sources in the precedence of
 ``PRECEDENCE``: local values first, then the footprint, NSI, derived, imputed
@@ -517,3 +539,24 @@ is stated on ``CompilationResult.write``. The properties of
 ``DEFAULT_PROPERTIES`` are those a Hazus earthquake assessment reads. The
 report lists each excluded building with its reason in each world, whether
 or not the file holds it.
+
+The imputer's settings
+~~~~~~~~~~~~~~~~~~~~~~
+
+The compiler gives ``ObservedDonorImputer`` its own values of three settings in
+place of the imputer's defaults: the number of nearest donors picked among
+(``k``), the meters of separation counted as one unit of donor distance
+(``location_scale_m``) and the weight of the difference of log plan areas
+(``area_weight``). ``DEFAULT_IMPUTER_OPTIONS`` holds ``k`` of 10, a
+``location_scale_m`` of 500 and an ``area_weight`` of 2. They come from a
+SimCenter masking test on the buildings NSI reaches in San Francisco and
+Richmond, California, in which the occupancy class, unit count and story count
+of about a fifth of them were hidden and imputed again from the others. Against
+the test's starting values (``k`` of 5, 100 m and a weight of 1), these values
+gave better overall occupancy class, story and unit scores in both cities and a
+lower exact-label agreement for non-residential buildings. The test measured
+donor distance on footprint heights, where the imputer compares story counts,
+so it compares settings, and the three values are not calibrated yet.
+``imputer_options`` overrides them one by one. The imputer runs without batch
+feedback, since the compiler gives it the donors directly, so ``n_batches`` is
+refused.

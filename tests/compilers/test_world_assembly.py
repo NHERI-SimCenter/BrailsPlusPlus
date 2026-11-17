@@ -43,6 +43,7 @@ import pytest
 import brails.compilers
 from brails.compilers.world_assembly import WorldAssembler, compose_source
 from brails.constants import (
+    DROPPED_KEY,
     OCCUPANCY_KEY,
     STRUCTURE_TYPE_KEY,
     YEAR_BUILT_KEY,
@@ -261,7 +262,7 @@ def freeze() -> StageFreeze:
             }
         ),
     )
-    stages.freeze('dropped', inventory({'b': {'Dropped': True}}))
+    stages.freeze('dropped', inventory({'b': {DROPPED_KEY: True}}))
     stages.freeze(
         'drawn',
         inventory(
