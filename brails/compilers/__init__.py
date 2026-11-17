@@ -33,6 +33,10 @@
 
 """Compilers build an inventory out of the sources a method needs."""
 
+from .compilation_report import CompilationReport
 from .pair_redraw import PairRedraw
 
-__all__ = ['PairRedraw']
+__all__ = [
+    'CompilationReport',
+    'PairRedraw',
+]
