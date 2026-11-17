@@ -1,12 +1,11 @@
 Inventory compilers
 ===================
 
-The classes of ``brails.compilers`` build an inventory out of the sources a
-method needs. This page first explains the concepts these classes share
-with the imputers and inferers they call. It then describes the procedures
-the classes run, where their constants come from and the scope of their
-rules, in a section for each class that needs one. The docstrings state
-what a caller passes and receives.
+The classes and functions of ``brails.compilers`` build an inventory out of the
+sources a method needs. This page first explains the concepts they share with
+the imputers and inferers they call. It then describes the procedures they run,
+where their constants come from and the scope of their rules, in a section for
+each one that needs it. The docstrings state what a caller passes and receives.
 
 Concepts
 --------
@@ -387,3 +386,57 @@ structure type inferer for which the building type is a required driver,
 which BRAILS does not hold. A building type the inferer cannot read refuses
 the asset as invalid and names no feature, so it is not withheld, and the
 asset is filed as ``missing_driver``.
+
+Composition and assembly
+------------------------
+
+``compose_source`` builds one source of one world from stages frozen in a
+``StageFreeze``, and ``WorldAssembler`` assembles one-world inventories into
+one inventory over the worlds. Both are in ``world_assembly.py`` beside this
+page. This section states how they run.
+
+Composition
+~~~~~~~~~~~
+
+``compose_source`` checks its arguments and reads every stage from the
+freeze by name. A stage with one possible world is read as it is held, and
+a stage with several through its realization ``world``.
+
+The parts are then united in the order given. An asset held by any part is
+in the result, and an asset the ``dropped`` record holds, in any world, is
+left out. An asset in ``excluded`` takes no value from the parts named in
+``excluded_parts`` and keeps the values of the others. Each feature takes
+the value of the one part that holds a value for it, a value being anything
+``AssetInventory.merge`` does not count as missing. A feature no part holds
+a value for keeps a missing value, as ``merge`` keeps a source's marker,
+where ``union_disjoint`` in ``brails/utils/inventory_union.py`` drops such a
+feature. Two parts holding a value for one feature of one asset, and an id
+in ``excluded`` that no part and no ``dropped`` record holds, are refused
+once the union is built. Last, each feature of an asset whose value in a
+``withheld`` record, in ``world``, is the source label ``label`` is removed.
+
+The result shares a stage's asset record wherever no step changes the asset
+and the stage has one possible world or holds no list for the asset.
+Elsewhere it copies the record and its feature dict, but not the values or
+the coordinates.
+
+Assembly
+~~~~~~~~
+
+``WorldAssembler.add`` copies the realization at position 0 asset by asset,
+the record and its feature dict but not the values. At a later position it
+first checks the asset ids, the coordinates and the vector features against
+those held, and then compares each feature of each asset. A feature stays
+one value while every position so far agrees. When a position first
+differs, the feature becomes a list, the earlier value repeated for the
+earlier positions, and later positions append to it. A missing marker such
+as ``'NA'`` is a value like any other.
+
+Values are compared with ``==``. Two float NaN are equal, two arrays are
+equal where ``numpy.array_equal`` finds them so, and values ``==`` cannot
+compare are not equal. A list is one value, compared whole. A vector
+feature, declared by any realization, whose value at position 0 is not a
+list cannot take another value later, since the result could not tell its
+list of positions from one vector value. The rule differs from
+``collapse_realizations`` in ``brails/utils/world_values.py``, which keeps a
+list where every world holds ``None`` and compares with ``==`` alone.
