@@ -64,6 +64,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **Hazus earthquake inventory compiler** (`brails/compilers/hazus_eq_inventory_compiler.py`; `HazusEQInventoryCompiler` and `CompilerInputs` exported from `brails.compilers`): `HazusEQInventoryCompiler` joins NSI points to footprints over several possible worlds and records the run in a report, the manifest of its frozen stages and the logs of its components.
 - **The Hazus earthquake inventory compiler's file** (`CompilationResult.write`): each building holds the properties of `DEFAULT_PROPERTIES` and the further features `extra_properties` names, and the `GrossArea` of NSI and that of a local inventory are kept as `NSIGrossArea` and `LocalGrossArea`.
 - **Hazus earthquake inventory compiler, step 4.** It writes story counts from footprint heights, allocates census housing units and imputes missing occupancy classes, unit counts and story counts.
+- **Hazus earthquake inventory compiler, steps 5 and 6.** It draws years and structure types per world, derives design levels and height classes, writes each building's type letter from its structure type unless a local inventory gives one, and checks each realization against the Hazus input schema.
 
 ### Changed
 - **Python 3.9 is no longer supported.** BRAILS++ requires Python 3.10, 3.11 or 3.12, the versions the tests run on.

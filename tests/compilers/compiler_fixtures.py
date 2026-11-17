@@ -34,11 +34,12 @@
 """
 A synthetic study area for the compiler tests.
 
-Two block groups of one tract make up the area. The western one holds
+Three block groups of one tract make up the area. The western one holds
 houses, apartments and shops that NSI reaches, and the eastern one mostly
-footprints NSI does not reach, around a mobile-home park point. The year
-sampler's census tables are empty. Positions are in meters in UTM zone 10N
-near San Francisco and stored in EPSG:4326.
+footprints NSI does not reach, around a mobile-home park point. The
+northern one has no B25024 counts, so its footprints NSI does not reach
+take their residential status from the imputer, world by world. Positions
+are in meters in UTM zone 10N near San Francisco and stored in EPSG:4326.
 Footprint heights are in feet, the scraper's default unit.
 """
 
@@ -54,6 +55,7 @@ from pyproj import Transformer
 
 from brails.compilers.hazus_eq_inventory_compiler import CompilerInputs
 from brails.constants import (
+    BUILDING_TYPE_KEY,
     FOOTPRINT_PROVIDER_KEY,
     GEOGRAPHIC_CRS,
     GROSS_AREA_KEY,
@@ -62,6 +64,10 @@ from brails.constants import (
     STRUCTURE_TYPE_KEY,
     UNITS_KEY,
     YEAR_BUILT_KEY,
+)
+from brails.inferers.acs_year_built_sampler.acs_year_built_sampler import (
+    B25034_BINS,
+    B25127_CELLS,
 )
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
     HEIGHT_KEY,
@@ -75,8 +81,10 @@ X0, Y0 = 550_000.0, 4_180_000.0
 _TO_LONLAT = Transformer.from_crs(METRIC_CRS, GEOGRAPHIC_CRS, always_xy=True)
 
 SEED = 20261111
+TRACT = '06075010100'
 BG_WEST = '060750101001'
 BG_EAST = '060750101002'
+BG_NORTH = '060750101003'
 RELEASE = '2026-10-21.0'
 MH_PARK = (400.0, 200.0)
 
@@ -127,6 +135,16 @@ FOOTPRINTS: dict[str, tuple[float, float, float, float | None, str | None]] = {
     'u13': (280, 140, 9, None, OSM),
     'u14': (310, 140, 10, None, OSM),
     'u15': (340, 140, 12, None, OSM),
+    'q01': (20, 340, 12, None, OSM),
+    'q02': (60, 340, 12, None, OSM),
+    'q03': (100, 340, 12, None, OSM),
+    'q04': (140, 340, 12, None, OSM),
+    'n01': (20, 300, 12, None, OSM),
+    'n02': (50, 300, 12, None, OSM),
+    'n03': (80, 300, 12, None, OSM),
+    'n04': (110, 300, 12, None, OSM),
+    'n05': (140, 300, 12, None, OSM),
+    'n06': (170, 300, 12, None, OSM),
 }
 
 # NSI records as fd_id: (footprint, dx, dy, fields). The point lies at the
@@ -197,7 +215,7 @@ NSI_RECORDS: dict[int, tuple[str, float, float, dict[str, Any]]] = {
         {
             'occtype': 'RES2',
             'resunits': 1,
-            'num_story': 3,
+            'num_story': 4,
             'sqft': 1100.0,
             'fullrep': 9.0e4,
             'bldgtype': 'H',
@@ -222,6 +240,10 @@ NSI_RECORDS: dict[int, tuple[str, float, float, dict[str, Any]]] = {
     21: ('r05', 5, 5, _HOUSE),
     22: ('l01', 5, 5, {**_HOUSE, 'occtype': 'COM1', 'resunits': None}),
     28: ('c05', 10, 10, {'occtype': 'COM1', 'bldgtype': 'C'}),
+    24: ('q01', 5, 5, _HOUSE),
+    25: ('q02', 5, 5, {'occtype': 'COM1', 'num_story': 1, 'bldgtype': 'C'}),
+    26: ('q03', 5, 5, {'occtype': 'COM1', 'num_story': 1, 'bldgtype': 'C'}),
+    27: ('q04', 5, 5, {'occtype': 'COM1', 'num_story': 1, 'bldgtype': 'C'}),
     23: (
         'l02',
         10,
@@ -246,6 +268,9 @@ LOCAL = {
     },
     'l02': {STRUCTURE_TYPE_KEY: 'URM', YEAR_BUILT_KEY: 1990, STORIES_KEY: 2},
     'u07': {YEAR_BUILT_KEY: 1950},
+    'c02': {YEAR_BUILT_KEY: 1975},
+    'h04': {BUILDING_TYPE_KEY: 'W'},
+    'q03': {STRUCTURE_TYPE_KEY: 'C1', YEAR_BUILT_KEY: 1960, BUILDING_TYPE_KEY: 'W'},
     'c01': {UNITS_KEY: 4},
 }
 
@@ -327,7 +352,7 @@ def build_inputs(*, reverse: bool = False) -> CompilerInputs:
         x, y = FOOTPRINTS[footprint][:2]
         coordinate = lonlat(x + dx, y + dy)
         features = {k: v for k, v in fields.items() if v is not None}
-        block_group = BG_WEST if x < 200 else BG_EAST
+        block_group = BG_NORTH if y >= 250 else BG_WEST if x < 200 else BG_EAST
         features.update(
             fd_id=fd_id,
             cbfips=block_group + '000',
@@ -347,6 +372,7 @@ def build_inputs(*, reverse: bool = False) -> CompilerInputs:
     corners = {
         BG_WEST: ((-50, -50), (200, -50), (200, 250), (-50, 250)),
         BG_EAST: ((200, -50), (450, -50), (450, 250), (200, 250)),
+        BG_NORTH: ((-50, 250), (450, 250), (450, 450), (-50, 450)),
     }
     block_groups = gpd.GeoDataFrame(
         {'GEOID': list(corners)},
@@ -367,14 +393,22 @@ def build_inputs(*, reverse: bool = False) -> CompilerInputs:
         rows.append(row)
     b25024 = pd.DataFrame(rows)
 
+    b25034_variables = [row[3] for row in B25034_BINS]
+    b25034_block_groups = pd.DataFrame(
+        3.0, index=[BG_WEST, BG_EAST], columns=b25034_variables
+    )
+    b25034_tracts = pd.DataFrame(6.0, index=[TRACT], columns=b25034_variables)
+    b25127_variables = [name for cell in B25127_CELLS for name in cell[2]]
+    b25127_tracts = pd.DataFrame(1.0, index=[TRACT], columns=b25127_variables)
+
     return CompilerInputs(
         footprints=footprints,
         nsi_points=points,
         block_groups=block_groups,
         b25024_block_groups=b25024,
-        b25034_block_groups=pd.DataFrame(),
-        b25034_tracts=pd.DataFrame(),
-        b25127_tracts=pd.DataFrame(),
+        b25034_block_groups=b25034_block_groups,
+        b25034_tracts=b25034_tracts,
+        b25127_tracts=b25127_tracts,
         mh_park_points=np.array([lonlat(*MH_PARK)]),
         footprint_release=RELEASE,
         local=local,

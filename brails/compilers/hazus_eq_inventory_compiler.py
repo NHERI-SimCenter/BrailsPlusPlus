@@ -61,6 +61,8 @@ import pandas as pd
 
 from brails.aggregators.points_to_polygons.nsi_footprint_join import NSIFootprintJoin
 from brails.compilers.compilation_report import CompilationReport
+from brails.compilers.pair_redraw import PairRedraw
+from brails.compilers.resolution_loop import ComposedScreen, ResolutionLoop
 from brails.compilers.world_assembly import WorldAssembler, compose_source
 from brails.constants import (
     BLOCK_GROUP_KEY,
@@ -94,16 +96,31 @@ from brails.inferers.acs_unit_budget.acs_unit_budget import (
     GAP_NO_ACS,
     ACSUnitBudget,
 )
+from brails.inferers.acs_year_built_sampler.acs_year_built_sampler import (
+    ACSYearBuiltSampler,
+)
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_design_level_inferer import (
     HazusEQDesignLevelInferer,
+    apply_w1_carveout,
+)
+from brails.inferers.hazus_inferer_earthquake.hazus_eq_height_class_inferer import (
+    HazusEQHeightClassInferer,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_structure_type_inferer import (
     HazusEQStructureTypeInferer,
 )
+from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
+    get_hazus_general_type_membership,
+)
 from brails.inferers.hazus_inferer_earthquake.hazus_table_completion import (
     is_implausible,
 )
-from brails.inferers.inference_diagnosis import DIAGNOSIS_OK
+from brails.inferers.inference_diagnosis import (
+    DIAGNOSIS_INFEASIBLE,
+    DIAGNOSIS_INVALID,
+    DIAGNOSIS_OK,
+    DIAGNOSIS_UNSUPPORTED,
+)
 from brails.inferers.stories_from_height_inferer.stories_from_height_inferer import (
     StoriesFromHeightInferer,
     parse_sources,
@@ -129,6 +146,7 @@ from brails.utils.inventory_union import union_disjoint
 from brails.utils.stage_freeze import StageFreeze
 from brails.utils.unit_converter import UNIT_TO_METER
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
+from brails.validators.schema_validator import SchemaValidator
 
 if TYPE_CHECKING:
     import os
@@ -185,7 +203,30 @@ STAGE_STEP4_DROPPED = 'step4_dropped'
 STAGE_STEP4_WITHHELD = 'step4_withheld'
 STAGE_STEP4_IMPUTED = 'step4_imputed'
 STAGE_STEP4 = 'step4'
+STAGE_STEP6_WITHHELD = 'step6_withheld'
+STAGE_STEP6_IMPUTED = 'step6_imputed'
+STAGE_STEP6_DRAWN = 'step6_drawn'
+STAGE_STEP6_DERIVED = 'step6_derived'
+STAGE_STEP6 = 'step6'
 STAGE_OUTPUT = 'output'
+
+# The Hazus input schema every compiled realization is checked against.
+DLML_DATASET = 'seismic/building/portfolio/Hazus v5.1'
+
+# The state and design level method whose table assumes Moderate-Code for a
+# Pre-Code W1 building (Table C-10 of the Hazus 5.1 technical manual).
+CARVE_OUT_STATE = 'California'
+CARVE_OUT_METHOD = '5.1'
+
+# The exclusion category of each diagnosis by which a year sampler, the
+# design level inferer or the height class inferer refuses an asset. An asset
+# the year sampler finds infeasible lies in a block group the census tables do
+# not cover.
+_DIAGNOSIS_CATEGORY = {
+    DIAGNOSIS_INVALID: 'missing_driver',
+    DIAGNOSIS_UNSUPPORTED: 'unsupported',
+    DIAGNOSIS_INFEASIBLE: 'missing_driver',
+}
 
 # The occupancy class whose NSI story count is kept over the height count.
 NSI_STORIES_CLASS = 'RES1'
@@ -202,6 +243,18 @@ _RESERVED_OPTIONS = {
     # The budget and the pair re-draw need the imputer's default status.
     'imputer_options': ('seed', 'status_key', 'status_values', 'status_name'),
     'budget_options': ('b25024', 'mh_park_points', 'imputer', 'seed'),
+    # The compiler reads the features under their default names.
+    'sampler_options': (
+        'b25034_block_groups',
+        'b25034_tracts',
+        'b25127_tracts',
+        'seed',
+        'world',
+        'occupancy_key',
+        'units_key',
+        'block_group_key',
+        'year_built_key',
+    ),
 }
 
 # Position of each feature in the source string.
@@ -213,6 +266,14 @@ _CODE_POSITION = {
 # them whose occupancy class the unit budget's mobile-home rule may relabel.
 _REACHED_SOURCES = ('local', 'nsi', 'derived')
 _RELABELED_SOURCES = ('nsi', 'derived')
+
+# The general building type letter of each Hazus structure type, by the
+# pairing the structure type inferer restricts its draw with.
+_LETTER_OF_TYPE = {
+    structure_type: letter
+    for letter, structure_types in get_hazus_general_type_membership().items()
+    for structure_type in structure_types
+}
 
 
 class CompilerInputs(NamedTuple):
@@ -639,6 +700,55 @@ def _plausible(
     return not is_implausible(occupancy, stories)
 
 
+def _subset(source: AssetInventory, ids: Sequence[str]) -> AssetInventory:
+    """
+    Return an inventory of some assets of another, sharing their records.
+
+    Args:
+        source (AssetInventory):
+            The inventory the assets are taken from.
+        ids (Sequence[str]):
+            The assets.
+
+    Returns:
+        AssetInventory:
+            The assets, in the order given, with one possible world.
+    """
+    taken = AssetInventory(vector_features=list(source.vector_features))
+    taken.inventory = {asset_id: source.inventory[asset_id] for asset_id in ids}
+    return taken
+
+
+def _overlay(
+    asset_id: str, features: dict[str, Any], values: Mapping[str, Any], label: str
+) -> None:
+    """
+    Write values from one source into a working merge, with their codes.
+
+    Args:
+        asset_id (str):
+            The asset.
+        features (dict[str, Any]):
+            The asset's features in a merge, its source string included,
+            changed in place.
+        values (Mapping[str, Any]):
+            The values written.
+        label (str):
+            The label of the source they belong to.
+
+    Raises:
+        ValueError:
+            If the source string is not one that
+            :func:`~brails.types.asset_inventory.read_source_string` reads.
+    """
+    codes = list(read_source_string(asset_id, features))
+    for key, value in values.items():
+        features[key] = value
+        if key in _CODE_POSITION:
+            codes[_CODE_POSITION[key]] = SOURCE_CODES[label]
+    features[SOURCE_STRING_KEY] = ''.join(codes)
+
+
 class HazusEQInventoryCompiler:
     """
     Compile a Hazus earthquake inventory of one study area over several worlds.
@@ -664,6 +774,7 @@ class HazusEQInventoryCompiler:
         projected_crs: object = None,
         imputer_options: Mapping[str, object] | None = None,
         budget_options: Mapping[str, object] | None = None,
+        sampler_options: Mapping[str, object] | None = None,
     ) -> None:
         """
         Configure the compiler and check what can be checked before a run.
@@ -702,6 +813,9 @@ class HazusEQInventoryCompiler:
                 Keyword arguments of :class:`ACSUnitBudget` other than its
                 table, mobile-home park points, imputer and seed, which the
                 compiler passes.
+            sampler_options (Mapping[str, object], optional):
+                Keyword arguments of :class:`ACSYearBuiltSampler` other than
+                its tables, seed and world, which the compiler passes.
 
         Raises:
             TypeError:
@@ -760,6 +874,7 @@ class HazusEQInventoryCompiler:
         for name, given, target in (
             ('imputer_options', imputer_options, ObservedDonorImputer),
             ('budget_options', budget_options, ACSUnitBudget),
+            ('sampler_options', sampler_options, ACSYearBuiltSampler),
         ):
             if given is not None and not isinstance(given, Mapping):
                 msg = f'{name} must be a mapping, not {type(given).__name__}.'
@@ -781,8 +896,11 @@ class HazusEQInventoryCompiler:
             **resolved['imputer_options'],
         }
         ObservedDonorImputer(**resolved['imputer_options'], seed=self.seed)
+        # Built here so that a missing schema stops the compiler before a run.
+        self._validator = SchemaValidator(DLML_DATASET)
         self.imputer_options = MappingProxyType(resolved['imputer_options'])
         self.budget_options = MappingProxyType(resolved['budget_options'])
+        self.sampler_options = MappingProxyType(resolved['sampler_options'])
 
     def compile(
         self, inputs: CompilerInputs, *, worlds: Sequence[int] | None = None
@@ -886,6 +1004,7 @@ class HazusEQInventoryCompiler:
             else str(self.projected_crs),
             'imputer_options': dict(self.imputer_options),
             'budget_options': dict(self.budget_options),
+            'sampler_options': dict(self.sampler_options),
         }
         report = CompilationReport(self.seed, settings=settings)
         report.set_world_count(n_computed)
@@ -902,11 +1021,19 @@ class HazusEQInventoryCompiler:
         report.set_timing('join', time.perf_counter() - started)
 
         started = time.perf_counter()
-        self._step4(inputs, sources, logs, centroids, report, n_computed)
+        step4 = self._step4(inputs, sources, logs, centroids, report, n_computed)
         report.set_timing(STAGE_STEP4, time.perf_counter() - started)
         self._view(STAGE_STEP4, sources, report, n_computed)
+        imputer, stories = step4.imputer, step4.stories
+        del step4
 
-        inventory = self._output(sources, report, n_computed)
+        self._step6(
+            inputs, sources, logs, centroids, report, n_computed, imputer, stories
+        )
+        self._view(STAGE_STEP6, sources, report, n_computed)
+        self._undated(sources, report, n_computed)
+
+        inventory = self._output(sources, report, n_computed, logs)
 
         started = time.perf_counter()
         manifest = freeze.manifest()
@@ -1287,6 +1414,474 @@ class HazusEQInventoryCompiler:
                 )
         return _Step4(imputer, inferer, targets, imputation.log)
 
+    def _step6(  # noqa: C901
+        self,
+        inputs: CompilerInputs,
+        sources: _WorldSources,
+        logs: dict[str, pd.DataFrame],
+        centroids: Mapping[str, list[list[float]]],
+        report: CompilationReport,
+        n_computed: int,
+        imputer: ObservedDonorImputer,
+        stories: StoriesFromHeightInferer,
+    ) -> None:
+        """
+        Run steps 5 and 6 in every world: years, levels, pairs and types.
+
+        The section "The run" of the README beside this module states the
+        procedure.
+
+        Args:
+            inputs (CompilerInputs):
+                The study area's data.
+            sources (_WorldSources):
+                The sources, to which the parts and the record are added.
+            logs (dict[str, pandas.DataFrame]):
+                The logs, which receive ``year_fit``, ``pair_redraw`` and
+                ``resolution``, each with a ``world`` column.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+            report (CompilationReport):
+                The report, which receives the actions and exclusions of
+                every world.
+            n_computed (int):
+                The number of worlds computed.
+            imputer (ObservedDonorImputer):
+                The imputer of step 4, whose draw the pair re-draw takes.
+            stories (StoriesFromHeightInferer):
+                The inferer of story counts from footprint heights.
+
+        Raises:
+            ValueError:
+                If an asset's source string is not one
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads, or, as :meth:`ResolutionLoop.resolve` raises, a
+                building type has no source.
+        """
+        view = sources.freeze.read(STAGE_STEP4)
+        kept = list(view.inventory)
+        stages = (
+            STAGE_STEP6_WITHHELD,
+            STAGE_STEP6_IMPUTED,
+            STAGE_STEP6_DRAWN,
+            STAGE_STEP6_DERIVED,
+        )
+        assemblers = {stage: WorldAssembler(n_computed) for stage in stages}
+        fits, redraws, resolutions = [], [], []
+        for world in range(n_computed):
+            started = time.perf_counter()
+            frozen = view.get_world_realization(world)
+            working = view.get_world_realization(world)
+            new: dict[str, dict[str, dict[str, Any]]] = {
+                stage: {} for stage in stages
+            }
+            excluded: set[str] = set()
+
+            # Step 5: the year of each residential asset without one.
+            sampler = ACSYearBuiltSampler(
+                inputs.b25034_block_groups,
+                inputs.b25034_tracts,
+                inputs.b25127_tracts,
+                seed=self.seed,
+                world=world,
+                **self.sampler_options,
+            ).fit(frozen)
+            fits.append(sampler.fit_report.reset_index().assign(world=world))
+            targets = [
+                a
+                for a, asset in frozen.inventory.items()
+                if asset.features.get(OCCUPANCY_KEY) in UNIT_COUNT_CLASSES
+                and is_missing_value(asset.features.get(YEAR_BUILT_KEY))
+            ]
+            verdicts = sampler.check(_subset(frozen, targets))
+            for row in verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK].itertuples():
+                excluded.add(row.Index)
+                report.record_exclusion(
+                    row.Index,
+                    world=world,
+                    stage='year',
+                    category=_DIAGNOSIS_CATEGORY[row.diagnosis],
+                    diagnosis=row.diagnosis,
+                    detail=row.detail,
+                    resolvable_by=row.resolvable_by,
+                )
+            passing = list(verdicts.index[verdicts['diagnosis'] == DIAGNOSIS_OK])
+            years = sampler.draw(_subset(frozen, passing))
+            for asset_id, year in years.items():
+                new[STAGE_STEP6_DRAWN][asset_id] = {YEAR_BUILT_KEY: int(year)}
+                _overlay(
+                    asset_id,
+                    working.inventory[asset_id].features,
+                    {YEAR_BUILT_KEY: int(year)},
+                    'drawn',
+                )
+
+            # The pair re-draw, with the observed donors of the frozen view.
+            donors = AssetInventory(vector_features=list(frozen.vector_features))
+            for asset_id, asset in frozen.inventory.items():
+                source = SOURCE_LABELS.get(
+                    read_source_string(asset_id, asset.features)[
+                        _CODE_POSITION[OCCUPANCY_KEY]
+                    ]
+                )
+                if source in _REACHED_SOURCES and not is_missing_value(
+                    asset.features.get(STORIES_KEY)
+                ):
+                    donors.inventory[asset_id] = asset
+            redraw = PairRedraw(imputer, donors, stories, world=world).redraw(
+                working
+            )
+            redraws.append(redraw.log)
+            for row in redraw.withheld.itertuples(index=False):
+                new[STAGE_STEP6_WITHHELD].setdefault(row.asset_id, {})[
+                    row.feature
+                ] = row.source
+                replaced = {
+                    **redraw.updates.get(row.asset_id, {}),
+                    **redraw.derived.get(row.asset_id, {}),
+                }
+                report.record_action(
+                    row.asset_id,
+                    row.feature,
+                    stage='pair_redraw',
+                    action='withheld',
+                    world=world,
+                    old=row.value,
+                    new=replaced.get(row.feature),
+                    source=row.source,
+                    reason=(
+                        'a member of an implausible pair of occupancy class and '
+                        'story count'
+                    ),
+                    block_group=working.inventory[row.asset_id].features.get(
+                        BLOCK_GROUP_KEY
+                    ),
+                )
+            for label, stage, action, reason, values_of in (
+                (
+                    'imputed',
+                    STAGE_STEP6_IMPUTED,
+                    'redrawn',
+                    "a donor's value for a member of an implausible pair",
+                    redraw.updates,
+                ),
+                (
+                    'derived',
+                    STAGE_STEP6_DERIVED,
+                    'derived',
+                    "the footprint height's count for an uncorroborated NSI count",
+                    redraw.derived,
+                ),
+            ):
+                for asset_id, values in values_of.items():
+                    for feature, value in values.items():
+                        report.record_action(
+                            asset_id,
+                            feature,
+                            stage='pair_redraw',
+                            action=action,
+                            world=world,
+                            old=working.inventory[asset_id].features.get(feature),
+                            new=value,
+                            source=label,
+                            reason=reason,
+                            block_group=working.inventory[asset_id].features.get(
+                                BLOCK_GROUP_KEY
+                            ),
+                        )
+                    new[stage].setdefault(asset_id, {}).update(values)
+                    _overlay(
+                        asset_id, working.inventory[asset_id].features, values, label
+                    )
+
+            resolutions.append(
+                {
+                    'world': world,
+                    **self._draw_types(
+                        world,
+                        sources,
+                        report,
+                        working,
+                        list(working.inventory),
+                        excluded,
+                        new[STAGE_STEP6_DERIVED],
+                        new[STAGE_STEP6_DRAWN],
+                    ),
+                }
+            )
+
+            for stage in stages:
+                assemblers[stage].add(world, _padded(kept, centroids, new[stage]))
+            del frozen, working
+            report.set_timing('step6', time.perf_counter() - started, world=world)
+
+        logs['year_fit'] = pd.concat(fits, ignore_index=True)
+        logs['pair_redraw'] = pd.concat(redraws, ignore_index=True)
+        logs['resolution'] = pd.DataFrame(resolutions)
+        started = time.perf_counter()
+        sources.add_withheld(
+            STAGE_STEP6_WITHHELD, assemblers[STAGE_STEP6_WITHHELD].result()
+        )
+        sources.add_part(
+            'imputed', STAGE_STEP6_IMPUTED, assemblers[STAGE_STEP6_IMPUTED].result()
+        )
+        sources.add_part(
+            'drawn', STAGE_STEP6_DRAWN, assemblers[STAGE_STEP6_DRAWN].result()
+        )
+        sources.add_part(
+            'derived', STAGE_STEP6_DERIVED, assemblers[STAGE_STEP6_DERIVED].result()
+        )
+        report.set_timing('step6_parts_freeze', time.perf_counter() - started)
+
+    def _draw_types(  # noqa: C901
+        self,
+        world: int,
+        sources: _WorldSources,
+        report: CompilationReport,
+        working: AssetInventory,
+        candidates: Sequence[str],
+        excluded: set[str],
+        derived: dict[str, dict[str, Any]],
+        drawn: dict[str, dict[str, Any]],
+    ) -> dict[str, int]:
+        """
+        Give dated assets their design levels, structure types and height classes.
+
+        The section "The run" of the README beside this module states the
+        procedure.
+
+        Args:
+            world (int):
+                The world.
+            sources (_WorldSources):
+                The sources, whose frozen parts say which source holds a
+                building type.
+            report (CompilationReport):
+                The report, which receives the actions and exclusions.
+            working (AssetInventory):
+                The world's working merge, whose design levels are written.
+            candidates (Sequence[str]):
+                The assets considered.
+            excluded (set[str]):
+                The assets excluded in the world, to which the refused ones
+                are added.
+            derived (dict[str, dict[str, Any]]):
+                The world's new derived values, written per asset.
+            drawn (dict[str, dict[str, Any]]):
+                The world's new drawn values, written per asset.
+
+        Returns:
+            dict[str, int]:
+                The loop's counts: ``passed_first_screen``,
+                ``resolved_by_withholding`` and ``excluded``.
+
+        Raises:
+            ValueError:
+                If an asset's source string is not one
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads, or, as :meth:`ResolutionLoop.resolve` raises, a
+                building type has no source.
+        """
+        design = HazusEQDesignLevelInferer(
+            self.design_level_method, self.state, self.seismic_zone
+        )
+        heights = HazusEQHeightClassInferer()
+        labeled = [
+            (label, sources.freeze.read(stage))
+            for label in PRECEDENCE
+            for stage in sources.parts[label]
+        ]
+
+        def held(asset_id: str, key: str) -> bool:
+            """
+            Say whether an asset holds a value of a feature in the working merge.
+
+            Args:
+                asset_id (str):
+                    The asset.
+                key (str):
+                    The feature.
+
+            Returns:
+                bool:
+                    Whether the value is not missing.
+            """
+            return not is_missing_value(
+                working.inventory[asset_id].features.get(key)
+            )
+
+        # The design level of every asset with a year and none.
+        dated = [
+            a
+            for a in candidates
+            if a not in excluded
+            and held(a, YEAR_BUILT_KEY)
+            and not held(a, DESIGN_LEVEL_KEY)
+        ]
+        checked = design.check(_subset(working, dated))
+        for row in checked[checked['diagnosis'] != DIAGNOSIS_OK].itertuples():
+            excluded.add(row.Index)
+            report.record_exclusion(
+                row.Index,
+                world=world,
+                stage='design_level',
+                category=_DIAGNOSIS_CATEGORY[row.diagnosis],
+                diagnosis=row.diagnosis,
+                detail=row.detail,
+                resolvable_by=row.resolvable_by,
+            )
+        usable = list(checked.index[checked['diagnosis'] == DIAGNOSIS_OK])
+        for asset_id, level in design.draw(_subset(working, usable)).items():
+            derived.setdefault(asset_id, {})[DESIGN_LEVEL_KEY] = level
+            _overlay(
+                asset_id,
+                working.inventory[asset_id].features,
+                {DESIGN_LEVEL_KEY: level},
+                'derived',
+            )
+
+        # The screen and the loop, then the type draw.
+        structure = HazusEQStructureTypeInferer(
+            self.state, seed=self.seed, world=world, complete_tables=True
+        )
+        loop = ResolutionLoop(ComposedScreen(design, structure))
+        untyped = [
+            a
+            for a in candidates
+            if a not in excluded
+            and held(a, YEAR_BUILT_KEY)
+            and not held(a, STRUCTURE_TYPE_KEY)
+        ]
+        # The source holding each building type, in merge precedence.
+        type_sources = {}
+        for asset_id in untyped:
+            if not held(asset_id, BUILDING_TYPE_KEY):
+                continue
+            for label, part in labeled:
+                asset = part.inventory.get(asset_id)
+                value = (
+                    None if asset is None else asset.features.get(BUILDING_TYPE_KEY)
+                )
+                if isinstance(value, list):
+                    value = value[world]
+                if not is_missing_value(value):
+                    type_sources[asset_id] = label
+                    break
+        resolution = loop.resolve(
+            _subset(working, untyped), report, building_type_sources=type_sources
+        )
+        excluded.update(resolution.excluded)
+        types = structure.draw(resolution.resolved)
+        for asset_id, structure_type in types.items():
+            drawn.setdefault(asset_id, {})[STRUCTURE_TYPE_KEY] = structure_type
+
+        # The height class of every asset holding a type and none.
+        typed = AssetInventory()
+        for asset_id in candidates:
+            structure_type = types.get(asset_id)
+            if structure_type is None and held(asset_id, STRUCTURE_TYPE_KEY):
+                structure_type = working.inventory[asset_id].features[
+                    STRUCTURE_TYPE_KEY
+                ]
+            if (
+                asset_id in excluded
+                or structure_type is None
+                or held(asset_id, HEIGHT_CLASS_KEY)
+            ):
+                continue
+            typed.inventory[asset_id] = Asset(
+                asset_id,
+                working.inventory[asset_id].coordinates,
+                {
+                    STRUCTURE_TYPE_KEY: structure_type,
+                    STORIES_KEY: working.inventory[asset_id].features.get(
+                        STORIES_KEY
+                    ),
+                },
+            )
+        classed = heights.check(typed)
+        for row in classed[classed['diagnosis'] != DIAGNOSIS_OK].itertuples():
+            excluded.add(row.Index)
+            report.record_exclusion(
+                row.Index,
+                world=world,
+                stage='height_class',
+                category=_DIAGNOSIS_CATEGORY[row.diagnosis],
+                diagnosis=row.diagnosis,
+                detail=row.detail,
+            )
+        ok = list(classed.index[classed['diagnosis'] == DIAGNOSIS_OK])
+        for asset_id, height_class in heights.draw(_subset(typed, ok)).items():
+            if height_class is not None:
+                derived.setdefault(asset_id, {})[HEIGHT_CLASS_KEY] = height_class
+
+        if self.state == CARVE_OUT_STATE and design.method == CARVE_OUT_METHOD:
+            drawn_levels = [
+                a
+                for a in types.index
+                if a in derived and DESIGN_LEVEL_KEY in derived[a]
+            ]
+            levels = pd.Series(
+                {a: derived[a][DESIGN_LEVEL_KEY] for a in drawn_levels},
+                dtype=object,
+            )
+            adjusted = apply_w1_carveout(levels, types.reindex(levels.index))
+            for asset_id in levels.index[adjusted != levels]:
+                derived[asset_id][DESIGN_LEVEL_KEY] = adjusted[asset_id]
+                report.record_action(
+                    asset_id,
+                    DESIGN_LEVEL_KEY,
+                    stage='carve_out',
+                    action='derived',
+                    world=world,
+                    old=levels[asset_id],
+                    new=adjusted[asset_id],
+                    source='derived',
+                    reason='a Pre-Code W1 building is taken as Moderate-Code',
+                    block_group=working.inventory[asset_id].features.get(
+                        BLOCK_GROUP_KEY
+                    ),
+                )
+
+        return {
+            'passed_first_screen': resolution.passed_first_screen,
+            'resolved_by_withholding': resolution.resolved_by_withholding,
+            'excluded': resolution.excluded_count,
+        }
+
+    def _undated(
+        self, sources: _WorldSources, report: CompilationReport, n_computed: int
+    ) -> None:
+        """
+        Exclude, in each world, every asset the frozen step 6 left without a year.
+
+        Args:
+            sources (_WorldSources):
+                The sources, whose freeze holds :data:`STAGE_STEP6`.
+            report (CompilationReport):
+                The report, whose exclusions are read and extended.
+            n_computed (int):
+                The number of worlds computed.
+        """
+        view = sources.freeze.read(STAGE_STEP6)
+        exclusions = report.exclusions
+        for world in range(n_computed):
+            excluded = set(exclusions.loc[exclusions['world'] == world, 'asset_id'])
+            # No stage of this run dates a non-residential building.
+            for asset_id, asset in view.get_world_realization(
+                world
+            ).inventory.items():
+                if asset_id not in excluded and is_missing_value(
+                    asset.features.get(YEAR_BUILT_KEY)
+                ):
+                    report.record_exclusion(
+                        asset_id,
+                        world=world,
+                        stage='nonresidential_year',
+                        category='missing_driver',
+                        detail='no stage of the run gives a year to this asset',
+                    )
+
     def _view(
         self,
         stage: str,
@@ -1327,30 +1922,45 @@ class HazusEQInventoryCompiler:
         sources: _WorldSources,
         report: CompilationReport,
         n_computed: int,
+        logs: dict[str, pd.DataFrame],
     ) -> AssetInventory:
         """
         Run the output step: the final merge of each world, marked and assembled.
+
+        The section "The run" of the README beside this module states the
+        procedure.
 
         Args:
             sources (_WorldSources):
                 The sources.
             report (CompilationReport):
                 The report, whose exclusion rows mark the buildings and which
-                receives the timings.
+                receives the exclusions of the schema check and the timings.
             n_computed (int):
                 The number of worlds computed.
+            logs (dict[str, pandas.DataFrame]):
+                The logs, which receive ``certificate``, the schema's
+                violations.
 
         Returns:
             AssetInventory:
                 The output, frozen as :data:`STAGE_OUTPUT`.
         """
-        # The GrossArea a local inventory gives, by building.
+        # The GrossArea a local inventory gives, by building, and the buildings
+        # whose BuildingType it gives.
         local_areas = {
             asset_id: asset.features[GROSS_AREA_KEY]
             for stage in sources.parts['local']
             for asset_id, asset in sources.freeze.read(stage).inventory.items()
             if not is_missing_value(asset.features.get(GROSS_AREA_KEY))
         }
+        local_letters = {
+            asset_id
+            for stage in sources.parts['local']
+            for asset_id, asset in sources.freeze.read(stage).inventory.items()
+            if not is_missing_value(asset.features.get(BUILDING_TYPE_KEY))
+        }
+        violations = []
         exclusions = report.exclusions
         excluded_in = {
             world: set(rows)
@@ -1361,17 +1971,66 @@ class HazusEQInventoryCompiler:
             started = time.perf_counter()
             merged = sources.merge(world)
             excluded = excluded_in.get(world, set())
+            checked = AssetInventory(vector_features=list(merged.vector_features))
+            checked.inventory = {
+                a: asset
+                for a, asset in merged.inventory.items()
+                if a not in excluded
+            }
+            verdict = self._validator.validate(checked)
+            for asset_id, messages in verdict.by_asset().items():
+                report.record_exclusion(
+                    asset_id,
+                    world=world,
+                    stage='certificate',
+                    category='certificate',
+                    detail='; '.join(messages),
+                )
+                excluded = excluded | {asset_id}
+            violations.append(
+                verdict.to_dataframe()
+                .drop(columns='world_index')
+                .assign(world=world)
+            )
+            contradicted = 0
             for asset_id, asset in merged.inventory.items():
                 features = asset.features
                 features.pop(GROSS_AREA_KEY, None)
                 if asset_id in local_areas:
                     features[LOCAL_GROSS_AREA_KEY] = local_areas[asset_id]
                 features[EXCLUDED_KEY] = asset_id in excluded
+                # A local letter, else that of the structure type, never NSI's.
+                letter = _LETTER_OF_TYPE.get(features.get(STRUCTURE_TYPE_KEY))
+                if asset_id not in local_letters:
+                    features.pop(BUILDING_TYPE_KEY, None)
+                    if letter is not None:
+                        features[BUILDING_TYPE_KEY] = letter
+                elif (
+                    asset_id not in excluded
+                    and features[BUILDING_TYPE_KEY] != letter
+                ):
+                    contradicted += 1
+            if contradicted:
+                report.note(
+                    f'World {world}: {contradicted} compiled building(s) keep a '
+                    f'local {BUILDING_TYPE_KEY} other than the letter of their '
+                    f'{STRUCTURE_TYPE_KEY}.'
+                )
             assembler.add(world, merged)
             del merged
             report.set_timing(
                 STAGE_OUTPUT, time.perf_counter() - started, world=world
             )
+        logs['certificate'] = pd.concat(violations, ignore_index=True)
+        report.set_certificate(
+            {
+                'dataset': DLML_DATASET,
+                'excluded_by_world': {
+                    world: int(frame['asset_id'].nunique())
+                    for world, frame in enumerate(violations)
+                },
+            }
+        )
         output = assembler.result()
         started = time.perf_counter()
         sources.freeze.freeze(STAGE_OUTPUT, output)

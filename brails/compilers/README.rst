@@ -494,15 +494,46 @@ residential occupancy classes of this section are those of
 outside them is a target for its story count alone, since the join gives units
 to housing records only.
 
+Steps 5 and 6 run in each world, as one stage, on that world's realization of
+the frozen view ``STAGE_STEP4``. Step 5 dates the residential buildings:
+``ACSYearBuiltSampler``, fitted on that realization, draws the construction
+year of each residential building without one from the census tables of its
+block group and tract. Step 6 types the dated buildings. ``PairRedraw`` first
+replaces the NSI members of implausible pairs of occupancy class and story
+count, as the section "Pair re-draw" states, with the observed donors of that
+realization. ``HazusEQDesignLevelInferer`` derives the design level of every
+building with a year and none. Each building with a year and no structure type
+then passes through ``ComposedScreen`` and ``ResolutionLoop``, as the sections
+"Composed screen" and "Resolution loop" state, and
+``HazusEQStructureTypeInferer`` draws the structure type of each building the
+loop admits. ``HazusEQHeightClassInferer`` gives every building that holds a
+structure type, drawn or its own, its height class. A building one of these
+components refuses is excluded from that world. The types are drawn from the
+completed West Coast tables, so the compiler takes states of that region only.
+In ``CARVE_OUT_STATE`` (California) under ``CARVE_OUT_METHOD`` (5.1), a drawn
+W1 building whose derived level is Pre-Code is raised to Moderate-Code, as
+Table C-10 of the Hazus manual assumes. A non-residential building without a
+year is excluded, since no step of the run dates one.
+
 The output step merges each world's sources in the precedence of
 ``PRECEDENCE``: local values first, then the footprint, NSI, derived, imputed
 and drawn values. ``AssetInventory.merge`` writes the source string, as the
 section "The source string" describes. NSI's gross area, the ``GrossArea``
 feature the join writes, is kept as ``NSIGrossArea``, which the compiler writes
 on the join's values, and a ``GrossArea`` that a local inventory gives as
-``LocalGrossArea``. Each building receives ``Excluded``, true in a world from
-which the report lists it as excluded. The worlds are then assembled into one
-inventory.
+``LocalGrossArea``. Every building not yet excluded from the world is checked
+against the Hazus 5.1 input schema of the damage and loss model library,
+``DLML_DATASET``, and a building it refuses is excluded from that world. Each
+building receives ``Excluded``, true in a world from which the report lists it
+as excluded. Its ``BuildingType`` is the letter a local inventory gives it,
+where one does, and otherwise the letter of its structure type in that world,
+by the pairing of ``get_hazus_general_type_membership`` in
+``brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py`` that the
+structure type inferer draws with. NSI's letter, which the draw reads, is not
+written. Where a local letter differs from the letter of the building's
+structure type, the file carries the local letter, and a notice in the report
+counts such compiled buildings in each world. The worlds are then assembled
+into one inventory.
 
 Frozen stages
 ~~~~~~~~~~~~~

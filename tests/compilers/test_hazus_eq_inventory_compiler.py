@@ -38,6 +38,7 @@ from __future__ import annotations
 import functools
 import json
 import math
+from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 from unittest import mock
@@ -57,6 +58,9 @@ from brails.compilers.hazus_eq_inventory_compiler import (
     HazusEQInventoryCompiler,
 )
 from brails.constants import (
+    BLOCK_GROUP_KEY,
+    BUILDING_TYPE_KEY,
+    DESIGN_LEVEL_KEY,
     DROPPED_KEY,
     EXCLUDED_KEY,
     FOOTPRINT_DATASETS_KEY,
@@ -64,6 +68,7 @@ from brails.constants import (
     FOOTPRINT_PROVIDER_KEY,
     FOOTPRINT_RELEASE_KEY,
     GROSS_AREA_KEY,
+    HEIGHT_CLASS_KEY,
     LOCAL_GROSS_AREA_KEY,
     NSI_GROSS_AREA_KEY,
     OCCUPANCY_KEY,
@@ -71,7 +76,12 @@ from brails.constants import (
     SOURCE_STRING_KEY,
     STORIES_FROM_HEIGHT_KEY,
     STORIES_KEY,
+    STRUCTURE_TYPE_KEY,
     UNITS_KEY,
+    YEAR_BUILT_KEY,
+)
+from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
+    get_hazus_height_classes_by_type,
 )
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
     OVERTURE_PROVIDER,
@@ -88,15 +98,19 @@ from tests.compilers.compiler_fixtures import (
     LOCAL,
     METRIC_CRS,
     MH_PARK,
+    NSI_RECORDS,
     RELEASE,
     SEED,
     build_inputs,
+    square,
 )
 
 if TYPE_CHECKING:
     from brails.compilers.compilation_report import CompilationReport
 
 STORIES_CODE = HAZUS_EQ_SOURCE_FEATURES.index(STORIES_KEY)
+# The footprints no NSI record reaches.
+UNREACHED = set(FOOTPRINTS) - {record[0] for record in NSI_RECORDS.values()}
 FREEZE_ORDER = (
     'footprints',
     'local',
@@ -107,6 +121,11 @@ FREEZE_ORDER = (
     'step4_withheld',
     'step4_imputed',
     'step4',
+    'step6_withheld',
+    'step6_imputed',
+    'step6_drawn',
+    'step6_derived',
+    'step6',
     'output',
 )
 # The timed units of a run, once and per world.
@@ -115,10 +134,11 @@ TIMED_ONCE = (
     'join',
     'step4',
     'step4_freeze',
+    'step6_freeze',
     'output_freeze',
     'manifest',
 )
-TIMED_PER_WORLD = ('step4_view', 'output')
+TIMED_PER_WORLD = ('step4_view', 'step6', 'step6_view', 'output')
 SQUARE_FEET_PER_SQUARE_METER = 10.7639
 
 
@@ -260,6 +280,12 @@ class TestConstructor:
             ({'imputer_options': {'status_key': 'x'}}, TypeError, 'status_key'),
             ({'budget_options': {'imputer': None}}, TypeError, 'imputer'),
             ({'budget_options': {'radius': 1}}, TypeError, 'radius'),
+            ({'sampler_options': {'world': 1}}, TypeError, 'world'),
+            (
+                {'sampler_options': {'block_group_key': 'x'}},
+                TypeError,
+                'block_group_key',
+            ),
         ],
     )
     def test_refusals(self, arguments: dict, error: type, match: str | None) -> None:
@@ -270,11 +296,14 @@ class TestConstructor:
     def test_options_and_seed(self) -> None:
         """The imputer defaults are the compiler's, overridden key by key."""
         compiler = HazusEQInventoryCompiler(
-            imputer_options={'k': 7}, budget_options={'threshold_sqft': 900.0}
+            imputer_options={'k': 7},
+            budget_options={'threshold_sqft': 900.0},
+            sampler_options={'smoothing': 5.0},
         )
         assert isinstance(compiler.seed, int)
         assert dict(compiler.imputer_options) == {**DEFAULT_IMPUTER_OPTIONS, 'k': 7}
         assert dict(compiler.budget_options) == {'threshold_sqft': 900.0}
+        assert dict(compiler.sampler_options) == {'smoothing': 5.0}
         assert dict(HazusEQInventoryCompiler().imputer_options) == dict(
             DEFAULT_IMPUTER_OPTIONS
         )
@@ -981,3 +1010,390 @@ class TestWorlds:
         ]
         assert lists
         assert all(len(value) == 3 for value in lists)
+
+
+class TestYearsAndTypes:
+    """Steps 5 and 6: years, design levels, pairs, types and height classes."""
+
+    def test_components_receive_worlds(
+        self, study_area: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Each per-world component is told the number of the world it computes."""
+        compiler = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=10, projected_crs=METRIC_CRS
+        )
+        spies = {}
+        for name in (
+            'ACSYearBuiltSampler',
+            'HazusEQStructureTypeInferer',
+            'PairRedraw',
+        ):
+            spies[name] = mock.Mock(wraps=getattr(hc, name))
+            monkeypatch.setattr(hc, name, spies[name])
+        compiler.compile(study_area, worlds=(2, 5))
+        for spy in spies.values():
+            worlds = Counter(c.kwargs['world'] for c in spy.call_args_list)
+            assert set(worlds) == set(range(6))
+            assert len(set(worlds.values())) == 1
+
+    def test_frozen_inputs_cross_the_boundary(
+        self, study_area: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The year fit and the re-draw's donors read realization w of step4."""
+        # The spies keep the inventories they were given, so the comparison
+        # after the run also sees a later change to them.
+        compiler = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+        )
+        redraw = mock.Mock(wraps=hc.PairRedraw)
+        monkeypatch.setattr(hc, 'PairRedraw', redraw)
+        real = hc.ACSYearBuiltSampler.fit
+        with mock.patch.object(
+            hc.ACSYearBuiltSampler, 'fit', autospec=True, side_effect=real
+        ) as fit:
+            result = compiler.compile(study_area)
+        step4 = result.freeze.read('step4')
+        occupancy = HAZUS_EQ_SOURCE_FEATURES.index(OCCUPANCY_KEY)
+        for world in range(3):
+            frozen = features_in(step4, world)
+            assert features_in(fit.call_args_list[world].args[1], 0) == frozen
+            reached = {
+                a: values
+                for a, values in frozen.items()
+                if values[SOURCE_STRING_KEY][occupancy] in 'LNR'
+                and STORIES_KEY in values
+            }
+            donors = redraw.call_args_list[world].args[1]
+            assert features_in(donors, 0) == reached
+
+    def test_changed_view_raises_at_the_manifest(
+        self, study_area: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A component that changes the frozen step4 view it read stops the run."""
+        real = hc.StageFreeze.read
+
+        def changing(self: object, stage: str) -> AssetInventory:
+            """
+            Return a frozen stage, changing the step4 view.
+
+            Args:
+                self (object):
+                    The freeze.
+                stage (str):
+                    The stage read.
+
+            Returns:
+                AssetInventory:
+                    The stage.
+            """
+            held = real(self, stage)
+            if stage == 'step4':
+                held.inventory['h01'].features[STORIES_KEY] = 9
+            return held
+
+        monkeypatch.setattr(hc.StageFreeze, 'read', changing)
+        with pytest.raises(RuntimeError, match='step4'):
+            HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            ).compile(study_area)
+
+    def test_step6_parts(self, compiled: object) -> None:
+        """Each per-world part of steps 5 and 6 holds the spine after the drops."""
+        result = compiled(n_worlds=3)
+        kept = set(result.inventory.inventory)
+        for stage in (
+            'step6_withheld',
+            'step6_imputed',
+            'step6_drawn',
+            'step6_derived',
+        ):
+            part = result.freeze.read(stage)
+            assert part.n_pw == 3
+            assert set(part.inventory) == kept
+            for asset in part.inventory.values():
+                assert len(asset.coordinates) == 1, stage
+        drawn = {
+            key
+            for asset in result.freeze.read('step6_drawn').inventory.values()
+            for key in asset.features
+        }
+        assert drawn == {YEAR_BUILT_KEY, STRUCTURE_TYPE_KEY}
+
+    def test_loop_in_the_run(self, compiled: object) -> None:
+        """An NSI type its cell rejects is withheld and the asset compiled."""
+        result = compiled(n_worlds=3)
+        records = result.report.records
+        rows = records[
+            (records['asset_id'] == 'p01') & (records['stage'] == 'resolution')
+        ]
+        assert sorted(rows['world']) == [0, 1, 2]
+        assert set(rows['feature']) == {BUILDING_TYPE_KEY}
+        assert set(rows['source']) == {'nsi'}
+        for world in range(3):
+            features = features_in(result.inventory, world)['p01']
+            assert features[EXCLUDED_KEY] is False
+            assert features[STRUCTURE_TYPE_KEY] not in ('W1', 'W2')
+            assert (
+                features[BUILDING_TYPE_KEY]
+                == hc._LETTER_OF_TYPE[features[STRUCTURE_TYPE_KEY]]
+            )
+
+    def test_building_type(self, compiled: object) -> None:
+        """A local letter is kept, and every other follows the structure type."""
+        result = compiled(n_worlds=3)
+        local = {
+            asset_id: values[BUILDING_TYPE_KEY]
+            for asset_id, values in LOCAL.items()
+            if BUILDING_TYPE_KEY in values
+        }
+        derived = set()
+        for world in range(3):
+            for asset_id, values in features_in(result.inventory, world).items():
+                letter = values.get(BUILDING_TYPE_KEY)
+                if asset_id in local:
+                    assert letter == local[asset_id]
+                elif not values[EXCLUDED_KEY] or letter is not None:
+                    assert letter == hc._LETTER_OF_TYPE[values[STRUCTURE_TYPE_KEY]]
+                    derived.add(asset_id)
+        # q03's local W stands beside its local C1; NSI's C is not written,
+        # and a notice counts the disagreement in each world.
+        assert local['q03'] != hc._LETTER_OF_TYPE[LOCAL['q03'][STRUCTURE_TYPE_KEY]]
+        assert derived & UNREACHED
+        notices = result.report.summary()['notices']
+        for world in range(3):
+            assert (
+                f'World {world}: 1 compiled building(s) keep a local '
+                f'{BUILDING_TYPE_KEY} other than the letter of their '
+                f'{STRUCTURE_TYPE_KEY}.'
+            ) in notices
+
+    def test_letters_disagreeing_are_counted(self, study_area: object) -> None:
+        """The notice counts compiled buildings whose local letter is not the type's."""
+        # u06 gets a local C beside a local W1, as q03 holds a local W beside
+        # a local C1, and is excluded from world 1; h04's local W agrees.
+        local = build_inputs().local
+        x, y, side = FOOTPRINTS['u06'][:3]
+        local.add_asset(
+            'u06',
+            Asset(
+                'u06',
+                square(x, y, side),
+                {
+                    STRUCTURE_TYPE_KEY: 'W1',
+                    BUILDING_TYPE_KEY: 'C',
+                    YEAR_BUILT_KEY: 1980,
+                },
+            ),
+        )
+        real = hc.CompilationReport.set_world_count
+
+        def counted(report: CompilationReport, count: int) -> None:
+            """
+            Set the world count, then exclude u06 from world 1.
+
+            Args:
+                report (CompilationReport):
+                    The run's report.
+                count (int):
+                    The number of worlds computed.
+            """
+            real(report, count)
+            report.record_exclusion(
+                'u06', world=1, stage='resolution', category='conflict', detail='x'
+            )
+
+        with mock.patch.object(
+            hc.CompilationReport,
+            'set_world_count',
+            autospec=True,
+            side_effect=counted,
+        ):
+            result = HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            ).compile(study_area._replace(local=local))
+        notices = result.report.summary()['notices']
+        for world, count in ((0, 2), (1, 1), (2, 2)):
+            assert (
+                f'World {world}: {count} compiled building(s) keep a local '
+                f'{BUILDING_TYPE_KEY} other than the letter of their '
+                f'{STRUCTURE_TYPE_KEY}.'
+            ) in notices
+
+    def test_pairing_covers_every_type(self) -> None:
+        """Every Hazus structure type has a general type letter."""
+        assert set(hc._LETTER_OF_TYPE) == set(get_hazus_height_classes_by_type())
+
+    def test_completed_tables(self, compiled: object) -> None:
+        """The NSI EDU1 at five stories, an empty printed cell, compiles."""
+        result = compiled(n_worlds=3)
+        printed = hc.HazusEQStructureTypeInferer('California', seed=SEED)
+        for world in range(3):
+            features = features_in(result.inventory, world)['c02']
+            assert features[EXCLUDED_KEY] is False
+            assert features[STRUCTURE_TYPE_KEY]
+            assert printed.cell_is_unpublished(features)
+
+    def test_pair_redraw(self, compiled: object) -> None:
+        """The NSI pair RES2 at four stories is replaced by a donor's pair."""
+        result = compiled(n_worlds=3)
+        records = result.report.records
+        rows = records[
+            (records['asset_id'] == 'c03') & (records['stage'] == 'pair_redraw')
+        ]
+        assert set(rows['action']) == {'withheld', 'redrawn'}
+        assert set(rows.loc[rows['action'] == 'withheld', 'source']) == {'nsi'}
+        record = result.freeze.read('step6_withheld').get_world_realization(0)
+        assert set(record.inventory['c03'].features.values()) == {'nsi'}
+        for world in range(3):
+            features = features_in(result.inventory, world)['c03']
+            codes = features[SOURCE_STRING_KEY]
+            assert (codes[0], codes[STORIES_CODE]) == ('I', 'I')
+            pair = (features[OCCUPANCY_KEY], features[STORIES_KEY])
+            assert pair != ('RES2', 4)
+
+    def test_carve_out(self, compiled: object, study_area: object) -> None:
+        """A drawn Pre-Code W1 leaves as Moderate-Code in California alone."""
+        result = compiled(n_worlds=3)
+        records = result.report.records
+        rows = records[records['stage'] == 'carve_out']
+        assert not rows.empty
+        for row in rows.itertuples():
+            features = features_in(result.inventory, row.world)[row.asset_id]
+            assert features[STRUCTURE_TYPE_KEY] == 'W1'
+            assert features[DESIGN_LEVEL_KEY] == 'Moderate-Code'
+            assert (row.old, row.new) == ('Pre-Code', 'Moderate-Code')
+        oregon = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, state='Oregon', projected_crs=METRIC_CRS
+        ).compile(study_area)
+        assert 'carve_out' not in set(oregon.report.records['stage'])
+        levels = [
+            (features[STRUCTURE_TYPE_KEY], features[DESIGN_LEVEL_KEY])
+            for world in range(3)
+            for features in features_in(oregon.inventory, world).values()
+            if STRUCTURE_TYPE_KEY in features and DESIGN_LEVEL_KEY in features
+        ]
+        assert ('W1', 'Pre-Code') in levels
+
+    def test_certificate(self, compiled: object) -> None:
+        """A local URM of 1990, which gives High-Code, fails the schema everywhere."""
+        result = compiled(n_worlds=3)
+        rows = result.report.exclusions
+        rows = rows[rows['asset_id'] == 'l02']
+        assert sorted(rows['world']) == [0, 1, 2]
+        assert set(rows['category']) == {'certificate'}
+        assert result.inventory.inventory['l02'].features[EXCLUDED_KEY] is True
+        assert (
+            result.inventory.inventory['l02'].features[DESIGN_LEVEL_KEY]
+            == 'High-Code'
+        )
+        # The URM, C3 and S5 clause refuses it, and no feature is missing.
+        for detail in rows['detail']:
+            assert DESIGN_LEVEL_KEY in detail
+            assert 'required property' not in detail
+
+    def test_local_type(self, compiled: object) -> None:
+        """A local type the schema accepts compiles with its derived height class."""
+        result = compiled(n_worlds=3)
+        height = HAZUS_EQ_SOURCE_FEATURES.index(HEIGHT_CLASS_KEY)
+        kind = HAZUS_EQ_SOURCE_FEATURES.index(STRUCTURE_TYPE_KEY)
+        for world in range(3):
+            features = features_in(result.inventory, world)['q03']
+            assert features[EXCLUDED_KEY] is False
+            assert features[HEIGHT_CLASS_KEY] == 'Low-Rise'
+            codes = features[SOURCE_STRING_KEY]
+            assert (codes[kind], codes[height]) == ('L', 'R')
+
+    def test_building_type_sources(self, study_area: object) -> None:
+        """A building type local and NSI both hold is labeled local for the loop."""
+        real = hc.ResolutionLoop.resolve
+        with mock.patch.object(
+            hc.ResolutionLoop, 'resolve', autospec=True, side_effect=real
+        ) as resolve:
+            HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+            ).compile(study_area)
+        for call in resolve.call_args_list[:2]:
+            labels = call.kwargs['building_type_sources']
+            assert labels['h04'] == 'local'
+            assert labels['h01'] == 'nsi'
+
+    def test_status_drawn_per_world(self, compiled: object) -> None:
+        """A status drawn per world gives a list of source strings and of marks."""
+        result = compiled(n_worlds=3)
+        year = HAZUS_EQ_SOURCE_FEATURES.index(YEAR_BUILT_KEY)
+        exclusions = result.report.exclusions
+        mixed = [
+            asset_id
+            for asset_id, asset in result.inventory.inventory.items()
+            if isinstance(asset.features[SOURCE_STRING_KEY], list)
+            and {codes[year] for codes in asset.features[SOURCE_STRING_KEY]}
+            == {'D', '-'}
+        ]
+        assert mixed
+        for asset_id in mixed:
+            features = result.inventory.inventory[asset_id].features
+            listed = set(exclusions.loc[exclusions['asset_id'] == asset_id, 'world'])
+            assert features[EXCLUDED_KEY] == [w in listed for w in range(3)]
+            for world, codes in enumerate(features[SOURCE_STRING_KEY]):
+                assert (codes[year] == '-') == (world in listed)
+
+    def test_undated_excluded(self, compiled: object) -> None:
+        """A non-residential building without a year is excluded at its stage."""
+        result = compiled(n_worlds=3)
+        rows = result.report.exclusions.set_index(['asset_id', 'world'])
+        for asset_id in ('c01', 'c04', 'c05'):
+            for world in range(3):
+                assert rows.loc[(asset_id, world), 'stage'] == 'nonresidential_year'
+
+    def test_year_refused(self, study_area: object) -> None:
+        """Without year tables, every residential asset is excluded at the year."""
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+        ).compile(
+            study_area._replace(
+                b25034_block_groups=study_area.b25034_block_groups.iloc[0:0],
+                b25034_tracts=study_area.b25034_tracts.iloc[0:0],
+            )
+        )
+        rows = result.report.exclusions
+        rows = rows[rows['stage'] == 'year']
+        assert set(rows['category']) == {'missing_driver'}
+        assert set(rows['world']) == {0, 1}
+        assert 'h01' in set(rows['asset_id'])
+        assert 'u07' not in set(rows['asset_id'])
+
+    def test_refusals_by_stage(self, study_area: object) -> None:
+        """Each refusal is recorded at its stage, with its category."""
+        local = build_inputs().local
+        for asset_id, features in (
+            # residential, without a unit count: the year sampler refuses it
+            ('q02', {OCCUPANCY_KEY: 'RES1'}),
+            # a year the design level inferer cannot read
+            ('h05', {YEAR_BUILT_KEY: 'unknown'}),
+            # a type without height classes
+            ('h07', {STRUCTURE_TYPE_KEY: 'XX'}),
+        ):
+            x, y, side = FOOTPRINTS[asset_id][:3]
+            local.add_asset(asset_id, Asset(asset_id, square(x, y, side), features))
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+        ).compile(study_area._replace(local=local))
+        rows = result.report.exclusions.set_index(['asset_id', 'world'])
+        for asset_id, stage in (
+            ('q02', 'year'),
+            ('h05', 'design_level'),
+            ('h07', 'height_class'),
+        ):
+            for world in range(2):
+                row = rows.loc[(asset_id, world)]
+                assert (row['stage'], row['category'], row['diagnosis']) == (
+                    stage,
+                    'missing_driver',
+                    'invalid',
+                )
+
+    def test_year_fit_log(self, compiled: object, tmp_path: object) -> None:
+        """The written year fit log names the block group of each row."""
+        compiled(n_worlds=3).write(tmp_path / 'run.geojson')
+        fit = pd.read_parquet(tmp_path / 'run_year_fit.parquet')
+        assert {BLOCK_GROUP_KEY, 'world'} <= set(fit.columns)
