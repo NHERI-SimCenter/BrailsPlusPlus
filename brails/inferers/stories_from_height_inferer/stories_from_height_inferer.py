@@ -37,6 +37,7 @@ Infer story counts from footprint heights by the scale of their source.
 .. autosummary::
 
       StoriesFromHeightInferer
+      parse_sources
 """
 
 from __future__ import annotations
@@ -395,7 +396,7 @@ class StoriesFromHeightInferer(InferenceEngine):
             )
         # The dataset of the Overture sources entry that names the height
         # property, else of the first entry without a property.
-        entries = _parse_sources(value)
+        entries = parse_sources(value)
         chosen = next(
             (e for e in entries if e.get('property') == HEIGHT_PROPERTY), None
         ) or next((e for e in entries if not e.get('property')), {})
@@ -510,20 +511,28 @@ def _load_scales(  # noqa: C901
     return loaded
 
 
-def _parse_sources(value: object) -> list[dict[str, Any]]:
+def parse_sources(value: object) -> list[Mapping[str, Any]]:
     """
     Read an Overture ``sources`` value into a list of entries.
 
+    A string, the form the Overture footprint scraper writes, holds entries
+    separated by
+    :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.SOURCES_SEPARATOR`,
+    each a series of ``key: value`` pairs separated by ``, ``. A key is
+    letters and underscores at the start of an entry or after ``, ``, and
+    its value extends to the next key, so a value may contain ``, ``
+    (``between: [0.0, 1.0]``). Every value read from a string is a string,
+    and an entry with no key gives an empty dictionary. A list, tuple or
+    array, the form an Overture file holds, gives its mappings themselves,
+    not copies, and leaves out any other item. The input is not modified.
+
     Args:
         value (object):
-            The string the Overture scraper writes (``key: value`` pairs
-            joined by ``, ``, entries joined by
-            :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.SOURCES_SEPARATOR`),
-            or a list or array of dictionaries.
+            An Overture ``sources`` value.
 
     Returns:
-        list[dict[str, Any]]:
-            One dictionary per entry; empty for any other value, a missing
+        list[Mapping[str, Any]]:
+            One mapping per entry; empty for any other value, a missing
             one included.
     """
     if isinstance(value, str):

@@ -56,6 +56,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **Local files and an export for `OvertureMapsFootprintScraper`.** `'local_path'` reads GeoParquet files of Overture `building` rows in place of the S3 bucket, with the release from `'overtureRelease'` or the file, and `download(region, path)` writes the raw rows of a region, every column included, to a file `'local_path'` reads. A `README.rst` beside the scraper states what it reads, how the release is resolved and the file `download` writes.
 - **Merge of stacked Overture footprints** (`StackedFootprintMerge` in `brails/aggregators/stacked_footprints/stacked_footprints.py`, exported from `brails.aggregators`). A footprint nested in a larger one merges into it when Overture's stacking signal holds, and the merged set is re-keyed by `assign_asset_ids`.
 - **`read_source_string`** (`brails/types/asset_inventory.py`), which returns an asset's source string after checking that it holds one code per feature, a source code or the code for none. `SOURCE_LABELS` beside it gives the label of each source code. `PairRedraw` and `ReplacementCostImputer` read source strings through the reader.
+- **Overture sources parser** (`brails/inferers/stories_from_height_inferer/stories_from_height_inferer.py`): `parse_sources` is public, for code that reads a footprint's `sources` as the stories inferer does.
 
 ### Changed
 - **Python 3.9 is no longer supported.** BRAILS++ requires Python 3.10, 3.11 or 3.12, the versions the tests run on.

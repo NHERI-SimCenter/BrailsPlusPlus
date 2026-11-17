@@ -52,6 +52,10 @@ from brails.inferers.inference_diagnosis import (
 from brails.inferers.stories_from_height_inferer.stories_from_height_inferer import (
     HEIGHT_SCALES_FILE,
     StoriesFromHeightInferer,
+    parse_sources,
+)
+from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
+    HEIGHT_PROPERTY,
 )
 from brails.utils import Importer
 
@@ -239,6 +243,39 @@ class TestProviderAndSource:
             direct.stories_of({'height': 9.0, 'footprint_provider': 'overture'})
             is None
         )
+
+
+class TestParseSources:
+    """The sources parser reads both forms of an Overture sources value."""
+
+    def test_a_string_splits_into_entries_and_pairs(self) -> None:
+        """Entries split at semicolons and pairs at keys, commas kept in values."""
+        sources = (
+            f'dataset: {OSM}, record_id: w1; '
+            f'property: /properties/height, dataset: {MICROSOFT}, '
+            'between: [0.0, 1.0]'
+        )
+        assert parse_sources(sources) == [
+            {'dataset': OSM, 'record_id': 'w1'},
+            {
+                'property': HEIGHT_PROPERTY,
+                'dataset': MICROSOFT,
+                'between': '[0.0, 1.0]',
+            },
+        ]
+
+    def test_a_list_or_array_keeps_its_mappings(self) -> None:
+        """A list or array keeps its dictionaries, themselves, and drops the rest."""
+        entries = [*HEIGHT_FROM_OSM, 'dataset: USGS', None]
+        for value in (entries, tuple(entries), np.array(entries, dtype=object)):
+            parsed = parse_sources(value)
+            assert parsed == HEIGHT_FROM_OSM
+            assert all(a is b for a, b in zip(parsed, HEIGHT_FROM_OSM))
+
+    @pytest.mark.parametrize('value', [None, 'NA', '', float('nan'), 5, {}])
+    def test_other_values_give_no_entries(self, value: object) -> None:
+        """A missing value or one of no supported form gives no entries."""
+        assert parse_sources(value) == []
 
 
 class TestScales:
