@@ -56,6 +56,7 @@ from brails.compilers.hazus_eq_inventory_compiler import CompilerInputs
 from brails.constants import (
     FOOTPRINT_PROVIDER_KEY,
     GEOGRAPHIC_CRS,
+    GROSS_AREA_KEY,
     OCCUPANCY_KEY,
     STORIES_KEY,
     STRUCTURE_TYPE_KEY,
@@ -236,7 +237,12 @@ NSI_RECORDS: dict[int, tuple[str, float, float, dict[str, Any]]] = {
 
 # Values known locally, by footprint.
 LOCAL = {
-    'l01': {OCCUPANCY_KEY: 'RES1', UNITS_KEY: 1, STORIES_KEY: 1},
+    'l01': {
+        OCCUPANCY_KEY: 'RES1',
+        UNITS_KEY: 1,
+        STORIES_KEY: 1,
+        GROSS_AREA_KEY: 777.0,
+    },
     'l02': {STRUCTURE_TYPE_KEY: 'URM', YEAR_BUILT_KEY: 1990, STORIES_KEY: 2},
     'u07': {YEAR_BUILT_KEY: 1950},
     'c01': {UNITS_KEY: 4},

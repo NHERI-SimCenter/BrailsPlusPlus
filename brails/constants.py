@@ -125,6 +125,11 @@ HEIGHT_CLASS_KEY = 'HeightClass'
 # excluded from that world.
 EXCLUDED_KEY = 'Excluded'
 
+# Features under which HazusEQInventoryCompiler keeps the GROSS_AREA_KEY
+# feature that NSIFootprintJoin writes and the one a local inventory gives.
+NSI_GROSS_AREA_KEY = 'NSIGrossArea'
+LOCAL_GROSS_AREA_KEY = 'LocalGrossArea'
+
 # SimCenter source string that captures data provenance
 SOURCE_STRING_KEY = 'SourceString'
 

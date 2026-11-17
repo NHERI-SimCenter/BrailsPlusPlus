@@ -36,7 +36,9 @@
 from __future__ import annotations
 
 import functools
+import json
 import math
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 from unittest import mock
 
@@ -47,6 +49,8 @@ import pytest
 import brails.compilers
 from brails.compilers import hazus_eq_inventory_compiler as hc
 from brails.compilers.hazus_eq_inventory_compiler import (
+    ALL_PROPERTIES,
+    DEFAULT_PROPERTIES,
     CompilationResult,
     CompilerInputs,
     HazusEQInventoryCompiler,
@@ -54,8 +58,12 @@ from brails.compilers.hazus_eq_inventory_compiler import (
 from brails.constants import (
     EXCLUDED_KEY,
     FOOTPRINT_DATASETS_KEY,
+    FOOTPRINT_PROVENANCE_FEATURES,
     FOOTPRINT_PROVIDER_KEY,
     FOOTPRINT_RELEASE_KEY,
+    GROSS_AREA_KEY,
+    LOCAL_GROSS_AREA_KEY,
+    NSI_GROSS_AREA_KEY,
     PLAN_AREA_KEY,
     SOURCE_STRING_KEY,
     STORIES_KEY,
@@ -149,6 +157,25 @@ def compiled(study_area: CompilerInputs) -> Callable[..., CompilationResult]:
         return compiler.compile(study_area, worlds=worlds)
 
     return run
+
+
+def written(path: object) -> dict[str, dict]:
+    """
+    Read a written GeoJSON's properties by feature id.
+
+    Args:
+        path (object):
+            The file.
+
+    Returns:
+        dict[str, dict]:
+            Each feature's properties, by its id.
+    """
+    with Path(path).open(encoding='utf-8') as file:
+        collection = json.load(file)
+    return {
+        feature['id']: feature['properties'] for feature in collection['features']
+    }
 
 
 class TestConstructor:
@@ -329,7 +356,7 @@ class TestFootprintsAndJoin:
 
 
 class TestOutput:
-    """The output step marks the exclusions of each world."""
+    """The output step and what `write` makes of it."""
 
     def test_output_marks_exclusions(self, study_area: object) -> None:
         """An exclusion recorded before the output step marks its world."""
@@ -368,21 +395,178 @@ class TestOutput:
             marks = result.inventory.inventory[asset_id].features[EXCLUDED_KEY]
             assert marks == [False, True, False]
 
+    def test_excluded_assets(self, study_area: object, tmp_path: object) -> None:
+        """Excluded in every written world: left out; in some: on request."""
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+        ).compile(study_area)
+        report = result.report
+        assert result.inventory.inventory['h01'].features[EXCLUDED_KEY] is False
+        report.record_exclusion(
+            'h01', world=1, stage='year', category='missing_driver', detail='x'
+        )
+        for world in range(3):
+            report.record_exclusion(
+                'h02',
+                world=world,
+                stage='resolution',
+                category='conflict',
+                detail='x',
+            )
+        result.write(tmp_path / 'default.geojson')
+        default = written(tmp_path / 'default.geojson')
+        assert 'h01' not in default
+        assert 'h02' not in default
+        assert all(EXCLUDED_KEY not in values for values in default.values())
+
+        result.write(tmp_path / 'kept.geojson', keep_partly_excluded=True)
+        kept = written(tmp_path / 'kept.geojson')
+        assert kept['h01'][EXCLUDED_KEY] == [False, True, False]
+        assert 'h02' not in kept
+
+        result._replace(worlds=(0,)).write(tmp_path / 'world0.geojson')
+        assert EXCLUDED_KEY not in written(tmp_path / 'world0.geojson')['h01']
+
+        groups = report.exclusion_groups(worlds=(0, 1, 2))
+        summary = json.loads(
+            (tmp_path / 'default_report_summary.json').read_text(encoding='utf-8')
+        )
+        for group in ('every', 'some', 'dropped'):
+            assets = groups.loc[groups['group'] == group, 'asset_id']
+            assert summary['assets_excluded'][group] == assets.nunique()
+        assert 'h02' in set(groups.loc[groups['group'] == 'every', 'asset_id'])
+
+    def test_full_write_takes_the_inventory(
+        self, compiled: object, tmp_path: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A write of every world assembles nothing new, a subset is assembled."""
+        result = compiled(n_worlds=3)
+        assembler = mock.Mock(wraps=hc.WorldAssembler)
+        monkeypatch.setattr(hc, 'WorldAssembler', assembler)
+        result.write(tmp_path / 'all.geojson', keep_partly_excluded=True)
+        result.write(tmp_path / 'default.geojson')
+        assert not assembler.called
+        assert result.freeze.manifest() == result.manifest
+        result._replace(worlds=(0, 1)).write(tmp_path / 'subset.geojson')
+        assert assembler.called
+
+    def test_files(self, compiled: object, tmp_path: object) -> None:
+        """The manifest and the logs are written beside the file, readable."""
+        result = compiled(n_worlds=3)
+        result.write(tmp_path / 'run.geojson')
+        manifest = json.loads(
+            (tmp_path / 'run_manifest.json').read_text(encoding='utf-8')
+        )
+        assert manifest == result.manifest
+        for name in result.logs:
+            assert (tmp_path / f'run_{name}.parquet').exists()
+        counts = pd.read_parquet(tmp_path / 'run_join_branch_counts.parquet')
+        assert 'inside' in set(counts['branch'])
+
+
+class TestWrittenFile:
+    """What a written building holds: the default properties and those asked for."""
+
+    def test_default_properties(self, compiled: object, tmp_path: object) -> None:
+        """A default file holds each default property a building has, and no other."""
+        result = compiled(n_worlds=3)
+        result.write(tmp_path / 'run.geojson')
+        properties = written(tmp_path / 'run.geojson')
+        assert properties
+        for asset_id, values in properties.items():
+            features = result.inventory.inventory[asset_id].features
+            assert set(values) - {'id'} == set(DEFAULT_PROPERTIES) & set(features)
+        # NSI's and a local GrossArea are kept under names of their own.
+        inventory = result.inventory.inventory
+        assert inventory['h01'].features[NSI_GROSS_AREA_KEY] == 1400.0
+        assert GROSS_AREA_KEY not in inventory['h01'].features
+        assert inventory['l01'].features[LOCAL_GROSS_AREA_KEY] == 777.0
+        assert inventory['l01'].features[NSI_GROSS_AREA_KEY] == 1400.0
+        assert GROSS_AREA_KEY not in inventory['l01'].features
+
+    def test_extra_properties(self, compiled: object, tmp_path: object) -> None:
+        """Extra properties are written beside the default ones and change none."""
+        result = compiled(n_worlds=3)
+        extra = (
+            *FOOTPRINT_PROVENANCE_FEATURES,
+            NSI_GROSS_AREA_KEY,
+            LOCAL_GROSS_AREA_KEY,
+        )
+        result.write(tmp_path / 'default.geojson')
+        result.write(tmp_path / 'extra.geojson', extra_properties=extra)
+        result.write(tmp_path / 'all.geojson', extra_properties=ALL_PROPERTIES)
+        default = written(tmp_path / 'default.geojson')
+        more = written(tmp_path / 'extra.geojson')
+        everything = written(tmp_path / 'all.geojson')
+        assert set(default) == set(more) == set(everything)
+        for asset_id, values in default.items():
+            assert {key: more[asset_id][key] for key in values} == values
+            assert {key: everything[asset_id][key] for key in values} == values
+            assert set(more[asset_id]) - set(values) <= set(extra)
+            features = result.inventory.inventory[asset_id].features
+            assert set(everything[asset_id]) - {'id'} == set(features) - {
+                EXCLUDED_KEY
+            }
+        assert more['h01'][NSI_GROSS_AREA_KEY] == 1400.0
+
+    def test_extra_properties_refused(
+        self, compiled: object, tmp_path: object
+    ) -> None:
+        """An unknown name, Excluded, or one name as a string writes nothing."""
+        result = compiled(n_worlds=3)
+        with pytest.raises(ValueError, match='no_such_feature'):
+            result.write(
+                tmp_path / 'x.geojson', extra_properties=('no_such_feature',)
+            )
+        with pytest.raises(ValueError, match='keep_partly_excluded'):
+            result.write(tmp_path / 'x.geojson', extra_properties=(EXCLUDED_KEY,))
+        with pytest.raises(TypeError, match='sequence'):
+            result.write(
+                tmp_path / 'x.geojson', extra_properties=FOOTPRINT_RELEASE_KEY
+            )
+        assert not list(Path(tmp_path).iterdir())
+
+    def test_integer_ids(self, compiled: object, tmp_path: object) -> None:
+        """The integer-id form also writes the type and the asset id."""
+        result = compiled(n_worlds=3)
+        result.write(tmp_path / 'default.geojson')
+        result.write(tmp_path / 'numbered.geojson', integer_ids=True)
+        collection = json.loads(
+            (tmp_path / 'numbered.geojson').read_text(encoding='utf-8')
+        )
+        features = collection['features']
+        assert all(isinstance(feature['id'], int) for feature in features)
+        assert {feature['properties']['type'] for feature in features} == {
+            'building'
+        }
+        assert {feature['properties']['unique_id'] for feature in features} == set(
+            written(tmp_path / 'default.geojson')
+        )
+
 
 class TestRandomness:
     """The run depends on the seed alone."""
 
-    def test_repeated_and_reordered(self) -> None:
-        """One seed gives one inventory, in any input order."""
-        collections = []
-        for inputs in (build_inputs(), build_inputs(), build_inputs(reverse=True)):
+    def test_repeated_and_reordered(self, tmp_path: object) -> None:
+        """One seed gives one file, in any input order."""
+        files = []
+        for name, inputs, seed in (
+            ('first', build_inputs(), SEED),
+            ('second', build_inputs(), SEED),
+            ('reversed', build_inputs(reverse=True), SEED),
+        ):
             result = HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+                seed=seed, n_worlds=3, projected_crs=METRIC_CRS
             ).compile(inputs)
-            collection = result.inventory.get_geojson()
+            result.write(
+                tmp_path / f'{name}.geojson', extra_properties=ALL_PROPERTIES
+            )
+            collection = json.loads(
+                (tmp_path / f'{name}.geojson').read_text(encoding='utf-8')
+            )
             collection.pop('generated')
-            collections.append(collection)
-        first, second, reversed_order = collections
+            files.append(collection)
+        first, second, reversed_order = files
         assert first == second == reversed_order
 
 

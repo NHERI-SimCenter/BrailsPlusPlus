@@ -447,11 +447,12 @@ Hazus earthquake inventory compiler
 ``HazusEQInventoryCompiler`` builds a Hazus earthquake building inventory of
 one study area from its building footprints, its NSI points and census
 tables, over several possible worlds. The caller gathers the data in a
-``CompilerInputs`` and receives a ``CompilationResult``, which holds the
-inventory with its report, the manifest of its stages and the logs of its
-components. Both classes are in ``hazus_eq_inventory_compiler.py`` beside
-this page. This section states the run in the order the code runs it, the
-stages it freezes and its worlds.
+``CompilerInputs`` and receives a ``CompilationResult``, whose ``write``
+saves the inventory as GeoJSON beside its report, the manifest of its stages
+and the logs of its components. Both classes are in
+``hazus_eq_inventory_compiler.py`` beside this page. This section states the
+run in the order the code runs it, the stages it freezes, its worlds and the
+file it writes.
 
 The run
 ~~~~~~~
@@ -467,15 +468,19 @@ values it derives, such as an occupancy class set by the count of units, the
 derived source.
 
 A local inventory, which takes precedence over every other source, may hold no
-feature of ``RESERVED_LOCAL_FEATURES`` (``BLOCKGROUP_GEOID``), which the run
-writes for itself and reads back, and ``compile`` refuses one that does.
+feature of ``RESERVED_LOCAL_FEATURES`` (``BLOCKGROUP_GEOID`` and
+``NSIGrossArea``), which the run writes for itself and reads back, and
+``compile`` refuses one that does.
 
 The output step merges each world's sources in the precedence of
 ``PRECEDENCE``: local values first, then the footprint, NSI, derived, imputed
 and drawn values. ``AssetInventory.merge`` writes the source string, as the
-section "The source string" describes. Each building receives ``Excluded``,
-true in a world from which the report lists it as excluded. The worlds are then
-assembled into one inventory.
+section "The source string" describes. NSI's gross area, the ``GrossArea``
+feature the join writes, is kept as ``NSIGrossArea``, which the compiler writes
+on the join's values, and a ``GrossArea`` that a local inventory gives as
+``LocalGrossArea``. Each building receives ``Excluded``, true in a world from
+which the report lists it as excluded. The worlds are then assembled into one
+inventory.
 
 Frozen stages
 ~~~~~~~~~~~~~
@@ -501,3 +506,14 @@ by every component. A world does not depend on how many worlds the run
 compiles, so world 3 of a run of four worlds equals world 3 of a run of ten. A
 run asked for some worlds computes every world up to the largest asked, and the
 result lists the worlds asked, in ascending order, as ``worlds``.
+
+The written file
+~~~~~~~~~~~~~~~~
+
+``write`` writes the worlds a result lists, one GeoJSON feature per building
+with its id and footprint and, for a property whose worlds differ, a list of
+values, one per world written. Which buildings and properties the file holds
+is stated on ``CompilationResult.write``. The properties of
+``DEFAULT_PROPERTIES`` are those a Hazus earthquake assessment reads. The
+report lists each excluded building with its reason in each world, whether
+or not the file holds it.

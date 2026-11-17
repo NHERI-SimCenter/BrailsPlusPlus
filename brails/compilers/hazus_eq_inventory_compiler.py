@@ -50,6 +50,7 @@ import operator
 import secrets
 import time
 from copy import deepcopy
+from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -60,12 +61,25 @@ from brails.compilers.compilation_report import CompilationReport
 from brails.compilers.world_assembly import WorldAssembler, compose_source
 from brails.constants import (
     BLOCK_GROUP_KEY,
+    BUILDING_TYPE_KEY,
     DEFAULT_UNITS,
+    DESIGN_LEVEL_KEY,
     EXCLUDED_KEY,
     FOOTPRINT_DATASETS_KEY,
     FOOTPRINT_PROVIDER_KEY,
     FOOTPRINT_RELEASE_KEY,
+    GROSS_AREA_KEY,
+    HEIGHT_CLASS_KEY,
+    LOCAL_GROSS_AREA_KEY,
+    NSI_GROSS_AREA_KEY,
+    OCCUPANCY_KEY,
     PLAN_AREA_KEY,
+    REPLACEMENT_COST_KEY,
+    SOURCE_STRING_KEY,
+    STORIES_KEY,
+    STRUCTURE_TYPE_KEY,
+    UNITS_KEY,
+    YEAR_BUILT_KEY,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_design_level_inferer import (
     HazusEQDesignLevelInferer,
@@ -84,11 +98,12 @@ from brails.scrapers.us_census_scrapers.census_tract_scraper import (
     LEVEL_BLOCK_GROUP,
     CensusTractScraper,
 )
-from brails.types.asset_inventory import AssetInventory
+from brails.types.asset_inventory import Asset, AssetInventory, is_missing_value
 from brails.utils.stage_freeze import StageFreeze
 from brails.utils.unit_converter import UNIT_TO_METER
 
 if TYPE_CHECKING:
+    import os
     from collections.abc import Mapping, Sequence
 
     import geopandas as gpd
@@ -106,7 +121,32 @@ SPINE_LABEL = 'footprint'
 # The features the compiler writes for itself and reads back, which a local
 # inventory may not hold: its precedence would put them in place of the
 # compiler's.
-RESERVED_LOCAL_FEATURES = (BLOCK_GROUP_KEY,)
+RESERVED_LOCAL_FEATURES = (BLOCK_GROUP_KEY, NSI_GROSS_AREA_KEY)
+
+# The properties a written building holds besides its id and its geometry,
+# unless write is asked for more. Their choice is described in README.rst.
+DEFAULT_PROPERTIES = (
+    OCCUPANCY_KEY,
+    UNITS_KEY,
+    STORIES_KEY,
+    YEAR_BUILT_KEY,
+    DESIGN_LEVEL_KEY,
+    STRUCTURE_TYPE_KEY,
+    HEIGHT_CLASS_KEY,
+    REPLACEMENT_COST_KEY,
+    BLOCK_GROUP_KEY,
+    PLAN_AREA_KEY,
+    GROSS_AREA_KEY,
+    BUILDING_TYPE_KEY,
+    SOURCE_STRING_KEY,
+)
+
+# The value of write's extra_properties that writes every feature the
+# compiled inventory holds.
+ALL_PROPERTIES = 'all'
+
+# The property the integer-id form of the file numbers its features within.
+_TYPE_KEY = 'type'
 
 # The frozen stages, in the order they are frozen.
 STAGE_FOOTPRINTS = 'footprints'
@@ -124,8 +164,9 @@ class CompilerInputs(NamedTuple):
         footprints (AssetInventory):
             The building footprints, polygons in EPSG:4326 keyed by string
             asset ids, with one possible world. Each holds
-            ``footprint_provider`` and, for an Overture footprint,
-            ``sources``. The ids are taken as given.
+            ``footprint_provider``, for an Overture footprint ``sources``,
+            and ``type`` where the file is written with ``integer_ids``. The
+            ids are taken as given.
         nsi_points (AssetInventory):
             The NSI points keyed by ``fd_id``, as
             :class:`~brails.scrapers.NSIFileReader` reads them.
@@ -213,6 +254,151 @@ class CompilationResult(NamedTuple):
     seed: int
     worlds: tuple[int, ...]
 
+    def write(  # noqa: C901
+        self,
+        path: str | os.PathLike[str],
+        *,
+        integer_ids: bool = False,
+        keep_partly_excluded: bool = False,
+        extra_properties: str | Sequence[str] = (),
+    ) -> None:
+        """
+        Write the listed worlds as GeoJSON, with the report, manifest and logs.
+
+        The GeoJSON at ``path`` holds the realizations of :attr:`worlds`,
+        so list position ``i`` of a property is world ``worlds[i]``. A
+        building excluded in every listed world, by the report's exclusion
+        rows of those worlds, is not written, and one excluded in some is
+        written only with ``keep_partly_excluded``. Then, and only then,
+        each building also holds :data:`~brails.constants.EXCLUDED_KEY`.
+        Each building holds the properties of :data:`DEFAULT_PROPERTIES` it
+        has and those of ``extra_properties``. With ``integer_ids`` the file
+        takes the form the R2D tools read: each building also holds
+        ``type``, within which :meth:`AssetInventory.write_to_geojson`
+        numbers the features, and its asset id as ``unique_id``. Beside it,
+        under the stem of ``path``: the report through
+        :meth:`CompilationReport.save` as ``<stem>_report.parquet``, the
+        manifest through :meth:`StageFreeze.save_manifest` as
+        ``<stem>_manifest.json``, and the logs through
+        :meth:`CompilationReport.save_logs` as ``<stem>_<name>.parquet``,
+        the report and the logs keeping the rows of the listed worlds.
+
+        Args:
+            path (str or os.PathLike):
+                The GeoJSON file to write.
+            integer_ids (bool, optional):
+                Whether to number the features, as
+                :meth:`AssetInventory.write_to_geojson` does with it.
+            keep_partly_excluded (bool, optional):
+                Whether to write the buildings excluded in some, but not
+                all, of the listed worlds.
+            extra_properties (str or Sequence[str], optional):
+                Features of :attr:`inventory` to write beside the default
+                properties, or :data:`ALL_PROPERTIES` for every feature it
+                holds. They change no value of the default properties.
+
+        Raises:
+            TypeError:
+                If ``extra_properties`` is a string other than
+                :data:`ALL_PROPERTIES`.
+            ValueError:
+                If ``extra_properties`` names a feature no building of
+                :attr:`inventory` holds, or names
+                :data:`~brails.constants.EXCLUDED_KEY`, in which case nothing
+                is written.
+            RuntimeError:
+                If a frozen stage changed after it was frozen, in which case
+                every file but the manifest has been written.
+        """
+        if isinstance(extra_properties, str) and extra_properties != ALL_PROPERTIES:
+            msg = (
+                'extra_properties must be a sequence of feature names or '
+                f'{ALL_PROPERTIES!r}, not {extra_properties!r}.'
+            )
+            raise TypeError(msg)
+        everything = extra_properties == ALL_PROPERTIES
+        extra = () if everything else tuple(extra_properties)
+        if EXCLUDED_KEY in extra:
+            msg = (
+                f'{EXCLUDED_KEY} is written with keep_partly_excluded, not as an '
+                'extra property.'
+            )
+            raise ValueError(msg)
+        held = {
+            key
+            for asset in self.inventory.inventory.values()
+            for key in asset.features
+        }
+        unknown = sorted(set(extra) - held)
+        if unknown:
+            msg = f'No building of the inventory holds {unknown}.'
+            raise ValueError(msg)
+        selected = {
+            *DEFAULT_PROPERTIES,
+            *extra,
+            *([EXCLUDED_KEY] if keep_partly_excluded else []),
+            *([_TYPE_KEY] if integer_ids else []),
+        }
+
+        path = Path(path)
+        groups = self.report.exclusion_groups(worlds=self.worlds)
+        groups = groups[groups['group'] != 'dropped']
+        left_out = set(groups.loc[groups['group'] == 'every', 'asset_id'])
+        if not keep_partly_excluded:
+            left_out |= set(groups.loc[groups['group'] == 'some', 'asset_id'])
+        excluded_in = {
+            world: set(rows) for world, rows in groups.groupby('world')['asset_id']
+        }
+        # Where the listed worlds are every world and the marks of the assets
+        # written agree with the report, the inventory's own assets are
+        # written, without a re-assembly.
+        written = {
+            asset_id: asset
+            for asset_id, asset in self.inventory.inventory.items()
+            if asset_id not in left_out
+        }
+        as_is = self.worlds == tuple(range(self.inventory.n_pw))
+        for asset_id, asset in written.items() if as_is else ():
+            marks = asset.features[EXCLUDED_KEY]
+            listed = [asset_id in excluded_in.get(w, ()) for w in self.worlds]
+            if (
+                marks if isinstance(marks, list) else [marks] * len(listed)
+            ) != listed:
+                as_is = False
+                break
+        if not as_is:
+            assembler = WorldAssembler(len(self.worlds))
+            for position, world in enumerate(self.worlds):
+                realization = self.inventory.get_world_realization(world)
+                for asset_id in left_out:
+                    realization.inventory.pop(asset_id, None)
+                excluded = excluded_in.get(world, set())
+                for asset_id, asset in realization.inventory.items():
+                    asset.features[EXCLUDED_KEY] = asset_id in excluded
+                assembler.add(position, realization)
+                del realization
+            written = assembler.result().inventory
+        inventory = AssetInventory(
+            vector_features=list(self.inventory.vector_features)
+        )
+        for asset_id, asset in written.items():
+            inventory.inventory[asset_id] = Asset(
+                asset_id,
+                asset.coordinates,
+                {
+                    key: value
+                    for key, value in asset.features.items()
+                    if key in selected or (everything and key != EXCLUDED_KEY)
+                },
+            )
+        inventory.n_pw = len(self.worlds)
+        inventory.write_to_geojson(str(path), integer_ids=integer_ids)
+        self.report.save(
+            path.with_name(f'{path.stem}_report.parquet'), worlds=self.worlds
+        )
+        self.report.save_logs(path.parent, path.stem, self.logs, worlds=self.worlds)
+        self.freeze.save_manifest(path.with_name(f'{path.stem}_manifest.json'))
+
 
 class _WorldSources:
     """
@@ -299,7 +485,8 @@ class HazusEQInventoryCompiler:
     Compile a Hazus earthquake inventory of one study area over several worlds.
 
     The section "Hazus earthquake inventory compiler" of the README beside
-    this module describes the run, its frozen stages and its worlds.
+    this module describes the run, its frozen stages, its worlds and the
+    written file.
 
     Every constructor argument is stored as an attribute of the same name,
     read-only by convention; ``seed`` holds the seed used, never ``None``.
@@ -618,6 +805,12 @@ class HazusEQInventoryCompiler:
         for part in (result.observed, result.derived):
             for asset_id, asset in part.inventory.items():
                 asset.coordinates = centroids[asset_id]
+                # NSI's GrossArea also under a name of its own, which no local
+                # inventory may hold.
+                if not is_missing_value(asset.features.get(GROSS_AREA_KEY)):
+                    asset.features[NSI_GROSS_AREA_KEY] = asset.features[
+                        GROSS_AREA_KEY
+                    ]
         sources.add_part('nsi', STAGE_JOIN_NSI, result.observed)
         sources.add_part('derived', STAGE_JOIN_DERIVED, result.derived)
 
@@ -643,6 +836,13 @@ class HazusEQInventoryCompiler:
             AssetInventory:
                 The output, frozen as :data:`STAGE_OUTPUT`.
         """
+        # The GrossArea a local inventory gives, by building.
+        local_areas = {
+            asset_id: asset.features[GROSS_AREA_KEY]
+            for stage in sources.parts['local']
+            for asset_id, asset in sources.freeze.read(stage).inventory.items()
+            if not is_missing_value(asset.features.get(GROSS_AREA_KEY))
+        }
         exclusions = report.exclusions
         excluded_in = {
             world: set(rows)
@@ -654,7 +854,11 @@ class HazusEQInventoryCompiler:
             merged = sources.merge(world)
             excluded = excluded_in.get(world, set())
             for asset_id, asset in merged.inventory.items():
-                asset.features[EXCLUDED_KEY] = asset_id in excluded
+                features = asset.features
+                features.pop(GROSS_AREA_KEY, None)
+                if asset_id in local_areas:
+                    features[LOCAL_GROSS_AREA_KEY] = local_areas[asset_id]
+                features[EXCLUDED_KEY] = asset_id in excluded
             assembler.add(world, merged)
             del merged
             report.set_timing(
