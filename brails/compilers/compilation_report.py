@@ -751,18 +751,22 @@ class CompilationReport:
 
         Raises:
             TypeError:
-                If ``world`` is not an integer.
+                If ``world`` is a bool or not an integer.
             ValueError:
                 If ``world`` is negative, or not below the count given to
                 :meth:`set_world_count`.
         """
+        if isinstance(world, bool) or not hasattr(world, '__index__'):
+            msg = f'A world number must be an integer, not {world!r}.'
+            raise TypeError(msg)
         world = operator.index(world)
+        if self._computed is not None and not 0 <= world < self._computed:
+            raise ValueError(
+                f'World {world} is outside the {self._computed} worlds of the '
+                f'run, 0 to {self._computed - 1}.'
+            )
         if world < 0:
             raise ValueError(f'A world number cannot be negative, got {world}.')
-        if self._computed is not None and world >= self._computed:
-            raise ValueError(
-                f'World {world} is outside the {self._computed} worlds of the run.'
-            )
         return world
 
     def _selected_worlds(self, worlds: Iterable[int] | None) -> list[int] | None:

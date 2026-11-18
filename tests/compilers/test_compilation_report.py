@@ -198,7 +198,7 @@ def test_a_record_needs_a_world() -> None:
 
 
 def test_worlds_outside_the_run_are_refused() -> None:
-    """A world that is negative, not an integer or past the count raises."""
+    """A world that is negative, a bool, not an integer or past the count raises."""
     report = CompilationReport(11)
     with pytest.raises(ValueError, match='cannot be negative'):
         report.record_action(
@@ -208,6 +208,8 @@ def test_worlds_outside_the_run_are_refused() -> None:
         report.record_exclusion(
             'a', world=1.5, stage='screen', category='unsupported'
         )
+    with pytest.raises(TypeError, match='must be an integer, not True'):
+        report.summary(worlds=[True])
     report.record_exclusion('a', world=4, stage='screen', category='unsupported')
     with pytest.raises(ValueError, match='World 4 is already recorded'):
         report.set_world_count(3)
@@ -218,7 +220,9 @@ def test_worlds_outside_the_run_are_refused() -> None:
 
     report.set_world_count(5)
 
-    with pytest.raises(ValueError, match='World 5 is outside the 5 worlds'):
+    with pytest.raises(
+        ValueError, match='World 5 is outside the 5 worlds of the run, 0 to 4'
+    ):
         report.record_exclusion('a', world=5, stage='screen', category='unsupported')
     with pytest.raises(ValueError, match='World 7 is outside'):
         report.summary(worlds=(7,))

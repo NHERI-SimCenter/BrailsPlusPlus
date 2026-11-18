@@ -386,7 +386,7 @@ class CompilationResult(NamedTuple):
     Attributes:
         inventory (AssetInventory):
             Every footprint the run kept, over the worlds 0 to
-            ``max(worlds)``, with every feature the run gave it. A feature
+            ``n_worlds - 1``, with every feature the run gave it. A feature
             equal in every world is held as a scalar and otherwise as a list
             in world order. Each asset holds
             :data:`~brails.constants.EXCLUDED_KEY`, true in a world it was
@@ -401,8 +401,6 @@ class CompilationResult(NamedTuple):
             The components' logs, by name.
         seed (int):
             The seed every component drew from.
-        worlds (tuple[int, ...]):
-            The worlds :meth:`write` writes, in ascending order.
     """
 
     inventory: AssetInventory
@@ -411,25 +409,30 @@ class CompilationResult(NamedTuple):
     manifest: dict
     logs: Mapping[str, pd.DataFrame]
     seed: int
-    worlds: tuple[int, ...]
 
     def write(  # noqa: C901
         self,
         path: str | os.PathLike[str],
         *,
+        world: int | None = None,
         integer_ids: bool = False,
         keep_partly_excluded: bool = False,
         extra_properties: str | Sequence[str] = (),
     ) -> None:
         """
-        Write the listed worlds as GeoJSON, with the report, manifest and logs.
+        Write every world, or one, as GeoJSON, with the report, manifest and logs.
 
-        The GeoJSON at ``path`` holds the realizations of :attr:`worlds`,
-        so list position ``i`` of a property is world ``worlds[i]``. A
-        building excluded in every listed world, by the report's exclusion
-        rows of those worlds, is not written, and one excluded in some is
-        written only with ``keep_partly_excluded``. Then, and only then,
-        each building also holds :data:`~brails.constants.EXCLUDED_KEY`.
+        The GeoJSON at ``path`` holds every world the run computed, a
+        property whose worlds differ as a list in which position ``i`` is
+        world ``i``. Given ``world``, it holds that one world only, and a
+        building's property whose value is ``None`` in that world is left
+        out, so that the file does not depend on how many worlds the run
+        computed. A building excluded in every written world, by the
+        report's exclusion rows of those worlds, is not written, and one
+        excluded in some is written only with ``keep_partly_excluded``. With
+        ``keep_partly_excluded``, and only then, each building also holds
+        :data:`~brails.constants.EXCLUDED_KEY`; for one world, the option
+        only adds that property, false for every building written.
         Each building holds every property of :data:`DEFAULT_PROPERTIES`
         that applies to it, as the section "The run" of the README beside
         this module states, and those of ``extra_properties``. In a world
@@ -443,17 +446,22 @@ class CompilationResult(NamedTuple):
         manifest through :meth:`StageFreeze.save_manifest` as
         ``<stem>_manifest.json``, and the logs through
         :meth:`CompilationReport.save_logs` as ``<stem>_<name>.parquet``,
-        the report and the logs keeping the rows of the listed worlds.
+        the report and the logs keeping the rows of the written worlds. The
+        summary's notices, timings and certificate cover every world the run
+        computed.
 
         Args:
             path (str or os.PathLike):
                 The GeoJSON file to write.
+            world (int, optional):
+                The number of the world to write alone, from 0 to one less
+                than the compiler's ``n_worlds``. ``None`` writes every world.
             integer_ids (bool, optional):
                 Whether to number the features, as
                 :meth:`AssetInventory.write_to_geojson` does with it.
             keep_partly_excluded (bool, optional):
                 Whether to write the buildings excluded in some, but not
-                all, of the listed worlds.
+                all, of the written worlds.
             extra_properties (str or Sequence[str], optional):
                 Features of :attr:`inventory` to write beside the default
                 properties, or :data:`ALL_PROPERTIES` for every feature it
@@ -461,21 +469,29 @@ class CompilationResult(NamedTuple):
 
         Raises:
             TypeError:
-                If ``extra_properties`` is a string other than
-                :data:`ALL_PROPERTIES`.
+                If ``world`` is a bool or not an integer, or
+                ``extra_properties`` is a string other than
+                :data:`ALL_PROPERTIES`; nothing is then written.
             ValueError:
-                If ``extra_properties`` names a feature no building of
-                :attr:`inventory` holds, or names
-                :data:`~brails.constants.EXCLUDED_KEY`, in which case nothing
-                is written.
+                If ``world`` is not one of the worlds the run computed, or
+                ``extra_properties`` names a feature no building of
+                :attr:`inventory` holds or names
+                :data:`~brails.constants.EXCLUDED_KEY`; nothing is then
+                written.
             RuntimeError:
                 If the log :data:`MISSING_DEFAULTS_LOG` names a default
-                property that a compiled building lacks in a listed world,
+                property that a compiled building lacks in a written world,
                 once the report, the logs and the manifest are written and
                 before the GeoJSON is; or if a frozen stage changed after it
                 was frozen, in which case every file but the manifest has been
                 written.
         """
+        # The report checks world numbers against the worlds of the run.
+        worlds = (
+            tuple(range(self.inventory.n_pw))
+            if world is None
+            else (self.report._checked_world(world),)  # noqa: SLF001
+        )
         if isinstance(extra_properties, str) and extra_properties != ALL_PROPERTIES:
             msg = (
                 'extra_properties must be a sequence of feature names or '
@@ -508,14 +524,12 @@ class CompilationResult(NamedTuple):
 
         path = Path(path)
         missing = self.logs[MISSING_DEFAULTS_LOG]
-        lacking = missing[missing['world'].isin(self.worlds)]
+        lacking = missing[missing['world'].isin(worlds)]
         if not lacking.empty:
             self.report.save(
-                path.with_name(f'{path.stem}_report.parquet'), worlds=self.worlds
+                path.with_name(f'{path.stem}_report.parquet'), worlds=worlds
             )
-            self.report.save_logs(
-                path.parent, path.stem, self.logs, worlds=self.worlds
-            )
+            self.report.save_logs(path.parent, path.stem, self.logs, worlds=worlds)
             self.freeze.save_manifest(path.with_name(f'{path.stem}_manifest.json'))
             counts = lacking['property'].value_counts().to_dict()
             msg = (
@@ -526,38 +540,41 @@ class CompilationResult(NamedTuple):
                 'is written.'
             )
             raise RuntimeError(msg)
-        groups = self.report.exclusion_groups(worlds=self.worlds)
+        groups = self.report.exclusion_groups(worlds=worlds)
         groups = groups[groups['group'] != 'dropped']
         left_out = set(groups.loc[groups['group'] == 'every', 'asset_id'])
         if not keep_partly_excluded:
             left_out |= set(groups.loc[groups['group'] == 'some', 'asset_id'])
         excluded_in = {
-            world: set(rows) for world, rows in groups.groupby('world')['asset_id']
+            w: set(rows) for w, rows in groups.groupby('world')['asset_id']
         }
-        # Where the listed worlds are every world and the marks of the assets
-        # written agree with the report, the inventory's own assets are
-        # written, without a re-assembly.
+        # Every world is written from the inventory as it is, unless a building
+        # to be written has Excluded marks that differ from the report's
+        # exclusion rows, as after a caller adds an exclusion to the report.
+        # One world, and every world after such a change, is assembled from
+        # the written worlds' realizations, each building marked from the
+        # report.
         written = {
             asset_id: asset
             for asset_id, asset in self.inventory.inventory.items()
             if asset_id not in left_out
         }
-        as_is = self.worlds == tuple(range(self.inventory.n_pw))
+        as_is = world is None
         for asset_id, asset in written.items() if as_is else ():
             marks = asset.features[EXCLUDED_KEY]
-            listed = [asset_id in excluded_in.get(w, ()) for w in self.worlds]
+            listed = [asset_id in excluded_in.get(w, ()) for w in worlds]
             if (
                 marks if isinstance(marks, list) else [marks] * len(listed)
             ) != listed:
                 as_is = False
                 break
         if not as_is:
-            assembler = WorldAssembler(len(self.worlds))
-            for position, world in enumerate(self.worlds):
-                realization = self.inventory.get_world_realization(world)
+            assembler = WorldAssembler(len(worlds))
+            for position, w in enumerate(worlds):
+                realization = self.inventory.get_world_realization(w)
                 for asset_id in left_out:
                     realization.inventory.pop(asset_id, None)
-                excluded = excluded_in.get(world, set())
+                excluded = excluded_in.get(w, set())
                 for asset_id, asset in realization.inventory.items():
                     asset.features[EXCLUDED_KEY] = asset_id in excluded
                 assembler.add(position, realization)
@@ -573,15 +590,17 @@ class CompilationResult(NamedTuple):
                 {
                     key: value
                     for key, value in asset.features.items()
-                    if key in selected or (everything and key != EXCLUDED_KEY)
+                    if (key in selected or (everything and key != EXCLUDED_KEY))
+                    # In one world, None marks a feature of another world.
+                    and (world is None or value is not None)
                 },
             )
-        inventory.n_pw = len(self.worlds)
+        inventory.n_pw = len(worlds)
         inventory.write_to_geojson(str(path), integer_ids=integer_ids)
         self.report.save(
-            path.with_name(f'{path.stem}_report.parquet'), worlds=self.worlds
+            path.with_name(f'{path.stem}_report.parquet'), worlds=worlds
         )
-        self.report.save_logs(path.parent, path.stem, self.logs, worlds=self.worlds)
+        self.report.save_logs(path.parent, path.stem, self.logs, worlds=worlds)
         self.freeze.save_manifest(path.with_name(f'{path.stem}_manifest.json'))
 
 
@@ -866,9 +885,8 @@ class HazusEQInventoryCompiler:
                 The seed of every component. ``None`` draws one from system
                 entropy.
             n_worlds (int, optional):
-                The number of possible worlds compiled when
-                :meth:`compile` is given no worlds. Defaults to
-                :data:`DEFAULT_N_WORLDS`.
+                The number of possible worlds :meth:`compile` computes.
+                Defaults to :data:`DEFAULT_N_WORLDS`.
             state (str, optional):
                 The full state name, as in ``'California'``, which every
                 inferer that takes a state receives. Structure types are
@@ -999,21 +1017,15 @@ class HazusEQInventoryCompiler:
         self.budget_options = MappingProxyType(resolved['budget_options'])
         self.sampler_options = MappingProxyType(resolved['sampler_options'])
 
-    def compile(
-        self, inputs: CompilerInputs, *, worlds: Sequence[int] | None = None
-    ) -> CompilationResult:
+    def compile(self, inputs: CompilerInputs) -> CompilationResult:
         """
-        Compile the building inventory of the study area.
+        Compile the study area's building inventory over :attr:`n_worlds` worlds.
 
         The inputs are not modified.
 
         Args:
             inputs (CompilerInputs):
                 The study area's data.
-            worlds (Sequence[int], optional):
-                The worlds the result writes, distinct non-negative
-                integers. Every world from 0 to the largest is computed.
-                ``None`` takes every world of :attr:`n_worlds`.
 
         Returns:
             CompilationResult:
@@ -1021,32 +1033,17 @@ class HazusEQInventoryCompiler:
 
         Raises:
             TypeError:
-                If ``worlds`` holds a value that is not an integer, or a
-                footprint's asset id is not a string.
+                If a footprint's asset id is not a string.
             ValueError:
-                If ``worlds`` is empty or repeats a world or holds a
-                negative one; if the local inventory holds an asset that the
-                footprints lack, a feature of :data:`RESERVED_LOCAL_FEATURES`
-                or more than one possible world, or is given
-                with ``merge_stacked``; or as the components raise, among
-                them a footprint outside every block group and, with
-                ``merge_stacked``, a footprint that is not Overture's.
+                If the local inventory holds an asset that the footprints
+                lack, a feature of :data:`RESERVED_LOCAL_FEATURES` or more
+                than one possible world, or is given with ``merge_stacked``;
+                or as the components raise, among them a footprint outside
+                every block group and, with ``merge_stacked``, a footprint
+                that is not Overture's.
             RuntimeError:
                 If a frozen stage changed during the run.
         """
-        if worlds is None:
-            written = tuple(range(self.n_worlds))
-        else:
-            if any(isinstance(world, bool) for world in worlds):
-                msg = f'worlds must hold integers, not {worlds!r}.'
-                raise TypeError(msg)
-            written = tuple(sorted(operator.index(world) for world in worlds))
-            if not written or len(set(written)) != len(written) or written[0] < 0:
-                msg = (
-                    'worlds must hold distinct non-negative integers, at least '
-                    f'one, not {list(worlds)!r}.'
-                )
-                raise ValueError(msg)
         not_strings = [
             a for a in inputs.footprints.inventory if not isinstance(a, str)
         ]
@@ -1092,13 +1089,13 @@ class HazusEQInventoryCompiler:
                 )
                 raise ValueError(msg)
 
-        n_computed = written[-1] + 1
+        n_computed = self.n_worlds
         settings = {
             'study_area': inputs.study_area,
             'footprint_release': inputs.footprint_release,
             'height_unit': inputs.height_unit,
             'n_worlds': self.n_worlds,
-            'worlds': list(written),
+            'worlds': list(range(n_computed)),
             'state': self.state,
             'seismic_zone': self.seismic_zone,
             'design_level_method': self.design_level_method,
@@ -1158,7 +1155,6 @@ class HazusEQInventoryCompiler:
             manifest=manifest,
             logs=MappingProxyType(logs),
             seed=self.seed,
-            worlds=written,
         )
 
     def _footprints(

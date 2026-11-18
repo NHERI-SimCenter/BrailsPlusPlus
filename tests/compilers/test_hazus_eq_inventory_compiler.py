@@ -189,20 +189,18 @@ def compiled(study_area: CompilerInputs) -> Callable[..., CompilationResult]:
 
     Returns:
         Callable[..., CompilationResult]:
-            ``compiled(n_worlds=3, worlds=None)`` gives the result of the
-            compiler at the fixture seed and CRS.
+            ``compiled(n_worlds=3)`` gives the result of the compiler at
+            the fixture seed and CRS.
     """
 
     @functools.cache
-    def run(n_worlds: int = 3, worlds: tuple[int, ...] | None = None) -> object:
+    def run(n_worlds: int = 3) -> object:
         """
-        Compile the study area with the given settings.
+        Compile the study area with the given number of worlds.
 
         Args:
             n_worlds (int, optional):
-                The number of worlds.
-            worlds (tuple[int, ...] | None, optional):
-                The worlds written.
+                The number of worlds computed.
 
         Returns:
             CompilationResult:
@@ -211,7 +209,7 @@ def compiled(study_area: CompilerInputs) -> Callable[..., CompilationResult]:
         compiler = HazusEQInventoryCompiler(
             seed=SEED, n_worlds=n_worlds, projected_crs=METRIC_CRS
         )
-        return compiler.compile(study_area, worlds=worlds)
+        return compiler.compile(study_area)
 
     return run
 
@@ -333,22 +331,7 @@ class TestConstructor:
 
 
 class TestCompileArguments:
-    """`compile` checks its worlds and inputs and leaves the inputs alone."""
-
-    @pytest.mark.parametrize(
-        ('worlds', 'error'),
-        [
-            ((), ValueError),
-            ((1, 1), ValueError),
-            ((-1,), ValueError),
-            ((1.5,), TypeError),
-            ((True,), TypeError),
-        ],
-    )
-    def test_worlds(self, study_area: object, worlds: tuple, error: type) -> None:
-        """Worlds are distinct non-negative integers, at least one."""
-        with pytest.raises(error):
-            HazusEQInventoryCompiler(seed=SEED).compile(study_area, worlds=worlds)
+    """`compile` checks its inputs and leaves them alone."""
 
     def test_inputs_refused(self, study_area: object) -> None:
         """Footprint ids must be strings, and the local values one world of them."""
@@ -632,7 +615,7 @@ class TestOutput:
         assert kept['h01'][EXCLUDED_KEY] == [False, True, False]
         assert 'h02' not in kept
 
-        result._replace(worlds=(0,)).write(tmp_path / 'world0.geojson')
+        result.write(tmp_path / 'world0.geojson', world=0)
         assert EXCLUDED_KEY not in written(tmp_path / 'world0.geojson')['h01']
 
         groups = report.exclusion_groups(worlds=(0, 1, 2))
@@ -647,7 +630,7 @@ class TestOutput:
     def test_full_write_takes_the_inventory(
         self, compiled: object, tmp_path: object, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A write of every world assembles nothing new, a subset is assembled."""
+        """A write of every world assembles nothing new, and a write of one world assembles."""
         result = compiled(n_worlds=3)
         assembler = mock.Mock(wraps=hc.WorldAssembler)
         monkeypatch.setattr(hc, 'WorldAssembler', assembler)
@@ -655,8 +638,56 @@ class TestOutput:
         result.write(tmp_path / 'default.geojson')
         assert not assembler.called
         assert result.freeze.manifest() == result.manifest
-        result._replace(worlds=(0, 1)).write(tmp_path / 'subset.geojson')
+        result.write(tmp_path / 'world1.geojson', world=1)
         assert assembler.called
+
+    @pytest.mark.parametrize(
+        ('world', 'error', 'message'),
+        [
+            (-1, ValueError, 'outside the 3 worlds of the run, 0 to 2'),
+            (3, ValueError, 'outside the 3 worlds of the run, 0 to 2'),
+            (True, TypeError, 'must be an integer'),
+            (1.5, TypeError, 'must be an integer'),
+        ],
+    )
+    def test_world_refused(
+        self,
+        compiled: object,
+        tmp_path: object,
+        world: object,
+        error: type,
+        message: str,
+    ) -> None:
+        """A world outside the run, a bool or a value that is not an integer writes nothing."""
+        with pytest.raises(error, match=message):
+            compiled(n_worlds=3).write(tmp_path / 'run.geojson', world=world)
+        assert not list(tmp_path.iterdir())
+
+    def test_one_world_file_ignores_the_world_count(
+        self, compiled: object, tmp_path: object
+    ) -> None:
+        """World 3 is written the same from four worlds and from ten, with no null property."""
+        files = {}
+        for n_worlds in (4, 10):
+            path = tmp_path / f'w3_of_{n_worlds}.geojson'
+            compiled(n_worlds=n_worlds).write(
+                path,
+                world=3,
+                keep_partly_excluded=True,
+                extra_properties=ALL_PROPERTIES,
+            )
+            files[n_worlds] = {
+                feature['id']: (feature['geometry'], feature['properties'])
+                for feature in json.loads(path.read_text(encoding='utf-8'))[
+                    'features'
+                ]
+            }
+        assert files[4] == files[10]
+        assert all(
+            value is not None
+            for _, properties in files[10].values()
+            for value in properties.values()
+        )
 
     def test_files(self, compiled: object, tmp_path: object) -> None:
         """The manifest and the logs are written beside the file, readable."""
@@ -783,7 +814,7 @@ class TestWrittenFile:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: object,
     ) -> None:
-        """A file of worlds without the defect is written, one with it refused."""
+        """A file of the world without the defect is written, and a file of the other world or of both is refused."""
         compiler = HazusEQInventoryCompiler(
             seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
         )
@@ -811,10 +842,16 @@ class TestWrittenFile:
 
         monkeypatch.setattr(compiler._validator, 'validate', validate)
         result = compiler.compile(study_area)
-        result._replace(worlds=(0,)).write(tmp_path / 'world0.geojson')
+        result.write(tmp_path / 'world0.geojson', world=0)
         assert (tmp_path / 'world0.geojson').exists()
         with pytest.raises(RuntimeError, match=YEAR_BUILT_KEY):
             result.write(tmp_path / 'both.geojson')
+        with pytest.raises(RuntimeError, match=YEAR_BUILT_KEY):
+            result.write(tmp_path / 'world1.geojson', world=1)
+        # A refused file still leaves the report of the worlds asked for.
+        for stem, worlds in (('world0', {0}), ('both', {0, 1}), ('world1', {1})):
+            rows = pd.read_parquet(tmp_path / f'{stem}_report_exclusions.parquet')
+            assert set(rows['world']) == worlds
 
     @pytest.mark.parametrize(
         ('name', 'replacement', 'building', 'key'),
@@ -1219,47 +1256,43 @@ class TestWorlds:
         result = compiled(n_worlds=3)
         assert features_in(result.inventory, 0) != features_in(result.inventory, 1)
 
-    @pytest.mark.parametrize('worlds', [(3,), (2, 5)])
-    def test_subsets(
-        self, compiled: object, tmp_path: object, worlds: tuple
-    ) -> None:
-        """A run asked for some worlds writes them as the full run computes them."""
-        subset, full = compiled(n_worlds=10, worlds=worlds), compiled(n_worlds=10)
-        assert subset.worlds == worlds
-        assert subset.inventory.n_pw == max(worlds) + 1
-        subset.write(
-            tmp_path / 'subset.geojson',
+    @pytest.mark.parametrize('world', [3, 9])
+    def test_one_world(self, compiled: object, tmp_path: object, world: int) -> None:
+        """A file of one world holds that world's values and the rows of that world."""
+        result = compiled(n_worlds=10)
+        result.write(
+            tmp_path / 'one.geojson',
+            world=world,
             keep_partly_excluded=True,
             extra_properties=ALL_PROPERTIES,
         )
-        properties = written(tmp_path / 'subset.geojson')
-        compiled_in = {
+        properties = written(tmp_path / 'one.geojson')
+        expected = features_in(result.inventory, world)
+        assert set(properties) == {
             asset_id
-            for world in worlds
-            for asset_id, values in features_in(full.inventory, world).items()
+            for asset_id, values in expected.items()
             if not values[EXCLUDED_KEY]
         }
-        assert set(properties) == compiled_in
-        for position, world in enumerate(worlds):
-            expected = features_in(full.inventory, world)
-            for asset_id, values in properties.items():
-                for key, value in expected[asset_id].items():
-                    held = values.get(key)
-                    if isinstance(held, list):
-                        held = held[position]
-                    assert held == value or (
-                        isinstance(value, float) and math.isclose(held, value)
-                    ), (asset_id, key)
-        records = pd.read_parquet(tmp_path / 'subset_report.parquet')
-        exclusions = pd.read_parquet(tmp_path / 'subset_report_exclusions.parquet')
-        assert set(records['world']) == set(worlds)
-        assert set(exclusions['world']) == set(worlds)
+        for asset_id, values in properties.items():
+            for key, value in expected[asset_id].items():
+                held = values.get(key)
+                assert (
+                    not isinstance(held, list)
+                    or key in result.inventory.vector_features
+                )
+                assert held == value or (
+                    isinstance(value, float) and math.isclose(held, value)
+                ), (asset_id, key)
+        records = pd.read_parquet(tmp_path / 'one_report.parquet')
+        exclusions = pd.read_parquet(tmp_path / 'one_report_exclusions.parquet')
+        assert set(records['world']) == {world}
+        assert set(exclusions['world']) == {world}
         summary = json.loads(
-            (tmp_path / 'subset_report_summary.json').read_text(encoding='utf-8')
+            (tmp_path / 'one_report_summary.json').read_text(encoding='utf-8')
         )
-        assert summary['worlds']['written'] == list(worlds)
-        imputer_log = pd.read_parquet(tmp_path / 'subset_imputer.parquet')
-        assert set(imputer_log['world']) == set(worlds)
+        assert summary['worlds'] == {'computed': 10, 'written': [world]}
+        imputer_log = pd.read_parquet(tmp_path / 'one_imputer.parquet')
+        assert set(imputer_log['world']) == {world}
 
     def test_per_world_lists(self, compiled: object, tmp_path: object) -> None:
         """The file holds a list where worlds differ and a scalar where they agree."""
@@ -1285,7 +1318,7 @@ class TestYearsAndTypes:
     ) -> None:
         """Each per-world component is told the number of the world it computes."""
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=10, projected_crs=METRIC_CRS
+            seed=SEED, n_worlds=6, projected_crs=METRIC_CRS
         )
         spies = {}
         for name in (
@@ -1295,7 +1328,7 @@ class TestYearsAndTypes:
         ):
             spies[name] = mock.Mock(wraps=getattr(hc, name))
             monkeypatch.setattr(hc, name, spies[name])
-        compiler.compile(study_area, worlds=(2, 5))
+        compiler.compile(study_area)
         for spy in spies.values():
             worlds = Counter(c.kwargs['world'] for c in spy.call_args_list)
             assert set(worlds) == set(range(6))
@@ -1669,7 +1702,7 @@ class TestYearAndValueOfTheRest:
         """Both draw per world with the imputer's k and cap, step 8 its weights too."""
         compiler = HazusEQInventoryCompiler(
             seed=SEED,
-            n_worlds=10,
+            n_worlds=6,
             projected_crs=METRIC_CRS,
             imputer_options={'cap_m': 1500.0, 'stories_weight': 0.5},
         )
@@ -1685,7 +1718,7 @@ class TestYearAndValueOfTheRest:
             autospec=True,
             side_effect=real,
         ) as impute:
-            compiler.compile(study_area, worlds=(2, 5))
+            compiler.compile(study_area)
         assert [c.kwargs['world'] for c in sampler.call_args_list] == list(range(6))
         assert [c.kwargs['world'] for c in impute.call_args_list] == list(range(6))
         for spy in (sampler, imputer):

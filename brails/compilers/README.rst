@@ -652,27 +652,30 @@ The run ends with the manifest.
 Worlds
 ~~~~~~
 
-Worlds are numbered as the section "Possible worlds" describes, by the run and
-by every component. A world does not depend on how many worlds the run
-compiles, so world 3 of a run of four worlds equals world 3 of a run of ten. A
-run asked for some worlds computes every world up to the largest asked, and the
-result lists the worlds asked, in ascending order, as ``worlds``.
+A run computes the compiler's ``n_worlds`` worlds, numbered as the section
+"Possible worlds" describes, from 0 to ``n_worlds - 1``, by the run and by
+every component. A world's values do not depend on how many worlds the run
+computes, so world 3 of a run of four worlds equals world 3 of a run of ten.
 
 The written file
 ~~~~~~~~~~~~~~~~
 
-``write`` writes the worlds a result lists, one GeoJSON feature per building
-with its id and footprint and, for a property whose worlds differ, a list of
-values, one per world written. Which buildings and properties the file holds is
-stated on ``CompilationResult.write``. The properties of ``DEFAULT_PROPERTIES``
-are those a Hazus earthquake assessment reads. The report lists each excluded
-building with its reason in each world, whether or not the file holds it. A
-building's ``ReplacementCost`` divided by its ``GrossArea`` is the rate per
-square foot that step 8 gave it, except for a building that keeps a local
-``ReplacementCost``. Step 8 computes the rate of such a building as the local
-value divided by ``NSIGrossArea``, the ``sqft`` of the building's NSI records
-(their sum where it has several), not by its ``GrossArea``, and gives that rate
-to the buildings that take their rate from it.
+``write`` writes every world the run computed, or only the world that its
+``world`` argument names. The file holds one GeoJSON feature per building, with
+its id and footprint. Where every world is written, a property whose worlds
+differ holds a list of values, one per world. A file of one world leaves out a
+property whose value is ``None`` in that world, so the file is the same
+whatever the number of worlds the run computed. Which buildings and properties
+the file holds is stated on ``CompilationResult.write``. The properties of
+``DEFAULT_PROPERTIES`` are those a Hazus earthquake assessment reads. The
+report lists each excluded building with its reason in each world, whether or
+not the file holds it. A building's ``ReplacementCost`` divided by its
+``GrossArea`` is the rate per square foot that step 8 gave it, except for a
+building that keeps a local ``ReplacementCost``. Step 8 computes the rate of
+such a building as the local value divided by ``NSIGrossArea``, the ``sqft`` of
+the building's NSI records (their sum where it has several), not by its
+``GrossArea``, and gives that rate to the buildings that take their rate from
+it.
 
 The imputer's settings
 ~~~~~~~~~~~~~~~~~~~~~~
