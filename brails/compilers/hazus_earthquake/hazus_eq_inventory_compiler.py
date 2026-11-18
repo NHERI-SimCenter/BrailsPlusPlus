@@ -68,6 +68,12 @@ from brails.aggregators.stacked_footprints.stacked_footprints import (
 from brails.compilers.compilation_report import DROPPED_CATEGORY, CompilationReport
 from brails.compilers.hazus_earthquake.pair_redraw import PairRedraw
 from brails.compilers.hazus_earthquake.resolution_loop import (
+    CONFLICT_CATEGORY,
+    FAILS_SCHEMA_CATEGORY,
+    MISSING_INPUT_CATEGORY,
+    NO_PLAUSIBLE_VALUE_CATEGORY,
+    UNDETERMINED_CATEGORY,
+    UNSUPPORTED_CATEGORY,
     ComposedScreen,
     ResolutionLoop,
 )
@@ -222,27 +228,27 @@ _TYPE_KEY = 'type'
 MISSING_DEFAULTS_LOG = 'missing_defaults'
 
 # The frozen stages, in the order they are frozen.
-STAGE_FOOTPRINTS = 'footprints'
-STAGE_LOCAL = 'local'
-STAGE_JOIN_NSI = 'join_nsi'
-STAGE_JOIN_DERIVED = 'join_derived'
+STAGE_S01_FOOTPRINTS = 's01_footprints'
+STAGE_S01_LOCAL = 's01_local'
+STAGE_S02_NSI_JOIN = 's02_nsi_join'
+STAGE_S02_DERIVED = 's02_derived'
 STAGE_S03_STORY_COUNTS = 's03_story_counts'
 STAGE_S03_WITHHELD = 's03_withheld'
 STAGE_S04_UNIT_BUDGET = 's04_unit_budget'
 STAGE_S04_DROPPED = 's04_dropped'
 STAGE_S04_WITHHELD = 's04_withheld'
 STAGE_S05_IMPUTATION = 's05_imputation'
-STAGE_STEP4 = 'step4'
+STAGE_S05_VIEW = 's05_view'
 STAGE_S06_RESIDENTIAL_YEAR = 's06_residential_year'
 STAGE_S07_WITHHELD = 's07_withheld'
 STAGE_S07_PAIR_REDRAW = 's07_pair_redraw'
 STAGE_S07_DERIVED = 's07_derived'
-STAGE_STEP6_DRAWN = 'step6_drawn'
-STAGE_STEP6_DERIVED = 'step6_derived'
-STAGE_STEP6 = 'step6'
-STAGE_STEP7_IMPUTED = 'step7_imputed'
-STAGE_STEP7_DRAWN = 'step7_drawn'
-STAGE_STEP7_DERIVED = 'step7_derived'
+STAGE_S08_STRUCTURE = 's08_structure'
+STAGE_S08_DERIVED = 's08_derived'
+STAGE_S08_VIEW = 's08_view'
+STAGE_S09_NONRESIDENTIAL_YEAR = 's09_nonresidential_year'
+STAGE_S10_NONRESIDENTIAL_STRUCTURE = 's10_nonresidential_structure'
+STAGE_S10_DERIVED = 's10_derived'
 STAGE_S11_GROSS_AREA = 's11_gross_area'
 STAGE_S11_WITHHELD_LOCAL = 's11_withheld_local'
 STAGE_S11_WITHHELD_JOIN = 's11_withheld_join'
@@ -256,22 +262,22 @@ STAGE_S15_OUTPUT = 's15_output'
 
 # The stages the report records actions and exclusions under.
 REPORT_STAGES = (
-    'footprints',
-    'join',
+    's01_footprints',
+    's02_nsi_join',
     's03_story_counts',
     's04_unit_budget',
     's05_imputation',
     's06_residential_year',
-    'design_level',
     's07_pair_redraw',
-    'screen',
-    'resolution',
-    'structure_type',
-    'height_class',
-    'carve_out',
-    'nonresidential_year',
-    'value',
-    'certificate',
+    's08_design_level',
+    's08_screen',
+    's08_resolution',
+    's08_structure_type',
+    's08_height_class',
+    's08_carve_out',
+    's09_nonresidential_year',
+    's12_schema_check',
+    's13_replacement_cost',
     's14_building_type',
 )
 
@@ -279,12 +285,12 @@ REPORT_STAGES = (
 # DROPPED_CATEGORY. The section "Exclusion categories" of the compilers'
 # README defines each.
 EXCLUSION_CATEGORIES = (
-    'missing_input',
-    'unsupported',
-    'conflict',
-    'no_plausible_value',
-    'undetermined',
-    'fails_schema',
+    MISSING_INPUT_CATEGORY,
+    UNSUPPORTED_CATEGORY,
+    CONFLICT_CATEGORY,
+    NO_PLAUSIBLE_VALUE_CATEGORY,
+    UNDETERMINED_CATEGORY,
+    FAILS_SCHEMA_CATEGORY,
 )
 
 # The Hazus input schema every compiled realization is checked against.
@@ -301,9 +307,9 @@ CARVE_OUT_METHOD = '5.1'
 # do not cover, and one ResidentialNeighborYearSampler finds infeasible has no
 # residential neighbor with a construction year.
 _DIAGNOSIS_CATEGORY = {
-    DIAGNOSIS_INVALID: 'missing_input',
-    DIAGNOSIS_UNSUPPORTED: 'unsupported',
-    DIAGNOSIS_INFEASIBLE: 'missing_input',
+    DIAGNOSIS_INVALID: MISSING_INPUT_CATEGORY,
+    DIAGNOSIS_UNSUPPORTED: UNSUPPORTED_CATEGORY,
+    DIAGNOSIS_INFEASIBLE: MISSING_INPUT_CATEGORY,
 }
 
 # The feature of the record of s13's values holding the source label of each
@@ -346,7 +352,7 @@ _CODE_POSITION = {
 
 # The sources whose occupancy class makes a footprint reached, and those of
 # them whose occupancy class the unit budget's mobile-home rule may relabel.
-_REACHED_SOURCES = ('local', 'nsi', 'derived')
+_OCCUPANCY_SOURCE_LABELS = ('local', 'nsi', 'derived')
 _RELABELED_SOURCES = ('nsi', 'derived')
 
 # The structure types for which Hazus defines no height class.
@@ -505,7 +511,7 @@ class CompilationResult(NamedTuple):
         ``<stem>_manifest.json``, and the logs through
         :meth:`CompilationReport.save_logs` as ``<stem>_<name>.parquet``,
         the report and the logs keeping the rows of the written worlds. The
-        summary's notices, timings and certificate cover every world the run
+        summary's notices, timings and schema check cover every world the run
         computed.
 
         Args:
@@ -624,10 +630,12 @@ class CompilationResult(NamedTuple):
         }
         as_is = world is None
         for asset_id, asset in written.items() if as_is else ():
-            marks = asset.features[EXCLUDED_KEY]
+            excluded_values = asset.features[EXCLUDED_KEY]
             listed = [asset_id in excluded_in.get(w, ()) for w in worlds]
             if (
-                marks if isinstance(marks, list) else [marks] * len(listed)
+                excluded_values
+                if isinstance(excluded_values, list)
+                else [excluded_values] * len(listed)
             ) != listed:
                 as_is = False
                 break
@@ -820,7 +828,7 @@ def _select_observed_donors(
     Select the observed donors of a merged world.
 
     An observed donor is a footprint whose occupancy class comes from one of
-    :data:`_REACHED_SOURCES` and that holds a story count.
+    :data:`_OCCUPANCY_SOURCE_LABELS` and that holds a story count.
 
     Args:
         inventory (AssetInventory):
@@ -841,14 +849,14 @@ def _select_observed_donors(
         [
             asset_id
             for asset_id, asset in inventory.inventory.items()
-            if occupancy_source[asset_id] in _REACHED_SOURCES
+            if occupancy_source[asset_id] in _OCCUPANCY_SOURCE_LABELS
             and not is_missing_value(asset.features.get(STORIES_KEY))
         ],
         vector_features=vector_features,
     )
 
 
-def _plausible(
+def _is_plausible_pair(
     asset_id: object,  # noqa: ARG001
     world: int,  # noqa: ARG001
     features: Mapping[str, Any],
@@ -883,7 +891,7 @@ def _plausible(
     return not is_implausible(occupancy, stories)
 
 
-def _overlay(
+def _write_coded_values(
     asset_id: str, features: dict[str, Any], values: Mapping[str, Any], label: str
 ) -> None:
     """
@@ -1193,12 +1201,12 @@ class HazusEQInventoryCompiler:
         logs: dict[str, pd.DataFrame] = {}
 
         started = time.perf_counter()
-        centroids = self._footprints(inputs, sources, logs, report)
-        report.set_timing(STAGE_FOOTPRINTS, time.perf_counter() - started)
+        centroids = self._prepare_footprints(inputs, sources, logs, report)
+        report.set_timing(STAGE_S01_FOOTPRINTS, time.perf_counter() - started)
 
         started = time.perf_counter()
-        self._join(inputs, sources, logs, centroids)
-        report.set_timing('join', time.perf_counter() - started)
+        self._join_nsi_to_footprints(inputs, sources, logs, centroids)
+        report.set_timing('s02_nsi_join', time.perf_counter() - started)
 
         started = time.perf_counter()
         stories = self._infer_story_counts(
@@ -1238,7 +1246,7 @@ class HazusEQInventoryCompiler:
         )
         report.set_timing('s05_imputation', time.perf_counter() - started)
         del merged, allocation
-        self._view(STAGE_STEP4, sources, report, n_computed)
+        self._freeze_view(STAGE_S05_VIEW, sources, report, n_computed)
         sources.freeze.freeze(
             DONOR_STAGE,
             imputation_donors_from_log(
@@ -1254,9 +1262,13 @@ class HazusEQInventoryCompiler:
         self._redraw_implausible_pairs(
             sources, logs, centroids, report, n_computed, imputer, stories
         )
-        self._step6(sources, logs, centroids, report, n_computed)
-        self._view(STAGE_STEP6, sources, report, n_computed)
-        self._step7(sources, logs, centroids, report, n_computed, imputer)
+        self._assign_structure_in_each_world(
+            sources, logs, centroids, report, n_computed
+        )
+        self._freeze_view(STAGE_S08_VIEW, sources, report, n_computed)
+        self._impute_nonresidential_years(
+            sources, logs, centroids, report, n_computed, imputer
+        )
 
         started = time.perf_counter()
         self._compute_gross_areas(sources, logs, centroids, n_computed)
@@ -1310,8 +1322,8 @@ class HazusEQInventoryCompiler:
             del merged
 
         # s12: the schema's violations and the count of each world's refusals.
-        logs['certificate'] = pd.concat(violations, ignore_index=True)
-        report.set_certificate(
+        logs['schema_check'] = pd.concat(violations, ignore_index=True)
+        report.set_schema_check(
             {
                 'dataset': DLML_DATASET,
                 'excluded_by_world': {
@@ -1355,7 +1367,7 @@ class HazusEQInventoryCompiler:
             seed=self.seed,
         )
 
-    def _footprints(
+    def _prepare_footprints(
         self,
         inputs: CompilerInputs,
         sources: _WorldSources,
@@ -1373,8 +1385,8 @@ class HazusEQInventoryCompiler:
                 The study area's data.
             sources (_WorldSources):
                 The sources, to which the footprints and a local inventory
-                are added as :data:`STAGE_FOOTPRINTS` and
-                :data:`STAGE_LOCAL`.
+                are added as :data:`STAGE_S01_FOOTPRINTS` and
+                :data:`STAGE_S01_LOCAL`.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``footprint_ties`` and, with
                 :attr:`merge_stacked`, the merge's parts table as
@@ -1443,7 +1455,7 @@ class HazusEQInventoryCompiler:
             if datasets:
                 features[FOOTPRINT_DATASETS_KEY] = ';'.join(datasets)
             features[PLAN_AREA_KEY] = area_m2 / UNIT_TO_METER['ft'] ** 2
-        sources.add_part(SPINE_LABEL, STAGE_FOOTPRINTS, spine)
+        sources.add_part(SPINE_LABEL, STAGE_S01_FOOTPRINTS, spine)
         if inputs.local is not None:
             local = deepcopy(inputs.local)
             for asset_id, asset in local.inventory.items():
@@ -1454,10 +1466,10 @@ class HazusEQInventoryCompiler:
                     asset.features[LOCAL_GROSS_AREA_KEY] = asset.features[
                         GROSS_AREA_KEY
                     ]
-            sources.add_part('local', STAGE_LOCAL, local)
+            sources.add_part('local', STAGE_S01_LOCAL, local)
         return centroids
 
-    def _join(
+    def _join_nsi_to_footprints(
         self,
         inputs: CompilerInputs,
         sources: _WorldSources,
@@ -1472,8 +1484,8 @@ class HazusEQInventoryCompiler:
                 The study area's data.
             sources (_WorldSources):
                 The sources, to which the join's observed and derived values
-                are added as :data:`STAGE_JOIN_NSI` and
-                :data:`STAGE_JOIN_DERIVED`, with centroids as their
+                are added as :data:`STAGE_S02_NSI_JOIN` and
+                :data:`STAGE_S02_DERIVED`, with centroids as their
                 coordinates.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive the join's links, unlinked points
@@ -1483,7 +1495,7 @@ class HazusEQInventoryCompiler:
         """
         result = NSIFootprintJoin(
             cap_m=self.join_cap_m, seed=self.seed, projected_crs=self.projected_crs
-        ).join(sources.freeze.read(STAGE_FOOTPRINTS), inputs.nsi_points)
+        ).join(sources.freeze.read(STAGE_S01_FOOTPRINTS), inputs.nsi_points)
         logs['join_links'] = result.links
         logs['join_unlinked'] = result.unlinked
         logs['join_branch_counts'] = result.branch_counts.reset_index()
@@ -1496,8 +1508,8 @@ class HazusEQInventoryCompiler:
                     asset.features[NSI_GROSS_AREA_KEY] = asset.features[
                         GROSS_AREA_KEY
                     ]
-        sources.add_part('nsi', STAGE_JOIN_NSI, result.observed)
-        sources.add_part('derived', STAGE_JOIN_DERIVED, result.derived)
+        sources.add_part('nsi', STAGE_S02_NSI_JOIN, result.observed)
+        sources.add_part('derived', STAGE_S02_DERIVED, result.derived)
 
     def _infer_story_counts(
         self,
@@ -1653,21 +1665,21 @@ class HazusEQInventoryCompiler:
                 The budget's allocation, whose values s05's targets carry.
         """
         # A footprint is reached where a source holds its occupancy class.
-        reached = _select_assets(
+        with_occupancy_source = _select_assets(
             merged,
             (
                 a
                 for a, source in occupancy_source.items()
-                if source in _REACHED_SOURCES
+                if source in _OCCUPANCY_SOURCE_LABELS
             ),
             vector_features=DEFAULT_VECTOR_FEATURES,
         )
-        unreached = _select_assets(
+        without_occupancy_source = _select_assets(
             merged,
             (
                 a
                 for a, source in occupancy_source.items()
-                if source not in _REACHED_SOURCES
+                if source not in _OCCUPANCY_SOURCE_LABELS
             ),
             vector_features=DEFAULT_VECTOR_FEATURES,
         )
@@ -1684,7 +1696,10 @@ class HazusEQInventoryCompiler:
             **self.budget_options,
         )
         allocation = budget.allocate(
-            unreached, reached, n_worlds=n_computed, relabel_sources=relabel
+            without_occupancy_source,
+            with_occupancy_source,
+            n_worlds=n_computed,
+            relabel_sources=relabel,
         )
         logs['budget'] = allocation.log
         logs['budget_diagnostic'] = allocation.diagnostic
@@ -1844,7 +1859,7 @@ class HazusEQInventoryCompiler:
             donors,
             n_worlds=n_computed,
             status=allocation.residential,
-            validate=_plausible,
+            validate=_is_plausible_pair,
         )
         imputer_log = imputation.log.copy()
         imputer_log['values'] = [
@@ -1858,7 +1873,7 @@ class HazusEQInventoryCompiler:
         for asset_id, asset in imputation.imputed.inventory.items():
             class_of = merged.inventory[asset_id].features.get(OCCUPANCY_KEY)
             if (
-                occupancy_source[asset_id] in _REACHED_SOURCES
+                occupancy_source[asset_id] in _OCCUPANCY_SOURCE_LABELS
                 and class_of not in UNIT_COUNT_CLASSES
             ):
                 asset.features.pop(UNITS_KEY, None)
@@ -1912,7 +1927,7 @@ class HazusEQInventoryCompiler:
             n_computed (int):
                 The number of worlds computed.
         """
-        view = sources.freeze.read(STAGE_STEP4)
+        view = sources.freeze.read(STAGE_S05_VIEW)
         kept = list(view.inventory)
         assembled = AssetInventory()
         fits = []
@@ -1985,7 +2000,7 @@ class HazusEQInventoryCompiler:
 
         Each world's re-draw reads that world merged after s06, and its
         donors are the observed donors of the world's realization of the
-        view :data:`STAGE_STEP4`. The section "The run" of the README beside
+        view :data:`STAGE_S05_VIEW`. The section "The run" of the README beside
         this module states the procedure.
 
         Args:
@@ -2014,7 +2029,7 @@ class HazusEQInventoryCompiler:
                 :func:`~brails.types.asset_inventory.read_source_string`
                 reads.
         """
-        view = sources.freeze.read(STAGE_STEP4)
+        view = sources.freeze.read(STAGE_S05_VIEW)
         kept = list(view.inventory)
         stages = (STAGE_S07_WITHHELD, STAGE_S07_PAIR_REDRAW, STAGE_S07_DERIVED)
         assembled = {stage: AssetInventory() for stage in stages}
@@ -2022,14 +2037,14 @@ class HazusEQInventoryCompiler:
         for world in range(n_computed):
             started = time.perf_counter()
             frozen = view.get_world_realization(world)
-            working = sources.merge_world(world)
+            merged_world = sources.merge_world(world)
             new: dict[str, dict[str, dict[str, Any]]] = {
                 stage: {} for stage in stages
             }
             # The re-draw draws from the observed donors of the frozen view.
             donors = _select_observed_donors(frozen, _read_occupancy_sources(frozen))
             redraw = PairRedraw(imputer, donors, stories, world=world).redraw(
-                working
+                merged_world
             )
             redraws.append(redraw.log)
             for row in redraw.withheld.itertuples(index=False):
@@ -2078,21 +2093,26 @@ class HazusEQInventoryCompiler:
                             stage='s07_pair_redraw',
                             action=action,
                             world=world,
-                            old=working.inventory[asset_id].features.get(feature),
+                            old=merged_world.inventory[asset_id].features.get(
+                                feature
+                            ),
                             new=value,
                             source=label,
                             reason=reason,
                         )
                     new[stage].setdefault(asset_id, {}).update(values)
-                    _overlay(
-                        asset_id, working.inventory[asset_id].features, values, label
+                    _write_coded_values(
+                        asset_id,
+                        merged_world.inventory[asset_id].features,
+                        values,
+                        label,
                     )
 
             for stage in stages:
                 assembled[stage].add_world(
                     _build_inventory(kept, centroids, new[stage], vector_features=())
                 )
-            del frozen, working
+            del frozen, merged_world
             report.set_timing(
                 's07_pair_redraw', time.perf_counter() - started, world=world
             )
@@ -2106,7 +2126,7 @@ class HazusEQInventoryCompiler:
         sources.add_part('derived', STAGE_S07_DERIVED, assembled[STAGE_S07_DERIVED])
         report.set_timing('s07_pair_redraw_freeze', time.perf_counter() - started)
 
-    def _step6(
+    def _assign_structure_in_each_world(
         self,
         sources: _WorldSources,
         logs: dict[str, pd.DataFrame],
@@ -2143,14 +2163,14 @@ class HazusEQInventoryCompiler:
                 reads, or, as :meth:`ResolutionLoop.resolve` raises, a
                 building type has no source.
         """
-        kept = list(sources.freeze.read(STAGE_STEP4).inventory)
+        kept = list(sources.freeze.read(STAGE_S05_VIEW).inventory)
         exclusions = report.exclusions
-        stages = (STAGE_STEP6_DRAWN, STAGE_STEP6_DERIVED)
+        stages = (STAGE_S08_STRUCTURE, STAGE_S08_DERIVED)
         assembled = {stage: AssetInventory() for stage in stages}
         resolutions = []
         for world in range(n_computed):
             started = time.perf_counter()
-            working = sources.merge_world(world)
+            merged_world = sources.merge_world(world)
             new: dict[str, dict[str, dict[str, Any]]] = {
                 stage: {} for stage in stages
             }
@@ -2158,15 +2178,15 @@ class HazusEQInventoryCompiler:
             resolutions.append(
                 {
                     'world': world,
-                    **self._draw_types(
+                    **self._assign_structure(
                         world,
                         sources,
                         report,
-                        working,
+                        merged_world,
                         kept,
                         excluded,
-                        new[STAGE_STEP6_DERIVED],
-                        new[STAGE_STEP6_DRAWN],
+                        new[STAGE_S08_DERIVED],
+                        new[STAGE_S08_STRUCTURE],
                     ),
                 }
             )
@@ -2174,23 +2194,25 @@ class HazusEQInventoryCompiler:
                 assembled[stage].add_world(
                     _build_inventory(kept, centroids, new[stage], vector_features=())
                 )
-            del working
-            report.set_timing('step6', time.perf_counter() - started, world=world)
+            del merged_world
+            report.set_timing(
+                's08_structure', time.perf_counter() - started, world=world
+            )
 
         logs['resolution'] = pd.DataFrame(resolutions)
         started = time.perf_counter()
-        sources.add_part('drawn', STAGE_STEP6_DRAWN, assembled[STAGE_STEP6_DRAWN])
         sources.add_part(
-            'derived', STAGE_STEP6_DERIVED, assembled[STAGE_STEP6_DERIVED]
+            'drawn', STAGE_S08_STRUCTURE, assembled[STAGE_S08_STRUCTURE]
         )
-        report.set_timing('step6_parts_freeze', time.perf_counter() - started)
+        sources.add_part('derived', STAGE_S08_DERIVED, assembled[STAGE_S08_DERIVED])
+        report.set_timing('s08_structure_freeze', time.perf_counter() - started)
 
-    def _draw_types(  # noqa: C901
+    def _assign_structure(  # noqa: C901
         self,
         world: int,
         sources: _WorldSources,
         report: CompilationReport,
-        working: AssetInventory,
+        merged_world: AssetInventory,
         candidates: Sequence[str],
         excluded: set[str],
         derived: dict[str, dict[str, Any]],
@@ -2215,7 +2237,7 @@ class HazusEQInventoryCompiler:
                 building type.
             report (CompilationReport):
                 The report, which receives the actions and exclusions.
-            working (AssetInventory):
+            merged_world (AssetInventory):
                 The world's working merge, whose design levels are written.
             candidates (Sequence[str]):
                 The ids of the assets to give values; those in
@@ -2250,7 +2272,7 @@ class HazusEQInventoryCompiler:
             for stage in sources.parts[label]
         ]
 
-        def held(asset_id: str, key: str) -> bool:
+        def holds_value(asset_id: str, key: str) -> bool:
             """
             Say whether an asset holds a value of a feature in the working merge.
 
@@ -2265,35 +2287,37 @@ class HazusEQInventoryCompiler:
                     Whether the value is not missing.
             """
             return not is_missing_value(
-                working.inventory[asset_id].features.get(key)
+                merged_world.inventory[asset_id].features.get(key)
             )
 
         # Derive a design level for each asset with a year and no design level.
-        dated = [
+        with_year = [
             a
             for a in candidates
             if a not in excluded
-            and held(a, YEAR_BUILT_KEY)
-            and not held(a, DESIGN_LEVEL_KEY)
+            and holds_value(a, YEAR_BUILT_KEY)
+            and not holds_value(a, DESIGN_LEVEL_KEY)
         ]
-        checked = design.check(_select_assets(working, dated))
+        checked = design.check(_select_assets(merged_world, with_year))
         for row in checked[checked['diagnosis'] != DIAGNOSIS_OK].itertuples():
             excluded.add(row.Index)
             report.record_exclusion(
                 row.Index,
                 world=world,
-                stage='design_level',
+                stage='s08_design_level',
                 category=_DIAGNOSIS_CATEGORY[row.diagnosis],
                 diagnosis=row.diagnosis,
                 detail=row.detail,
                 resolvable_by=row.resolvable_by,
             )
         usable = list(checked.index[checked['diagnosis'] == DIAGNOSIS_OK])
-        for asset_id, level in design.draw(_select_assets(working, usable)).items():
+        for asset_id, level in design.draw(
+            _select_assets(merged_world, usable)
+        ).items():
             derived.setdefault(asset_id, {})[DESIGN_LEVEL_KEY] = level
-            _overlay(
+            _write_coded_values(
                 asset_id,
-                working.inventory[asset_id].features,
+                merged_world.inventory[asset_id].features,
                 {DESIGN_LEVEL_KEY: level},
                 'derived',
             )
@@ -2303,17 +2327,17 @@ class HazusEQInventoryCompiler:
             self.state, seed=self.seed, world=world, complete_tables=True
         )
         loop = ResolutionLoop(ComposedScreen(design, structure))
-        untyped = [
+        without_structure_type = [
             a
             for a in candidates
             if a not in excluded
-            and held(a, YEAR_BUILT_KEY)
-            and not held(a, STRUCTURE_TYPE_KEY)
+            and holds_value(a, YEAR_BUILT_KEY)
+            and not holds_value(a, STRUCTURE_TYPE_KEY)
         ]
         # The source holding each building type, in merge precedence.
         type_sources = {}
-        for asset_id in untyped:
-            if not held(asset_id, BUILDING_TYPE_KEY):
+        for asset_id in without_structure_type:
+            if not holds_value(asset_id, BUILDING_TYPE_KEY):
                 continue
             for label, part in labeled:
                 asset = part.inventory.get(asset_id)
@@ -2326,7 +2350,7 @@ class HazusEQInventoryCompiler:
                     type_sources[asset_id] = label
                     break
         resolution = loop.resolve(
-            _select_assets(working, untyped),
+            _select_assets(merged_world, without_structure_type),
             report,
             building_type_sources=type_sources,
         )
@@ -2340,39 +2364,41 @@ class HazusEQInventoryCompiler:
         height_class_inputs = {}
         for asset_id in candidates:
             structure_type = types.get(asset_id)
-            if structure_type is None and held(asset_id, STRUCTURE_TYPE_KEY):
-                structure_type = working.inventory[asset_id].features[
+            if structure_type is None and holds_value(asset_id, STRUCTURE_TYPE_KEY):
+                structure_type = merged_world.inventory[asset_id].features[
                     STRUCTURE_TYPE_KEY
                 ]
             if (
                 asset_id in excluded
                 or structure_type is None
-                or held(asset_id, HEIGHT_CLASS_KEY)
+                or holds_value(asset_id, HEIGHT_CLASS_KEY)
             ):
                 continue
             height_class_inputs[asset_id] = {
                 STRUCTURE_TYPE_KEY: structure_type,
-                STORIES_KEY: working.inventory[asset_id].features.get(STORIES_KEY),
+                STORIES_KEY: merged_world.inventory[asset_id].features.get(
+                    STORIES_KEY
+                ),
             }
-        typed = _build_inventory(
+        with_structure_type = _build_inventory(
             height_class_inputs,
-            {a: working.inventory[a].coordinates for a in height_class_inputs},
+            {a: merged_world.inventory[a].coordinates for a in height_class_inputs},
             height_class_inputs,
         )
-        classed = heights.check(typed)
+        classed = heights.check(with_structure_type)
         for row in classed[classed['diagnosis'] != DIAGNOSIS_OK].itertuples():
             excluded.add(row.Index)
             report.record_exclusion(
                 row.Index,
                 world=world,
-                stage='height_class',
+                stage='s08_height_class',
                 category=_DIAGNOSIS_CATEGORY[row.diagnosis],
                 diagnosis=row.diagnosis,
                 detail=row.detail,
             )
         ok = list(classed.index[classed['diagnosis'] == DIAGNOSIS_OK])
         for asset_id, height_class in heights.draw(
-            _select_assets(typed, ok)
+            _select_assets(with_structure_type, ok)
         ).items():
             if height_class is not None:
                 derived.setdefault(asset_id, {})[HEIGHT_CLASS_KEY] = height_class
@@ -2393,7 +2419,7 @@ class HazusEQInventoryCompiler:
                 report.record_action(
                     asset_id,
                     DESIGN_LEVEL_KEY,
-                    stage='carve_out',
+                    stage='s08_carve_out',
                     action='derived',
                     world=world,
                     old=levels[asset_id],
@@ -2408,7 +2434,7 @@ class HazusEQInventoryCompiler:
             'excluded': resolution.excluded_count,
         }
 
-    def _step7(
+    def _impute_nonresidential_years(
         self,
         sources: _WorldSources,
         logs: dict[str, pd.DataFrame],
@@ -2426,8 +2452,8 @@ class HazusEQInventoryCompiler:
         Args:
             sources (_WorldSources):
                 The sources, to which the parts are added as
-                :data:`STAGE_STEP7_IMPUTED`, :data:`STAGE_STEP7_DRAWN` and
-                :data:`STAGE_STEP7_DERIVED`.
+                :data:`STAGE_S09_NONRESIDENTIAL_YEAR`, :data:`STAGE_S10_NONRESIDENTIAL_STRUCTURE` and
+                :data:`STAGE_S10_DERIVED`.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``neighbor_year`` and
                 ``nonresidential_resolution``, each with a ``world`` column.
@@ -2449,17 +2475,21 @@ class HazusEQInventoryCompiler:
                 reads, or, as :meth:`ResolutionLoop.resolve` raises, a
                 building type has no source.
         """
-        view = sources.freeze.read(STAGE_STEP6)
+        view = sources.freeze.read(STAGE_S08_VIEW)
         kept = list(view.inventory)
         exclusions = report.exclusions
-        stages = (STAGE_STEP7_IMPUTED, STAGE_STEP7_DRAWN, STAGE_STEP7_DERIVED)
+        stages = (
+            STAGE_S09_NONRESIDENTIAL_YEAR,
+            STAGE_S10_NONRESIDENTIAL_STRUCTURE,
+            STAGE_S10_DERIVED,
+        )
         assembled = {stage: AssetInventory() for stage in stages}
         picks, resolutions = [], []
         for world in range(n_computed):
             started = time.perf_counter()
             excluded = set(exclusions.loc[exclusions['world'] == world, 'asset_id'])
             frozen = view.get_world_realization(world)
-            working = view.get_world_realization(world)
+            merged_world = view.get_world_realization(world)
             new: dict[str, dict[str, dict[str, Any]]] = {
                 stage: {} for stage in stages
             }
@@ -2468,7 +2498,7 @@ class HazusEQInventoryCompiler:
                 world=world,
                 k=imputer.k,
                 cap_m=imputer.cap_m,
-            ).select_donors(sources.freeze, STAGE_STEP6)
+            ).select_donors(sources.freeze, STAGE_S08_VIEW)
             targets = [
                 a
                 for a, asset in frozen.inventory.items()
@@ -2482,7 +2512,7 @@ class HazusEQInventoryCompiler:
                 report.record_exclusion(
                     row.Index,
                     world=world,
-                    stage='nonresidential_year',
+                    stage='s09_nonresidential_year',
                     category=_DIAGNOSIS_CATEGORY[row.diagnosis],
                     diagnosis=row.diagnosis,
                     detail=row.detail,
@@ -2494,25 +2524,27 @@ class HazusEQInventoryCompiler:
                 picked.rename_axis('asset_id').reset_index().assign(world=world)
             )
             for asset_id, year in picked[YEAR_BUILT_KEY].items():
-                new[STAGE_STEP7_IMPUTED][asset_id] = {YEAR_BUILT_KEY: int(year)}
-                _overlay(
+                new[STAGE_S09_NONRESIDENTIAL_YEAR][asset_id] = {
+                    YEAR_BUILT_KEY: int(year)
+                }
+                _write_coded_values(
                     asset_id,
-                    working.inventory[asset_id].features,
+                    merged_world.inventory[asset_id].features,
                     {YEAR_BUILT_KEY: int(year)},
                     'imputed',
                 )
             resolutions.append(
                 {
                     'world': world,
-                    **self._draw_types(
+                    **self._assign_structure(
                         world,
                         sources,
                         report,
-                        working,
+                        merged_world,
                         passing,
                         excluded,
-                        new[STAGE_STEP7_DERIVED],
-                        new[STAGE_STEP7_DRAWN],
+                        new[STAGE_S10_DERIVED],
+                        new[STAGE_S10_NONRESIDENTIAL_STRUCTURE],
                     ),
                 }
             )
@@ -2520,21 +2552,25 @@ class HazusEQInventoryCompiler:
                 assembled[stage].add_world(
                     _build_inventory(kept, centroids, new[stage], vector_features=())
                 )
-            del frozen, working
-            report.set_timing('step7', time.perf_counter() - started, world=world)
+            del frozen, merged_world
+            report.set_timing(
+                's09_nonresidential_year', time.perf_counter() - started, world=world
+            )
 
         logs['neighbor_year'] = pd.concat(picks, ignore_index=True)
         logs['nonresidential_resolution'] = pd.DataFrame(resolutions)
         started = time.perf_counter()
         for label, stage in (
-            ('imputed', STAGE_STEP7_IMPUTED),
-            ('drawn', STAGE_STEP7_DRAWN),
-            ('derived', STAGE_STEP7_DERIVED),
+            ('imputed', STAGE_S09_NONRESIDENTIAL_YEAR),
+            ('drawn', STAGE_S10_NONRESIDENTIAL_STRUCTURE),
+            ('derived', STAGE_S10_DERIVED),
         ):
             sources.add_part(label, stage, assembled[stage])
-        report.set_timing('step7_parts_freeze', time.perf_counter() - started)
+        report.set_timing(
+            's09_nonresidential_year_freeze', time.perf_counter() - started
+        )
 
-    def _view(
+    def _freeze_view(
         self,
         stage: str,
         sources: _WorldSources,
@@ -2545,7 +2581,7 @@ class HazusEQInventoryCompiler:
         Freeze the merge of every registered source over the worlds.
 
         The report receives the time of each world's merge under
-        ``f'{stage}_view'`` and that of the freeze under
+        ``f'{stage}_merge'`` and that of the freeze under
         ``f'{stage}_freeze'``.
 
         Args:
@@ -2563,7 +2599,7 @@ class HazusEQInventoryCompiler:
             started = time.perf_counter()
             view.add_world(sources.merge_world(world))
             report.set_timing(
-                f'{stage}_view', time.perf_counter() - started, world=world
+                f'{stage}_merge', time.perf_counter() - started, world=world
             )
         started = time.perf_counter()
         sources.freeze.freeze(stage, view)
@@ -2580,7 +2616,7 @@ class HazusEQInventoryCompiler:
         Run s11 in every world: the gross area of every building.
 
         The area is computed from the footprint in the view
-        :data:`STAGE_STEP6`, whose story counts are final, for every building
+        :data:`STAGE_S08_VIEW`, whose story counts are final, for every building
         of the view, excluded ones included. The section "The run" of the
         README beside this module states the procedure.
 
@@ -2603,7 +2639,7 @@ class HazusEQInventoryCompiler:
                 As :func:`footprint_gross_area` raises, for a building
                 without a readable footprint.
         """
-        view = sources.freeze.read(STAGE_STEP6)
+        view = sources.freeze.read(STAGE_S08_VIEW)
         kept = list(view.inventory)
         areas = AssetInventory()
         rows = []
@@ -2641,7 +2677,7 @@ class HazusEQInventoryCompiler:
         ``BuildingType`` the footprints carry. One building's ``GrossArea``
         of two sources needs two records, since a record withholds a feature
         from one source. The run calls this after the view
-        :data:`STAGE_STEP6` is frozen and before the first merge of s12, so
+        :data:`STAGE_S08_VIEW` is frozen and before the first merge of s12, so
         that the unit budget, the structure type draw and the rates of s13
         read these values.
 
@@ -2656,7 +2692,7 @@ class HazusEQInventoryCompiler:
             for stage in sources.parts['local']
             for asset_id, asset in sources.freeze.read(stage).inventory.items()
         ]
-        kept = sources.freeze.read(STAGE_STEP6).inventory.keys() - {
+        kept = sources.freeze.read(STAGE_S08_VIEW).inventory.keys() - {
             asset_id
             for asset_id, features in local
             if not is_missing_value(features.get(REPLACEMENT_COST_KEY))
@@ -2684,8 +2720,8 @@ class HazusEQInventoryCompiler:
                     if not is_missing_value(asset.features.get(key)):
                         records[record][asset_id] = {key: SPINE_LABEL}
         for label, stage in (
-            ('nsi', STAGE_JOIN_NSI),
-            ('derived', STAGE_JOIN_DERIVED),
+            ('nsi', STAGE_S02_NSI_JOIN),
+            ('derived', STAGE_S02_DERIVED),
         ):
             for asset_id, asset in sources.freeze.read(stage).inventory.items():
                 features = asset.features
@@ -2750,8 +2786,8 @@ class HazusEQInventoryCompiler:
             report.record_exclusion(
                 asset_id,
                 world=world,
-                stage='certificate',
-                category='fails_schema',
+                stage='s12_schema_check',
+                category=FAILS_SCHEMA_CATEGORY,
                 detail='; '.join(messages),
             )
             excluded.add(asset_id)
@@ -2772,7 +2808,7 @@ class HazusEQInventoryCompiler:
         """
         Run s13 in one world: the value of every building.
 
-        Every building of the view :data:`STAGE_STEP6` is valued, excluded
+        Every building of the view :data:`STAGE_S08_VIEW` is valued, excluded
         ones included, at the gross area of :data:`STAGE_S11_GROSS_AREA`.
         The section "The run" of the README beside this module states the
         procedure.
@@ -2820,7 +2856,7 @@ class HazusEQInventoryCompiler:
         )
         result = valuer.impute_stage(
             sources.freeze,
-            STAGE_STEP6,
+            STAGE_S08_VIEW,
             DONOR_STAGE,
             world=world,
             target_area_key=GROSS_AREA_KEY,
@@ -2838,10 +2874,10 @@ class HazusEQInventoryCompiler:
                 report.record_exclusion(
                     asset_id,
                     world=world,
-                    stage='value',
-                    category='no_plausible_value'
+                    stage='s13_replacement_cost',
+                    category=NO_PLAUSIBLE_VALUE_CATEGORY
                     if outcome == OUTCOME_NO_DONOR
-                    else 'missing_input',
+                    else MISSING_INPUT_CATEGORY,
                     detail=f'the value step gives no {REPLACEMENT_COST_KEY}: '
                     f'{outcome}',
                 )
@@ -2854,7 +2890,7 @@ class HazusEQInventoryCompiler:
                     ],
                     _VALUE_SOURCE_KEY: SOURCE_LABELS[code],
                 }
-        kept = list(sources.freeze.read(STAGE_STEP6).inventory)
+        kept = list(sources.freeze.read(STAGE_S08_VIEW).inventory)
         report.set_timing(
             STAGE_S13_REPLACEMENT_COST, time.perf_counter() - started, world=world
         )
@@ -2928,7 +2964,7 @@ class HazusEQInventoryCompiler:
                     asset_id,
                     world=world,
                     stage='s14_building_type',
-                    category='conflict',
+                    category=CONFLICT_CATEGORY,
                     detail=f'the local {BUILDING_TYPE_KEY} '
                     f'{asset.features[BUILDING_TYPE_KEY]!r} is not the letter '
                     f'{letter!r} of the {STRUCTURE_TYPE_KEY} {structure_type!r}',
@@ -3002,7 +3038,7 @@ class HazusEQInventoryCompiler:
                 continue
             value = costs.inventory[asset_id].features
             if not is_missing_value(value.get(REPLACEMENT_COST_KEY)):
-                _overlay(
+                _write_coded_values(
                     asset_id,
                     features,
                     {REPLACEMENT_COST_KEY: value[REPLACEMENT_COST_KEY]},

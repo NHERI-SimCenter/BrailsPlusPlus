@@ -307,7 +307,7 @@ class PairRedraw:
                 source_string_key=self.source_string_key,
                 source_features=self.source_features,
             )
-            row = self._plan_row(asset_id, features, codes)
+            row = self._build_plan_row(asset_id, features, codes)
             if row is not None:
                 rows.append(row)
         return pd.DataFrame(rows, columns=list(PLAN_COLUMNS), dtype=object)
@@ -370,7 +370,7 @@ class PairRedraw:
                 )
                 if pool is None:
                     pool = self.imputer.pool(self.donors, inventory)
-                draw = self._draw(
+                draw = self._draw_donor(
                     pool,
                     asset_id,
                     features,
@@ -415,7 +415,7 @@ class PairRedraw:
             derived,
         )
 
-    def _plan_row(
+    def _build_plan_row(
         self, asset_id: Hashable, features: Mapping[str, Any], codes: str
     ) -> dict[str, Any] | None:
         """
@@ -439,7 +439,7 @@ class PairRedraw:
                 If the pair's source codes fit no row of the action table.
         """
         occupancy = features.get(self.occupancy_key)
-        stories = _story_count(features.get(self.stories_key))
+        stories = _read_story_count(features.get(self.stories_key))
         if not isinstance(occupancy, str) or stories is None:
             return None
         if not is_implausible(occupancy, stories):
@@ -461,7 +461,7 @@ class PairRedraw:
             'stories_code': stories_code,
             'height_stories': height_stories,
             'corroborated': corroborated,
-            'action': _action(
+            'action': _select_action(
                 asset_id,
                 occupancy_code,
                 stories_code,
@@ -474,7 +474,7 @@ class PairRedraw:
             ),
         }
 
-    def _draw(
+    def _draw_donor(
         self,
         pool: DonorPool,
         asset_id: Hashable,
@@ -488,7 +488,7 @@ class PairRedraw:
         Call the imputer's draw for one planned asset.
 
         The draw is given the asset's residential status and the test
-        :meth:`_admit` builds, and may not change its local and footprint
+        :meth:`_build_admission_test` builds, and may not change its local and footprint
         features.
 
         Args:
@@ -520,7 +520,7 @@ class PairRedraw:
             for feature, code in zip(self.source_features, codes)
             if code in _LOCAL_CODES
         )
-        admit = self._admit(
+        admit = self._build_admission_test(
             drawn_features,
             kept_stories=kept_stories,
             residential=residential,
@@ -540,7 +540,7 @@ class PairRedraw:
             purpose_prefix=PURPOSE_PAIR_REDRAW,
         )
 
-    def _admit(
+    def _build_admission_test(
         self,
         drawn_features: tuple[str, ...],
         *,
@@ -586,7 +586,7 @@ class PairRedraw:
                 return False
             occupancy = values[self.occupancy_key]
             stories = (
-                _story_count(values[self.stories_key])
+                _read_story_count(values[self.stories_key])
                 if self.stories_key in drawn_features
                 else kept_stories
             )
@@ -604,7 +604,7 @@ class PairRedraw:
         return admit
 
 
-def _action(
+def _select_action(
     asset_id: Hashable,
     occupancy_code: str,
     stories_code: str,
@@ -661,7 +661,7 @@ def _action(
     return ACTION_REPLACE_STORIES
 
 
-def _story_count(value: object) -> int | None:
+def _read_story_count(value: object) -> int | None:
     """
     Read a story count as the structure type inferer reads it.
 

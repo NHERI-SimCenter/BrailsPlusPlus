@@ -73,6 +73,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - The Hazus earthquake inventory compiler runs its last five steps, `s11_gross_area` to `s15_output`, as steps of their own: the gross area is computed before the schema check, the schema check runs before the value, and the log `gross_area` names the source of each area. A building that fails the schema and has no value is excluded as `fails_schema`.
 - The Hazus earthquake inventory compiler's last five steps, `s11_gross_area` to `s15_output`, each have a stage or a method of their own: the gross area is computed before the schema check, the schema check runs before the value, and the log `gross_area` names the source of each area. A building that fails the schema and has no value is excluded as `fails_schema`.
 - The Hazus earthquake inventory compiler excludes a building as a `conflict` in each world where its local `BuildingType` is not the letter of its structure type. The report no longer counts such buildings in a notice.
+- The Hazus earthquake inventory compiler's steps, frozen stages, timing keys and report stages are named by the labels `s01_footprints` to `s15_output`, and the schema check is `schema_check` as a log, a summary key and `CompilationReport.set_schema_check`.
 
 ### Changed
 - **Python 3.9 is no longer supported.** BRAILS++ requires Python 3.10, 3.11 or 3.12, the versions the tests run on.

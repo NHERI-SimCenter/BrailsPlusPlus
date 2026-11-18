@@ -146,28 +146,28 @@ YEAR_CODE = HAZUS_EQ_SOURCE_FEATURES.index(YEAR_BUILT_KEY)
 # The footprints no NSI record reaches.
 UNREACHED = set(FOOTPRINTS) - {record[0] for record in NSI_RECORDS.values()}
 FREEZE_ORDER = (
-    'footprints',
-    'local',
-    'join_nsi',
-    'join_derived',
+    's01_footprints',
+    's01_local',
+    's02_nsi_join',
+    's02_derived',
     's03_story_counts',
     's03_withheld',
     's04_dropped',
     's04_withheld',
     's04_unit_budget',
     's05_imputation',
-    'step4',
+    's05_view',
     'imputation_donors',
     's06_residential_year',
     's07_withheld',
     's07_pair_redraw',
     's07_derived',
-    'step6_drawn',
-    'step6_derived',
-    'step6',
-    'step7_imputed',
-    'step7_drawn',
-    'step7_derived',
+    's08_structure',
+    's08_derived',
+    's08_view',
+    's09_nonresidential_year',
+    's10_nonresidential_structure',
+    's10_derived',
     's11_gross_area',
     's11_withheld_local',
     's11_withheld_join',
@@ -181,15 +181,15 @@ FREEZE_ORDER = (
 )
 # The timed units of a run, once and per world.
 TIMED_ONCE = (
-    'footprints',
-    'join',
+    's01_footprints',
+    's02_nsi_join',
     's03_story_counts',
     's04_unit_budget',
     's05_imputation',
-    'step4_freeze',
+    's05_view_freeze',
     's06_residential_year_freeze',
     's07_pair_redraw_freeze',
-    'step6_freeze',
+    's08_view_freeze',
     's11_gross_area',
     's13_replacement_cost_freeze',
     's14_building_type_freeze',
@@ -197,12 +197,12 @@ TIMED_ONCE = (
     'manifest',
 )
 TIMED_PER_WORLD = (
-    'step4_view',
+    's05_view_merge',
     's06_residential_year',
     's07_pair_redraw',
-    'step6',
-    'step6_view',
-    'step7',
+    's08_structure',
+    's08_view_merge',
+    's09_nonresidential_year',
     's15_output_merge',
     's12_schema_check',
     's13_replacement_cost',
@@ -540,7 +540,7 @@ class TestFootprintsAndJoin:
             )
         )
 
-        spine = result.freeze.read('footprints').inventory
+        spine = result.freeze.read('s01_footprints').inventory
         merge = StackedFootprintMerge(length_unit=height_unit)
         assert set(spine) == set(merge.merge(footprints).inventory.inventory)
         assert len(spine) == len(FOOTPRINTS) + 2 - merged
@@ -575,13 +575,13 @@ class TestFootprintsAndJoin:
         read = result.freeze.read
         assert result.freeze.order == FREEZE_ORDER
         assert [e['stage'] for e in result.manifest['stages']] == list(FREEZE_ORDER)
-        assert set(read('footprints').inventory) == set(FOOTPRINTS)
+        assert set(read('s01_footprints').inventory) == set(FOOTPRINTS)
         assert all(
             len(asset.coordinates) > 1
-            for asset in read('footprints').inventory.values()
+            for asset in read('s01_footprints').inventory.values()
         )
-        assert set(read('local').inventory) == set(LOCAL)
-        for stage in ('local', 'join_nsi', 'join_derived'):
+        assert set(read('s01_local').inventory) == set(LOCAL)
+        for stage in ('s01_local', 's02_nsi_join', 's02_derived'):
             for asset in read(stage).inventory.values():
                 assert len(asset.coordinates) == 1, stage
         assert read('s15_output') is result.inventory
@@ -609,15 +609,15 @@ class TestFootprintsAndJoin:
             Returns:
                 AssetInventory:
                     The composed source, with h01's story count set to 9
-                    where ``parts`` holds ``'join_nsi'``.
+                    where ``parts`` holds ``'s02_nsi_join'``.
             """
             composed = real(freeze, parts, **kwargs)
-            if 'join_nsi' in parts:
+            if 's02_nsi_join' in parts:
                 composed.inventory['h01'].features[STORIES_KEY] = 9
             return composed
 
         monkeypatch.setattr(hc, 'compose_source_parts', changing)
-        with pytest.raises(RuntimeError, match='join_nsi'):
+        with pytest.raises(RuntimeError, match='s02_nsi_join'):
             HazusEQInventoryCompiler(
                 seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
@@ -626,7 +626,7 @@ class TestFootprintsAndJoin:
 class TestOutput:
     """The last steps' output and what `write` makes of it."""
 
-    def test_output_marks_exclusions(self, study_area: object) -> None:
+    def test_output_holds_the_excluded_values(self, study_area: object) -> None:
         """An exclusion recorded before s12 marks its world."""
         real = hc.CompilationReport.set_world_count
 
@@ -645,7 +645,7 @@ class TestOutput:
                 report.record_exclusion(
                     asset_id,
                     world=1,
-                    stage='resolution',
+                    stage='s08_resolution',
                     category='conflict',
                     detail='x',
                 )
@@ -660,8 +660,10 @@ class TestOutput:
                 seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
             ).compile(study_area)
         for asset_id in ('h01', 'u02'):
-            marks = result.inventory.inventory[asset_id].features[EXCLUDED_KEY]
-            assert marks == [False, True, False]
+            excluded_values = result.inventory.inventory[asset_id].features[
+                EXCLUDED_KEY
+            ]
+            assert excluded_values == [False, True, False]
         # An excluded building takes no value from s13 in that world.
         values = result.inventory.inventory['u02'].features[REPLACEMENT_COST_KEY]
         assert values[1] is None
@@ -686,7 +688,7 @@ class TestOutput:
             report.record_exclusion(
                 'h02',
                 world=world,
-                stage='resolution',
+                stage='s08_resolution',
                 category='conflict',
                 detail='x',
             )
@@ -1179,7 +1181,7 @@ class TestStoriesUnitsAndImputation:
             for asset_id in nonresidential:
                 assert features[asset_id][OCCUPANCY_KEY] not in UNIT_COUNT_CLASSES
 
-    def test_local_class_is_reached(self, study_area: object) -> None:
+    def test_local_class_is_a_source_class(self, study_area: object) -> None:
         """A footprint with a local occupancy class is reached and a story donor."""
         allocate = hc.ACSUnitBudget.allocate
         impute = hc.ObservedDonorImputer.impute_stage
@@ -1204,9 +1206,11 @@ class TestStoriesUnitsAndImputation:
 
     def test_validation(self, study_area: object) -> None:
         """The imputer's copies are checked for implausible pairs."""
-        assert not hc._plausible('a', 0, {OCCUPANCY_KEY: 'RES2', STORIES_KEY: 4})
-        assert hc._plausible('a', 0, {OCCUPANCY_KEY: 'RES2', STORIES_KEY: 1})
-        assert hc._plausible('a', 0, {OCCUPANCY_KEY: 'RES2'})
+        assert not hc._is_plausible_pair(
+            'a', 0, {OCCUPANCY_KEY: 'RES2', STORIES_KEY: 4}
+        )
+        assert hc._is_plausible_pair('a', 0, {OCCUPANCY_KEY: 'RES2', STORIES_KEY: 1})
+        assert hc._is_plausible_pair('a', 0, {OCCUPANCY_KEY: 'RES2'})
         real = hc.ObservedDonorImputer.impute_stage
         with mock.patch.object(
             hc.ObservedDonorImputer, 'impute_stage', autospec=True, side_effect=real
@@ -1214,7 +1218,7 @@ class TestStoriesUnitsAndImputation:
             HazusEQInventoryCompiler(
                 seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
-        assert impute.call_args.kwargs['validate'] is hc._plausible
+        assert impute.call_args.kwargs['validate'] is hc._is_plausible_pair
 
     def test_every_footprint_dropped(
         self, study_area: CompilerInputs, tmp_path: Path
@@ -1337,7 +1341,7 @@ class TestStoriesUnitsAndImputation:
         ):
             for asset in read(stage).inventory.values():
                 assert len(asset.coordinates) == 1, stage
-        assert set(read('step4').inventory) == kept
+        assert set(read('s05_view').inventory) == kept
 
 
 class TestWorlds:
@@ -1478,19 +1482,19 @@ class TestYearsAndTypes:
             hc.ACSYearBuiltSampler, 'fit', autospec=True, side_effect=real
         ) as fit:
             result = compiler.compile(study_area)
-        step4 = result.freeze.read('step4')
+        step4 = result.freeze.read('s05_view')
         occupancy = HAZUS_EQ_SOURCE_FEATURES.index(OCCUPANCY_KEY)
         for world in range(3):
             frozen = features_in(step4, world)
             assert features_in(fit.call_args_list[world].args[1], 0) == frozen
-            reached = {
+            with_occupancy_source = {
                 a: values
                 for a, values in frozen.items()
                 if values[SOURCE_STRING_KEY][occupancy] in 'LNR'
                 and STORIES_KEY in values
             }
             donors = redraw.call_args_list[world].args[1]
-            assert features_in(donors, 0) == reached
+            assert features_in(donors, 0) == with_occupancy_source
 
     def test_changed_view_raises_at_the_manifest(
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
@@ -1511,15 +1515,15 @@ class TestYearsAndTypes:
             Returns:
                 AssetInventory:
                     The frozen stage, with h01's story count set to 9 where
-                    ``stage`` is ``'step4'``.
+                    ``stage`` is ``'s05_view'``.
             """
             held = real(self, stage)
-            if stage == 'step4':
+            if stage == 's05_view':
                 held.inventory['h01'].features[STORIES_KEY] = 9
             return held
 
         monkeypatch.setattr(hc.StageFreeze, 'read', changing)
-        with pytest.raises(RuntimeError, match='step4'):
+        with pytest.raises(RuntimeError, match='s05_view'):
             HazusEQInventoryCompiler(
                 seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
@@ -1533,8 +1537,8 @@ class TestYearsAndTypes:
             's07_withheld',
             's07_pair_redraw',
             's07_derived',
-            'step6_drawn',
-            'step6_derived',
+            's08_structure',
+            's08_derived',
         ):
             part = result.freeze.read(stage)
             assert part.n_pw == 3
@@ -1543,7 +1547,7 @@ class TestYearsAndTypes:
                 assert len(asset.coordinates) == 1, stage
         for stage, features in (
             ('s06_residential_year', {YEAR_BUILT_KEY}),
-            ('step6_drawn', {STRUCTURE_TYPE_KEY}),
+            ('s08_structure', {STRUCTURE_TYPE_KEY}),
         ):
             assert {
                 key
@@ -1553,7 +1557,7 @@ class TestYearsAndTypes:
         for stage, features in (
             ('s07_pair_redraw', {OCCUPANCY_KEY, STORIES_KEY}),
             ('s07_derived', {STORIES_KEY}),
-            ('step6_derived', {DESIGN_LEVEL_KEY, HEIGHT_CLASS_KEY}),
+            ('s08_derived', {DESIGN_LEVEL_KEY, HEIGHT_CLASS_KEY}),
         ):
             assert {
                 key
@@ -1583,11 +1587,11 @@ class TestYearsAndTypes:
         assert len(calls) == 3
         drawn_somewhere = False
         for world, call in enumerate(calls):
-            working = call.args[1]
+            merged_world = call.args[1]
             for asset_id, values in features_in(years, world).items():
                 if YEAR_BUILT_KEY in values:
                     drawn_somewhere = True
-                    held = working.inventory[asset_id].features
+                    held = merged_world.inventory[asset_id].features
                     assert held[YEAR_BUILT_KEY] == values[YEAR_BUILT_KEY]
                     assert held[SOURCE_STRING_KEY][YEAR_CODE] == 'D'
         assert drawn_somewhere
@@ -1599,26 +1603,26 @@ class TestYearsAndTypes:
         compiler = HazusEQInventoryCompiler(
             seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         )
-        # The draws are watched through _draw_types, which receives the
+        # The draws are watched through _assign_structure, which receives the
         # world's merged inventory; its first calls in a run are s08's.
         monkeypatch.setattr(
             hc.HazusEQInventoryCompiler,
-            '_draw_types',
+            '_assign_structure',
             mock.create_autospec(
-                hc.HazusEQInventoryCompiler._draw_types,
-                side_effect=hc.HazusEQInventoryCompiler._draw_types,
+                hc.HazusEQInventoryCompiler._assign_structure,
+                side_effect=hc.HazusEQInventoryCompiler._assign_structure,
             ),
         )
         result = compiler.compile(study_area)
         redrawn = result.freeze.read('s07_pair_redraw')
-        calls = hc.HazusEQInventoryCompiler._draw_types.call_args_list[:3]
+        calls = hc.HazusEQInventoryCompiler._assign_structure.call_args_list[:3]
         seen = False
         for world, call in enumerate(calls):
-            working = call.args[4]
+            merged_world = call.args[4]
             for asset_id, values in features_in(redrawn, world).items():
                 if OCCUPANCY_KEY in values:
                     seen = True
-                    held = working.inventory[asset_id].features
+                    held = merged_world.inventory[asset_id].features
                     assert held[OCCUPANCY_KEY] == values[OCCUPANCY_KEY]
                     assert held[SOURCE_STRING_KEY][OCCUPANCY_CODE] == 'I'
         assert seen
@@ -1628,7 +1632,7 @@ class TestYearsAndTypes:
         result = compiled(n_worlds=3)
         records = result.report.records
         rows = records[
-            (records['asset_id'] == 'p01') & (records['stage'] == 'resolution')
+            (records['asset_id'] == 'p01') & (records['stage'] == 's08_resolution')
         ]
         assert sorted(rows['world']) == [0, 1, 2]
         assert set(rows['feature']) == {BUILDING_TYPE_KEY}
@@ -1714,7 +1718,11 @@ class TestYearsAndTypes:
             """
             real(report, count)
             report.record_exclusion(
-                'u06', world=1, stage='resolution', category='conflict', detail='x'
+                'u06',
+                world=1,
+                stage='s08_resolution',
+                category='conflict',
+                detail='x',
             )
 
         with mock.patch.object(
@@ -1773,7 +1781,7 @@ class TestYearsAndTypes:
         """A drawn Pre-Code W1 leaves as Moderate-Code in California alone."""
         result = compiled(n_worlds=3)
         records = result.report.records
-        rows = records[records['stage'] == 'carve_out']
+        rows = records[records['stage'] == 's08_carve_out']
         assert not rows.empty
         for row in rows.itertuples():
             features = features_in(result.inventory, row.world)[row.asset_id]
@@ -1783,7 +1791,7 @@ class TestYearsAndTypes:
         oregon = HazusEQInventoryCompiler(
             seed=SEED, n_worlds=3, state='Oregon', projected_crs=METRIC_CRS
         ).compile(study_area)
-        assert 'carve_out' not in set(oregon.report.records['stage'])
+        assert 's08_carve_out' not in set(oregon.report.records['stage'])
         levels = [
             (features[STRUCTURE_TYPE_KEY], features[DESIGN_LEVEL_KEY])
             for world in range(3)
@@ -1792,7 +1800,7 @@ class TestYearsAndTypes:
         ]
         assert ('W1', 'Pre-Code') in levels
 
-    def test_certificate(self, compiled: object) -> None:
+    def test_schema_check(self, compiled: object) -> None:
         """A local URM of 1990, which gives High-Code, fails the schema everywhere."""
         result = compiled(n_worlds=3)
         rows = result.report.exclusions
@@ -1896,8 +1904,8 @@ class TestYearsAndTypes:
         rows = result.report.exclusions.set_index(['asset_id', 'world'])
         for asset_id, stage in (
             ('q02', 's06_residential_year'),
-            ('h05', 'design_level'),
-            ('h07', 'height_class'),
+            ('h05', 's08_design_level'),
+            ('h07', 's08_height_class'),
         ):
             for world in range(2):
                 row = rows.loc[(asset_id, world)]
@@ -1947,7 +1955,7 @@ class TestYearAndValueOfTheRest:
                 (c.kwargs['k'], c.kwargs['cap_m']) for c in spy.call_args_list
             } == {(DEFAULT_IMPUTER_OPTIONS['k'], 1500.0)}
         assert {c.args[2:4] for c in impute.call_args_list} == {
-            ('step6', 'imputation_donors')
+            ('s08_view', 'imputation_donors')
         }
         options = imputer.call_args.kwargs
         assert (
@@ -1972,7 +1980,7 @@ class TestYearAndValueOfTheRest:
             result = HazusEQInventoryCompiler(
                 seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
             ).compile(study_area)
-        step6 = result.freeze.read('step6')
+        step6 = result.freeze.read('s08_view')
         for world in range(3):
             frozen = features_in(step6, world)
             targets = features_in(check.call_args_list[world].args[1], 0)
@@ -2011,7 +2019,7 @@ class TestYearAndValueOfTheRest:
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'f01']
         assert sorted(rows['world']) == [0, 1, 2]
-        assert set(rows['stage']) == {'nonresidential_year'}
+        assert set(rows['stage']) == {'s09_nonresidential_year'}
         assert set(rows['category']) == {'missing_input'}
         assert OCCUPANCY_KEY not in features_in(result.inventory, 0)['f01']
 
@@ -2130,7 +2138,7 @@ class TestYearAndValueOfTheRest:
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'f01']
         assert list(zip(rows['stage'], rows['category'])) == [
-            ('certificate', 'fails_schema')
+            ('s12_schema_check', 'fails_schema')
         ]
         assert OCCUPANCY_KEY in rows['detail'].iloc[0]
         log = result.logs['value']
@@ -2148,7 +2156,7 @@ class TestYearAndValueOfTheRest:
             features = features_in(result.inventory, row.world)[row.asset_id]
             assert features[EXCLUDED_KEY] is True
             assert REPLACEMENT_COST_KEY not in features
-        valued = rows[rows['stage'] == 'value']
+        valued = rows[rows['stage'] == 's13_replacement_cost']
         assert set(valued.index) <= set(zip(without['asset_id'], without['world']))
         outcomes = without.set_index(['asset_id', 'world'])['outcome']
         expected = [
@@ -2160,7 +2168,7 @@ class TestYearAndValueOfTheRest:
         assert list(valued['category']) == expected
         assert 'no_plausible_value' in expected
 
-    def test_certificate_takes_no_value(self, compiled: object) -> None:
+    def test_schema_check_takes_no_value(self, compiled: object) -> None:
         """A building the schema refuses takes no value, NSI's included."""
         result = compiled(n_worlds=3)
         rows = result.report.exclusions
@@ -2186,7 +2194,7 @@ class TestLastSteps:
     def test_gross_area(self, compiled: object) -> None:
         """The area of s11 is the footprint's in each world, and the output's GrossArea."""
         result = compiled(n_worlds=3)
-        view = result.freeze.read(hc.STAGE_STEP6)
+        view = result.freeze.read(hc.STAGE_S08_VIEW)
         areas = result.freeze.read(hc.STAGE_S11_GROSS_AREA)
         log = result.logs['gross_area'].set_index(['asset_id', 'world'])
         assert len(log) == 3 * len(view.inventory)
@@ -2206,14 +2214,14 @@ class TestLastSteps:
         )
 
     def test_value_inputs(self, compiled: object) -> None:
-        """The value step reads the view ``STAGE_STEP6`` and the donor stage, at the area of s11."""
+        """The value step reads the view ``STAGE_S08_VIEW`` and the donor stage, at the area of s11."""
         result = compiled(n_worlds=3)
         log = result.logs['value']
         from_footprints = ReplacementCostImputer(
             seed=SEED,
             **dict(DEFAULT_IMPUTER_OPTIONS),
             gross_area_key=NSI_GROSS_AREA_KEY,
-        ).impute_stage(result.freeze, hc.STAGE_STEP6, DONOR_STAGE)
+        ).impute_stage(result.freeze, hc.STAGE_S08_VIEW, DONOR_STAGE)
         columns = [c for c in log.columns if c != 'area_source']
         pd.testing.assert_frame_equal(log[columns], from_footprints.log[columns])
         has_area = log['footprint_gross_area_sqft'].notna()
@@ -2223,7 +2231,7 @@ class TestLastSteps:
         # the stage, and the view still holds what the rates read.
         costs = result.freeze.read(hc.STAGE_S13_REPLACEMENT_COST)
         assert costs.inventory['u08'].features[REPLACEMENT_COST_KEY] is not None
-        view = features_in(result.freeze.read(hc.STAGE_STEP6), 0)
+        view = features_in(result.freeze.read(hc.STAGE_S08_VIEW), 0)
         assert view['l01'][GROSS_AREA_KEY] == 777.0
         assert view['h01'][REPLACEMENT_COST_KEY] == 350000.0
         assert view['h01'][NSI_GROSS_AREA_KEY] == 1400.0
@@ -2281,10 +2289,10 @@ class TestLastSteps:
         rows = rows[rows['asset_id'] == 'u10']
         assert sorted(rows['world']) == [0, 1, 2]
         assert set(zip(rows['stage'], rows['category'])) == {
-            ('certificate', 'fails_schema')
+            ('s12_schema_check', 'fails_schema')
         }
-        certificate = result.report.summary()['certificate']['excluded_by_world']
-        assert {int(w): n for w, n in certificate.items()} == {0: 3, 1: 3, 2: 3}
+        schema_check = result.report.summary()['schema_check']['excluded_by_world']
+        assert {int(w): n for w, n in schema_check.items()} == {0: 3, 1: 3, 2: 3}
 
     def test_areas_of_other_sources(self, compiled: object) -> None:
         """The output keeps the local and NSI gross areas beside the computed one."""
@@ -2309,7 +2317,7 @@ class TestLastSteps:
         joined = read(hc.STAGE_S11_WITHHELD_JOIN).inventory
         holders = {
             asset_id
-            for stage in (hc.STAGE_JOIN_NSI, hc.STAGE_JOIN_DERIVED)
+            for stage in (hc.STAGE_S02_NSI_JOIN, hc.STAGE_S02_DERIVED)
             for asset_id, asset in read(stage).inventory.items()
             if GROSS_AREA_KEY in asset.features
         }
@@ -2318,7 +2326,7 @@ class TestLastSteps:
         lettered = read(hc.STAGE_S14_WITHHELD).inventory
         assert set(lettered) == {
             asset_id
-            for asset_id, asset in read(hc.STAGE_JOIN_NSI).inventory.items()
+            for asset_id, asset in read(hc.STAGE_S02_NSI_JOIN).inventory.items()
             if BUILDING_TYPE_KEY in asset.features
         }
 
@@ -2430,6 +2438,6 @@ class TestLastSteps:
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'f01']
         assert list(zip(rows['stage'], rows['category'])) == [
-            ('value', 'missing_input')
+            ('s13_replacement_cost', 'missing_input')
         ]
         assert 'no_class' in rows['detail'].iloc[0]

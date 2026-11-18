@@ -74,8 +74,18 @@ if TYPE_CHECKING:
 
 # The stages of the composed screen, in the order it runs them. Each name
 # is also a stage of the compilation report.
-STAGE_DESIGN_LEVEL = 'design_level'
-STAGE_STRUCTURE_TYPE = 'structure_type'
+# The exclusion categories the loop and the Hazus earthquake compiler file
+# under, besides the report's DROPPED_CATEGORY. The section "Exclusion
+# categories" of the compilers' README defines each.
+MISSING_INPUT_CATEGORY = 'missing_input'
+UNSUPPORTED_CATEGORY = 'unsupported'
+CONFLICT_CATEGORY = 'conflict'
+NO_PLAUSIBLE_VALUE_CATEGORY = 'no_plausible_value'
+UNDETERMINED_CATEGORY = 'undetermined'
+FAILS_SCHEMA_CATEGORY = 'fails_schema'
+
+STAGE_DESIGN_LEVEL = 's08_design_level'
+STAGE_STRUCTURE_TYPE = 's08_structure_type'
 SCREEN_STAGES = (STAGE_DESIGN_LEVEL, STAGE_STRUCTURE_TYPE)
 
 # The asset id the screen files one asset's features under. A diagnosis
@@ -87,7 +97,7 @@ SCREEN_ASSET_ID = 'screened_asset'
 SCREEN_COORDINATES = ((0.0, 0.0),)
 
 # The stage of the compilation report the loop records under.
-STAGE_RESOLUTION = 'resolution'
+STAGE_RESOLUTION = 's08_resolution'
 
 # The source whose general building type the loop withholds.
 WITHHELD_SOURCE = 'nsi'
@@ -151,7 +161,7 @@ class ResolutionResult(NamedTuple):
     excluded_count: int
 
 
-def _one_asset_inventory(
+def _build_one_asset_inventory(
     features: Mapping[str, object],
     vector_features: frozenset[str] | Sequence[str],
 ) -> AssetInventory:
@@ -229,7 +239,7 @@ def _add_design_levels(
             inventory.add_asset_features(asset_id, {key: levels.loc[asset_id]})
 
 
-def _category(
+def _exclusion_category(
     screen: ComposedScreen,
     verdict: ScreenVerdict,
     features: Mapping[str, object],
@@ -262,22 +272,22 @@ def _category(
             :data:`~brails.compilers.hazus_earthquake.hazus_eq_inventory_compiler.EXCLUSION_CATEGORIES`.
     """
     if verdict.diagnosis == DIAGNOSIS_UNSUPPORTED:
-        return 'unsupported'
+        return UNSUPPORTED_CATEGORY
     if verdict.diagnosis == DIAGNOSIS_INVALID:
-        return 'missing_input'
+        return MISSING_INPUT_CATEGORY
     if acted_on:
-        return 'conflict'
+        return CONFLICT_CATEGORY
     if verdict.stage != STAGE_STRUCTURE_TYPE:
-        return 'undetermined'
-    inventory = _one_asset_inventory(features, vector_features)
+        return UNDETERMINED_CATEGORY
+    inventory = _build_one_asset_inventory(features, vector_features)
     _add_design_levels(screen.design_level_inferer, inventory)
     _, cell = inventory.get_asset_features(SCREEN_ASSET_ID)
     inferer = screen.structure_type_inferer
     vector = frozenset(vector_features)
     filled = inferer.cell_fill(cell, vector_features=vector) is not None
     if not filled and inferer.cell_is_unpublished(cell, vector_features=vector):
-        return 'no_plausible_value'
-    return 'conflict'
+        return NO_PLAUSIBLE_VALUE_CATEGORY
+    return CONFLICT_CATEGORY
 
 
 class ComposedScreen:
@@ -348,7 +358,7 @@ class ComposedScreen:
                 The verdict of the first stage that refused the asset, or
                 a passing verdict naming no stage.
         """
-        inventory = _one_asset_inventory(features, vector_features)
+        inventory = _build_one_asset_inventory(features, vector_features)
         return self.screen_inventory(inventory)[SCREEN_ASSET_ID]
 
     def screen_inventory(self, inventory: AssetInventory) -> dict:
@@ -383,7 +393,7 @@ class ComposedScreen:
         for asset_id in inventory.get_asset_ids():
             row = first.loc[asset_id]
             if row['diagnosis'] != DIAGNOSIS_OK:
-                verdicts[asset_id] = self._refusal(row, STAGE_DESIGN_LEVEL)
+                verdicts[asset_id] = self._build_refusal(row, STAGE_DESIGN_LEVEL)
                 continue
             verdicts[asset_id] = ScreenVerdict(DIAGNOSIS_OK)
             _, features = inventory.get_asset_features(asset_id)
@@ -399,10 +409,10 @@ class ComposedScreen:
         for asset_id in taken.get_asset_ids():
             row = second.loc[asset_id]
             if row['diagnosis'] != DIAGNOSIS_OK:
-                verdicts[asset_id] = self._refusal(row, STAGE_STRUCTURE_TYPE)
+                verdicts[asset_id] = self._build_refusal(row, STAGE_STRUCTURE_TYPE)
         return verdicts
 
-    def _refusal(self, row: pd.Series, stage: str) -> ScreenVerdict:
+    def _build_refusal(self, row: pd.Series, stage: str) -> ScreenVerdict:
         """
         Build the verdict of a stage that refused an asset.
 
@@ -579,7 +589,7 @@ class ResolutionLoop:
                     # An asset the loop took no action on was excluded by
                     # the stage that refused it.
                     stage=STAGE_RESOLUTION if acted_on else verdict.stage,
-                    category=_category(
+                    category=_exclusion_category(
                         self.screen,
                         verdict,
                         features,

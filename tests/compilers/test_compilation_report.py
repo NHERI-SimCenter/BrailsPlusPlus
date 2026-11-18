@@ -298,7 +298,7 @@ def test_worlds_outside_the_run_are_refused() -> None:
     with pytest.raises(ValueError, match='World 7 is outside'):
         report.summary(worlds=(7,))
     with pytest.raises(ValueError, match='World 7 is outside'):
-        report.set_timing('step6', 1.0, world=7)
+        report.set_timing('s08_structure', 1.0, world=7)
     assert len(report.exclusions) == 1
 
 
@@ -457,23 +457,27 @@ def test_the_summary_holds_timings_worlds_and_stages() -> None:
     """Seconds per stage and world, the world numbers and the stage order."""
     report = new_report(11)
     report.set_world_count(6)
-    report.set_manifest_stages(['footprints', 'join_nsi', 'step4'])
-    report.set_timing('footprints', 1.5)
-    report.set_timing('step6', 3.0, world=0)
-    report.set_timing('step6', 2.0, world=1)
-    report.set_timing('step6', 2.5, world=0)
+    report.set_manifest_stages(['s01_footprints', 's02_nsi_join', 's05_view'])
+    report.set_timing('s01_footprints', 1.5)
+    report.set_timing('s08_structure', 3.0, world=0)
+    report.set_timing('s08_structure', 2.0, world=1)
+    report.set_timing('s08_structure', 2.5, world=0)
     report.set_timing('manifest', 0.25)
 
     summary = report.summary(worlds=(5, 2))
 
     assert summary['timings'] == [
-        {'stage': 'footprints', 'world': None, 'seconds': 1.5},
-        {'stage': 'step6', 'world': 0, 'seconds': 2.5},
-        {'stage': 'step6', 'world': 1, 'seconds': 2.0},
+        {'stage': 's01_footprints', 'world': None, 'seconds': 1.5},
+        {'stage': 's08_structure', 'world': 0, 'seconds': 2.5},
+        {'stage': 's08_structure', 'world': 1, 'seconds': 2.0},
         {'stage': 'manifest', 'world': None, 'seconds': 0.25},
     ]
     assert summary['worlds'] == {'computed': 6, 'written': [2, 5]}
-    assert summary['manifest_stages'] == ['footprints', 'join_nsi', 'step4']
+    assert summary['manifest_stages'] == [
+        's01_footprints',
+        's02_nsi_join',
+        's05_view',
+    ]
     assert report.summary()['worlds']['written'] == [0, 1, 2, 3, 4, 5]
 
 
@@ -505,8 +509,8 @@ def test_save_writes_the_files_it_documents(tmp_path: Path) -> None:
     )
     report.note('two observed features disagree on asset b')
     report.set_coverage({BLOCK_GROUP_KEY: 1.0})
-    report.set_certificate('passed')
-    report.set_timing('join', 4.0)
+    report.set_schema_check('passed')
+    report.set_timing('s02_nsi_join', 4.0)
 
     report.save(tmp_path / 'run' / 'report.parquet')
 
@@ -529,7 +533,7 @@ def test_save_writes_the_files_it_documents(tmp_path: Path) -> None:
     assert summary['settings'] == {'n_worlds': 2}
     assert summary['notices'] == ['two observed features disagree on asset b']
     assert summary['coverage'] == {BLOCK_GROUP_KEY: 1.0}
-    assert summary['certificate'] == 'passed'
+    assert summary['schema_check'] == 'passed'
     assert summary['exclusions']['by_world'] == {
         '0': {'conflict': 1},
         '1': {'no_plausible_value': 1},

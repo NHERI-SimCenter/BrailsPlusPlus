@@ -54,7 +54,7 @@ from brails.compilers.hazus_earthquake.resolution_loop import (
     ResolutionLoop,
     ResolutionResult,
     ScreenVerdict,
-    _category,
+    _exclusion_category,
 )
 from brails.constants import (
     BUILDING_TYPE_KEY,
@@ -408,7 +408,7 @@ def test_the_exclusion_category(
     screen = _screen(complete_tables=complete_tables)
     verdict = screen.screen(features)
 
-    category = _category(screen, verdict, features, acted_on=acted_on)
+    category = _exclusion_category(screen, verdict, features, acted_on=acted_on)
 
     assert category == expected
     assert category in EXCLUSION_CATEGORIES
@@ -418,7 +418,9 @@ def test_an_infeasible_refusal_at_another_stage_is_undetermined() -> None:
     """Only the structure type stage selects a cell to look up."""
     verdict = ScreenVerdict(DIAGNOSIS_INFEASIBLE, '', STAGE_DESIGN_LEVEL)
 
-    category = _category(_screen(), verdict, UNREADABLE_YEAR_STORE, acted_on=False)
+    category = _exclusion_category(
+        _screen(), verdict, UNREADABLE_YEAR_STORE, acted_on=False
+    )
 
     assert category == 'undetermined'
 
@@ -543,7 +545,7 @@ def test_a_local_or_footprint_type_is_never_withheld(type_source: str) -> None:
     exclusion = report.exclusions.iloc[0]
     assert exclusion['world'] == WORLD
     assert exclusion['stage'] == STAGE_STRUCTURE_TYPE
-    assert exclusion['category'] == _category(
+    assert exclusion['category'] == _exclusion_category(
         screen, screen.screen(MASONRY_WALKUP), MASONRY_WALKUP, acted_on=False
     )
 
@@ -570,7 +572,7 @@ def test_an_nsi_type_the_refusal_does_not_name_is_not_withheld(
     assert report.records.empty
     exclusion = report.exclusions.iloc[0]
     assert exclusion['stage'] == STAGE_STRUCTURE_TYPE
-    assert exclusion['category'] == _category(
+    assert exclusion['category'] == _exclusion_category(
         screen, screen.screen(TALL_WOOD_STORE), TALL_WOOD_STORE, acted_on=False
     )
 

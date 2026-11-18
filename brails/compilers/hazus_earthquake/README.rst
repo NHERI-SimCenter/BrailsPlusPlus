@@ -372,7 +372,7 @@ to housing records only.
 
 Steps 5 and 6 run over every world in three passes, each over all worlds before
 the next. Step 5 (``s06_residential_year``) reads each world's realization of
-the frozen view ``STAGE_STEP4``, the pair re-draw of step 6
+the frozen view ``STAGE_S05_VIEW``, the pair re-draw of step 6
 (``s07_pair_redraw``) reads each world merged after step 5, and the rest of
 step 6 reads each world merged after the re-draw. Step 5 gives construction
 years to residential buildings: ``ACSYearBuiltSampler``, fitted on that
@@ -383,7 +383,7 @@ the world and the design level, structure type and height class components over
 the buildings each one takes. ``PairRedraw`` first replaces the NSI members of
 implausible pairs of occupancy class and story count, as the section "Pair
 re-draw" states, with the observed donors of the world's realization of
-``STAGE_STEP4``. ``HazusEQDesignLevelInferer`` then derives a design level from
+``STAGE_S05_VIEW``. ``HazusEQDesignLevelInferer`` then derives a design level from
 the construction year for each building that has a year and no design level.
 Each building that has a year and no structure type then passes through
 ``ComposedScreen`` and ``ResolutionLoop``, as the sections "Composed screen"
@@ -404,7 +404,7 @@ Pre-Code is raised to Moderate-Code, as Table C-10 of the Hazus manual assumes.
 Step 7 gives a construction year, in each world, to each building without a
 year whose occupancy class is missing or is not one of the residential
 occupancy classes. It reads that world's realization of the frozen view
-``STAGE_STEP6``. ``ResidentialNeighborYearSampler`` copies to each such
+``STAGE_S08_VIEW``. ``ResidentialNeighborYearSampler`` copies to each such
 building the year of a nearby residential building of that world, as
 ``brails/imputers/residential_neighbor_year_sampler/README.rst`` states. The
 design level, structure type and height class of the building then follow as a
@@ -412,7 +412,7 @@ residential building's do. A building the sampler finds no donor for, or one
 without an occupancy class, is excluded from that world.
 
 The last five steps follow. ``s11_gross_area`` computes, in each world, the
-gross area of every building of the view ``STAGE_STEP6``, excluded buildings
+gross area of every building of the view ``STAGE_S08_VIEW``, excluded buildings
 included: its plan area times its story count in that world, or its plan area
 alone without a positive story count, from ``footprint_gross_area`` of the
 value imputer's module, so it differs between worlds where the story count
@@ -423,7 +423,7 @@ from every later merge the values that the last steps replace: the local and
 NSI ``GrossArea``, the join's ``ReplacementCost`` where no local value
 outranks it, NSI's ``BuildingType``, and a ``GrossArea`` or ``BuildingType``
 that the footprints carry, in six records named by the step whose value takes
-their place. The views ``STAGE_STEP4`` and ``STAGE_STEP6`` are frozen before
+their place. The views ``STAGE_S05_VIEW`` and ``STAGE_S08_VIEW`` are frozen before
 the records, so the unit budget, the structure type draw and the rates of
 ``s13_replacement_cost`` still read these values. A ``GrossArea`` that a local
 inventory gives is kept as ``LocalGrossArea``, which the first step writes on
@@ -442,7 +442,7 @@ against the Hazus 5.1 input schema of the damage and loss model library,
 schema reads none of ``ReplacementCost``, ``GrossArea`` and ``BuildingType``,
 which ``s15_output`` writes after the check.
 
-``s13_replacement_cost`` values every building of ``STAGE_STEP6`` in the
+``s13_replacement_cost`` values every building of ``STAGE_S08_VIEW`` in the
 world, excluded buildings included. ``ReplacementCostImputer`` reads that
 world's realization of the view and the donors that
 ``imputation_donors_from_log`` names from step 4's log, as the section

@@ -323,7 +323,7 @@ rows. Its keys are these:
   contradiction it met.
 - ``coverage``: for each input the compiler reads, the fraction of assets
   that state it.
-- ``certificate``: the result of the schema check of the compiled buildings,
+- ``schema_check``: the result of the schema check of the compiled buildings,
   as the compiler recorded it.
 
 Counts are keyed in sorted order. ``save`` writes a setting or a schema check

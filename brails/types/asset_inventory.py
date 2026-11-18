@@ -459,7 +459,7 @@ def is_probabilistic_feature(
     return True
 
 
-def _same_value(first: object, second: object) -> bool:
+def _values_agree(first: object, second: object) -> bool:
     """
     Check whether two feature values are equal by the rule of add_world.
 
@@ -3457,7 +3457,7 @@ class AssetInventory:
                 first = value[0] if per_world else value
                 if not isinstance(first, list) and (
                     per_world
-                    or not _same_value(
+                    or not _values_agree(
                         first, realization.inventory[asset_id].features.get(key)
                     )
                 ):
@@ -3490,7 +3490,7 @@ class AssetInventory:
                 # A new list, so that no list the caller holds is extended.
                 if listed(key, current):
                     held_features[key] = [*current, value]
-                elif not _same_value(current, value):
+                elif not _values_agree(current, value):
                     held_features[key] = [current] * world + [value]
         self.vector_features = vector
         self.n_pw = world + 1

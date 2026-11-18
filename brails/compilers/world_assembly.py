@@ -247,7 +247,7 @@ def compose_source_parts(  # noqa: C901
     # The feature dicts this composition made, which it may change.
     owned: dict[Hashable, dict[str, Any]] = {}
 
-    def writable(asset_id: Hashable) -> dict[str, Any]:
+    def owned_features(asset_id: Hashable) -> dict[str, Any]:
         """
         Return an asset's features in the result, copied on the first write.
 
@@ -266,7 +266,7 @@ def compose_source_parts(  # noqa: C901
             owned[asset_id] = record.features
         return owned[asset_id]
 
-    def realized(stage: AssetInventory, asset: Asset) -> dict[str, Any]:
+    def features_in_world(stage: AssetInventory, asset: Asset) -> dict[str, Any]:
         """
         Return an asset's features in ``world``.
 
@@ -301,7 +301,7 @@ def compose_source_parts(  # noqa: C901
         for asset_id, asset in stage.inventory.items():
             if asset_id in dropped_ids:
                 continue
-            features = realized(stage, asset)
+            features = features_in_world(stage, asset)
             if asset_id not in records:
                 if features is asset.features:
                     records[asset_id] = asset
@@ -314,7 +314,7 @@ def compose_source_parts(  # noqa: C901
                 if key not in current or (
                     is_missing_value(current[key]) and not is_missing_value(value)
                 ):
-                    current = writable(asset_id)
+                    current = owned_features(asset_id)
                     current[key] = value
                 elif not is_missing_value(value):
                     n_conflicts += 1
@@ -339,11 +339,11 @@ def compose_source_parts(  # noqa: C901
                 continue
             removed = [
                 key
-                for key, value in realized(stage, asset).items()
+                for key, value in features_in_world(stage, asset).items()
                 if isinstance(value, str) and value == label
             ]
             if removed and any(key in records[asset_id].features for key in removed):
-                target = writable(asset_id)
+                target = owned_features(asset_id)
                 for key in removed:
                     target.pop(key, None)
 

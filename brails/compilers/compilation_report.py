@@ -106,7 +106,7 @@ EXCLUSION_COLUMNS = tuple(EXCLUSION_DTYPES)
 EXCLUSIONS_SUFFIX = '_exclusions'
 
 
-def _in_set(value: str, valid: Collection[str], kind: str) -> str:
+def _check_in_set(value: str, valid: Collection[str], kind: str) -> str:
     """
     Check a recorded value against the closed set it comes from.
 
@@ -223,7 +223,7 @@ class CompilationReport:
         self._exclusion_rows: list[tuple] = []
         self._notices: list[str] = []
         self._coverage: dict[str, float] = {}
-        self._certificate: object = None
+        self._schema_check: object = None
         self._timings: dict[tuple[str, int | None], float] = {}
         self._computed: int | None = None
         self._manifest_stages: list[str] = []
@@ -281,12 +281,14 @@ class CompilationReport:
             (
                 asset_id,
                 self._checked_world(world),
-                _in_set(stage, self.stages, 'stage'),
-                _in_set(action, ACTIONS, 'action'),
+                _check_in_set(stage, self.stages, 'stage'),
+                _check_in_set(action, ACTIONS, 'action'),
                 feature,
                 None if old is None else str(old),
                 None if new is None else str(new),
-                None if source is None else _in_set(source, SOURCE_CODES, 'source'),
+                None
+                if source is None
+                else _check_in_set(source, SOURCE_CODES, 'source'),
                 reason,
             )
         )
@@ -342,8 +344,10 @@ class CompilationReport:
             (
                 asset_id,
                 self._checked_world(world),
-                _in_set(stage, self.stages, 'stage'),
-                _in_set(category, self.exclusion_categories, 'exclusion category'),
+                _check_in_set(stage, self.stages, 'stage'),
+                _check_in_set(
+                    category, self.exclusion_categories, 'exclusion category'
+                ),
                 diagnosis,
                 detail,
                 tuple(resolvable_by),
@@ -370,13 +374,13 @@ class CompilationReport:
         """
         self._coverage = dict(mapping)
 
-    def set_certificate(self, verdict: object) -> None:
+    def set_schema_check(self, verdict: object) -> None:
         """
         Store the result of checking buildings against a loss model's input schema.
 
         An input schema states the features a damage and loss model reads
         and the values it accepts. :meth:`summary` returns the stored result
-        as ``certificate``.
+        as ``schema_check``.
 
         Args:
             verdict (object):
@@ -384,7 +388,7 @@ class CompilationReport:
                 schema's dataset and the number of buildings it refused in
                 each world.
         """
-        self._certificate = verdict
+        self._schema_check = verdict
 
     def set_timing(
         self, stage: str, seconds: float, *, world: int | None = None
@@ -603,7 +607,7 @@ class CompilationReport:
             },
             'notices': list(self._notices),
             'coverage': dict(self._coverage),
-            'certificate': self._certificate,
+            'schema_check': self._schema_check,
         }
 
     def save(self, path: str | Path, *, worlds: Iterable[int] | None = None) -> None:
