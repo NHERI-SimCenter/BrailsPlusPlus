@@ -5,10 +5,11 @@ Replacement cost imputer
 from the buildings whose replacement cost is stated. It fills in a missing
 value and recomputes a stated one, except a value from a local source, which
 it keeps. Its constants are in ``replacement_cost_imputer.py`` beside this
-page, and the five defaults of its same-class neighbor draw are in
-``brails/imputers/observed_donor_imputer/observed_donor_imputer.py``. This
-page states what the value and the rate are, the procedure, and the scope of
-the rates and of the defaults.
+page, and the five defaults of its same-class neighbor draw are those of
+``ObservedDonorImputer``, which
+``brails/imputers/observed_donor_imputer/README.rst`` states. This page states
+what the value and the rate are, the procedure, and the scope of the rates and
+of the defaults.
 
 The imputer values a building as a rate per square foot times the building's
 gross area, which it computes from the footprint as the plan area times the
@@ -143,26 +144,18 @@ The same-class neighbor draw
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The draw builds, per occupancy class, one pool over the world's buildings of
-that occupancy class that have an own rate, a local value's rate included,
-and whose occupancy class is coded ``L``, ``F``, ``N``, or ``R``
-(``NEIGHBOR_CLASS_CODES``). It runs the draw of ``ObservedDonorImputer``
-with that imputer's distance::
-
-    sqrt((g / location_scale_m)**2 + area_weight * (ln A_t - ln A_c)**2
-         + stories_weight * (n_t - n_c)**2),
-
-where g is the great-circle distance in meters between the building and the
-candidate, A_t and A_c are their plan areas, and n_t and n_c their
-``NumberOfStories`` in the world. The story term is zero where either side
-has no story count. One of the ``k`` nearest candidates within ``cap_m`` is
-picked with inverse-distance weights, and without one there, a candidate of
-the building's block group with equal weights. The outcome is that of
-``ObservedDonorImputer``: ``OUTCOME_DONOR`` or ``OUTCOME_FEWER_THAN_K``
-within the cap, ``OUTCOME_BLOCK_GROUP`` from the block group, and
-``OUTCOME_NO_DONOR`` without either. Each pick uses a random number keyed by
-the building's id, the seed, and the world, so it never depends on the order
-of the buildings. The keys carry labels that keep these picks apart from
-every other draw, ``same_class_neighbor:observed_donor`` and
+that occupancy class that have an own rate, a local value's rate included, and
+whose occupancy class is coded ``L``, ``F``, ``N``, or ``R``
+(``NEIGHBOR_CLASS_CODES``). It runs the draw of ``ObservedDonorImputer`` with
+that imputer's distance, pick and block-group fallback, which
+``brails/imputers/observed_donor_imputer/README.rst`` describes, reading the
+``NumberOfStories`` of the world. The outcome is that of
+``ObservedDonorImputer``: ``OUTCOME_DONOR`` or ``OUTCOME_FEWER_THAN_K`` within
+the cap, ``OUTCOME_BLOCK_GROUP`` from the block group, and ``OUTCOME_NO_DONOR``
+without either. Each pick's random number is keyed as the section "Possible
+worlds" under "Concepts" of ``brails/compilers/README.rst`` describes, with a
+purpose label that keeps it apart from every other draw,
+``same_class_neighbor:observed_donor`` or
 ``same_class_neighbor:observed_donor_fallback``, which
 ``NEIGHBOR_PURPOSE_PREFIX`` forms.
 
@@ -227,11 +220,8 @@ dollars per square foot and for ``RES1-1SWB`` 381. A candidate whose occupancy
 class was itself imputed or drawn is left out of the draw
 (``NEIGHBOR_CLASS_CODES``).
 
-The draw's defaults are not yet calibrated for the value: ``k`` and ``cap_m``
-default to ``DEFAULT_DONOR_K`` and ``DEFAULT_DONOR_CAP_M``, and
-``location_scale_m``, ``area_weight``, and ``stories_weight`` to
-``DEFAULT_LOCATION_SCALE_M``, ``DEFAULT_AREA_WEIGHT``, and
-``DEFAULT_STORIES_WEIGHT``, 100 meters, 1, and 1, the defaults of
-``ObservedDonorImputer``. A caller can pass all five to the constructor, and
-a run that also imputes occupancy class and stories should pass the values
-it gives ``ObservedDonorImputer``.
+The draw's five defaults are those of ``ObservedDonorImputer``, which
+``brails/imputers/observed_donor_imputer/README.rst`` states under "Defaults",
+and none is calibrated yet for the value. A caller can pass all five to the
+constructor, and a run that also imputes occupancy class and stories should
+pass the values it gives ``ObservedDonorImputer``.

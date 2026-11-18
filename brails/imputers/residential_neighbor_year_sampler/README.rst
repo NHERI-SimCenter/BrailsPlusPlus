@@ -19,7 +19,7 @@ The defaults
 caller that passes the imputer's values to both draws from neighborhoods
 of one size. A caller passes other values as ``k`` and ``cap_m``. The
 number of donors is not calibrated yet, for the imputer or for copying
-years. The cap is the imputer's own bound.
+years. The cap is the imputer's own bound and is not calibrated yet either.
 
 The method
 ----------

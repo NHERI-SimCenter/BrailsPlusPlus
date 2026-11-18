@@ -140,6 +140,7 @@ PURPOSE_DONOR = 'observed_donor'
 PURPOSE_FALLBACK = 'observed_donor_fallback'
 PURPOSE_BATCH = 'observed_donor_batch'
 
+# The defaults below are described in README.rst, "Defaults".
 # Default number of nearest donors picked among, and the donor distance cap
 # in meters.
 DEFAULT_DONOR_K = 20

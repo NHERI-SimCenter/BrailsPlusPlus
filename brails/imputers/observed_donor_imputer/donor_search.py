@@ -70,7 +70,8 @@ if TYPE_CHECKING:
     )
     from brails.types.asset_inventory import Asset
 
-# Distance below which inverse-distance weights stop growing.
+# Distance below which inverse-distance weights stop growing. Described in
+# README.rst, "Defaults".
 MIN_WEIGHT_DISTANCE = 1e-9
 
 

@@ -59,7 +59,8 @@ if TYPE_CHECKING:
     )
 
 # Relative margin by which the tree search exceeds the cap before the
-# distances it returns are compared with the cap.
+# distances it returns are compared with the cap. Described in README.rst,
+# "Defaults".
 TREE_RADIUS_MARGIN = 1e-6
 
 # Status codes of a donor: its value of the status key is missing, outside
