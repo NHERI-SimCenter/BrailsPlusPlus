@@ -38,6 +38,7 @@ Value a building as a rate times the gross area computed from its footprint.
 
       ReplacementCostImputer
       ReplacementCostResult
+      footprint_gross_area
 """
 
 from __future__ import annotations
@@ -575,7 +576,9 @@ class ReplacementCostImputer(Imputation):
                 )
                 values[asset_id] = stated
                 continue
-            area, row['area_source'] = self._footprint_gross_area(asset_id, asset)
+            area, row['area_source'] = footprint_gross_area(
+                asset_id, asset, stories_key=self.stories_key
+            )
             if area is None:
                 row['outcome'] = OUTCOME_NO_AREA
                 continue
@@ -698,48 +701,6 @@ class ReplacementCostImputer(Imputation):
                     drawn[asset_id] = row['rate']
         return drawn
 
-    def _footprint_gross_area(
-        self, asset_id: Hashable, asset: Asset
-    ) -> tuple[float | None, str | None]:
-        """
-        Return a building's gross area from its footprint and where it comes from.
-
-        Args:
-            asset_id (Hashable):
-                The building, for the error message.
-            asset (Asset):
-                The building in one world.
-
-        Returns:
-            tuple[float | None, str | None]:
-                The gross area in square feet and one of
-                :data:`~brails.constants.AREA_FROM_STORIES`
-                and
-                :data:`~brails.constants.AREA_FROM_PLAN_AREA`,
-                or ``(None, None)`` without a plan area.
-
-        Raises:
-            ValueError:
-                If the coordinates cannot be read as a footprint.
-        """
-        # ACSUnitBudget's gross area on a footprint without a GrossArea;
-        # the budget reads GrossArea first, and this never does.
-        try:
-            with_area = AssetInventory.has_area(asset.coordinates)
-        except ValueError as error:
-            msg = f'Asset {asset_id!r} has no readable footprint: {error}'
-            raise ValueError(msg) from error
-        if not with_area:
-            return None, None
-        plan = (
-            AssetInventory.centroid_and_plan_area(asset.coordinates)[2]
-            / UNIT_TO_METER['ft'] ** 2
-        )
-        stories = _positive(asset.features.get(self.stories_key))
-        if stories is None:
-            return plan, AREA_FROM_PLAN_AREA
-        return plan * stories, AREA_FROM_STORIES
-
     def _rate(self, asset_id: Hashable, features: Mapping[str, Any]) -> float | None:
         """
         Return a building's own value per square foot of its gross area.
@@ -779,6 +740,56 @@ class ReplacementCostImputer(Imputation):
         if value is None or gross is None:
             return None
         return value / gross
+
+
+def footprint_gross_area(
+    asset_id: Hashable, asset: Asset, *, stories_key: str = STORIES_KEY
+) -> tuple[float | None, str | None]:
+    """
+    Return a building's gross area from its footprint and how it was computed.
+
+    The gross area is the plan area of the building's footprint times its
+    story count where that is a finite number above zero, and the plan area
+    alone otherwise.
+
+    Args:
+        asset_id (Hashable):
+            The building, for the error message.
+        asset (Asset):
+            The building in one world.
+        stories_key (str, optional):
+            The story count feature. Defaults to
+            :data:`~brails.constants.STORIES_KEY`.
+
+    Returns:
+        tuple[float | None, str | None]:
+            The gross area in square feet and one of
+            :data:`~brails.constants.AREA_FROM_STORIES`
+            and
+            :data:`~brails.constants.AREA_FROM_PLAN_AREA`,
+            or ``(None, None)`` without a plan area.
+
+    Raises:
+        ValueError:
+            If the coordinates cannot be read as a footprint.
+    """
+    # ACSUnitBudget's gross area on a footprint without a GrossArea;
+    # the budget reads GrossArea first, and this never does.
+    try:
+        with_area = AssetInventory.has_area(asset.coordinates)
+    except ValueError as error:
+        msg = f'Asset {asset_id!r} has no readable footprint: {error}'
+        raise ValueError(msg) from error
+    if not with_area:
+        return None, None
+    plan = (
+        AssetInventory.centroid_and_plan_area(asset.coordinates)[2]
+        / UNIT_TO_METER['ft'] ** 2
+    )
+    stories = _positive(asset.features.get(stories_key))
+    if stories is None:
+        return plan, AREA_FROM_PLAN_AREA
+    return plan * stories, AREA_FROM_STORIES
 
 
 def _draw_inventory(

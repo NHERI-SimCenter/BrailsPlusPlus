@@ -90,6 +90,16 @@ from brails.constants import (
 )
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     ObservedDonorImputer,
+    imputation_donors_from_log,
+)
+from brails.imputers.replacement_cost.replacement_cost_imputer import (
+    DONOR_STAGE,
+    OUTCOME_VALUE_CODES,
+    ReplacementCostImputer,
+    footprint_gross_area,
+)
+from brails.imputers.residential_neighbor_year_sampler.residential_neighbor_year_sampler import (
+    ResidentialNeighborYearSampler,
 )
 from brails.inferers.acs_unit_budget.acs_unit_budget import (
     DROP_PROBABILITY,
@@ -111,6 +121,7 @@ from brails.inferers.hazus_inferer_earthquake.hazus_eq_structure_type_inferer im
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_general_type_membership,
+    get_hazus_height_classes_by_type,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_table_completion import (
     is_implausible,
@@ -193,6 +204,10 @@ ALL_PROPERTIES = 'all'
 # The property the integer-id form of the file numbers its features within.
 _TYPE_KEY = 'type'
 
+# The log naming each default property a compiled building lacks where it
+# applies, as (asset id, world, property); write refuses a file it names.
+MISSING_DEFAULTS_LOG = 'missing_defaults'
+
 # The frozen stages, in the order they are frozen.
 STAGE_FOOTPRINTS = 'footprints'
 STAGE_LOCAL = 'local'
@@ -208,6 +223,11 @@ STAGE_STEP6_IMPUTED = 'step6_imputed'
 STAGE_STEP6_DRAWN = 'step6_drawn'
 STAGE_STEP6_DERIVED = 'step6_derived'
 STAGE_STEP6 = 'step6'
+STAGE_STEP7_IMPUTED = 'step7_imputed'
+STAGE_STEP7_DRAWN = 'step7_drawn'
+STAGE_STEP7_DERIVED = 'step7_derived'
+STAGE_STEP8_VALUES = 'step8_values'
+STAGE_STEP8_WITHHELD = 'step8_withheld'
 STAGE_OUTPUT = 'output'
 
 # The Hazus input schema every compiled realization is checked against.
@@ -220,13 +240,18 @@ CARVE_OUT_METHOD = '5.1'
 
 # The exclusion category of each diagnosis by which a year sampler, the
 # design level inferer or the height class inferer refuses an asset. An asset
-# the year sampler finds infeasible lies in a block group the census tables do
-# not cover.
+# ACSYearBuiltSampler finds infeasible lies in a block group the census tables
+# do not cover, and one ResidentialNeighborYearSampler finds infeasible has no
+# dated residential neighbor.
 _DIAGNOSIS_CATEGORY = {
     DIAGNOSIS_INVALID: 'missing_driver',
     DIAGNOSIS_UNSUPPORTED: 'unsupported',
     DIAGNOSIS_INFEASIBLE: 'missing_driver',
 }
+
+# The feature of the record of step 8's values holding the source label of
+# each value.
+_VALUE_SOURCE_KEY = 'ReplacementCostSource'
 
 # The occupancy class whose NSI story count is kept over the height count.
 NSI_STORIES_CLASS = 'RES1'
@@ -266,6 +291,13 @@ _CODE_POSITION = {
 # them whose occupancy class the unit budget's mobile-home rule may relabel.
 _REACHED_SOURCES = ('local', 'nsi', 'derived')
 _RELABELED_SOURCES = ('nsi', 'derived')
+
+# The structure types for which Hazus defines no height class.
+_WITHOUT_HEIGHT_CLASS = frozenset(
+    structure_type
+    for structure_type, classes in get_hazus_height_classes_by_type().items()
+    if classes is None
+)
 
 # The general building type letter of each Hazus structure type, by the
 # pairing the structure type inferer restricts its draw with.
@@ -391,9 +423,12 @@ class CompilationResult(NamedTuple):
         rows of those worlds, is not written, and one excluded in some is
         written only with ``keep_partly_excluded``. Then, and only then,
         each building also holds :data:`~brails.constants.EXCLUDED_KEY`.
-        Each building holds the properties of :data:`DEFAULT_PROPERTIES` it
-        has and those of ``extra_properties``. With ``integer_ids`` the file
-        takes the form the R2D tools read: each building also holds
+        Each building holds every property of :data:`DEFAULT_PROPERTIES`
+        that applies to it, as the section "The run" of the README beside
+        this module states, and those of ``extra_properties``. In a world
+        it is excluded from, a kept building may lack them. With
+        ``integer_ids`` the file takes the form the R2D tools read: each
+        building also holds
         ``type``, within which :meth:`AssetInventory.write_to_geojson`
         numbers the features, and its asset id as ``unique_id``. Beside it,
         under the stem of ``path``: the report through
@@ -427,8 +462,12 @@ class CompilationResult(NamedTuple):
                 :data:`~brails.constants.EXCLUDED_KEY`, in which case nothing
                 is written.
             RuntimeError:
-                If a frozen stage changed after it was frozen, in which case
-                every file but the manifest has been written.
+                If the log :data:`MISSING_DEFAULTS_LOG` names a default
+                property that a compiled building lacks in a listed world,
+                once the report, the logs and the manifest are written and
+                before the GeoJSON is; or if a frozen stage changed after it
+                was frozen, in which case every file but the manifest has been
+                written.
         """
         if isinstance(extra_properties, str) and extra_properties != ALL_PROPERTIES:
             msg = (
@@ -461,6 +500,25 @@ class CompilationResult(NamedTuple):
         }
 
         path = Path(path)
+        missing = self.logs[MISSING_DEFAULTS_LOG]
+        lacking = missing[missing['world'].isin(self.worlds)]
+        if not lacking.empty:
+            self.report.save(
+                path.with_name(f'{path.stem}_report.parquet'), worlds=self.worlds
+            )
+            self.report.save_logs(
+                path.parent, path.stem, self.logs, worlds=self.worlds
+            )
+            self.freeze.save_manifest(path.with_name(f'{path.stem}_manifest.json'))
+            counts = lacking['property'].value_counts().to_dict()
+            msg = (
+                f'Compiled buildings lack {len(lacking)} default value(s) that '
+                f'apply to them ({counts}), as (asset, world, property): '
+                f'{[tuple(row) for row in lacking.head(10).itertuples(index=False)]}'
+                f'; the log {MISSING_DEFAULTS_LOG} names them all. No GeoJSON '
+                'is written.'
+            )
+            raise RuntimeError(msg)
         groups = self.report.exclusion_groups(worlds=self.worlds)
         groups = groups[groups['group'] != 'dropped']
         left_out = set(groups.loc[groups['group'] == 'every', 'asset_id'])
@@ -1024,6 +1082,12 @@ class HazusEQInventoryCompiler:
         step4 = self._step4(inputs, sources, logs, centroids, report, n_computed)
         report.set_timing(STAGE_STEP4, time.perf_counter() - started)
         self._view(STAGE_STEP4, sources, report, n_computed)
+        sources.freeze.freeze(
+            DONOR_STAGE,
+            imputation_donors_from_log(
+                step4.log, step4.targets, n_worlds=n_computed
+            ),
+        )
         imputer, stories = step4.imputer, step4.stories
         del step4
 
@@ -1031,7 +1095,8 @@ class HazusEQInventoryCompiler:
             inputs, sources, logs, centroids, report, n_computed, imputer, stories
         )
         self._view(STAGE_STEP6, sources, report, n_computed)
-        self._undated(sources, report, n_computed)
+        self._step7(sources, logs, centroids, report, n_computed, imputer)
+        self._step8(sources, logs, centroids, report, n_computed, imputer)
 
         inventory = self._output(sources, report, n_computed, logs)
 
@@ -1849,38 +1914,242 @@ class HazusEQInventoryCompiler:
             'excluded': resolution.excluded_count,
         }
 
-    def _undated(
-        self, sources: _WorldSources, report: CompilationReport, n_computed: int
+    def _step7(
+        self,
+        sources: _WorldSources,
+        logs: dict[str, pd.DataFrame],
+        centroids: Mapping[str, list[list[float]]],
+        report: CompilationReport,
+        n_computed: int,
+        imputer: ObservedDonorImputer,
     ) -> None:
         """
-        Exclude, in each world, every asset the frozen step 6 left without a year.
+        Run step 7 in every world: the year of each building left without one.
+
+        The section "The run" of the README beside this module states the
+        procedure.
 
         Args:
             sources (_WorldSources):
-                The sources, whose freeze holds :data:`STAGE_STEP6`.
+                The sources, to which the parts are added as
+                :data:`STAGE_STEP7_IMPUTED`, :data:`STAGE_STEP7_DRAWN` and
+                :data:`STAGE_STEP7_DERIVED`.
+            logs (dict[str, pandas.DataFrame]):
+                The logs, which receive ``neighbor_year`` and
+                ``nonresidential_resolution``, each with a ``world`` column.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
             report (CompilationReport):
-                The report, whose exclusions are read and extended.
+                The report, whose exclusions are read and which receives the
+                actions and exclusions of every world.
             n_computed (int):
                 The number of worlds computed.
+            imputer (ObservedDonorImputer):
+                The imputer of step 4, whose ``k`` and ``cap_m`` the sampler
+                takes.
+
+        Raises:
+            ValueError:
+                If an asset's source string is not one
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads, or, as :meth:`ResolutionLoop.resolve` raises, a
+                building type has no source.
         """
         view = sources.freeze.read(STAGE_STEP6)
+        kept = list(view.inventory)
         exclusions = report.exclusions
+        stages = (STAGE_STEP7_IMPUTED, STAGE_STEP7_DRAWN, STAGE_STEP7_DERIVED)
+        assemblers = {stage: WorldAssembler(n_computed) for stage in stages}
+        picks, resolutions = [], []
         for world in range(n_computed):
+            started = time.perf_counter()
             excluded = set(exclusions.loc[exclusions['world'] == world, 'asset_id'])
-            # No stage of this run dates a non-residential building.
-            for asset_id, asset in view.get_world_realization(
-                world
-            ).inventory.items():
-                if asset_id not in excluded and is_missing_value(
-                    asset.features.get(YEAR_BUILT_KEY)
-                ):
+            frozen = view.get_world_realization(world)
+            working = view.get_world_realization(world)
+            new: dict[str, dict[str, dict[str, Any]]] = {
+                stage: {} for stage in stages
+            }
+            sampler = ResidentialNeighborYearSampler(
+                seed=self.seed,
+                world=world,
+                k=imputer.k,
+                cap_m=imputer.cap_m,
+            ).select_donors(sources.freeze, STAGE_STEP6)
+            targets = [
+                a
+                for a, asset in frozen.inventory.items()
+                if a not in excluded
+                and asset.features.get(OCCUPANCY_KEY) not in UNIT_COUNT_CLASSES
+                and is_missing_value(asset.features.get(YEAR_BUILT_KEY))
+            ]
+            verdicts = sampler.check(_subset(frozen, targets))
+            for row in verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK].itertuples():
+                excluded.add(row.Index)
+                report.record_exclusion(
+                    row.Index,
+                    world=world,
+                    stage='nonresidential_year',
+                    category=_DIAGNOSIS_CATEGORY[row.diagnosis],
+                    diagnosis=row.diagnosis,
+                    detail=row.detail,
+                    resolvable_by=row.resolvable_by,
+                )
+            passing = list(verdicts.index[verdicts['diagnosis'] == DIAGNOSIS_OK])
+            picked = sampler.draw_details(_subset(frozen, passing))
+            picks.append(
+                picked.rename_axis('asset_id').reset_index().assign(world=world)
+            )
+            for asset_id, year in picked[YEAR_BUILT_KEY].items():
+                new[STAGE_STEP7_IMPUTED][asset_id] = {YEAR_BUILT_KEY: int(year)}
+                _overlay(
+                    asset_id,
+                    working.inventory[asset_id].features,
+                    {YEAR_BUILT_KEY: int(year)},
+                    'imputed',
+                )
+            resolutions.append(
+                {
+                    'world': world,
+                    **self._draw_types(
+                        world,
+                        sources,
+                        report,
+                        working,
+                        passing,
+                        excluded,
+                        new[STAGE_STEP7_DERIVED],
+                        new[STAGE_STEP7_DRAWN],
+                    ),
+                }
+            )
+            for stage in stages:
+                assemblers[stage].add(world, _padded(kept, centroids, new[stage]))
+            del frozen, working
+            report.set_timing('step7', time.perf_counter() - started, world=world)
+
+        logs['neighbor_year'] = pd.concat(picks, ignore_index=True)
+        logs['nonresidential_resolution'] = pd.DataFrame(resolutions)
+        started = time.perf_counter()
+        for label, stage in (
+            ('imputed', STAGE_STEP7_IMPUTED),
+            ('drawn', STAGE_STEP7_DRAWN),
+            ('derived', STAGE_STEP7_DERIVED),
+        ):
+            sources.add_part(label, stage, assemblers[stage].result())
+        report.set_timing('step7_parts_freeze', time.perf_counter() - started)
+
+    def _step8(
+        self,
+        sources: _WorldSources,
+        logs: dict[str, pd.DataFrame],
+        centroids: Mapping[str, list[list[float]]],
+        report: CompilationReport,
+        n_computed: int,
+        imputer: ObservedDonorImputer,
+    ) -> None:
+        """
+        Run step 8 in every world: the value of every building.
+
+        The section "The run" of the README beside this module states the
+        procedure.
+
+        Args:
+            sources (_WorldSources):
+                The sources. The values and the source labels of their codes
+                are frozen as :data:`STAGE_STEP8_VALUES`, a record the
+                output step writes over its merge, and the join's values are
+                withheld from every later merge by :data:`STAGE_STEP8_WITHHELD`.
+            logs (dict[str, pandas.DataFrame]):
+                The logs, which receive ``value``, with a ``world`` column.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+            report (CompilationReport):
+                The report, whose exclusions are read and which receives the
+                exclusions of the buildings left without a value and the
+                timings.
+            n_computed (int):
+                The number of worlds computed.
+            imputer (ObservedDonorImputer):
+                The imputer of step 4, whose ``k``, ``cap_m`` and distance
+                weights the value imputer takes.
+
+        Raises:
+            ValueError:
+                As :meth:`ReplacementCostImputer.impute_stage` raises, for a
+                building without a readable footprint or source string.
+        """
+        kept = list(sources.freeze.read(STAGE_STEP6).inventory)
+        exclusions = report.exclusions
+        valuer = ReplacementCostImputer(
+            seed=self.seed,
+            k=imputer.k,
+            cap_m=imputer.cap_m,
+            location_scale_m=imputer.location_scale_m,
+            area_weight=imputer.area_weight,
+            stories_weight=imputer.stories_weight,
+            # A rate divides a value, NSI's, the join's sum of NSI's or a local
+            # one, by NSI's sqft, never by a local GrossArea.
+            gross_area_key=NSI_GROSS_AREA_KEY,
+        )
+        assembler = WorldAssembler(n_computed)
+        rows = []
+        for world in range(n_computed):
+            started = time.perf_counter()
+            excluded = set(exclusions.loc[exclusions['world'] == world, 'asset_id'])
+            result = valuer.impute_stage(
+                sources.freeze, STAGE_STEP6, DONOR_STAGE, world=world
+            )
+            rows.append(result.log)
+            values: dict[str, dict[str, Any]] = {}
+            for asset_id, outcome in zip(
+                result.log['asset_id'], result.log['outcome']
+            ):
+                code = OUTCOME_VALUE_CODES.get(outcome)
+                if code is None and asset_id not in excluded:
                     report.record_exclusion(
                         asset_id,
                         world=world,
-                        stage='nonresidential_year',
+                        stage='value',
                         category='missing_driver',
-                        detail='no stage of the run gives a year to this asset',
+                        detail=f'the value step gives no {REPLACEMENT_COST_KEY}: '
+                        f'{outcome}',
                     )
+                # A local value is the merge's own and is left alone.
+                elif code is not None and code != SOURCE_CODES['local']:
+                    values[asset_id] = {
+                        REPLACEMENT_COST_KEY: result.costs.inventory[
+                            asset_id
+                        ].features[REPLACEMENT_COST_KEY],
+                        _VALUE_SOURCE_KEY: SOURCE_LABELS[code],
+                    }
+            assembler.add(world, _padded(kept, centroids, values))
+            report.set_timing('step8', time.perf_counter() - started, world=world)
+        logs['value'] = pd.concat(rows, ignore_index=True)
+
+        started = time.perf_counter()
+        sources.freeze.freeze(STAGE_STEP8_VALUES, assembler.result())
+        # Withhold the join's value from every later merge, so that no
+        # building keeps it, except where a local value outranks it.
+        kept_ids = set(kept) - {
+            asset_id
+            for stage in sources.parts['local']
+            for asset_id, asset in sources.freeze.read(stage).inventory.items()
+            if not is_missing_value(asset.features.get(REPLACEMENT_COST_KEY))
+        }
+        withheld = AssetInventory()
+        for label, stage in (
+            ('nsi', STAGE_JOIN_NSI),
+            ('derived', STAGE_JOIN_DERIVED),
+        ):
+            for asset_id, asset in sources.freeze.read(stage).inventory.items():
+                if asset_id in kept_ids and not is_missing_value(
+                    asset.features.get(REPLACEMENT_COST_KEY)
+                ):
+                    withheld.inventory[asset_id] = Asset(
+                        asset_id, centroids[asset_id], {REPLACEMENT_COST_KEY: label}
+                    )
+        sources.add_withheld(STAGE_STEP8_WITHHELD, withheld)
+        report.set_timing('step8_freeze', time.perf_counter() - started)
 
     def _view(
         self,
@@ -1917,7 +2186,7 @@ class HazusEQInventoryCompiler:
         sources.freeze.freeze(stage, assembler.result())
         report.set_timing(f'{stage}_freeze', time.perf_counter() - started)
 
-    def _output(
+    def _output(  # noqa: C901
         self,
         sources: _WorldSources,
         report: CompilationReport,
@@ -1925,22 +2194,23 @@ class HazusEQInventoryCompiler:
         logs: dict[str, pd.DataFrame],
     ) -> AssetInventory:
         """
-        Run the output step: the final merge of each world, marked and assembled.
+        Run the output step: each world's final merge, checked, completed, assembled.
 
         The section "The run" of the README beside this module states the
         procedure.
 
         Args:
             sources (_WorldSources):
-                The sources.
+                The sources, whose freeze holds :data:`STAGE_STEP8_VALUES`.
             report (CompilationReport):
                 The report, whose exclusion rows mark the buildings and which
-                receives the exclusions of the schema check and the timings.
+                receives the exclusions of the schema check, the timings and
+                a notice of missing default values.
             n_computed (int):
                 The number of worlds computed.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``certificate``, the schema's
-                violations.
+                violations, and :data:`MISSING_DEFAULTS_LOG`.
 
         Returns:
             AssetInventory:
@@ -1966,10 +2236,15 @@ class HazusEQInventoryCompiler:
             world: set(rows)
             for world, rows in exclusions.groupby('world')['asset_id']
         }
+        valued = sources.freeze.read(STAGE_STEP8_VALUES)
+        # (asset id, world, property) of each property a compiled building
+        # lacks where it applies.
+        lacking: list[tuple[str, int, str]] = []
         assembler = WorldAssembler(n_computed)
         for world in range(n_computed):
             started = time.perf_counter()
             merged = sources.merge(world)
+            values = valued.get_world_realization(world).inventory
             excluded = excluded_in.get(world, set())
             checked = AssetInventory(vector_features=list(merged.vector_features))
             checked.inventory = {
@@ -1977,6 +2252,8 @@ class HazusEQInventoryCompiler:
                 for a, asset in merged.inventory.items()
                 if a not in excluded
             }
+            # The schema reads none of ReplacementCost, GrossArea and
+            # BuildingType, which this step writes after the check.
             verdict = self._validator.validate(checked)
             for asset_id, messages in verdict.by_asset().items():
                 report.record_exclusion(
@@ -2010,6 +2287,34 @@ class HazusEQInventoryCompiler:
                     and features[BUILDING_TYPE_KEY] != letter
                 ):
                     contradicted += 1
+                if asset_id in excluded:
+                    continue
+                value = values[asset_id].features
+                if not is_missing_value(value.get(REPLACEMENT_COST_KEY)):
+                    _overlay(
+                        asset_id,
+                        features,
+                        {REPLACEMENT_COST_KEY: value[REPLACEMENT_COST_KEY]},
+                        value[_VALUE_SOURCE_KEY],
+                    )
+                # The gross area computed from the footprint, by which step 8
+                # values the building.
+                area = footprint_gross_area(asset_id, asset)[0]
+                if area is not None:
+                    features[GROSS_AREA_KEY] = area
+                lacking.extend(
+                    (asset_id, world, key)
+                    for key in DEFAULT_PROPERTIES
+                    if is_missing_value(features.get(key))
+                    and not (
+                        key == UNITS_KEY
+                        and features.get(OCCUPANCY_KEY) not in UNIT_COUNT_CLASSES
+                    )
+                    and not (
+                        key == HEIGHT_CLASS_KEY
+                        and features.get(STRUCTURE_TYPE_KEY) in _WITHOUT_HEIGHT_CLASS
+                    )
+                )
             if contradicted:
                 report.note(
                     f'World {world}: {contradicted} compiled building(s) keep a '
@@ -2020,6 +2325,15 @@ class HazusEQInventoryCompiler:
             del merged
             report.set_timing(
                 STAGE_OUTPUT, time.perf_counter() - started, world=world
+            )
+        logs[MISSING_DEFAULTS_LOG] = pd.DataFrame(
+            lacking, columns=['asset_id', 'world', 'property'], dtype=object
+        )
+        if lacking:
+            report.note(
+                f'{len(lacking)} default value(s) that apply to compiled '
+                f'buildings are missing; the log {MISSING_DEFAULTS_LOG} names '
+                'them, and write refuses the file.'
             )
         logs['certificate'] = pd.concat(violations, ignore_index=True)
         report.set_certificate(

@@ -34,12 +34,13 @@
 """
 A synthetic study area for the compiler tests.
 
-Three block groups of one tract make up the area. The western one holds
+Four block groups of one tract make up the area. The western one holds
 houses, apartments and shops that NSI reaches, and the eastern one mostly
 footprints NSI does not reach, around a mobile-home park point. The
 northern one has no B25024 counts, so its footprints NSI does not reach
-take their residential status from the imputer, world by world. Positions
-are in meters in UTM zone 10N near San Francisco and stored in EPSG:4326.
+take their residential status from the imputer, world by world. The
+fourth, 3 km away, holds one footprint beyond every donor. Positions are in
+meters in UTM zone 10N near San Francisco and stored in EPSG:4326.
 Footprint heights are in feet, the scraper's default unit.
 """
 
@@ -60,6 +61,7 @@ from brails.constants import (
     GEOGRAPHIC_CRS,
     GROSS_AREA_KEY,
     OCCUPANCY_KEY,
+    REPLACEMENT_COST_KEY,
     STORIES_KEY,
     STRUCTURE_TYPE_KEY,
     UNITS_KEY,
@@ -85,6 +87,7 @@ TRACT = '06075010100'
 BG_WEST = '060750101001'
 BG_EAST = '060750101002'
 BG_NORTH = '060750101003'
+BG_FAR = '060750101004'
 RELEASE = '2026-10-21.0'
 MH_PARK = (400.0, 200.0)
 
@@ -145,6 +148,7 @@ FOOTPRINTS: dict[str, tuple[float, float, float, float | None, str | None]] = {
     'n04': (110, 300, 12, None, OSM),
     'n05': (140, 300, 12, None, OSM),
     'n06': (170, 300, 12, None, OSM),
+    'f01': (3000, 0, 12, None, OSM),
 }
 
 # NSI records as fd_id: (footprint, dx, dy, fields). The point lies at the
@@ -256,6 +260,19 @@ NSI_RECORDS: dict[int, tuple[str, float, float, dict[str, Any]]] = {
             'bldgtype': 'M',
         },
     ),
+    # A second record on l02, so the join sums its value.
+    29: (
+        'l02',
+        12,
+        12,
+        {
+            'occtype': 'COM1',
+            'num_story': 2,
+            'sqft': 2000.0,
+            'fullrep': 4.0e5,
+            'bldgtype': 'M',
+        },
+    ),
 }
 
 # Values known locally, by footprint.
@@ -268,9 +285,10 @@ LOCAL = {
     },
     'l02': {STRUCTURE_TYPE_KEY: 'URM', YEAR_BUILT_KEY: 1990, STORIES_KEY: 2},
     'u07': {YEAR_BUILT_KEY: 1950},
-    'c02': {YEAR_BUILT_KEY: 1975},
+    'c02': {YEAR_BUILT_KEY: 1975, REPLACEMENT_COST_KEY: 5.0e6},
     'h04': {BUILDING_TYPE_KEY: 'W'},
     'q03': {STRUCTURE_TYPE_KEY: 'C1', YEAR_BUILT_KEY: 1960, BUILDING_TYPE_KEY: 'W'},
+    'u08': {STRUCTURE_TYPE_KEY: 'URM', YEAR_BUILT_KEY: 1980},
     'c01': {UNITS_KEY: 4},
 }
 
@@ -373,6 +391,7 @@ def build_inputs(*, reverse: bool = False) -> CompilerInputs:
         BG_WEST: ((-50, -50), (200, -50), (200, 250), (-50, 250)),
         BG_EAST: ((200, -50), (450, -50), (450, 250), (200, 250)),
         BG_NORTH: ((-50, 250), (450, 250), (450, 450), (-50, 450)),
+        BG_FAR: ((2900, -100), (3100, -100), (3100, 100), (2900, 100)),
     }
     block_groups = gpd.GeoDataFrame(
         {'GEOID': list(corners)},

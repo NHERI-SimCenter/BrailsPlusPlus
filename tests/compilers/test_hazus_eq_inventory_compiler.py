@@ -53,6 +53,7 @@ from brails.compilers.hazus_eq_inventory_compiler import (
     ALL_PROPERTIES,
     DEFAULT_IMPUTER_OPTIONS,
     DEFAULT_PROPERTIES,
+    MISSING_DEFAULTS_LOG,
     CompilationResult,
     CompilerInputs,
     HazusEQInventoryCompiler,
@@ -69,16 +70,25 @@ from brails.constants import (
     FOOTPRINT_RELEASE_KEY,
     GROSS_AREA_KEY,
     HEIGHT_CLASS_KEY,
+    IMPUTATION_DONOR_KEY,
     LOCAL_GROSS_AREA_KEY,
     NSI_GROSS_AREA_KEY,
     OCCUPANCY_KEY,
     PLAN_AREA_KEY,
+    REPLACEMENT_COST_KEY,
     SOURCE_STRING_KEY,
     STORIES_FROM_HEIGHT_KEY,
     STORIES_KEY,
     STRUCTURE_TYPE_KEY,
     UNITS_KEY,
     YEAR_BUILT_KEY,
+)
+from brails.imputers.observed_donor_imputer.donor_records import OUTCOME_DONOR
+from brails.imputers.replacement_cost.replacement_cost_imputer import (
+    OUTCOME_IMPUTATION_DONOR,
+    OUTCOME_LOCAL_VALUE,
+    OUTCOME_OWN_RATE,
+    OUTCOME_VALUE_CODES,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_height_classes_by_type,
@@ -93,6 +103,7 @@ from brails.types.asset_inventory import (
 )
 from brails.utils import Importer
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
+from brails.validators.schema_validator import SchemaValidator
 from tests.compilers.compiler_fixtures import (
     FOOTPRINTS,
     LOCAL,
@@ -121,11 +132,17 @@ FREEZE_ORDER = (
     'step4_withheld',
     'step4_imputed',
     'step4',
+    'imputation_donors',
     'step6_withheld',
     'step6_imputed',
     'step6_drawn',
     'step6_derived',
     'step6',
+    'step7_imputed',
+    'step7_drawn',
+    'step7_derived',
+    'step8_values',
+    'step8_withheld',
     'output',
 )
 # The timed units of a run, once and per world.
@@ -138,7 +155,7 @@ TIMED_ONCE = (
     'output_freeze',
     'manifest',
 )
-TIMED_PER_WORLD = ('step4_view', 'step6', 'step6_view', 'output')
+TIMED_PER_WORLD = ('step4_view', 'step6', 'step6_view', 'step7', 'step8', 'output')
 SQUARE_FEET_PER_SQUARE_METER = 10.7639
 
 
@@ -351,6 +368,8 @@ class TestCompileArguments:
     @pytest.mark.parametrize('key', hc.RESERVED_LOCAL_FEATURES)
     def test_reserved_local_feature_refused(self, key: str) -> None:
         """A local inventory holding a feature the compiler reads back is refused."""
+        # Unrefused, a local NSIGrossArea of 7.0 on h02 made its rate
+        # NSI's value over 7 sq ft, for h02 and the buildings it serves.
         inputs = build_inputs()
         coordinates = inputs.footprints.inventory['h02'].coordinates
         inputs.local.add_asset('h02', Asset('h02', coordinates, {key: 7.0}))
@@ -499,6 +518,11 @@ class TestOutput:
         for asset_id in ('h01', 'u02'):
             marks = result.inventory.inventory[asset_id].features[EXCLUDED_KEY]
             assert marks == [False, True, False]
+        # An excluded building takes no value from step 8 in that world.
+        values = result.inventory.inventory['u02'].features[REPLACEMENT_COST_KEY]
+        assert values[1] is None
+        assert values[0] is not None
+        assert values[2] is not None
 
     def test_excluded_assets(self, study_area: object, tmp_path: object) -> None:
         """Excluded in every written world: left out; in some: on request."""
@@ -584,10 +608,171 @@ class TestWrittenFile:
         # NSI's and a local GrossArea are kept under names of their own.
         inventory = result.inventory.inventory
         assert inventory['h01'].features[NSI_GROSS_AREA_KEY] == 1400.0
-        assert GROSS_AREA_KEY not in inventory['h01'].features
+        assert inventory['h01'].features[GROSS_AREA_KEY] != 1400.0
         assert inventory['l01'].features[LOCAL_GROSS_AREA_KEY] == 777.0
         assert inventory['l01'].features[NSI_GROSS_AREA_KEY] == 1400.0
-        assert GROSS_AREA_KEY not in inventory['l01'].features
+        # l01's one local story: its GrossArea is its plan area.
+        assert math.isclose(
+            inventory['l01'].features[GROSS_AREA_KEY],
+            inventory['l01'].features[PLAN_AREA_KEY],
+        )
+        # The join's sum of l02's two records, a derived value.
+        assert inventory['l02'].features[NSI_GROSS_AREA_KEY] == 7000.0
+
+    def test_coverage(self, compiled: object) -> None:
+        """No compiled building lacks a default property that applies to it."""
+        result = compiled(n_worlds=3)
+        assert result.logs[MISSING_DEFAULTS_LOG].empty
+        # Both exemptions occur: a building outside UNIT_COUNT_CLASSES without
+        # units, and one of a type without height classes.
+        bands = get_hazus_height_classes_by_type()
+        exempt = set()
+        for world in range(3):
+            for values in features_in(result.inventory, world).values():
+                if values[EXCLUDED_KEY]:
+                    continue
+                if values[OCCUPANCY_KEY] not in UNIT_COUNT_CLASSES:
+                    exempt |= {UNITS_KEY} - set(values)
+                if bands[values[STRUCTURE_TYPE_KEY]] is None:
+                    exempt |= {HEIGHT_CLASS_KEY} - set(values)
+        assert exempt == {UNITS_KEY, HEIGHT_CLASS_KEY}
+
+    @pytest.mark.parametrize(
+        ('building', 'key'),
+        [
+            ('q03', OCCUPANCY_KEY),
+            ('h01', UNITS_KEY),
+            ('q03', STORIES_KEY),
+            ('q03', YEAR_BUILT_KEY),
+            ('q03', DESIGN_LEVEL_KEY),
+            ('q03', STRUCTURE_TYPE_KEY),
+            ('q03', HEIGHT_CLASS_KEY),
+            ('c02', REPLACEMENT_COST_KEY),
+            ('q03', BLOCK_GROUP_KEY),
+            ('q03', PLAN_AREA_KEY),
+            ('c02', SOURCE_STRING_KEY),
+        ],
+    )
+    def test_coverage_defect(
+        self,
+        study_area: object,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: object,
+        building: str,
+        key: str,
+    ) -> None:
+        """A missing default value is logged, and write keeps the rest of the run."""
+        compiler = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+        )
+        real = compiler._validator.validate
+
+        def validate(inventory: AssetInventory) -> object:
+            """
+            Check an inventory, then remove one value of one building.
+
+            Args:
+                inventory (AssetInventory):
+                    The buildings checked, which share their records with
+                    the output step's merge.
+
+            Returns:
+                object:
+                    The check's verdict.
+            """
+            verdict = real(inventory)
+            inventory.inventory[building].features.pop(key)
+            return verdict
+
+        monkeypatch.setattr(compiler._validator, 'validate', validate)
+        result = compiler.compile(study_area)
+        lacking = set(
+            result.logs[MISSING_DEFAULTS_LOG].itertuples(index=False, name=None)
+        )
+        assert (building, 0, key) in lacking
+        with pytest.raises(RuntimeError, match=key):
+            result.write(tmp_path / 'run.geojson')
+        assert not (tmp_path / 'run.geojson').exists()
+        assert (tmp_path / 'run_report.parquet').exists()
+        assert (tmp_path / 'run_manifest.json').exists()
+        saved = pd.read_parquet(tmp_path / f'run_{MISSING_DEFAULTS_LOG}.parquet')
+        assert (building, 0, key) in set(saved.itertuples(index=False, name=None))
+
+    def test_coverage_defect_of_one_world(
+        self,
+        study_area: object,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: object,
+    ) -> None:
+        """A file of worlds without the defect is written, one with it refused."""
+        compiler = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+        )
+        real = compiler._validator.validate
+        calls = []
+
+        def validate(inventory: AssetInventory) -> object:
+            """
+            Check an inventory, then remove q03's year in the second world.
+
+            Args:
+                inventory (AssetInventory):
+                    The buildings checked, which share their records with
+                    the output step's merge.
+
+            Returns:
+                object:
+                    The check's verdict.
+            """
+            verdict = real(inventory)
+            calls.append(None)
+            if len(calls) == 2:
+                inventory.inventory['q03'].features.pop(YEAR_BUILT_KEY)
+            return verdict
+
+        monkeypatch.setattr(compiler._validator, 'validate', validate)
+        result = compiler.compile(study_area)
+        result._replace(worlds=(0,)).write(tmp_path / 'world0.geojson')
+        assert (tmp_path / 'world0.geojson').exists()
+        with pytest.raises(RuntimeError, match=YEAR_BUILT_KEY):
+            result.write(tmp_path / 'both.geojson')
+
+    @pytest.mark.parametrize(
+        ('name', 'replacement', 'building', 'key'),
+        [
+            (
+                'footprint_gross_area',
+                lambda *_args, **_kwargs: (None, None),
+                'q03',
+                GROSS_AREA_KEY,
+            ),
+            ('_LETTER_OF_TYPE', {'C1': 'C'}, 'h01', BUILDING_TYPE_KEY),
+        ],
+    )
+    def test_coverage_of_written_values(
+        self,
+        study_area: object,
+        monkeypatch: pytest.MonkeyPatch,
+        name: str,
+        replacement: object,
+        building: str,
+        key: str,
+    ) -> None:
+        """A value the output step cannot write is logged as missing."""
+        monkeypatch.setattr(hc, name, replacement)
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+        ).compile(study_area)
+        lacking = set(
+            result.logs[MISSING_DEFAULTS_LOG].itertuples(index=False, name=None)
+        )
+        assert (building, 0, key) in lacking
+
+    def test_schema_reads_no_value_written_after_it(self) -> None:
+        """The input schema reads none of the values the output step writes later."""
+        schema = json.dumps(SchemaValidator(hc.DLML_DATASET)._schema, default=str)
+        for key in (REPLACEMENT_COST_KEY, GROSS_AREA_KEY, BUILDING_TYPE_KEY):
+            assert f'"{key}"' not in schema
 
     def test_extra_properties(self, compiled: object, tmp_path: object) -> None:
         """Extra properties are written beside the default ones and change none."""
@@ -1318,32 +1503,26 @@ class TestYearsAndTypes:
             assert labels['h01'] == 'nsi'
 
     def test_status_drawn_per_world(self, compiled: object) -> None:
-        """A status drawn per world gives a list of source strings and of marks."""
+        """A status drawn per world takes its year from step 5 or from step 7."""
         result = compiled(n_worlds=3)
         year = HAZUS_EQ_SOURCE_FEATURES.index(YEAR_BUILT_KEY)
-        exclusions = result.report.exclusions
         mixed = [
             asset_id
             for asset_id, asset in result.inventory.inventory.items()
             if isinstance(asset.features[SOURCE_STRING_KEY], list)
             and {codes[year] for codes in asset.features[SOURCE_STRING_KEY]}
-            == {'D', '-'}
+            == {'D', 'I'}
         ]
         assert mixed
         for asset_id in mixed:
             features = result.inventory.inventory[asset_id].features
-            listed = set(exclusions.loc[exclusions['asset_id'] == asset_id, 'world'])
-            assert features[EXCLUDED_KEY] == [w in listed for w in range(3)]
+            assert features[EXCLUDED_KEY] is False
             for world, codes in enumerate(features[SOURCE_STRING_KEY]):
-                assert (codes[year] == '-') == (world in listed)
-
-    def test_undated_excluded(self, compiled: object) -> None:
-        """A non-residential building without a year is excluded at its stage."""
-        result = compiled(n_worlds=3)
-        rows = result.report.exclusions.set_index(['asset_id', 'world'])
-        for asset_id in ('c01', 'c04', 'c05'):
-            for world in range(3):
-                assert rows.loc[(asset_id, world), 'stage'] == 'nonresidential_year'
+                residential = (
+                    features_in(result.inventory, world)[asset_id][OCCUPANCY_KEY]
+                    in UNIT_COUNT_CLASSES
+                )
+                assert codes[year] == ('D' if residential else 'I')
 
     def test_year_refused(self, study_area: object) -> None:
         """Without year tables, every residential asset is excluded at the year."""
@@ -1397,3 +1576,258 @@ class TestYearsAndTypes:
         compiled(n_worlds=3).write(tmp_path / 'run.geojson')
         fit = pd.read_parquet(tmp_path / 'run_year_fit.parquet')
         assert {BLOCK_GROUP_KEY, 'world'} <= set(fit.columns)
+
+
+class TestYearAndValueOfTheRest:
+    """Steps 7 and 8: the year of a non-residential building, and every value."""
+
+    def test_components_receive_worlds(
+        self, study_area: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Both draw per world with the imputer's k and cap, step 8 its weights too."""
+        compiler = HazusEQInventoryCompiler(
+            seed=SEED,
+            n_worlds=10,
+            projected_crs=METRIC_CRS,
+            imputer_options={'cap_m': 1500.0, 'stories_weight': 0.5},
+        )
+        value_imputer = hc.ReplacementCostImputer
+        sampler = mock.Mock(wraps=hc.ResidentialNeighborYearSampler)
+        imputer = mock.Mock(wraps=value_imputer)
+        monkeypatch.setattr(hc, 'ResidentialNeighborYearSampler', sampler)
+        monkeypatch.setattr(hc, 'ReplacementCostImputer', imputer)
+        real = value_imputer.impute_stage
+        with mock.patch.object(
+            value_imputer,
+            'impute_stage',
+            autospec=True,
+            side_effect=real,
+        ) as impute:
+            compiler.compile(study_area, worlds=(2, 5))
+        assert [c.kwargs['world'] for c in sampler.call_args_list] == list(range(6))
+        assert [c.kwargs['world'] for c in impute.call_args_list] == list(range(6))
+        for spy in (sampler, imputer):
+            assert {
+                (c.kwargs['k'], c.kwargs['cap_m']) for c in spy.call_args_list
+            } == {(DEFAULT_IMPUTER_OPTIONS['k'], 1500.0)}
+        assert {c.args[2:4] for c in impute.call_args_list} == {
+            ('step6', 'imputation_donors')
+        }
+        options = imputer.call_args.kwargs
+        assert (
+            options['location_scale_m'],
+            options['area_weight'],
+            options['stories_weight'],
+        ) == (
+            DEFAULT_IMPUTER_OPTIONS['location_scale_m'],
+            DEFAULT_IMPUTER_OPTIONS['area_weight'],
+            0.5,
+        )
+
+    def test_targets_from_the_frozen_stage(self, study_area: object) -> None:
+        """Step 7's targets are realization w of the frozen step6 stage."""
+        real = hc.ResidentialNeighborYearSampler.check
+        with mock.patch.object(
+            hc.ResidentialNeighborYearSampler,
+            'check',
+            autospec=True,
+            side_effect=real,
+        ) as check:
+            result = HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            ).compile(study_area)
+        step6 = result.freeze.read('step6')
+        for world in range(3):
+            frozen = features_in(step6, world)
+            targets = features_in(check.call_args_list[world].args[1], 0)
+            assert targets
+            assert all(targets[a] == frozen[a] for a in targets)
+            assert all(YEAR_BUILT_KEY not in values for values in targets.values())
+
+    def test_year_from_a_neighbor(self, compiled: object) -> None:
+        """A non-residential year is its logged donor's year, coded I."""
+        result = compiled(n_worlds=3)
+        year = HAZUS_EQ_SOURCE_FEATURES.index(YEAR_BUILT_KEY)
+        picks = result.logs['neighbor_year']
+        assert not picks.empty
+        for row in picks.itertuples():
+            features = features_in(result.inventory, row.world)
+            assert features[row.asset_id][YEAR_BUILT_KEY] == row.YearBuilt
+            assert features[row.donor_id][YEAR_BUILT_KEY] == row.YearBuilt
+            assert features[row.asset_id][SOURCE_STRING_KEY][year] == 'I'
+        # The donors are the frozen step 6 stage's, years drawn in step 5 among them.
+        drawn = {
+            features_in(result.inventory, row.world)[row.donor_id][
+                SOURCE_STRING_KEY
+            ][year]
+            for row in picks.itertuples()
+        }
+        assert 'D' in drawn
+        # COM1 with NSI's occupancy class, dated and typed in every world.
+        assert set(picks.loc[picks['asset_id'] == 'c01', 'world']) == {0, 1, 2}
+        for world in range(3):
+            assert features_in(result.inventory, world)['c01'][STRUCTURE_TYPE_KEY]
+
+    def test_no_class_no_year(self, compiled: object) -> None:
+        """A footprint past every donor has no occupancy class or year in any world."""
+        result = compiled(n_worlds=3)
+        rows = result.report.exclusions
+        rows = rows[rows['asset_id'] == 'f01']
+        assert sorted(rows['world']) == [0, 1, 2]
+        assert set(rows['stage']) == {'nonresidential_year'}
+        assert set(rows['category']) == {'missing_driver'}
+        assert OCCUPANCY_KEY not in features_in(result.inventory, 0)['f01']
+
+    def test_values(self, compiled: object) -> None:
+        """Each value is its log's rate times gross area, coded by its outcome."""
+        result = compiled(n_worlds=3)
+        value = HAZUS_EQ_SOURCE_FEATURES.index(REPLACEMENT_COST_KEY)
+        log = result.logs['value']
+        donors = result.freeze.read('imputation_donors')
+        seen = set()
+        for row in log.itertuples():
+            features = features_in(result.inventory, row.world)[row.asset_id]
+            if features[EXCLUDED_KEY] or row.outcome == OUTCOME_LOCAL_VALUE:
+                continue
+            assert math.isclose(
+                features[REPLACEMENT_COST_KEY],
+                row.rate * row.footprint_gross_area_sqft,
+            )
+            code = features[SOURCE_STRING_KEY][value]
+            assert code == OUTCOME_VALUE_CODES[row.outcome]
+            seen.add(row.outcome)
+            if row.outcome == OUTCOME_IMPUTATION_DONOR:
+                donor = features_in(donors, row.world)[row.asset_id]
+                assert donor[IMPUTATION_DONOR_KEY] == row.donor_id
+        assert {OUTCOME_OWN_RATE, OUTCOME_IMPUTATION_DONOR, OUTCOME_DONOR} <= seen
+        for world in range(3):
+            features = features_in(result.inventory, world)
+            # NSI's own house: its fullrep over its sqft, times its gross area
+            # computed from the footprint, which GrossArea holds.
+            gross_area = (
+                features['h01'][PLAN_AREA_KEY] * features['h01'][STORIES_KEY]
+            )
+            assert math.isclose(features['h01'][GROSS_AREA_KEY], gross_area)
+            assert math.isclose(
+                features['h01'][REPLACEMENT_COST_KEY], 350000.0 / 1400.0 * gross_area
+            )
+            assert features['h01'][SOURCE_STRING_KEY][value] == 'R'
+            # A local value is kept, coded L, whatever NSI states.
+            assert features['c02'][REPLACEMENT_COST_KEY] == 5.0e6
+            assert features['c02'][SOURCE_STRING_KEY][value] == 'L'
+
+    def test_local_value_gives_a_rate(self, compiled: object) -> None:
+        """A local value lends its donees its value over NSI's sqft."""
+        result = compiled(n_worlds=10)
+        log = result.logs['value']
+        value = HAZUS_EQ_SOURCE_FEATURES.index(REPLACEMENT_COST_KEY)
+        # c02 holds a local value of 5.0e6 beside NSI's 40,000 sq ft.
+        own = log[log['asset_id'] == 'c02']
+        assert set(own['outcome']) == {OUTCOME_LOCAL_VALUE}
+        assert set(own['rate']) == {5.0e6 / 40000.0}
+        # The buildings that named c02 as their step 4 donor are valued at it.
+        served = log[log['donor_id'] == 'c02']
+        assert set(zip(served['asset_id'], served['world'])) == {
+            ('u11', 3),
+            ('u13', 4),
+            ('u13', 9),
+            ('n06', 5),
+        }
+        assert set(served['rate']) == {5.0e6 / 40000.0}
+        for row in served.itertuples():
+            features = features_in(result.inventory, row.world)[row.asset_id]
+            assert not features[EXCLUDED_KEY]
+            assert math.isclose(
+                features[REPLACEMENT_COST_KEY], 125.0 * features[GROSS_AREA_KEY]
+            )
+            assert features[SOURCE_STRING_KEY][value] == 'I'
+
+    def test_local_value_rate_ignores_a_local_gross_area(
+        self, study_area: object
+    ) -> None:
+        """A local value's rate divides by NSI's sqft even beside a local `GrossArea`."""
+        local = build_inputs().local
+        local.inventory['c02'].features[GROSS_AREA_KEY] = 10000.0
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+        ).compile(study_area._replace(local=local))
+        log = result.logs['value']
+        assert set(log[log['asset_id'] == 'c02']['rate']) == {5.0e6 / 40000.0}
+
+    def test_local_gross_area_is_no_rate(self, compiled: object) -> None:
+        """A local `GrossArea` changes neither a rate nor the value it gives."""
+        result = compiled(n_worlds=3)
+        log = result.logs['value'].set_index(['asset_id', 'world'])
+        # l01 and h01 are the same NSI house on footprints of one size, and
+        # l01 has a local gross area of 777 sq ft beside NSI's 1,400.
+        for world in range(3):
+            features = features_in(result.inventory, world)
+            assert log.loc[('l01', world), 'rate'] == 350000.0 / 1400.0
+            assert log.loc[('l01', world), 'rate'] == log.loc[('h01', world), 'rate']
+            # Equal up to the plan areas the projection gives the two squares.
+            assert math.isclose(
+                features['l01'][REPLACEMENT_COST_KEY],
+                features['h01'][REPLACEMENT_COST_KEY],
+                rel_tol=1e-5,
+            )
+        served = result.logs['value']
+        served = served[served['donor_id'] == 'l01']
+        assert not served.empty
+        assert set(served['rate']) == {350000.0 / 1400.0}
+
+    def test_no_class_excluded_at_the_value(self, study_area: object) -> None:
+        """A dated, typed footprint with no occupancy class has no value."""
+        local = build_inputs().local
+        x, y, side = FOOTPRINTS['f01'][:3]
+        local.add_asset(
+            'f01',
+            Asset(
+                'f01',
+                square(x, y, side),
+                {YEAR_BUILT_KEY: 1970, STRUCTURE_TYPE_KEY: 'W1', STORIES_KEY: 1},
+            ),
+        )
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+        ).compile(study_area._replace(local=local))
+        rows = result.report.exclusions
+        rows = rows[rows['asset_id'] == 'f01']
+        assert list(zip(rows['stage'], rows['category'])) == [
+            ('value', 'missing_driver')
+        ]
+        assert 'no_class' in rows['detail'].iloc[0]
+
+    def test_no_value_excluded(self, compiled: object) -> None:
+        """A building the value step leaves without a value is excluded there."""
+        result = compiled(n_worlds=3)
+        log = result.logs['value']
+        rows = result.report.exclusions.set_index(['asset_id', 'world'])
+        without = log[~log['outcome'].isin(list(OUTCOME_VALUE_CODES))]
+        assert not without.empty
+        for row in without.itertuples():
+            assert (row.asset_id, row.world) in rows.index
+            features = features_in(result.inventory, row.world)[row.asset_id]
+            assert features[EXCLUDED_KEY] is True
+            assert REPLACEMENT_COST_KEY not in features
+        valued = rows[rows['stage'] == 'value']
+        assert set(valued['category']) == {'missing_driver'}
+        assert set(valued.index) <= set(zip(without['asset_id'], without['world']))
+
+    def test_certificate_takes_no_value(self, compiled: object) -> None:
+        """A building the schema refuses takes no value, NSI's included."""
+        result = compiled(n_worlds=3)
+        rows = result.report.exclusions
+        assert set(rows.loc[rows['asset_id'] == 'u08', 'category']) == {
+            'certificate'
+        }
+        log = result.logs['value']
+        assert set(log.loc[log['asset_id'] == 'u08', 'world']) == {0, 1, 2}
+        for world in range(3):
+            features = features_in(result.inventory, world)
+            # u08 has no NSI record, and l02 the join's sum of two.
+            assert REPLACEMENT_COST_KEY not in features['u08']
+            assert REPLACEMENT_COST_KEY not in features['l02']
+        withheld = result.freeze.read('step8_withheld').inventory
+        assert withheld['l02'].features == {REPLACEMENT_COST_KEY: 'derived'}
+        assert withheld['h01'].features == {REPLACEMENT_COST_KEY: 'nsi'}
+        assert 'c02' not in withheld

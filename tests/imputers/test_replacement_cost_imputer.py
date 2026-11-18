@@ -78,6 +78,7 @@ from brails.imputers.replacement_cost.replacement_cost_imputer import (
     OUTCOME_OWN_RATE,
     OUTCOME_VALUE_CODES,
     ReplacementCostResult,
+    footprint_gross_area,
 )
 from brails.inferers import ACSUnitBudget
 from brails.inferers.acs_unit_budget.acs_unit_budget import GEOID_COLUMN
@@ -702,9 +703,8 @@ class TestUnitBudgetGrossArea:
             imputer=ObservedDonorImputer(seed=1),
         )
         sites = budget._sites(buildings)
-        imputer = ReplacementCostImputer()
         for asset_id in records:
-            area, source_name = imputer._footprint_gross_area(
+            area, source_name = footprint_gross_area(
                 asset_id, buildings.inventory[asset_id]
             )
             site = sites[asset_id]
@@ -720,9 +720,7 @@ class TestUnitBudgetGrossArea:
             imputer=ObservedDonorImputer(seed=1),
         )
         assert budget._sites(buildings)['g'].gross_source == AREA_FROM_GROSS_AREA
-        area, source_name = ReplacementCostImputer()._footprint_gross_area(
-            'g', buildings.inventory['g']
-        )
+        area, source_name = footprint_gross_area('g', buildings.inventory['g'])
         assert source_name == AREA_FROM_STORIES
         assert area == pytest.approx(plan_sqft(buildings, 'g') * 3)
 
