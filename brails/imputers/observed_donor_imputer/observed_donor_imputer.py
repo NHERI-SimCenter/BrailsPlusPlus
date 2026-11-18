@@ -75,6 +75,7 @@ from brails.imputers.observed_donor_imputer.donor_pool import (
     _DonorWorldView,
     _is_missing,
     _status_code,
+    _story_count,
     _world_features,
 )
 from brails.imputers.observed_donor_imputer.donor_records import (  # re-exports
@@ -99,7 +100,11 @@ from brails.imputers.observed_donor_imputer.donor_search import (
     DonorSearch,
     _DonorPick,
 )
-from brails.types.asset_inventory import Asset, AssetInventory
+from brails.types.asset_inventory import (
+    Asset,
+    AssetInventory,
+    is_probabilistic_feature,
+)
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from brails.utils.world_values import collapse_realizations
@@ -725,8 +730,8 @@ class ObservedDonorImputer(Imputation):
             if asset_id in pool.no_area:
                 chances[asset_id] = math.nan
                 continue
-            site = pool.site(asset_id)
-            neighborhood = self._search.neighborhood(pool, site)
+            site = pool.world_site(asset_id, 0)
+            neighborhood = self._search.neighborhood(pool, view, site)
             excluded = {asset_id}
             mask = self._search.eligible(
                 pool, view, neighborhood.index, excluded, None
@@ -903,7 +908,7 @@ class ObservedDonorImputer(Imputation):
         redraw = self._check_redraw(features, redraw, protected)
         if asset_id in pool.no_area:
             return _empty_draw(asset_id, world, 0, OUTCOME_NO_AREA)
-        site = pool.site(asset_id)
+        site = pool.world_site(asset_id, world)
         status_code = self._known_status(features, redraw, status=status)
         if status_code is None:
             msg = (
@@ -946,7 +951,7 @@ class ObservedDonorImputer(Imputation):
             DonorPool:
                 The pool.
         """
-        keep = (*self.features, *self.soft_filters, *self.required)
+        keep = (*self.features, *self.soft_filters, *self.required, self.stories_key)
         donors = []
         no_area = set()
         for asset_id, asset, n_pw, _ in sorted(records, key=lambda r: str(r[0])):
@@ -970,6 +975,19 @@ class ObservedDonorImputer(Imputation):
                     no_area.add(asset_id)
                 else:
                     target_sites[asset_id] = site
+        # Each target's story count in each world, where it holds one per
+        # world, which its site reads as none.
+        target_stories = {}
+        if targets is not None and targets.n_pw > 1:
+            for asset_id in target_sites:
+                value = targets.inventory[asset_id].features.get(self.stories_key)
+                if is_probabilistic_feature(
+                    self.stories_key, value, targets.vector_features
+                ):
+                    target_stories[asset_id] = tuple(
+                        _story_count(value[w] if value else None)
+                        for w in range(targets.n_pw)
+                    )
         return DonorPool(
             imputer=self,
             donors=donors,
@@ -981,6 +999,8 @@ class ObservedDonorImputer(Imputation):
             required=self.required,
             status_key=self.status_key,
             status_values=self.status_values,
+            stories_key=self.stories_key,
+            target_stories=target_stories,
         )
 
     def _batch_records(
@@ -1106,7 +1126,11 @@ class ObservedDonorImputer(Imputation):
         log: list[dict[str, Any]] = []
         for asset_id in target_ids:
             raw = targets.inventory[asset_id].features
-            neighborhood = None
+            # The neighborhood of the last site and view. A world reuses it
+            # unless the target's site changes, or the donors' view changes
+            # while the target holds a story count, since only then do the
+            # donors' counts enter its distances.
+            shared = (None, None, None)
             for world in range(n_worlds):
                 features = _world_features(
                     raw, world, targets.n_pw, targets.vector_features
@@ -1114,10 +1138,17 @@ class ObservedDonorImputer(Imputation):
                 missing = [f for f in self.features if _is_missing(features, f)]
                 if not missing:
                     continue
-                if neighborhood is None and asset_id not in pool.no_area:
-                    neighborhood = self._search.neighborhood(
-                        pool, pool.site(asset_id)
-                    )
+                if asset_id not in pool.no_area:
+                    site, view = pool.world_site(asset_id, world), pool.view(world)
+                    if site is not shared[0] or (
+                        view is not shared[1] and not math.isnan(site.stories)
+                    ):
+                        shared = (
+                            site,
+                            view,
+                            self._search.neighborhood(pool, view, site),
+                        )
+                neighborhood = shared[2]
                 outcome = self._draw(
                     pool,
                     asset_id,
@@ -1374,11 +1405,11 @@ class ObservedDonorImputer(Imputation):
             return _DonorOutcome(
                 None, _empty_draw(asset_id, world, iteration, OUTCOME_NO_AREA), None
             )
-        site = pool.site(asset_id)
+        site = pool.world_site(asset_id, world)
         view = pool.view(world)
         excluded = {asset_id, *exclude_donors}
         if neighborhood is None:
-            neighborhood = self._search.neighborhood(pool, site)
+            neighborhood = self._search.neighborhood(pool, view, site)
         key = asset_key_digest([asset_id])
         status_labels, donor_labels = (
             tuple(
@@ -1658,7 +1689,7 @@ class ObservedDonorImputer(Imputation):
                     * EARTH_RADIUS_M
                 )
                 distance = self._search.distances(
-                    pool, site, np.array([pick]), meters
+                    pool, view, site, np.array([pick]), meters
                 )
                 return _DonorPick(
                     pick,
@@ -1724,7 +1755,7 @@ class ObservedDonorImputer(Imputation):
                 :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_NONE_ADMITTED`.
         """
         if neighborhood is None:
-            neighborhood = self._search.neighborhood(pool, site)
+            neighborhood = self._search.neighborhood(pool, view, site)
         mask = self._search.eligible(
             pool, view, neighborhood.index, excluded, status_code
         )

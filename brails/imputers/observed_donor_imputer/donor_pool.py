@@ -42,6 +42,7 @@ Index the donors and targets of the observed-donor imputer.
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
@@ -80,7 +81,9 @@ class _DonorSite(NamedTuple):
         log_area (float):
             Natural log of the plan area in square meters.
         stories (float):
-            The story count the distance compares, NaN without one.
+            The story count the distance compares, NaN without one or
+            where it is held per world, which
+            :meth:`DonorPool.world_site` gives.
         block_group (str | None):
             The asset's block-group GEOID, if it holds one.
     """
@@ -105,12 +108,15 @@ class _DonorWorldView(NamedTuple):
             Each soft filter's donor values, ``None`` where missing.
         donor_values (list[dict[str, Any]]):
             Each donor's non-missing values of the imputed features.
+        stories (numpy.ndarray):
+            Each donor's story count for the distance, NaN without one.
     """
 
     eligible: np.ndarray
     status: np.ndarray
     filters: dict[str, np.ndarray]
     donor_values: list[dict[str, Any]]
+    stories: np.ndarray
 
 
 class _DonorNeighborhood(NamedTuple):
@@ -177,6 +183,27 @@ def _status_code(
     return _STATUS_INSIDE if features[key] in values else _STATUS_OUTSIDE
 
 
+def _story_count(value: object) -> float:
+    """
+    Read a story count for the donor distance.
+
+    Args:
+        value (object):
+            A story count in one world.
+
+    Returns:
+        float:
+            The count, NaN where ``value`` is not a finite number.
+    """
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float, np.integer, np.floating))
+        or not math.isfinite(value)
+    ):
+        return math.nan
+    return float(value)
+
+
 def _world_features(
     features: Mapping[str, Any],
     world: int,
@@ -234,7 +261,8 @@ class DonorPool:
         log_area (numpy.ndarray):
             Natural log of each donor's plan area in square meters.
         stories (numpy.ndarray):
-            Each donor's story count for the distance, NaN without one.
+            Each donor's story count for the distance, NaN without one or
+            where it is held per world; :meth:`view` gives each world's.
         block_group (tuple):
             Each donor's block-group GEOID, or ``None``.
         no_area (frozenset):
@@ -255,6 +283,8 @@ class DonorPool:
             The feature a donor's status is read from.
         status_values (tuple):
             The values of ``status_key`` that give a donor the status.
+        stories_key (str | None):
+            The feature a donor's story count is read from in each world.
         donor_index (dict):
             Each donor's index in :attr:`donor_ids`, by id.
         block_group_donors (dict):
@@ -275,6 +305,8 @@ class DonorPool:
         required: Sequence[str],
         status_key: str,
         status_values: Sequence[Any],
+        stories_key: str | None = None,
+        target_stories: Mapping[Any, Sequence[float]] | None = None,
     ) -> None:
         """
         Index prepared donors and targets.
@@ -301,6 +333,12 @@ class DonorPool:
                 The feature a donor's status is read from.
             status_values (Sequence[Any]):
                 The values of ``status_key`` that give a donor the status.
+            stories_key (str, optional):
+                The feature a donor's story count is read from in each
+                world, for a donor of several worlds.
+            target_stories (Mapping[Any, Sequence[float]], optional):
+                The story count in each world of every target that holds
+                one per world, by id.
 
         Raises:
             ValueError:
@@ -334,6 +372,8 @@ class DonorPool:
         self.required = tuple(required)
         self.status_key = status_key
         self.status_values = tuple(status_values)
+        self.stories_key = stories_key
+        self._target_stories = dict(target_stories or {})
         self._sites = dict(targets)
         self._sites.update(zip(self.donor_ids, sites))
         self.donor_index = {asset_id: i for i, asset_id in enumerate(self.donor_ids)}
@@ -373,6 +413,34 @@ class DonorPool:
             msg = f'The pool holds no asset {asset_id!r} with area.'
             raise LookupError(msg) from None
 
+    def world_site(self, asset_id: Hashable, world: int) -> _DonorSite:
+        """
+        Return an asset's site with its story count in one world.
+
+        Args:
+            asset_id (Hashable):
+                A donor or target with area.
+            world (int):
+                The world.
+
+        Returns:
+            _DonorSite:
+                The site of :meth:`site`, itself where the asset holds no
+                story count per world.
+
+        Raises:
+            LookupError:
+                If the pool does not hold the asset with area.
+        """
+        site = self.site(asset_id)
+        counts = self._target_stories.get(asset_id)
+        if counts is not None:
+            return site._replace(stories=counts[world])
+        index = self.donor_index.get(asset_id)
+        if index is None or self._donor_worlds[index] == 1:
+            return site
+        return site._replace(stories=self.view(world).stories[index])
+
     def neighborhood(self, site: _DonorSite, cap_m: float) -> _DonorNeighborhood:
         """
         Find the donors within a distance of a site.
@@ -411,8 +479,8 @@ class DonorPool:
 
         Returns:
             _DonorWorldView:
-                Eligibility, status, soft-filter values and imputed-feature
-                values of every donor in that world.
+                Eligibility, status, soft-filter values, imputed-feature
+                values and story count of every donor in that world.
         """
         key = world if self._per_world else 0
         if key in self._views:
@@ -422,6 +490,7 @@ class DonorPool:
         status = np.full(n, _STATUS_UNKNOWN, dtype=np.int8)
         filters = {f: np.empty(n, dtype=object) for f in self.soft_filters}
         values = []
+        stories = self.stories.copy()
         for i, (raw, n_pw) in enumerate(
             zip(self._donor_features, self._donor_worlds)
         ):
@@ -437,6 +506,8 @@ class DonorPool:
                     if not _is_missing(features, f)
                 }
             )
-        view = _DonorWorldView(eligible, status, filters, values)
+            if n_pw > 1:
+                stories[i] = _story_count(features.get(self.stories_key))
+        view = _DonorWorldView(eligible, status, filters, values, stories)
         self._views[key] = view
         return view

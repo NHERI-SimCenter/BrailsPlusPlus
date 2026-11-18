@@ -50,6 +50,7 @@ from brails.constants import BLOCK_GROUP_KEY
 from brails.imputers.observed_donor_imputer.donor_pool import (
     _STATUS_UNKNOWN,
     _DonorSite,
+    _story_count,
 )
 from brails.imputers.observed_donor_imputer.donor_records import (
     OUTCOME_DONOR,
@@ -152,31 +153,36 @@ class DonorSearch:
         self.stories_weight = stories_weight
         self.seed = seed
 
-    def neighborhood(self, pool: DonorPool, site: _DonorSite) -> _DonorNeighborhood:
+    def neighborhood(
+        self, pool: DonorPool, view: _DonorWorldView, site: _DonorSite
+    ) -> _DonorNeighborhood:
         """
         Find the donors within the cap of a site with their donor distances.
 
-        The result depends on the site and the pool's geometry only, so a
-        target's draws in every world and round share it.
+        The result depends on the site, the pool's geometry and the donors'
+        story counts in the view's world.
 
         Args:
             pool (DonorPool):
                 The pool.
+            view (_DonorWorldView):
+                The donors in the target's world.
             site (_DonorSite):
-                The target's site.
+                The target's site in that world.
 
         Returns:
             _DonorNeighborhood:
                 The donors within :attr:`cap_m`, with distances.
         """
         found = pool.neighborhood(site, self.cap_m)
-        distance = self.distances(pool, site, found.index, found.meters)
+        distance = self.distances(pool, view, site, found.index, found.meters)
         order = np.lexsort((found.index, distance))
         return found._replace(distance=distance, order=order)
 
     def distances(
         self,
         pool: DonorPool,
+        view: _DonorWorldView,
         site: _DonorSite,
         index: np.ndarray,
         meters: np.ndarray,
@@ -187,8 +193,10 @@ class DonorSearch:
         Args:
             pool (DonorPool):
                 The pool.
+            view (_DonorWorldView):
+                The donors in the target's world.
             site (_DonorSite):
-                The target's site.
+                The target's site in that world.
             index (numpy.ndarray):
                 Donor indices.
             meters (numpy.ndarray):
@@ -202,7 +210,7 @@ class DonorSearch:
         """
         location = (meters / self.location_scale_m) ** 2
         area = self.area_weight * (site.log_area - pool.log_area[index]) ** 2
-        stories = self.stories_weight * (site.stories - pool.stories[index]) ** 2
+        stories = self.stories_weight * (site.stories - view.stories[index]) ** 2
         return np.sqrt(location + area + np.nan_to_num(stories))
 
     def select(
@@ -476,13 +484,6 @@ class DonorSearch:
         if area <= 0:
             return None
         features = asset.features
-        stories = features.get(self.stories_key)
-        if (
-            isinstance(stories, bool)
-            or not isinstance(stories, (int, float, np.integer, np.floating))
-            or not math.isfinite(stories)
-        ):
-            stories = math.nan
         block_group = features.get(BLOCK_GROUP_KEY)
         if not isinstance(block_group, str) or _is_missing_value(block_group):
             block_group = None
@@ -490,6 +491,6 @@ class DonorSearch:
             lon,
             lat,
             math.log(area),
-            float(stories),
+            _story_count(features.get(self.stories_key)),
             block_group,
         )

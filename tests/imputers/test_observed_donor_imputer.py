@@ -61,6 +61,7 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
 )
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils import Importer
+from brails.utils.stage_freeze import StageFreeze
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from tests.imputers.donor_fixtures import (
     BG_A,
@@ -785,6 +786,145 @@ class TestStories:
         }
         merged = imputer().impute(inventory({**records, **targets}))
         assert merged.get_asset_features('t')[1]['NumberOfStories'] == 3
+
+
+class TestStoriesPerWorld:
+    """A story count held per world enters the distance of its world."""
+
+    def inputs(
+        self, near_class: str = 'COM1', stories: tuple[int, int] = (1, 9)
+    ) -> tuple[AssetInventory, AssetInventory]:
+        """
+        Return a near one-story donor, a far nine-story donor and a target.
+
+        Args:
+            near_class (str, optional):
+                The near donor's occupancy class. Defaults to COM1, the
+                target's.
+            stories (tuple[int, int], optional):
+                The target's story count in worlds 0 and 1. Defaults to
+                (1, 9).
+
+        Returns:
+            tuple[AssetInventory, AssetInventory]:
+                The donors, and the target in two worlds. With ``k=1`` and
+                a story weight of 100, the target's count picks the donor.
+        """
+        donors = {
+            'near': asset(
+                0.0,
+                10.0,
+                OccupancyClass=near_class,
+                NumberOfStories=1,
+                NumberOfUnits=1,
+            ),
+            'far': asset(
+                0.0, 200.0, OccupancyClass='COM1', NumberOfStories=9, NumberOfUnits=9
+            ),
+        }
+        targets = inventory(
+            {
+                't': asset(
+                    0.0, 0.0, OccupancyClass='COM1', NumberOfStories=list(stories)
+                )
+            }
+        )
+        targets.n_pw = 2
+        return inventory(donors), targets
+
+    def test_a_targets_count_per_world(self) -> None:
+        """Each world of a run picks the donor a run of that world alone picks."""
+        donors, targets = self.inputs()
+        imp = imputer(k=1, stories_weight=100.0)
+        both = donors_from_log(imp.impute_stage(targets, donors, n_worlds=2))
+        alone = donors_from_log(
+            imp.impute_stage(targets.get_world_realization(1), donors)
+        )
+        assert both == {('t', 0): 'near', ('t', 1): 'far'}
+        assert alone[('t', 0)] == both[('t', 1)]
+
+    def test_draw_reads_the_worlds_count(self) -> None:
+        """A draw in world 1 picks the donor the stage picks there."""
+        donors, targets = self.inputs()
+        imp = imputer(k=1, stories_weight=100.0)
+        pool = imp.pool(donors, targets)
+        features = {'OccupancyClass': 'COM1', 'NumberOfStories': 9}
+        assert imp.draw(pool, 't', features, world=1).donor_id == 'far'
+
+    def test_nearest_admitted_reads_the_worlds_count(self) -> None:
+        """The nearest-first scan in world 1 ranks by that world's count."""
+        donors, targets = self.inputs()
+        imp = imputer(k=1, stories_weight=100.0)
+        pool = imp.pool(donors, targets)
+        features = {'OccupancyClass': 'COM1', 'NumberOfStories': 9}
+        scan = imp.nearest_admitted(
+            pool, 't', features, ['NumberOfUnits'], world=1, admit=lambda _: True
+        )
+        assert scan.donor_id == 'far'
+
+    def test_status_probability_reads_world_zeros_count(self) -> None:
+        """The chance of the status reads the target's count in world 0."""
+        donors, targets = self.inputs(near_class='RES1', stories=(9, 1))
+        imp = imputer(k=1, stories_weight=100.0)
+        pool = imp.pool(donors, targets)
+        assert imp.status_probability(pool, ['t']) == {'t': 0.0}
+
+    def test_a_fed_back_donors_count_per_world(self) -> None:
+        """A later batch's distance reads the count an earlier batch copied."""
+        observed = {
+            f'd{i:02d}': asset(
+                30.0 * i,
+                300.0,
+                OccupancyClass='COM1',
+                NumberOfStories=1 + 7 * i % 9,
+                NumberOfUnits=1,
+            )
+            for i in range(20)
+        }
+        # Odd targets hold a count and compare; even ones lack it, receive
+        # one per world and donate. Equal footprints leave no area term.
+        records = {
+            f't{i:02d}': asset(
+                15.0 * i,
+                0.0,
+                OccupancyClass='COM1',
+                **(
+                    {'NumberOfStories': 1 + i % 5} if i % 2 else {'NumberOfUnits': 1}
+                ),
+            )
+            for i in range(40)
+        }
+        freeze = StageFreeze()
+        freeze.freeze('observed', inventory(observed))
+        targets = inventory(records)
+        targets.n_pw = 2
+        result = imputer(
+            n_batches=2, location_scale_m=100.0, stories_weight=1.0
+        ).impute_stage(targets, freeze=freeze, donor_stage='observed', n_worlds=2)
+        first = freeze.read(result.batches[0]).inventory
+        copied = {
+            asset_id: imputed.features['NumberOfStories']
+            for asset_id, imputed in first.items()
+            if isinstance(imputed.features.get('NumberOfStories'), list)
+        }
+        log = result.log
+        rows = log[
+            (log['round'] == ROUND_DONOR)
+            & log['donor_id'].isin(list(copied))
+            & ~log['asset_id'].isin(list(first))
+        ]
+        pairs = [
+            (row, records[row.asset_id][1].get('NumberOfStories'))
+            for row in rows.itertuples(index=False)
+        ]
+        pairs = [(row, own) for row, own in pairs if own is not None]
+        assert any(own != copied[row.donor_id][row.world] for row, own in pairs)
+        for row, own in pairs:
+            assert row.distance == pytest.approx(
+                math.hypot(
+                    row.distance_m / 100.0, own - copied[row.donor_id][row.world]
+                )
+            )
 
 
 class TestEntryPoint:
