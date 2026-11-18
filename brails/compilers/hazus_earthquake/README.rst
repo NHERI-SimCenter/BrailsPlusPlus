@@ -482,8 +482,8 @@ output step writes over its merge. Every part other than the footprints, and
 every record, holds each footprint's centroid as its coordinates. The
 footprints and the views hold the footprint polygons. A world's source is
 composed from its parts and records by ``compose_source``, and the worlds of a
-view by ``WorldAssembler``, as the section "Composition and assembly" of
-``brails/compilers/README.rst`` states.
+view are added to it by ``AssetInventory.add_world``, as the section
+"Composition and assembly" of ``brails/compilers/README.rst`` states.
 The run ends with the manifest.
 
 Worlds

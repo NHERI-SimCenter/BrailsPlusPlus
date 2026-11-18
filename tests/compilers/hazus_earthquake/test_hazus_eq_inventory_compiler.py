@@ -635,14 +635,16 @@ class TestOutput:
     ) -> None:
         """A write of every world assembles nothing new, and a write of one world assembles."""
         result = compiled(n_worlds=3)
-        assembler = mock.Mock(wraps=hc.WorldAssembler)
-        monkeypatch.setattr(hc, 'WorldAssembler', assembler)
+        adder = mock.create_autospec(
+            AssetInventory.add_world, side_effect=AssetInventory.add_world
+        )
+        monkeypatch.setattr(AssetInventory, 'add_world', adder)
         result.write(tmp_path / 'all.geojson', keep_partly_excluded=True)
         result.write(tmp_path / 'default.geojson')
-        assert not assembler.called
+        assert not adder.called
         assert result.freeze.manifest() == result.manifest
         result.write(tmp_path / 'world1.geojson', world=1)
-        assert assembler.called
+        assert adder.called
 
     @pytest.mark.parametrize(
         ('world', 'error', 'message'),
@@ -1128,6 +1130,27 @@ class TestStep4:
                 seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
         assert impute.call_args.kwargs['validate'] is hc._plausible
+
+    def test_every_footprint_dropped(
+        self, study_area: CompilerInputs, tmp_path: Path
+    ) -> None:
+        """A run that drops every footprint writes the report rows of every world."""
+        # d01 alone: a small footprint far from the park, which the budget drops.
+        footprints = AssetInventory()
+        footprints.add_asset('d01', study_area.footprints.inventory['d01'])
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+        ).compile(study_area._replace(footprints=footprints, local=None))
+        assert not result.inventory.inventory
+        result.write(tmp_path / 'empty.geojson')
+        summary = json.loads(
+            (tmp_path / 'empty_report_summary.json').read_text(encoding='utf-8')
+        )
+        assert summary['worlds'] == {'computed': 3, 'written': [0, 1, 2]}
+        exclusions = pd.read_parquet(tmp_path / 'empty_report_exclusions.parquet')
+        assert sorted(exclusions['world']) == [0, 1, 2]
+        assert set(exclusions['category']) == {'dropped'}
+        assert written(tmp_path / 'empty.geojson') == {}
 
     def test_dropped(self, compiled: object) -> None:
         """A small footprint far from the mobile-home park, with no occupancy class, is dropped."""

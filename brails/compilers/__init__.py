@@ -40,7 +40,6 @@ from .hazus_earthquake.hazus_eq_inventory_compiler import (
 )
 from .hazus_earthquake.pair_redraw import PairRedraw
 from .hazus_earthquake.resolution_loop import ComposedScreen, ResolutionLoop
-from .world_assembly import WorldAssembler
 
 __all__ = [
     'CompilationReport',
@@ -49,5 +48,4 @@ __all__ = [
     'HazusEQInventoryCompiler',
     'PairRedraw',
     'ResolutionLoop',
-    'WorldAssembler',
 ]

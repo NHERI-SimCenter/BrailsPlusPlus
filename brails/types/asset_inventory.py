@@ -68,6 +68,7 @@ from typing import Any
 
 from importlib.metadata import PackageNotFoundError, version
 
+import numpy as np
 import pandas as pd
 from shapely import box
 from shapely.geometry import GeometryCollection, mapping
@@ -456,6 +457,35 @@ def is_probabilistic_feature(
         return len(value) > 0 and isinstance(value[0], list)
 
     return True
+
+
+def _same_value(first: object, second: object) -> bool:
+    """
+    Check whether two feature values are equal by the rule of add_world.
+
+    Args:
+        first (object):
+            A feature value of one world.
+        second (object):
+            A feature value of another world, compared with ``first``.
+
+    Returns:
+        bool:
+            ``True`` if the values are equal.
+    """
+    if first is second:
+        return True
+    if isinstance(first, float) and isinstance(second, float):
+        return first == second or (math.isnan(first) and math.isnan(second))
+    if isinstance(first, np.ndarray) or isinstance(second, np.ndarray):
+        try:
+            return bool(np.array_equal(first, second))
+        except (TypeError, ValueError):
+            return False
+    try:
+        return bool(first == second)
+    except (TypeError, ValueError):
+        return False
 
 
 class Asset:
@@ -3282,6 +3312,188 @@ class AssetInventory:
             realization.inventory[i] = new_asset
 
         return realization
+
+    def add_world(self, realization: AssetInventory) -> None:  # noqa: C901
+        """
+        Add a world to the inventory from an inventory of that world alone.
+
+        Called on an inventory without assets, ``add_world`` takes the
+        realization as world 0. It copies each of the realization's
+        :class:`Asset` objects, with a feature dict of its own, in ascending
+        order of the asset id as a string, and takes the realization's
+        vector features. Each later realization becomes the next world, and
+        :attr:`n_pw` counts the worlds added. A later realization must hold
+        the same asset ids at the same coordinates as world 0. A feature
+        keeps one value while every world agrees and becomes a list of one
+        value per world where one differs, and a key a realization lacks
+        counts as ``None`` there. The inventory shares coordinates and
+        feature values with the realizations, so a caller must not change a
+        realization after adding it.
+
+        Values are compared with ``==``. Two float NaN are equal, arrays are
+        compared with ``numpy.array_equal``, and values ``==`` cannot compare
+        are unequal. A realization may hold a list only as the value of a
+        vector feature, since the inventory holds one value per world as a
+        list. Realizations without assets leave the inventory without assets
+        and at one world.
+
+        Args:
+            realization (AssetInventory):
+                The world to add, an inventory of one possible world.
+
+        Raises:
+            TypeError:
+                If ``realization`` is not an :class:`AssetInventory`.
+            ValueError:
+                If the realization has more than one possible world or holds
+                a list as the value of a feature that is not a vector
+                feature; if its asset ids or coordinates differ from those
+                of world 0; or if a vector feature, of the inventory or of
+                the realization, whose world 0 value is not a list takes a
+                different value in the realization or is already held as one
+                value per world. The message names up to
+                :data:`MAX_REPORTED_WORLD_PROBLEMS` assets. A refused
+                realization changes nothing.
+        """
+        if not isinstance(realization, AssetInventory):
+            msg = (
+                'A realization must be an AssetInventory, not '
+                f'{type(realization).__name__}.'
+            )
+            raise TypeError(msg)
+        if realization.n_pw != 1:
+            msg = f'A realization must have one world, not {realization.n_pw}.'
+            raise ValueError(msg)
+        vector = list(
+            dict.fromkeys([*self.vector_features, *realization.vector_features])
+        )
+        listing = sorted(
+            (
+                (asset_id, key)
+                for asset_id, asset in realization.inventory.items()
+                for key, value in asset.features.items()
+                if is_probabilistic_feature(key, value, vector)
+            ),
+            key=lambda pair: (_merge_id_order(pair[0]), pair[1]),
+        )
+        if listing:
+            listing = [
+                f'asset {asset_id!r}, feature {key!r}' for asset_id, key in listing
+            ]
+            msg = (
+                f'A realization holds a list as the value of {len(listing)} '
+                'feature(s) that are not vector features: '
+                f'{_report_first_problems(listing, "; ")}.'
+            )
+            raise ValueError(msg)
+        if not self.inventory:
+            for asset_id in sorted(realization.inventory, key=_merge_id_order):
+                record = copy(realization.inventory[asset_id])
+                record.features = dict(record.features)
+                self.inventory[asset_id] = record
+            self.n_pw = 1
+            self.vector_features = list(realization.vector_features)
+            return
+
+        world = self.n_pw
+        held, given = self.inventory.keys(), realization.inventory.keys()
+        missing = sorted(held - given, key=_merge_id_order)
+        extra = sorted(given - held, key=_merge_id_order)
+        if missing or extra:
+            problems = [f'{asset_id!r} missing' for asset_id in missing] + [
+                f'{asset_id!r} not in world 0' for asset_id in extra
+            ]
+            msg = (
+                f'World {world} holds assets other than those of world 0: '
+                f'{_report_first_problems(problems, ", ")}.'
+            )
+            raise ValueError(msg)
+        moved = [
+            asset_id
+            for asset_id in held
+            if realization.inventory[asset_id].coordinates
+            != self.inventory[asset_id].coordinates
+        ]
+        if moved:
+            moved = [repr(i) for i in sorted(moved, key=_merge_id_order)]
+            msg = (
+                f'World {world} holds {len(moved)} asset(s) with coordinates '
+                f'other than in world 0: {_report_first_problems(moved, ", ")}.'
+            )
+            raise ValueError(msg)
+
+        def listed(key: str, value: object) -> bool:
+            """
+            Say whether a held value is a list of one value per world added.
+
+            Args:
+                key (str):
+                    The feature the value belongs to.
+                value (object):
+                    The value the inventory holds for the feature.
+
+            Returns:
+                bool:
+                    ``True`` if the value holds one value for each world
+                    added so far.
+            """
+            return (
+                world > 1
+                and is_probabilistic_feature(key, value, self.vector_features)
+                and len(value) == world
+            )
+
+        # A vector feature held per world must hold a list in world 0, since
+        # a list of per-world values is distinguished from a vector value by
+        # its first item. A feature already held per world before a
+        # realization declares it a vector is checked through its world 0
+        # entry.
+        ambiguous = []
+        for asset_id in given:
+            features = self.inventory[asset_id].features
+            for key in vector:
+                value = features.get(key)
+                per_world = listed(key, value)
+                first = value[0] if per_world else value
+                if not isinstance(first, list) and (
+                    per_world
+                    or not _same_value(
+                        first, realization.inventory[asset_id].features.get(key)
+                    )
+                ):
+                    ambiguous.append((asset_id, key))
+        if ambiguous:
+            ambiguous = [
+                f'asset {asset_id!r}, feature {key!r}'
+                for asset_id, key in sorted(
+                    ambiguous,
+                    key=lambda pair: (_merge_id_order(pair[0]), pair[1]),
+                )
+            ]
+            msg = (
+                f'World {world} gives a new value to {len(ambiguous)} vector '
+                'feature(s) whose world 0 value is not a list, so their values '
+                'per world could not be told apart from one vector value: '
+                f'{_report_first_problems(ambiguous, "; ")}.'
+            )
+            raise ValueError(msg)
+
+        for asset_id, asset in realization.inventory.items():
+            features = asset.features
+            held_features = self.inventory[asset_id].features
+            for key in [
+                *held_features,
+                *(key for key in features if key not in held_features),
+            ]:
+                value = features.get(key)
+                current = held_features.get(key)
+                # A new list, so that no list the caller holds is extended.
+                if listed(key, current):
+                    held_features[key] = [*current, value]
+                elif not _same_value(current, value):
+                    held_features[key] = [current] * world + [value]
+        self.vector_features = vector
+        self.n_pw = world + 1
 
     def update_world_realization(
         self, id: int, world_realization: AssetInventory

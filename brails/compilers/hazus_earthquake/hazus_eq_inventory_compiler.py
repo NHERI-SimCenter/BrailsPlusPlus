@@ -71,7 +71,7 @@ from brails.compilers.hazus_earthquake.resolution_loop import (
     ComposedScreen,
     ResolutionLoop,
 )
-from brails.compilers.world_assembly import WorldAssembler, compose_source
+from brails.compilers.world_assembly import compose_source
 from brails.constants import (
     BLOCK_GROUP_KEY,
     BUILDING_TYPE_KEY,
@@ -426,7 +426,9 @@ class CompilationResult(NamedTuple):
             equal in every world is held as a scalar and otherwise as a list
             in world order. Each asset holds
             :data:`~brails.constants.EXCLUDED_KEY`, true in a world it was
-            excluded from.
+            excluded from. A run that keeps no footprint gives an inventory
+            without assets, which holds one world. :meth:`write` still
+            writes the report rows of every world the run computed.
         report (CompilationReport):
             The ledger, the exclusions, the timings and the summary.
         freeze (StageFreeze):
@@ -522,9 +524,14 @@ class CompilationResult(NamedTuple):
                 was frozen, in which case every file but the manifest has been
                 written.
         """
-        # The report checks world numbers against the worlds of the run.
+        # The report holds the run's worlds and checks world numbers against
+        # them. An inventory without assets holds one world, whatever the run
+        # computed, so the worlds are not read from the inventory.
         worlds = (
-            tuple(range(self.inventory.n_pw))
+            tuple(
+                self.report._selected_worlds(None)  # noqa: SLF001
+                or range(self.inventory.n_pw)
+            )
             if world is None
             else (self.report._checked_world(world),)  # noqa: SLF001
         )
@@ -605,17 +612,17 @@ class CompilationResult(NamedTuple):
                 as_is = False
                 break
         if not as_is:
-            assembler = WorldAssembler(len(worlds))
-            for position, w in enumerate(worlds):
+            assembled = AssetInventory()
+            for w in worlds:
                 realization = self.inventory.get_world_realization(w)
                 for asset_id in left_out:
                     realization.inventory.pop(asset_id, None)
                 excluded = excluded_in.get(w, set())
                 for asset_id, asset in realization.inventory.items():
                     asset.features[EXCLUDED_KEY] = asset_id in excluded
-                assembler.add(position, realization)
+                assembled.add_world(realization)
                 del realization
-            written = assembler.result().inventory
+            written = assembled.inventory
         inventory = AssetInventory(
             vector_features=list(self.inventory.vector_features)
         )
@@ -1642,7 +1649,7 @@ class HazusEQInventoryCompiler:
             STAGE_STEP6_DRAWN,
             STAGE_STEP6_DERIVED,
         )
-        assemblers = {stage: WorldAssembler(n_computed) for stage in stages}
+        assembled = {stage: AssetInventory() for stage in stages}
         fits, redraws, resolutions = [], [], []
         for world in range(n_computed):
             started = time.perf_counter()
@@ -1781,7 +1788,7 @@ class HazusEQInventoryCompiler:
             )
 
             for stage in stages:
-                assemblers[stage].add(world, _padded(kept, centroids, new[stage]))
+                assembled[stage].add_world(_padded(kept, centroids, new[stage]))
             del frozen, working
             report.set_timing('step6', time.perf_counter() - started, world=world)
 
@@ -1789,17 +1796,13 @@ class HazusEQInventoryCompiler:
         logs['pair_redraw'] = pd.concat(redraws, ignore_index=True)
         logs['resolution'] = pd.DataFrame(resolutions)
         started = time.perf_counter()
-        sources.add_withheld(
-            STAGE_STEP6_WITHHELD, assemblers[STAGE_STEP6_WITHHELD].result()
-        )
+        sources.add_withheld(STAGE_STEP6_WITHHELD, assembled[STAGE_STEP6_WITHHELD])
         sources.add_part(
-            'imputed', STAGE_STEP6_IMPUTED, assemblers[STAGE_STEP6_IMPUTED].result()
+            'imputed', STAGE_STEP6_IMPUTED, assembled[STAGE_STEP6_IMPUTED]
         )
+        sources.add_part('drawn', STAGE_STEP6_DRAWN, assembled[STAGE_STEP6_DRAWN])
         sources.add_part(
-            'drawn', STAGE_STEP6_DRAWN, assemblers[STAGE_STEP6_DRAWN].result()
-        )
-        sources.add_part(
-            'derived', STAGE_STEP6_DERIVED, assemblers[STAGE_STEP6_DERIVED].result()
+            'derived', STAGE_STEP6_DERIVED, assembled[STAGE_STEP6_DERIVED]
         )
         report.set_timing('step6_parts_freeze', time.perf_counter() - started)
 
@@ -2068,7 +2071,7 @@ class HazusEQInventoryCompiler:
         kept = list(view.inventory)
         exclusions = report.exclusions
         stages = (STAGE_STEP7_IMPUTED, STAGE_STEP7_DRAWN, STAGE_STEP7_DERIVED)
-        assemblers = {stage: WorldAssembler(n_computed) for stage in stages}
+        assembled = {stage: AssetInventory() for stage in stages}
         picks, resolutions = [], []
         for world in range(n_computed):
             started = time.perf_counter()
@@ -2132,7 +2135,7 @@ class HazusEQInventoryCompiler:
                 }
             )
             for stage in stages:
-                assemblers[stage].add(world, _padded(kept, centroids, new[stage]))
+                assembled[stage].add_world(_padded(kept, centroids, new[stage]))
             del frozen, working
             report.set_timing('step7', time.perf_counter() - started, world=world)
 
@@ -2144,7 +2147,7 @@ class HazusEQInventoryCompiler:
             ('drawn', STAGE_STEP7_DRAWN),
             ('derived', STAGE_STEP7_DERIVED),
         ):
-            sources.add_part(label, stage, assemblers[stage].result())
+            sources.add_part(label, stage, assembled[stage])
         report.set_timing('step7_parts_freeze', time.perf_counter() - started)
 
     def _step8(
@@ -2200,7 +2203,7 @@ class HazusEQInventoryCompiler:
             # one, by NSI's sqft, never by a local GrossArea.
             gross_area_key=NSI_GROSS_AREA_KEY,
         )
-        assembler = WorldAssembler(n_computed)
+        value_record = AssetInventory()
         rows = []
         for world in range(n_computed):
             started = time.perf_counter()
@@ -2237,12 +2240,12 @@ class HazusEQInventoryCompiler:
                         ].features[REPLACEMENT_COST_KEY],
                         _VALUE_SOURCE_KEY: SOURCE_LABELS[code],
                     }
-            assembler.add(world, _padded(kept, centroids, values))
+            value_record.add_world(_padded(kept, centroids, values))
             report.set_timing('step8', time.perf_counter() - started, world=world)
         logs['value'] = pd.concat(rows, ignore_index=True)
 
         started = time.perf_counter()
-        sources.freeze.freeze(STAGE_STEP8_VALUES, assembler.result())
+        sources.freeze.freeze(STAGE_STEP8_VALUES, value_record)
         # Withhold the join's value from every later merge, so that no
         # building keeps it, except where a local value outranks it.
         kept_ids = set(kept) - {
@@ -2290,15 +2293,15 @@ class HazusEQInventoryCompiler:
             n_computed (int):
                 The number of worlds computed.
         """
-        assembler = WorldAssembler(n_computed)
+        view = AssetInventory()
         for world in range(n_computed):
             started = time.perf_counter()
-            assembler.add(world, sources.merge(world))
+            view.add_world(sources.merge(world))
             report.set_timing(
                 f'{stage}_view', time.perf_counter() - started, world=world
             )
         started = time.perf_counter()
-        sources.freeze.freeze(stage, assembler.result())
+        sources.freeze.freeze(stage, view)
         report.set_timing(f'{stage}_freeze', time.perf_counter() - started)
 
     def _output(  # noqa: C901
@@ -2355,7 +2358,7 @@ class HazusEQInventoryCompiler:
         # (asset id, world, property) of each property a compiled building
         # lacks where it applies.
         lacking: list[tuple[str, int, str]] = []
-        assembler = WorldAssembler(n_computed)
+        output = AssetInventory()
         for world in range(n_computed):
             started = time.perf_counter()
             merged = sources.merge(world)
@@ -2436,7 +2439,7 @@ class HazusEQInventoryCompiler:
                     f'local {BUILDING_TYPE_KEY} other than the letter of their '
                     f'{STRUCTURE_TYPE_KEY}.'
                 )
-            assembler.add(world, merged)
+            output.add_world(merged)
             del merged
             report.set_timing(
                 STAGE_OUTPUT, time.perf_counter() - started, world=world
@@ -2460,7 +2463,6 @@ class HazusEQInventoryCompiler:
                 },
             }
         )
-        output = assembler.result()
         started = time.perf_counter()
         sources.freeze.freeze(STAGE_OUTPUT, output)
         report.set_timing(f'{STAGE_OUTPUT}_freeze', time.perf_counter() - started)

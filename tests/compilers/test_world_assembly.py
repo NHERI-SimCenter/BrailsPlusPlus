@@ -31,7 +31,7 @@
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 
-"""Tests for the composition of one world's sources and the assembly of worlds."""
+"""Tests for the composition of one source of one world from frozen stages."""
 
 from __future__ import annotations
 
@@ -40,19 +40,13 @@ from typing import Any
 import numpy as np
 import pytest
 
-import brails.compilers
-from brails.compilers.world_assembly import WorldAssembler, compose_source
+from brails.compilers.world_assembly import compose_source
 from brails.constants import (
     DROPPED_KEY,
     OCCUPANCY_KEY,
-    STRUCTURE_TYPE_KEY,
     YEAR_BUILT_KEY,
 )
-from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
-    SOURCES_KEY,
-)
 from brails.types.asset_inventory import Asset, AssetInventory
-from brails.utils import Importer
 from brails.utils.stage_freeze import StageFreeze
 
 POINT = {'a': [[-122.40, 37.70]], 'b': [[-122.41, 37.70]], 'c': [[-122.42, 37.70]]}
@@ -100,146 +94,6 @@ def features(source: AssetInventory) -> dict[str, dict[str, Any]]:
             Features per asset id.
     """
     return {asset_id: asset.features for asset_id, asset in source.inventory.items()}
-
-
-class TestWorldAssembler:
-    """Realizations assemble into one inventory over the worlds."""
-
-    def test_collapse_and_expand(self) -> None:
-        """Equal values stay one value, and the first difference makes a list."""
-        assembler = WorldAssembler(np.int64(3))
-        realizations = [
-            inventory(
-                {
-                    'b': {OCCUPANCY_KEY: 'RES1', YEAR_BUILT_KEY: year},
-                    'a': {OCCUPANCY_KEY: 'COM1', STRUCTURE_TYPE_KEY: kind},
-                }
-            )
-            for year, kind in [(1950, 'W1'), (1950, 'C1'), (1960, 'W1')]
-        ]
-        for world, realization in enumerate(realizations):
-            assembler.add(np.int64(world), realization)
-        result = assembler.result()
-        assert features(realizations[0]) == {
-            'b': {OCCUPANCY_KEY: 'RES1', YEAR_BUILT_KEY: 1950},
-            'a': {OCCUPANCY_KEY: 'COM1', STRUCTURE_TYPE_KEY: 'W1'},
-        }
-        assert features(result) == {
-            'a': {OCCUPANCY_KEY: 'COM1', STRUCTURE_TYPE_KEY: ['W1', 'C1', 'W1']},
-            'b': {OCCUPANCY_KEY: 'RES1', YEAR_BUILT_KEY: [1950, 1950, 1960]},
-        }
-        assert list(result.inventory) == ['a', 'b']
-        assert result.n_pw == 3
-        result.validate_possible_worlds()
-        assert assembler.result() is result
-
-    def test_absent_key_and_markers(self) -> None:
-        """An absent key is None there, and a marker is a value like any other."""
-        assembler = WorldAssembler(2)
-        assembler.add(
-            0, inventory({'a': {YEAR_BUILT_KEY: 1950, 'Height': None, 'Area': 'NA'}})
-        )
-        assembler.add(
-            1,
-            inventory(
-                {'a': {STRUCTURE_TYPE_KEY: 'W1', 'Height': None, 'Roof': None}}
-            ),
-        )
-        assert features(assembler.result())['a'] == {
-            YEAR_BUILT_KEY: [1950, None],
-            'Height': None,
-            'Area': ['NA', None],
-            STRUCTURE_TYPE_KEY: [None, 'W1'],
-        }
-
-    def test_nan_arrays_and_vector_features(self) -> None:
-        """NaN equals NaN, arrays compare by item, a vector value compares whole."""
-        assembler = WorldAssembler(2)
-        for world, units in enumerate([[1, 2], [3]]):
-            assembler.add(
-                world,
-                inventory(
-                    {
-                        'a': {
-                            'Area': float('nan'),
-                            SOURCES_KEY: np.array(
-                                [{'dataset': 'OSM'}], dtype=object
-                            ),
-                            'HousingUnits': [1, 2],
-                        },
-                        'b': {'HousingUnits': units},
-                    },
-                    vector_features=['HousingUnits'],
-                ),
-            )
-        result = assembler.result()
-        held = features(result)
-        assert np.isnan(held['a']['Area'])
-        assert isinstance(held['a'][SOURCES_KEY], np.ndarray)
-        assert held['a']['HousingUnits'] == [1, 2]
-        assert held['b']['HousingUnits'] == [[1, 2], [3]]
-        result.validate_possible_worlds()
-
-    def test_lists_and_vector_features(self) -> None:
-        """A list is one value, and a vector value that changes must be a list at position 0."""
-        assembler = WorldAssembler(2)
-        assembler.add(0, inventory({'a': {STRUCTURE_TYPE_KEY: ['C1']}}))
-        assembler.add(1, inventory({'a': {STRUCTURE_TYPE_KEY: 'C1'}}))
-        assert features(assembler.result())['a'] == {
-            STRUCTURE_TYPE_KEY: [['C1'], 'C1']
-        }
-        assembler = WorldAssembler(2)
-        assembler.add(0, inventory({'a': {'HousingUnits': [1, 2]}, 'b': {}}))
-        with pytest.raises(ValueError, match=r"asset 'b', feature 'HousingUnits'"):
-            assembler.add(1, inventory({'a': {}, 'b': {'HousingUnits': [1, 2]}}))
-        assembler.add(1, inventory({'a': {}, 'b': {}}))
-        assert features(assembler.result()) == {
-            'a': {'HousingUnits': [[1, 2], None]},
-            'b': {},
-        }
-        # A feature listed before a later realization declares it a vector.
-        assembler = WorldAssembler(3)
-        assembler.add(0, inventory({'a': {'Tags': 'x'}}, vector_features=[]))
-        assembler.add(1, inventory({'a': {'Tags': 'y'}}, vector_features=[]))
-        later = inventory({'a': {'Tags': ['z1', 'z2']}}, vector_features=['Tags'])
-        with pytest.raises(ValueError, match=r"asset 'a', feature 'Tags'"):
-            assembler.add(2, later)
-
-    def test_other_assets_or_coordinates_raise(self) -> None:
-        """A later position with other assets or coordinates raises, unapplied."""
-        assembler = WorldAssembler(2)
-        assembler.add(0, inventory({'a': {YEAR_BUILT_KEY: 1950}, 'b': {}}))
-        with pytest.raises(ValueError, match=r"'b' missing, 'c' not at position 0"):
-            assembler.add(1, inventory({'a': {YEAR_BUILT_KEY: 1960}, 'c': {}}))
-        moved = inventory({'a': {YEAR_BUILT_KEY: 1960}, 'b': {}})
-        moved.inventory['b'].coordinates = POINT['c']
-        with pytest.raises(
-            ValueError, match=r"coordinates other than at position 0: 'b'"
-        ):
-            assembler.add(1, moved)
-        assembler.add(1, inventory({'a': {YEAR_BUILT_KEY: 1950}, 'b': {}}))
-        assert features(assembler.result()) == {'a': {YEAR_BUILT_KEY: 1950}, 'b': {}}
-
-    def test_positions_in_order(self) -> None:
-        """Positions go in order from 0, each one world, and all before result."""
-        one = inventory({'a': {}})
-        assembler = WorldAssembler(2)
-        with pytest.raises(ValueError, match='position 0 is next'):
-            assembler.add(1, one)
-        with pytest.raises(ValueError, match='one world, not 2'):
-            assembler.add(0, inventory({'a': {}}, n_pw=2))
-        with pytest.raises(TypeError, match='AssetInventory'):
-            assembler.add(0, {'a': {}})
-        assembler.add(0, one)
-        with pytest.raises(ValueError, match='1 of 2 positions'):
-            assembler.result()
-        assembler.add(1, one)
-        with pytest.raises(ValueError, match='All 2 positions'):
-            assembler.add(2, one)
-        with pytest.raises(ValueError, match='at least 1'):
-            WorldAssembler(0)
-        with pytest.raises(TypeError, match='integer'):
-            WorldAssembler(2.0)
 
 
 @pytest.fixture
@@ -464,10 +318,3 @@ class TestComposeSource:
         given = {'parts': ['spine'], 'world': 0, 'label': 'nsi', **arguments}
         with pytest.raises(error, match=message):
             compose_source(freeze, **given)
-
-
-def test_discovered_and_exported() -> None:
-    """The Importer finds the class, and the package exports it."""
-    assert Importer().get_class('WorldAssembler') is WorldAssembler
-    assert 'WorldAssembler' in brails.compilers.__all__
-    assert brails.compilers.WorldAssembler is WorldAssembler

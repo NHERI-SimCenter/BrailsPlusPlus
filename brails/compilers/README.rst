@@ -90,10 +90,10 @@ imputed and ``D`` for drawn. Where no source holds a value, the character is
 ``SOURCE_CODE_NONE``, ``-``.
 
 A merge records which source holds a value, never the value, and writes one
-string per asset. The Hazus earthquake compiler merges each world separately
-and assembles the
-merges into one inventory with ``WorldAssembler``, for its views and its
-output. A building whose sources differ between worlds then holds a list of
+string per asset. The Hazus earthquake compiler merges the sources of each
+world separately and adds each world's merged inventory to one inventory with
+``AssetInventory.add_world``. Its views and its output are inventories built
+that way. A building whose sources differ between worlds then holds a list of
 strings, one per world. ``ReplacementCostImputer.impute`` writes the code of
 the value it gives in each world, so a building valued in one world and not in
 another also holds a list. ``read_source_string`` in
@@ -136,9 +136,10 @@ Composition and assembly
 ------------------------
 
 ``compose_source`` builds one source of one world from stages frozen in a
-``StageFreeze``, and ``WorldAssembler`` assembles one-world inventories into
-one inventory over the worlds. Both are in ``world_assembly.py`` beside this
-page. This section states how they run.
+``StageFreeze``, and ``AssetInventory.add_world`` adds one-world inventories,
+one world at a time, to an inventory over the worlds. ``compose_source`` is in
+``world_assembly.py`` beside this page, and ``add_world`` in
+``brails/types/asset_inventory.py``. This section states how they run.
 
 Composition
 ~~~~~~~~~~~
@@ -168,24 +169,31 @@ the coordinates.
 Assembly
 ~~~~~~~~
 
-``WorldAssembler.add`` copies the realization at position 0 asset by asset,
-the record and its feature dict but not the values. At a later position it
-first checks the asset ids, the coordinates and the vector features against
-those held, and then compares each feature of each asset. A feature stays
-one value while every position so far agrees. When a position first
-differs, the feature becomes a list, the earlier value repeated for the
-earlier positions, and later positions append to it. A missing marker such
-as ``'NA'`` is a value like any other.
+``add_world`` takes an inventory of one world, a realization, and adds it to
+the inventory it is called on. An inventory without assets takes the
+realization as its world 0, asset by asset, with a copy of each ``Asset`` and
+of its feature dict, but not of the values. Each later realization is the next
+world, and ``n_pw`` counts the worlds added. ``add_world`` first checks the
+realization's asset ids, coordinates and vector features against those held,
+and then compares each feature of each asset. A feature stays one value while
+every world so far agrees. When a world first differs, the feature becomes a
+list, the earlier value repeated for the earlier worlds, and later worlds
+append to it. A key a realization lacks counts as ``None`` in that world, and
+a missing marker such as ``'NA'`` is a value like any other.
 
 Values are compared with ``==``. Two float NaN are equal, two arrays are
 equal where ``numpy.array_equal`` finds them so, and values ``==`` cannot
-compare are not equal. A list is one value, compared whole. A vector
-feature, declared by any realization, whose value at position 0 is not a
-list cannot take another value later, since the result could not tell its
-list of positions from one vector value. The rule differs from
+compare are not equal. In a vector feature a list is one value, compared
+whole. A realization may hold a list only as the value of a vector feature,
+because the inventory holds one value per world as a list, and ``add_world``
+refuses a realization that holds one elsewhere. A vector feature such as
+``HousingUnits`` holds one value per world only as a list of lists, which is
+recognized by its first item. Where a vector feature's value in world 0 is not
+a list, for example ``None``, a later world cannot give it a different value,
+and ``add_world`` raises ``ValueError``. This holds whether the inventory or
+the realization declares the feature a vector. The rule differs from
 ``collapse_realizations`` in ``brails/utils/world_values.py``, which keeps a
 list where every world holds ``None`` and compares with ``==`` alone.
-
 
 The compilation report
 ----------------------
