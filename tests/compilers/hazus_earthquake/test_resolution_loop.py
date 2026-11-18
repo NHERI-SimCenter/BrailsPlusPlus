@@ -371,10 +371,10 @@ def test_inferers_that_name_a_driver_differently_are_refused(key: str) -> None:
     ('features', 'complete_tables', 'acted_on', 'expected'),
     [
         (TALL_WOOD_STORE, True, False, 'conflict'),
-        (TALL_WOOD_STORE, False, False, 'empty_cell'),
+        (TALL_WOOD_STORE, False, False, 'no_plausible_value'),
         (WOOD_TOWER, True, False, 'conflict'),
         (TALL_WOOD_STORE, False, True, 'conflict'),
-        (UNREADABLE_YEAR_STORE, True, True, 'missing_driver'),
+        (UNREADABLE_YEAR_STORE, True, True, 'missing_input'),
         ({**STORE, YEAR_BUILT_KEY: [1960, 1970]}, True, False, 'unsupported'),
     ],
     ids=(
@@ -547,7 +547,7 @@ def test_a_local_or_footprint_type_is_never_withheld(type_source: str) -> None:
             )
         ),
     ],
-    ids=('empty_cell', 'other_feature_named'),
+    ids=('no_plausible_value', 'other_feature_named'),
 )
 def test_an_nsi_type_the_refusal_does_not_name_is_not_withheld(
     screen: ComposedScreen,
@@ -601,7 +601,7 @@ def test_a_type_withholding_cannot_admit_is_restored_once() -> None:
         (
             {**MASONRY_WALKUP, YEAR_BUILT_KEY: 'unknown'},
             STAGE_DESIGN_LEVEL,
-            'missing_driver',
+            'missing_input',
         ),
     ],
     ids=('per_world_list', 'unreadable_year'),
@@ -643,7 +643,7 @@ def test_a_declared_vector_feature_is_read_as_one_value() -> None:
 
     _, report = _resolve({'a': features}, {}, vector_features=[OCCUPANCY_KEY])
 
-    assert report.exclusions.iloc[0]['category'] == 'missing_driver'
+    assert report.exclusions.iloc[0]['category'] == 'missing_input'
 
 
 @pytest.mark.parametrize(

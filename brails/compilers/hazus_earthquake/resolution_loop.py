@@ -246,7 +246,7 @@ def _category(
     if verdict.diagnosis == DIAGNOSIS_UNSUPPORTED:
         return 'unsupported'
     if verdict.diagnosis == DIAGNOSIS_INVALID:
-        return 'missing_driver'
+        return 'missing_input'
     if acted_on:
         return 'conflict'
     if verdict.stage != STAGE_STRUCTURE_TYPE:
@@ -258,7 +258,7 @@ def _category(
     vector = frozenset(vector_features)
     filled = inferer.cell_fill(cell, vector_features=vector) is not None
     if not filled and inferer.cell_is_unpublished(cell, vector_features=vector):
-        return 'empty_cell'
+        return 'no_plausible_value'
     return 'conflict'
 
 

@@ -244,7 +244,7 @@ A category says why a step excluded a building, in terms that do not depend on
 the step. Each category below has a general definition, followed by examples
 from the Hazus earthquake compiler.
 
-``missing_driver``
+``missing_input``
     A value the step reads is absent, or holds a value the step cannot use,
     and no earlier step supplied a usable one. Examples: a block group without
     ACS counts, a local building type letter other than W, S, C, M and MH, and
@@ -255,7 +255,7 @@ from the Hazus earthquake compiler.
     Example: a feature held as one value per world, where the step reads the
     value of one world.
 
-``empty_cell``
+``no_plausible_value``
     The step's model has no value for the building's combination of inputs,
     whatever else the building holds. Example: a structure type table with no
     distribution for the building's occupancy class, story band and era.
@@ -275,7 +275,7 @@ from the Hazus earthquake compiler.
     other values. The design level inferer in BRAILS never refuses a building
     this way, so with BRAILS's own inferers this category stays empty.
 
-``certificate``
+``fails_schema``
     The compiled building fails the check against the schema of the output.
     Example: a building that the Hazus 5.1 input schema of the damage and loss
     model library refuses.

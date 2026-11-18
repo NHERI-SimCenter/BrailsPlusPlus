@@ -594,7 +594,7 @@ class TestOutput:
         report = result.report
         assert result.inventory.inventory['h01'].features[EXCLUDED_KEY] is False
         report.record_exclusion(
-            'h01', world=1, stage='year', category='missing_driver', detail='x'
+            'h01', world=1, stage='year', category='missing_input', detail='x'
         )
         for world in range(3):
             report.record_exclusion(
@@ -1580,7 +1580,7 @@ class TestYearsAndTypes:
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'l02']
         assert sorted(rows['world']) == [0, 1, 2]
-        assert set(rows['category']) == {'certificate'}
+        assert set(rows['category']) == {'fails_schema'}
         assert result.inventory.inventory['l02'].features[EXCLUDED_KEY] is True
         assert (
             result.inventory.inventory['l02'].features[DESIGN_LEVEL_KEY]
@@ -1651,7 +1651,7 @@ class TestYearsAndTypes:
         )
         rows = result.report.exclusions
         rows = rows[rows['stage'] == 'year']
-        assert set(rows['category']) == {'missing_driver'}
+        assert set(rows['category']) == {'missing_input'}
         assert set(rows['world']) == {0, 1}
         assert 'h01' in set(rows['asset_id'])
         assert 'u07' not in set(rows['asset_id'])
@@ -1682,7 +1682,7 @@ class TestYearsAndTypes:
                 row = rows.loc[(asset_id, world)]
                 assert (row['stage'], row['category'], row['diagnosis']) == (
                     stage,
-                    'missing_driver',
+                    'missing_input',
                     'invalid',
                 )
 
@@ -1791,7 +1791,7 @@ class TestYearAndValueOfTheRest:
         rows = rows[rows['asset_id'] == 'f01']
         assert sorted(rows['world']) == [0, 1, 2]
         assert set(rows['stage']) == {'nonresidential_year'}
-        assert set(rows['category']) == {'missing_driver'}
+        assert set(rows['category']) == {'missing_input'}
         assert OCCUPANCY_KEY not in features_in(result.inventory, 0)['f01']
 
     def test_values(self, compiled: object) -> None:
@@ -1909,7 +1909,7 @@ class TestYearAndValueOfTheRest:
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'f01']
         assert list(zip(rows['stage'], rows['category'])) == [
-            ('value', 'missing_driver')
+            ('value', 'missing_input')
         ]
         assert 'no_class' in rows['detail'].iloc[0]
 
@@ -1926,7 +1926,7 @@ class TestYearAndValueOfTheRest:
             assert features[EXCLUDED_KEY] is True
             assert REPLACEMENT_COST_KEY not in features
         valued = rows[rows['stage'] == 'value']
-        assert set(valued['category']) == {'missing_driver'}
+        assert set(valued['category']) == {'missing_input'}
         assert set(valued.index) <= set(zip(without['asset_id'], without['world']))
 
     def test_certificate_takes_no_value(self, compiled: object) -> None:
@@ -1934,7 +1934,7 @@ class TestYearAndValueOfTheRest:
         result = compiled(n_worlds=3)
         rows = result.report.exclusions
         assert set(rows.loc[rows['asset_id'] == 'u08', 'category']) == {
-            'certificate'
+            'fails_schema'
         }
         log = result.logs['value']
         assert set(log.loc[log['asset_id'] == 'u08', 'world']) == {0, 1, 2}

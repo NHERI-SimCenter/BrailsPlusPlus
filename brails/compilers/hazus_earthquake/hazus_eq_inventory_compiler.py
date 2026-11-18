@@ -262,12 +262,12 @@ REPORT_STAGES = (
 # DROPPED_CATEGORY. The section "Exclusion categories" of the compilers'
 # README defines each.
 EXCLUSION_CATEGORIES = (
-    'missing_driver',
+    'missing_input',
     'unsupported',
     'conflict',
-    'empty_cell',
+    'no_plausible_value',
     'undetermined',
-    'certificate',
+    'fails_schema',
 )
 
 # The Hazus input schema every compiled realization is checked against.
@@ -284,9 +284,9 @@ CARVE_OUT_METHOD = '5.1'
 # do not cover, and one ResidentialNeighborYearSampler finds infeasible has no
 # residential neighbor with a construction year.
 _DIAGNOSIS_CATEGORY = {
-    DIAGNOSIS_INVALID: 'missing_driver',
+    DIAGNOSIS_INVALID: 'missing_input',
     DIAGNOSIS_UNSUPPORTED: 'unsupported',
-    DIAGNOSIS_INFEASIBLE: 'missing_driver',
+    DIAGNOSIS_INFEASIBLE: 'missing_input',
 }
 
 # The feature of the record of step 8's values holding the source label of
@@ -2230,7 +2230,7 @@ class HazusEQInventoryCompiler:
                         asset_id,
                         world=world,
                         stage='value',
-                        category='missing_driver',
+                        category='missing_input',
                         detail=f'the value step gives no {REPLACEMENT_COST_KEY}: '
                         f'{outcome}',
                     )
@@ -2380,7 +2380,7 @@ class HazusEQInventoryCompiler:
                     asset_id,
                     world=world,
                     stage='certificate',
-                    category='certificate',
+                    category='fails_schema',
                     detail='; '.join(messages),
                 )
                 excluded = excluded | {asset_id}

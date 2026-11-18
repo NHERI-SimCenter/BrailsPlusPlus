@@ -231,8 +231,9 @@ The exclusion category
 
 A refused asset that the caller excludes is filed under one of the categories
 in ``EXCLUSION_CATEGORIES`` of ``hazus_eq_inventory_compiler.py``. The section
-"Exclusion categories" of ``brails/compilers/README.rst`` defines each one. An
-unsupported refusal is ``unsupported`` and an invalid one ``missing_driver``.
+"Exclusion categories" of ``brails/compilers/README.rst`` defines each one. A
+refusal with the diagnosis ``unsupported`` is filed as ``unsupported``, and one
+with the diagnosis ``invalid`` as ``missing_input``.
 An infeasible refusal is ``conflict`` where the caller acted on a feature the
 refusal named and the asset was refused again. The resolution loop below is
 such a caller, but with the structure type inferer in BRAILS it never reaches
@@ -242,7 +243,7 @@ and, in the West Coast tables, era that selects a distribution of structure
 types. The Hazus manual prints that
 distribution for some cells and BRAILS's completed tables fill others, and
 the structure type inferer's ``cell_fill`` and ``cell_is_unpublished``
-report which applies. The refusal is ``empty_cell`` where the cell has
+report which applies. The refusal is ``no_plausible_value`` where the cell has
 neither a printed nor a filled distribution. It is ``conflict`` where the
 cell has one, since the asset's own features then rule out every structure
 type in it. An infeasible refusal at the design level stage is
@@ -296,7 +297,7 @@ the asset and the ``restored`` path is not reached. The path serves a
 structure type inferer for which the building type is a required driver,
 which BRAILS does not hold. A building type the inferer cannot read refuses
 the asset as invalid and names no feature, so it is not withheld, and the
-asset is filed as ``missing_driver``.
+asset is filed as ``missing_input``.
 
 Hazus earthquake inventory compiler
 -----------------------------------
@@ -416,7 +417,7 @@ NSI's, the join's sum of NSI's or a local one, by ``NSIGrossArea``, NSI's
 local value therefore gives a rate only on a building whose NSI records give a
 ``sqft``, and a local ``GrossArea`` enters neither a rate nor the area a rate
 multiplies. A building the imputer leaves without a value is excluded from that
-world as ``missing_driver``. The step keeps a local value as it is. Where that
+world as ``missing_input``. The step keeps a local value as it is. Where that
 value gives a rate, the rate also values each building that names the local
 building as its donor or draws it as a neighbor. The step replaces every other
 value: the join's ``ReplacementCost`` is withheld from every later merge, and
