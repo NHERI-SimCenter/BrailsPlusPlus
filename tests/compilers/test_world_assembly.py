@@ -40,13 +40,17 @@ from typing import Any
 import numpy as np
 import pytest
 
-from brails.compilers.world_assembly import compose_source_parts
+from brails.compilers.world_assembly import (
+    _build_inventory,
+    _select_assets,
+    compose_source_parts,
+)
 from brails.constants import (
     DROPPED_KEY,
     OCCUPANCY_KEY,
     YEAR_BUILT_KEY,
 )
-from brails.types.asset_inventory import Asset, AssetInventory
+from brails.types.asset_inventory import AssetInventory
 from brails.utils.stage_freeze import StageFreeze
 
 POINT = {'a': [[-122.40, 37.70]], 'b': [[-122.41, 37.70]], 'c': [[-122.42, 37.70]]}
@@ -73,11 +77,13 @@ def inventory(
         AssetInventory:
             The inventory, its assets inserted in the order given.
     """
-    inv = AssetInventory(vector_features=vector_features)
-    for asset_id, features in records.items():
-        inv.add_asset(asset_id, Asset(asset_id, POINT[asset_id], dict(features)))
-    inv.n_pw = n_pw
-    return inv
+    return _build_inventory(
+        records,
+        POINT,
+        {asset_id: dict(features) for asset_id, features in records.items()},
+        n_pw=n_pw,
+        vector_features=vector_features,
+    )
 
 
 def features(source: AssetInventory) -> dict[str, dict[str, Any]]:
@@ -307,3 +313,23 @@ class TestComposeSource:
         given = {'parts': ['spine'], 'world': 0, 'label': 'nsi', **arguments}
         with pytest.raises(error, match=message):
             compose_source_parts(freeze, **given)
+
+
+def test_selected_assets_are_the_source_s_own() -> None:
+    """A selection holds the source's own assets, with the vector features asked for."""
+    source = inventory({'a': {}, 'b': {}, 'c': {}}, vector_features=['Tags'])
+    selected = _select_assets(source, ['c', 'a'])
+    assert list(selected.inventory) == ['c', 'a']
+    assert selected.inventory['a'] is source.inventory['a']
+    assert selected.vector_features == ['Tags']
+    assert _select_assets(source, ['b'], vector_features=[]).vector_features == []
+
+
+def test_built_assets_without_features_get_dicts_of_their_own() -> None:
+    """A built asset holds the dict given for it, and one without gets a new dict."""
+    given = {YEAR_BUILT_KEY: 1950}
+    built = _build_inventory(['a', 'b', 'c'], POINT, {'a': given}, n_pw=2)
+    assert built.inventory['a'].features is given
+    assert built.inventory['b'].features == {}
+    assert built.inventory['b'].features is not built.inventory['c'].features
+    assert built.n_pw == 2

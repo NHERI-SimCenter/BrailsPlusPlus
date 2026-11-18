@@ -47,6 +47,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple
 
+from brails.compilers.world_assembly import _build_inventory
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INVALID,
     DIAGNOSIS_OK,
@@ -54,7 +55,6 @@ from brails.inferers.inference_diagnosis import (
 )
 from brails.types.asset_inventory import (
     SOURCE_CODES,
-    Asset,
     AssetInventory,
     is_missing_value,
 )
@@ -170,16 +170,12 @@ def _one_asset_inventory(
             An inventory holding that one asset under
             :data:`SCREEN_ASSET_ID`.
     """
-    inventory = AssetInventory(vector_features=list(vector_features))
-    inventory.add_asset(
-        SCREEN_ASSET_ID,
-        Asset(
-            SCREEN_ASSET_ID,
-            [list(point) for point in SCREEN_COORDINATES],
-            dict(features),
-        ),
+    return _build_inventory(
+        [SCREEN_ASSET_ID],
+        {SCREEN_ASSET_ID: [list(point) for point in SCREEN_COORDINATES]},
+        {SCREEN_ASSET_ID: dict(features)},
+        vector_features=vector_features,
     )
-    return inventory
 
 
 def _add_design_levels(
@@ -352,7 +348,8 @@ class ComposedScreen:
         """
         first = self.design_level_inferer.check(inventory)
         verdicts = {}
-        taken = AssetInventory(vector_features=list(inventory.vector_features))
+        # Copies of the features of the assets the design level check passes.
+        copied = {}
         for asset_id in inventory.get_asset_ids():
             row = first.loc[asset_id]
             if row['diagnosis'] != DIAGNOSIS_OK:
@@ -360,14 +357,13 @@ class ComposedScreen:
                 continue
             verdicts[asset_id] = ScreenVerdict(DIAGNOSIS_OK)
             _, features = inventory.get_asset_features(asset_id)
-            taken.add_asset(
-                asset_id,
-                Asset(
-                    asset_id,
-                    [list(point) for point in SCREEN_COORDINATES],
-                    dict(features),
-                ),
-            )
+            copied[asset_id] = dict(features)
+        taken = _build_inventory(
+            copied,
+            {a: [list(point) for point in SCREEN_COORDINATES] for a in copied},
+            copied,
+            vector_features=inventory.vector_features,
+        )
         _add_design_levels(self.design_level_inferer, taken)
         second = self.structure_type_inferer.check(taken)
         for asset_id in taken.get_asset_ids():
@@ -492,7 +488,8 @@ class ResolutionLoop:
                 raise ValueError(msg)
 
         vector_features = frozenset(inventory.vector_features)
-        resolved = AssetInventory(vector_features=list(inventory.vector_features))
+        # The features of each asset admitted, a new dict per asset.
+        admitted_features: dict = {}
         excluded: list = []
         given_up: dict = {}
         for asset_id, verdict in self.screen.screen_inventory(inventory).items():
@@ -561,9 +558,14 @@ class ResolutionLoop:
                     resolvable_by=verdict.candidates,
                 )
                 continue
-            _, coordinates = inventory.get_asset_coordinates(asset_id)
-            resolved.add_asset(asset_id, Asset(asset_id, coordinates, admitted))
+            admitted_features[asset_id] = admitted
 
+        resolved = _build_inventory(
+            admitted_features,
+            {a: inventory.inventory[a].coordinates for a in admitted_features},
+            admitted_features,
+            vector_features=inventory.vector_features,
+        )
         admitted_count = len(resolved.get_asset_ids())
         return ResolutionResult(
             resolved=resolved,

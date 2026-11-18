@@ -38,6 +38,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from brails.compilers.world_assembly import _build_inventory
 from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
     SOURCE_CODE_NONE,
@@ -95,13 +96,12 @@ def merged(
             The inventory, its assets inserted in ``order``.
     """
     positions = {asset_id: i for i, asset_id in enumerate(sorted(records))}
-    inv = AssetInventory()
-    for asset_id in order or sorted(records):
-        coordinates = square(20.0 * positions[asset_id], 0.0)
-        inv.add_asset(
-            asset_id, Asset(asset_id, coordinates, dict(records[asset_id]))
-        )
-    return inv
+    order = order or sorted(records)
+    return _build_inventory(
+        order,
+        {asset_id: square(20.0 * positions[asset_id], 0.0) for asset_id in order},
+        {asset_id: dict(records[asset_id]) for asset_id in order},
+    )
 
 
 def nsi_tall_industry(**features: Any) -> dict[str, Any]:

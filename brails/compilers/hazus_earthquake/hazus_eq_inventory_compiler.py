@@ -71,7 +71,11 @@ from brails.compilers.hazus_earthquake.resolution_loop import (
     ComposedScreen,
     ResolutionLoop,
 )
-from brails.compilers.world_assembly import compose_source_parts
+from brails.compilers.world_assembly import (
+    _build_inventory,
+    _select_assets,
+    compose_source_parts,
+)
 from brails.constants import (
     BLOCK_GROUP_KEY,
     BUILDING_TYPE_KEY,
@@ -154,10 +158,10 @@ from brails.scrapers.us_census_scrapers.census_tract_scraper import (
     CensusTractScraper,
 )
 from brails.types.asset_inventory import (
+    DEFAULT_VECTOR_FEATURES,
     HAZUS_EQ_SOURCE_FEATURES,
     SOURCE_CODES,
     SOURCE_LABELS,
-    Asset,
     AssetInventory,
     is_missing_value,
     read_source_string,
@@ -623,22 +627,22 @@ class CompilationResult(NamedTuple):
                 assembled.add_world(realization)
                 del realization
             written = assembled.inventory
-        inventory = AssetInventory(
-            vector_features=list(self.inventory.vector_features)
-        )
-        for asset_id, asset in written.items():
-            inventory.inventory[asset_id] = Asset(
-                asset_id,
-                asset.coordinates,
-                {
+        inventory = _build_inventory(
+            written,
+            {asset_id: asset.coordinates for asset_id, asset in written.items()},
+            {
+                asset_id: {
                     key: value
                     for key, value in asset.features.items()
                     if (key in selected or (everything and key != EXCLUDED_KEY))
                     # In one world, None marks a feature of another world.
                     and (world is None or value is not None)
-                },
-            )
-        inventory.n_pw = len(worlds)
+                }
+                for asset_id, asset in written.items()
+            },
+            n_pw=len(worlds),
+            vector_features=self.inventory.vector_features,
+        )
         inventory.write_to_geojson(str(path), integer_ids=integer_ids)
         self.report.save(
             path.with_name(f'{path.stem}_report.parquet'), worlds=worlds
@@ -762,43 +766,6 @@ class _WorldSources:
         return merged
 
 
-def _padded(
-    kept: Sequence[str],
-    centroids: Mapping[str, list[list[float]]],
-    values: Mapping[str, dict[str, Any]],
-    *,
-    n_pw: int = 1,
-    vector_features: Sequence[str] = (),
-) -> AssetInventory:
-    """
-    Build a part or record that holds every footprint the run kept.
-
-    Args:
-        kept (Sequence[str]):
-            The footprints the run kept, in the order the part holds them.
-        centroids (Mapping[str, list[list[float]]]):
-            Each footprint's centroid, the coordinates of its asset.
-        values (Mapping[str, dict[str, Any]]):
-            The features of the assets that hold any, shared with the part.
-        n_pw (int, optional):
-            The part's number of possible worlds.
-        vector_features (Sequence[str], optional):
-            The part's vector features.
-
-    Returns:
-        AssetInventory:
-            One asset per kept footprint, without features where ``values``
-            holds none.
-    """
-    part = AssetInventory(vector_features=list(vector_features))
-    for asset_id in kept:
-        part.inventory[asset_id] = Asset(
-            asset_id, centroids[asset_id], values.get(asset_id, {})
-        )
-    part.n_pw = n_pw
-    return part
-
-
 def _plausible(
     asset_id: object,  # noqa: ARG001
     world: int,  # noqa: ARG001
@@ -832,25 +799,6 @@ def _plausible(
     if is_missing_value(occupancy) or is_missing_value(stories):
         return True
     return not is_implausible(occupancy, stories)
-
-
-def _subset(source: AssetInventory, ids: Sequence[str]) -> AssetInventory:
-    """
-    Return an inventory of some assets of another, sharing their records.
-
-    Args:
-        source (AssetInventory):
-            The inventory the assets are taken from.
-        ids (Sequence[str]):
-            The assets.
-
-    Returns:
-        AssetInventory:
-            The assets, in the order given, with one possible world.
-    """
-    taken = AssetInventory(vector_features=list(source.vector_features))
-    taken.inventory = {asset_id: source.inventory[asset_id] for asset_id in ids}
-    return taken
 
 
 def _overlay(
@@ -1392,9 +1340,11 @@ class HazusEQInventoryCompiler:
         inferer = StoriesFromHeightInferer(length_unit=inputs.height_unit)
         verdicts = inferer.check(merged)
         logs['stories'] = verdicts.rename_axis('asset_id').reset_index()
-        passing = AssetInventory()
-        for asset_id in verdicts.index[verdicts['diagnosis'] == DIAGNOSIS_OK]:
-            passing.inventory[asset_id] = merged.inventory[asset_id]
+        passing = _select_assets(
+            merged,
+            verdicts.index[verdicts['diagnosis'] == DIAGNOSIS_OK],
+            vector_features=DEFAULT_VECTOR_FEATURES,
+        )
         counts = inferer.draw(passing)[STORIES_FROM_HEIGHT_KEY]
 
         derived: dict[str, dict[str, Any]] = {}
@@ -1432,26 +1382,45 @@ class HazusEQInventoryCompiler:
 
         # A footprint is reached where a source holds its occupancy class.
         # Donors are the reached footprints with a story count.
-        reached, unreached, donors = (
-            AssetInventory(),
-            AssetInventory(),
-            AssetInventory(),
-        )
-        relabel = {}
-        for asset_id, asset in merged.inventory.items():
-            source = SOURCE_LABELS.get(
+        occupancy_source = {
+            asset_id: SOURCE_LABELS.get(
                 read_source_string(asset_id, asset.features)[
                     _CODE_POSITION[OCCUPANCY_KEY]
                 ]
             )
-            if source not in _REACHED_SOURCES:
-                unreached.inventory[asset_id] = asset
-                continue
-            reached.inventory[asset_id] = asset
-            if not is_missing_value(asset.features.get(STORIES_KEY)):
-                donors.inventory[asset_id] = asset
-            if source in _RELABELED_SOURCES:
-                relabel[asset_id] = source
+            for asset_id, asset in merged.inventory.items()
+        }
+        reached = _select_assets(
+            merged,
+            (
+                a
+                for a, source in occupancy_source.items()
+                if source in _REACHED_SOURCES
+            ),
+            vector_features=DEFAULT_VECTOR_FEATURES,
+        )
+        unreached = _select_assets(
+            merged,
+            (
+                a
+                for a, source in occupancy_source.items()
+                if source not in _REACHED_SOURCES
+            ),
+            vector_features=DEFAULT_VECTOR_FEATURES,
+        )
+        donors = _select_assets(
+            reached,
+            (
+                a
+                for a, asset in reached.inventory.items()
+                if not is_missing_value(asset.features.get(STORIES_KEY))
+            ),
+        )
+        relabel = {
+            a: source
+            for a, source in occupancy_source.items()
+            if source in _RELABELED_SOURCES
+        }
 
         imputer = ObservedDonorImputer(**self.imputer_options, seed=self.seed)
         budget = ACSUnitBudget(
@@ -1490,7 +1459,9 @@ class HazusEQInventoryCompiler:
             allocation.gaps.loc[allocation.gaps['kind'] == GAP_NO_ACS, 'block_group']
         )
 
-        targets = AssetInventory()
+        # Each target holds a copy of its merged features, updated with the
+        # features the unit budget allocated.
+        target_features = {}
         for asset_id, asset in merged.inventory.items():
             if asset_id in dropped_ids:
                 continue
@@ -1502,10 +1473,13 @@ class HazusEQInventoryCompiler:
             budgeted = allocation.imputed.inventory.get(asset_id)
             if budgeted is not None:
                 features.update(budgeted.features)
-            targets.inventory[asset_id] = Asset(
-                asset_id, asset.coordinates, features
-            )
-        targets.n_pw = n_computed
+            target_features[asset_id] = features
+        targets = _build_inventory(
+            target_features,
+            {a: merged.inventory[a].coordinates for a in target_features},
+            target_features,
+            n_pw=n_computed,
+        )
         imputation = imputer.impute_stage(
             targets,
             donors,
@@ -1528,7 +1502,7 @@ class HazusEQInventoryCompiler:
 
         kept = sorted((a for a in merged.inventory if a not in dropped_ids), key=str)
         imputed = union_disjoint(allocation.imputed, imputation.imputed)
-        padded = _padded(
+        padded = _build_inventory(
             kept,
             centroids,
             {
@@ -1539,21 +1513,15 @@ class HazusEQInventoryCompiler:
             vector_features=imputed.vector_features,
         )
 
-        derived_part = AssetInventory()
-        for asset_id in sorted(derived, key=str):
-            derived_part.inventory[asset_id] = Asset(
-                asset_id, centroids[asset_id], derived[asset_id]
-            )
-        dropped_record = AssetInventory()
-        for asset_id in sorted(dropped_ids, key=str):
-            dropped_record.inventory[asset_id] = Asset(
-                asset_id, centroids[asset_id], {DROPPED_KEY: True}
-            )
-        withheld_record = AssetInventory()
-        for asset_id in sorted(withheld, key=str):
-            withheld_record.inventory[asset_id] = Asset(
-                asset_id, centroids[asset_id], withheld[asset_id]
-            )
+        derived_part = _build_inventory(sorted(derived, key=str), centroids, derived)
+        dropped_record = _build_inventory(
+            sorted(dropped_ids, key=str),
+            centroids,
+            {asset_id: {DROPPED_KEY: True} for asset_id in dropped_ids},
+        )
+        withheld_record = _build_inventory(
+            sorted(withheld, key=str), centroids, withheld
+        )
         sources.add_part('derived', STAGE_STEP4_DERIVED, derived_part)
         sources.freeze.freeze(STAGE_STEP4_DROPPED, dropped_record)
         sources.dropped = STAGE_STEP4_DROPPED
@@ -1597,7 +1565,7 @@ class HazusEQInventoryCompiler:
                 )
         return _Step4(imputer, inferer, targets, imputation.log)
 
-    def _step6(  # noqa: C901
+    def _step6(
         self,
         inputs: CompilerInputs,
         sources: _WorldSources,
@@ -1676,7 +1644,7 @@ class HazusEQInventoryCompiler:
                 if asset.features.get(OCCUPANCY_KEY) in UNIT_COUNT_CLASSES
                 and is_missing_value(asset.features.get(YEAR_BUILT_KEY))
             ]
-            verdicts = sampler.check(_subset(frozen, targets))
+            verdicts = sampler.check(_select_assets(frozen, targets))
             for row in verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK].itertuples():
                 excluded.add(row.Index)
                 report.record_exclusion(
@@ -1689,7 +1657,7 @@ class HazusEQInventoryCompiler:
                     resolvable_by=row.resolvable_by,
                 )
             passing = list(verdicts.index[verdicts['diagnosis'] == DIAGNOSIS_OK])
-            years = sampler.draw(_subset(frozen, passing))
+            years = sampler.draw(_select_assets(frozen, passing))
             for asset_id, year in years.items():
                 new[STAGE_STEP6_DRAWN][asset_id] = {YEAR_BUILT_KEY: int(year)}
                 _overlay(
@@ -1700,17 +1668,20 @@ class HazusEQInventoryCompiler:
                 )
 
             # The pair re-draw, with the observed donors of the frozen view.
-            donors = AssetInventory(vector_features=list(frozen.vector_features))
-            for asset_id, asset in frozen.inventory.items():
-                source = SOURCE_LABELS.get(
-                    read_source_string(asset_id, asset.features)[
-                        _CODE_POSITION[OCCUPANCY_KEY]
-                    ]
-                )
-                if source in _REACHED_SOURCES and not is_missing_value(
-                    asset.features.get(STORIES_KEY)
-                ):
-                    donors.inventory[asset_id] = asset
+            donors = _select_assets(
+                frozen,
+                [
+                    asset_id
+                    for asset_id, asset in frozen.inventory.items()
+                    if SOURCE_LABELS.get(
+                        read_source_string(asset_id, asset.features)[
+                            _CODE_POSITION[OCCUPANCY_KEY]
+                        ]
+                    )
+                    in _REACHED_SOURCES
+                    and not is_missing_value(asset.features.get(STORIES_KEY))
+                ],
+            )
             redraw = PairRedraw(imputer, donors, stories, world=world).redraw(
                 working
             )
@@ -1788,7 +1759,9 @@ class HazusEQInventoryCompiler:
             )
 
             for stage in stages:
-                assembled[stage].add_world(_padded(kept, centroids, new[stage]))
+                assembled[stage].add_world(
+                    _build_inventory(kept, centroids, new[stage], vector_features=())
+                )
             del frozen, working
             report.set_timing('step6', time.perf_counter() - started, world=world)
 
@@ -1897,7 +1870,7 @@ class HazusEQInventoryCompiler:
             and held(a, YEAR_BUILT_KEY)
             and not held(a, DESIGN_LEVEL_KEY)
         ]
-        checked = design.check(_subset(working, dated))
+        checked = design.check(_select_assets(working, dated))
         for row in checked[checked['diagnosis'] != DIAGNOSIS_OK].itertuples():
             excluded.add(row.Index)
             report.record_exclusion(
@@ -1910,7 +1883,7 @@ class HazusEQInventoryCompiler:
                 resolvable_by=row.resolvable_by,
             )
         usable = list(checked.index[checked['diagnosis'] == DIAGNOSIS_OK])
-        for asset_id, level in design.draw(_subset(working, usable)).items():
+        for asset_id, level in design.draw(_select_assets(working, usable)).items():
             derived.setdefault(asset_id, {})[DESIGN_LEVEL_KEY] = level
             _overlay(
                 asset_id,
@@ -1947,7 +1920,9 @@ class HazusEQInventoryCompiler:
                     type_sources[asset_id] = label
                     break
         resolution = loop.resolve(
-            _subset(working, untyped), report, building_type_sources=type_sources
+            _select_assets(working, untyped),
+            report,
+            building_type_sources=type_sources,
         )
         excluded.update(resolution.excluded)
         types = structure.draw(resolution.resolved)
@@ -1956,7 +1931,7 @@ class HazusEQInventoryCompiler:
 
         # Derive a height class for each asset that has a structure type and no
         # height class.
-        typed = AssetInventory()
+        height_class_inputs = {}
         for asset_id in candidates:
             structure_type = types.get(asset_id)
             if structure_type is None and held(asset_id, STRUCTURE_TYPE_KEY):
@@ -1969,16 +1944,15 @@ class HazusEQInventoryCompiler:
                 or held(asset_id, HEIGHT_CLASS_KEY)
             ):
                 continue
-            typed.inventory[asset_id] = Asset(
-                asset_id,
-                working.inventory[asset_id].coordinates,
-                {
-                    STRUCTURE_TYPE_KEY: structure_type,
-                    STORIES_KEY: working.inventory[asset_id].features.get(
-                        STORIES_KEY
-                    ),
-                },
-            )
+            height_class_inputs[asset_id] = {
+                STRUCTURE_TYPE_KEY: structure_type,
+                STORIES_KEY: working.inventory[asset_id].features.get(STORIES_KEY),
+            }
+        typed = _build_inventory(
+            height_class_inputs,
+            {a: working.inventory[a].coordinates for a in height_class_inputs},
+            height_class_inputs,
+        )
         classed = heights.check(typed)
         for row in classed[classed['diagnosis'] != DIAGNOSIS_OK].itertuples():
             excluded.add(row.Index)
@@ -1991,7 +1965,9 @@ class HazusEQInventoryCompiler:
                 detail=row.detail,
             )
         ok = list(classed.index[classed['diagnosis'] == DIAGNOSIS_OK])
-        for asset_id, height_class in heights.draw(_subset(typed, ok)).items():
+        for asset_id, height_class in heights.draw(
+            _select_assets(typed, ok)
+        ).items():
             if height_class is not None:
                 derived.setdefault(asset_id, {})[HEIGHT_CLASS_KEY] = height_class
 
@@ -2094,7 +2070,7 @@ class HazusEQInventoryCompiler:
                 and asset.features.get(OCCUPANCY_KEY) not in UNIT_COUNT_CLASSES
                 and is_missing_value(asset.features.get(YEAR_BUILT_KEY))
             ]
-            verdicts = sampler.check(_subset(frozen, targets))
+            verdicts = sampler.check(_select_assets(frozen, targets))
             for row in verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK].itertuples():
                 excluded.add(row.Index)
                 report.record_exclusion(
@@ -2107,7 +2083,7 @@ class HazusEQInventoryCompiler:
                     resolvable_by=row.resolvable_by,
                 )
             passing = list(verdicts.index[verdicts['diagnosis'] == DIAGNOSIS_OK])
-            picked = sampler.draw_details(_subset(frozen, passing))
+            picked = sampler.draw_details(_select_assets(frozen, passing))
             picks.append(
                 picked.rename_axis('asset_id').reset_index().assign(world=world)
             )
@@ -2135,7 +2111,9 @@ class HazusEQInventoryCompiler:
                 }
             )
             for stage in stages:
-                assembled[stage].add_world(_padded(kept, centroids, new[stage]))
+                assembled[stage].add_world(
+                    _build_inventory(kept, centroids, new[stage], vector_features=())
+                )
             del frozen, working
             report.set_timing('step7', time.perf_counter() - started, world=world)
 
@@ -2240,7 +2218,9 @@ class HazusEQInventoryCompiler:
                         ].features[REPLACEMENT_COST_KEY],
                         _VALUE_SOURCE_KEY: SOURCE_LABELS[code],
                     }
-            value_record.add_world(_padded(kept, centroids, values))
+            value_record.add_world(
+                _build_inventory(kept, centroids, values, vector_features=())
+            )
             report.set_timing('step8', time.perf_counter() - started, world=world)
         logs['value'] = pd.concat(rows, ignore_index=True)
 
@@ -2254,7 +2234,7 @@ class HazusEQInventoryCompiler:
             for asset_id, asset in sources.freeze.read(stage).inventory.items()
             if not is_missing_value(asset.features.get(REPLACEMENT_COST_KEY))
         }
-        withheld = AssetInventory()
+        withheld = {}
         for label, stage in (
             ('nsi', STAGE_JOIN_NSI),
             ('derived', STAGE_JOIN_DERIVED),
@@ -2263,10 +2243,10 @@ class HazusEQInventoryCompiler:
                 if asset_id in kept_ids and not is_missing_value(
                     asset.features.get(REPLACEMENT_COST_KEY)
                 ):
-                    withheld.inventory[asset_id] = Asset(
-                        asset_id, centroids[asset_id], {REPLACEMENT_COST_KEY: label}
-                    )
-        sources.add_withheld(STAGE_STEP8_WITHHELD, withheld)
+                    withheld[asset_id] = {REPLACEMENT_COST_KEY: label}
+        sources.add_withheld(
+            STAGE_STEP8_WITHHELD, _build_inventory(withheld, centroids, withheld)
+        )
         report.set_timing('step8_freeze', time.perf_counter() - started)
 
     def _view(
@@ -2364,12 +2344,9 @@ class HazusEQInventoryCompiler:
             merged = sources.merge_world(world)
             values = valued.get_world_realization(world).inventory
             excluded = excluded_in.get(world, set())
-            checked = AssetInventory(vector_features=list(merged.vector_features))
-            checked.inventory = {
-                a: asset
-                for a, asset in merged.inventory.items()
-                if a not in excluded
-            }
+            checked = _select_assets(
+                merged, (a for a in merged.inventory if a not in excluded)
+            )
             # The schema reads none of ReplacementCost, GrossArea and
             # BuildingType, which this step writes after the check.
             verdict = self._validator.validate(checked)

@@ -32,7 +32,7 @@
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 
 """
-Compose one source of one world from frozen stages.
+Compose a source from frozen stages, and select or build inventories of assets.
 
 .. autosummary::
 
@@ -48,16 +48,97 @@ from typing import TYPE_CHECKING, Any
 
 from brails.types.asset_inventory import (
     MAX_REPORTED_WORLD_PROBLEMS,
+    Asset,
     AssetInventory,
     is_missing_value,
     is_probabilistic_feature,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Hashable
+    from collections.abc import Hashable, Iterable, Mapping
 
-    from brails.types.asset_inventory import Asset
     from brails.utils.stage_freeze import StageFreeze
+
+
+def _select_assets(
+    source: AssetInventory,
+    ids: Iterable[Hashable],
+    *,
+    vector_features: Iterable[str] | None = None,
+) -> AssetInventory:
+    """
+    Return a new inventory holding the given assets of ``source`` themselves.
+
+    The result holds the source's own :class:`Asset` objects, not copies, so
+    a change to an asset's coordinates or features shows in both.
+    ``source`` must hold one possible world: the result declares one world
+    whatever ``source`` holds.
+
+    Args:
+        source (AssetInventory):
+            The inventory the assets are selected from.
+        ids (Iterable[Hashable]):
+            The ids of the assets to select, each held by ``source``, in the
+            order the result holds them.
+        vector_features (Iterable[str], optional):
+            The features whose values are vectors in the result. ``None``
+            declares those of ``source``.
+
+    Returns:
+        AssetInventory:
+            The selected assets, with one possible world.
+    """
+    selected = AssetInventory(
+        vector_features=list(
+            source.vector_features if vector_features is None else vector_features
+        )
+    )
+    selected.inventory = {asset_id: source.inventory[asset_id] for asset_id in ids}
+    return selected
+
+
+def _build_inventory(
+    ids: Iterable[Hashable],
+    coordinates: Mapping[Hashable, Any],
+    features: Mapping[Hashable, dict[str, Any]],
+    *,
+    n_pw: int = 1,
+    vector_features: Iterable[str] | None = None,
+) -> AssetInventory:
+    """
+    Build an inventory of new assets from their coordinates and features.
+
+    Each asset holds the coordinates and the feature dict given for it, not
+    copies, so a caller that must not share a feature dict passes a copy. An
+    id with no entry in ``features`` gets a new, empty feature dict.
+
+    Args:
+        ids (Iterable[Hashable]):
+            The ids of the assets to build, in the order the result holds
+            them.
+        coordinates (Mapping[Hashable, Any]):
+            The coordinates of each asset, by id.
+        features (Mapping[Hashable, dict[str, Any]]):
+            The feature dict of each asset that has features, by id.
+        n_pw (int, optional):
+            The number of possible worlds the features hold. Defaults to 1.
+        vector_features (Iterable[str], optional):
+            The features whose values are vectors. ``None`` declares the
+            default of :class:`AssetInventory`.
+
+    Returns:
+        AssetInventory:
+            One new asset per id.
+    """
+    built = AssetInventory(
+        vector_features=None if vector_features is None else list(vector_features)
+    )
+    for asset_id in ids:
+        built.inventory[asset_id] = Asset(
+            asset_id, coordinates[asset_id], features.get(asset_id, {})
+        )
+    built.n_pw = n_pw
+    return built
 
 
 def compose_source_parts(  # noqa: C901
