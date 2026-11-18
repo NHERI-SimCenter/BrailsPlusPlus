@@ -335,7 +335,8 @@ def _inventory_digest(inventory: AssetInventory) -> str:
     Return the digest of an inventory's canonical JSON.
 
     Assets and keys are sorted, so the digest does not depend on insertion
-    order.
+    order. The text is hashed one asset or housing unit at a time, so
+    computing the digest holds no copy of the whole inventory.
 
     Args:
         inventory (AssetInventory):
@@ -349,29 +350,36 @@ def _inventory_digest(inventory: AssetInventory) -> str:
         TypeError:
             If the inventory holds a value :func:`_canonical` refuses.
     """
-    document: dict[str, Any] = {
-        'assets': [
-            _entry(asset_id, inventory.inventory[asset_id], 'asset')
-            for asset_id in sorted(inventory.inventory, key=_merge_id_order)
-        ],
-        'n_pw': _canonical(inventory.n_pw, 'n_pw'),
-        'vector_features': sorted(
-            _canonical(list(inventory.vector_features), 'vector_features')
-        ),
-    }
+    # The hashed text is one JSON document with sorted keys and no spaces:
+    # {"assets":[...],"housing_units":[...],"n_pw":...,"vector_features":[...]},
+    # where "housing_units" appears only if the inventory holds them.
+    encode = json.JSONEncoder(
+        sort_keys=True, separators=(',', ':'), allow_nan=True
+    ).encode
+    hasher = hashlib.blake2b(digest_size=_DIGEST_SIZE)
+    hasher.update(b'{"assets":[')
+    for index, asset_id in enumerate(
+        sorted(inventory.inventory, key=_merge_id_order)
+    ):
+        text = encode(_entry(asset_id, inventory.inventory[asset_id], 'asset'))
+        hasher.update(((',' if index else '') + text).encode('utf-8'))
+    # Canonicalize n_pw and the vector features before the housing units, so
+    # that a refused value among them raises before one in a housing unit.
+    n_pw = encode(_canonical(inventory.n_pw, 'n_pw'))
+    vector_features = encode(
+        sorted(_canonical(list(inventory.vector_features), 'vector_features'))
+    )
+    hasher.update(b']')
     housing_units = inventory.housing_unit_inventory
     if housing_units is not None:
-        document['housing_units'] = [
-            _entry(unit_id, housing_units.inventory[unit_id], 'housing unit')
-            for unit_id in sorted(housing_units.inventory, key=_merge_id_order)
-        ]
-
-    text = json.dumps(
-        document, sort_keys=True, separators=(',', ':'), allow_nan=True
-    )
-    return hashlib.blake2b(
-        text.encode('utf-8'), digest_size=_DIGEST_SIZE
-    ).hexdigest()
+        hasher.update(b',"housing_units":[')
+        units = housing_units.inventory
+        for index, unit_id in enumerate(sorted(units, key=_merge_id_order)):
+            text = encode(_entry(unit_id, units[unit_id], 'housing unit'))
+            hasher.update(((',' if index else '') + text).encode('utf-8'))
+        hasher.update(b']')
+    hasher.update(f',"n_pw":{n_pw},"vector_features":{vector_features}}}'.encode())
+    return hasher.hexdigest()
 
 
 def _entry(item_id: Any, item: Any, kind: str) -> dict[str, Any]:  # noqa: ANN401

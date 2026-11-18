@@ -302,12 +302,104 @@ class TestRecordedOrder:
             StageFreeze.load_manifest(path)
 
 
+FOOTPRINT = [[-122.42, 37.77], [-122.41, 37.77], [-122.41, 37.78], [-122.42, 37.77]]
+CENTROID = [[-122.415, 37.775]]
+
+# One inventory of each shape a stage can take, the compiler's among them.
+STAGE_SHAPES = {
+    'spine part': inventory(
+        [
+            (
+                '9q8yyk8yuv',
+                FOOTPRINT,
+                {
+                    'height': 7.5,
+                    'overture_id': 'a1',
+                    'sources': [{'dataset': 'OpenStreetMap', 'confidence': None}],
+                },
+            ),
+            (
+                '9q8yyk8yuw',
+                FOOTPRINT,
+                {'height': None, 'overture_id': 'a2', 'sources': []},
+            ),
+        ]
+    ),
+    'per-world part, padded': inventory(
+        [
+            ('9q8yyk8yuv', CENTROID, {'YearBuilt': [1921, 1934, 1921]}),
+            ('9q8yyk8yuw', CENTROID, {}),
+            ('9q8yyk8yux', CENTROID, {'YearBuilt': 1950}),
+        ],
+        n_pw=3,
+    ),
+    'withheld record': inventory(
+        [
+            (
+                '9q8yyk8yuv',
+                CENTROID,
+                {'GrossArea': 'nsi', 'ReplacementCost': 'derived'},
+            ),
+            ('9q8yyk8yuw', CENTROID, {'NumberOfStories': ['nsi', None, 'nsi']}),
+        ],
+        n_pw=3,
+    ),
+    'dropped record': inventory([('9q8yyk8yuw', CENTROID, {})]),
+    'view': inventory(
+        [
+            (
+                '9q8yyk8yuv',
+                FOOTPRINT,
+                {
+                    'OccupancyClass': ['RES1', 'RES3A', 'RES1'],
+                    'NumberOfStories': 2,
+                    'PlanArea': float('nan'),
+                    'GrossArea': 2.0,
+                    'ReplacementCost': np.float32(1.5e5),
+                    'StructureType': 'W1',
+                    'Excluded': [False, True, False],
+                    'Name': 'Caf\u00e9',
+                    'Plan': {'Rings': [3, 4], 'Source': 'footprint'},
+                    'Vector': [0.5, 0.25],
+                    'Pairs': [1, 2],
+                },
+            ),
+            (17, CENTROID, {'OccupancyClass': 'COM1', 'NumberOfStories': None}),
+        ],
+        n_pw=3,
+        vector_features=['Vector', 'Pairs'],
+    ),
+    'empty stage': AssetInventory(),
+}
+STAGE_SHAPES['housing units'] = sample()
+# Three units, inserted in an order other than the sorted one ('1', '10', '2').
+UNITS = HousingUnitInventory()
+for unit_id in ('2', '10', '1'):
+    UNITS.add_housing_unit(unit_id, HousingUnit({'income': 50000, 'size': 3}))
+STAGE_SHAPES['housing units'].set_housing_unit_inventory(UNITS, validate=False)
+# Their digests, computed outside the module.
+PINNED_DIGESTS = {
+    'dropped record': 'dc927b313fb500e6e4056454846a3b05',
+    'empty stage': 'b13019be762b43a841145038cec74e3b',
+    'housing units': 'bcb1f6b42c1407059968acd7eb788845',
+    'per-world part, padded': '71fbefc960fcae2ef418a9919290b729',
+    'spine part': 'f7a607d5b291c4ced9ca43816e8a77ec',
+    'view': '57aa2756b68bc2efcb1f53b1b344c4e6',
+    'withheld record': 'ed653a8009a74eb3c10eb60f533119e1',
+}
+
+
 class TestDigest:
     """The digest is a function of the content alone, in canonical form."""
 
     def test_golden_value(self) -> None:
         """The digest of the sample matches its pinned value."""
         assert digest_of(sample()) == GOLDEN_DIGEST
+
+    @pytest.mark.parametrize('shape', sorted(STAGE_SHAPES))
+    def test_each_stage_shape_keeps_its_pinned_digest(self, shape: str) -> None:
+        """Each shape of stage keeps its pinned digest."""
+        assert digest_of(STAGE_SHAPES[shape]) == PINNED_DIGESTS[shape]
 
     def test_insertion_order_of_assets_and_features_does_not_matter(self) -> None:
         """The insertion order of assets and features does not matter."""
