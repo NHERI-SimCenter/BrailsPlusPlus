@@ -1382,7 +1382,7 @@ class HazusEQInventoryCompiler:
         report: CompilationReport,
     ) -> dict[str, list[list[float]]]:
         """
-        Run step 1: block groups and footprint features, frozen as the spine.
+        Run s01: block groups and footprint features, frozen as the spine.
 
         With :attr:`merge_stacked`, the stacked footprints are merged first,
         and the rest of the step reads the merged set.
@@ -1484,7 +1484,7 @@ class HazusEQInventoryCompiler:
         centroids: Mapping[str, list[list[float]]],
     ) -> None:
         """
-        Run steps 2 and 3: join NSI points to the frozen footprints.
+        Run s02: join NSI points to the frozen footprints.
 
         Args:
             inputs (CompilerInputs):
@@ -1633,7 +1633,7 @@ class HazusEQInventoryCompiler:
         imputer: ObservedDonorImputer,
     ) -> UnitBudgetResult:
         """
-        Run s04: the unit budget, which also drops footprints left without units.
+        Run s04: the unit budget, which drops footprints left without units.
 
         The section "The run" of the README beside this module states the
         procedure.
@@ -2145,9 +2145,10 @@ class HazusEQInventoryCompiler:
         Give each building its design level, structure type and height class.
 
         This runs in every world and also applies the W1 carve-out. Each
-        world's draws read that world merged after s07, and a building that
-        an earlier step excluded from the world, today only s06, takes none. The section "The run"
-        of the README beside this module states the procedure.
+        world's draws read that world merged after s07, and a building that an
+        earlier step excluded from the world, today only s06, takes none. The
+        section "The run" of the README beside this module states the
+        procedure.
 
         Args:
             sources (_WorldSources):
@@ -2465,7 +2466,11 @@ class HazusEQInventoryCompiler:
         imputer: ObservedDonorImputer,
     ) -> None:
         """
-        Run step 7 in every world: the year of each building left without one.
+        Run s09 and s10: years built, then structure, for buildings without a year.
+
+        s09 draws a year built for each building without one, and s10 gives
+        those buildings their design levels, structure types and height
+        classes.
 
         The section "The run" of the README beside this module states the
         procedure.
@@ -2473,7 +2478,8 @@ class HazusEQInventoryCompiler:
         Args:
             sources (_WorldSources):
                 The sources, to which the parts are added as
-                :data:`STAGE_S09_NONRESIDENTIAL_YEAR`, :data:`STAGE_S10_NONRESIDENTIAL_STRUCTURE` and
+                :data:`STAGE_S09_NONRESIDENTIAL_YEAR`,
+                :data:`STAGE_S10_NONRESIDENTIAL_STRUCTURE` and
                 :data:`STAGE_S10_DERIVED`.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``neighbor_year`` and
@@ -2776,7 +2782,7 @@ class HazusEQInventoryCompiler:
         report: CompilationReport,
     ) -> pd.DataFrame:
         """
-        Run s12 in one world: check every building not yet excluded against the schema.
+        Run s12 in a world: check buildings not excluded against the schema.
 
         The schema reads none of ``ReplacementCost``, ``GrossArea`` and
         ``BuildingType``, which s15 writes after the check.

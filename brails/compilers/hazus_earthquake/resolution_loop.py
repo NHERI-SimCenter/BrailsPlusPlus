@@ -138,9 +138,10 @@ class ResolutionResult(NamedTuple):
     Attributes:
         resolved (AssetInventory):
             The admitted assets, with copies of the features they pass the
-            screen with, whose values are shared with the input inventory.
-            A withheld building type is absent. Where the input carries the design level, the
-            structure type draw reads this inventory as it is.
+            screen with, whose values are shared with the input inventory. A
+            withheld building type is absent. Where the input carries the
+            design level, the structure type draw reads this inventory as it
+            is.
         excluded (list):
             The ids of the excluded assets, in the order of the input's
             ids.
@@ -451,16 +452,15 @@ class ResolutionLoop:
     Withhold the NSI building type of a refused asset and screen it again.
 
     The loop screens a merged inventory through
-    :meth:`ComposedScreen.screen_inventory`. Where a refusal names the
-    building type and :data:`WITHHELD_SOURCE` holds it, the type is
-    withheld and the asset screened again, the loop's one action. An
-    unsupported asset is excluded without action. Every other refused
-    asset, and one still refused without its type, is excluded in the
-    world of the screen's structure type inferer. It reads an inventory of
-    one possible world and raises ``ValueError`` for an inventory of
-    several. It draws nothing and does not change the inventory it reads. The section
-    "Resolution loop" of the README beside this module states what is
-    recorded and how an exclusion is filed.
+    :meth:`ComposedScreen.screen_inventory`. Where a refusal names the building
+    type and :data:`WITHHELD_SOURCE` holds it, the type is withheld and the
+    asset screened again, the loop's one action. An unsupported asset is
+    excluded without action. Every other refused asset, and one still refused
+    without its type, is excluded in the world of the screen's structure type
+    inferer. It reads an inventory of one possible world and raises
+    ``ValueError`` for an inventory of several. It draws nothing and does not
+    change the inventory it reads. The section "Resolution loop" of the README
+    beside this module states what is recorded and how an exclusion is filed.
     """
 
     def __init__(
@@ -546,9 +546,9 @@ class ResolutionLoop:
 
         Raises:
             ValueError:
-                If the inventory holds a number of possible worlds other
-                than one, or if ``building_type_sources`` lacks an asset that holds a
-                building type, gives one for an asset that holds none, or
+                If the inventory holds a number of possible worlds other than
+                one, or if ``building_type_sources`` lacks an asset that holds
+                a building type, gives one for an asset that holds none, or
                 gives a label that is not a source.
         """
         _require_one_world(inventory, 'resolution loop')

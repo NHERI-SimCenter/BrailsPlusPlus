@@ -438,9 +438,9 @@ class ReplacementCostImputer(Imputation):
         zero there gets no value, logged as
         :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_NO_AREA`.
         The same-class neighbor draw still locates a building by its
-        footprint, so a building that takes a neighbor's rate and whose
-        coordinates enclose no area also gets no value, logged as
-        ``no_area`` without an area or an area source.
+        footprint, so a building that would take a neighbor's rate and whose
+        coordinates enclose no area cannot be located and gets no value. Its
+        log row holds that outcome, with no area and no area source.
 
         Args:
             freeze (StageFreeze):
@@ -770,7 +770,8 @@ class ReplacementCostImputer(Imputation):
                     donor_id=draw.donor_id,
                     distance_m=draw.distance_m,
                 )
-                # A building the draw cannot locate has no area either.
+                # A building the draw cannot locate gets no value, and its log
+                # row holds no area.
                 if draw.outcome == OUTCOME_NO_AREA:
                     row.update(area_source=None, footprint_gross_area_sqft=math.nan)
                 if draw.donor_id is not None:
