@@ -72,6 +72,9 @@ from brails.compilers.hazus_earthquake.resolution_loop import (
     FAILS_SCHEMA_CATEGORY,
     MISSING_INPUT_CATEGORY,
     NO_PLAUSIBLE_VALUE_CATEGORY,
+    STAGE_DESIGN_LEVEL,
+    STAGE_RESOLUTION,
+    STAGE_STRUCTURE_TYPE,
     UNDETERMINED_CATEGORY,
     UNSUPPORTED_CATEGORY,
     ComposedScreen,
@@ -276,6 +279,11 @@ REPORT_STAGES = (
     's08_height_class',
     's08_carve_out',
     's09_nonresidential_year',
+    's10_design_level',
+    's10_resolution',
+    's10_structure_type',
+    's10_height_class',
+    's10_carve_out',
     's12_schema_check',
     's13_replacement_cost',
     's14_building_type',
@@ -2217,6 +2225,8 @@ class HazusEQInventoryCompiler:
         excluded: set[str],
         derived: dict[str, dict[str, Any]],
         drawn: dict[str, dict[str, Any]],
+        *,
+        step: str = 's08',
     ) -> dict[str, int]:
         """
         Give assets their design levels, structure types and height classes.
@@ -2249,6 +2259,11 @@ class HazusEQInventoryCompiler:
                 The world's new derived values, written per asset.
             drawn (dict[str, dict[str, Any]]):
                 The world's new drawn values, written per asset.
+            step (str, optional):
+                The label of the step the report files the rows under, the
+                prefix of each report stage: ``'s08'`` for the buildings with
+                a year before s09, ``'s10'`` for those s09 gives one.
+                Defaults to ``'s08'``.
 
         Returns:
             dict[str, int]:
@@ -2304,7 +2319,7 @@ class HazusEQInventoryCompiler:
             report.record_exclusion(
                 row.Index,
                 world=world,
-                stage='s08_design_level',
+                stage=f'{step}_design_level',
                 category=_DIAGNOSIS_CATEGORY[row.diagnosis],
                 diagnosis=row.diagnosis,
                 detail=row.detail,
@@ -2326,7 +2341,14 @@ class HazusEQInventoryCompiler:
         structure = HazusEQStructureTypeInferer(
             self.state, seed=self.seed, world=world, complete_tables=True
         )
-        loop = ResolutionLoop(ComposedScreen(design, structure))
+        loop = ResolutionLoop(
+            ComposedScreen(design, structure),
+            report_stages={
+                STAGE_DESIGN_LEVEL: f'{step}_design_level',
+                STAGE_STRUCTURE_TYPE: f'{step}_structure_type',
+                STAGE_RESOLUTION: f'{step}_resolution',
+            },
+        )
         without_structure_type = [
             a
             for a in candidates
@@ -2391,7 +2413,7 @@ class HazusEQInventoryCompiler:
             report.record_exclusion(
                 row.Index,
                 world=world,
-                stage='s08_height_class',
+                stage=f'{step}_height_class',
                 category=_DIAGNOSIS_CATEGORY[row.diagnosis],
                 diagnosis=row.diagnosis,
                 detail=row.detail,
@@ -2419,7 +2441,7 @@ class HazusEQInventoryCompiler:
                 report.record_action(
                     asset_id,
                     DESIGN_LEVEL_KEY,
-                    stage='s08_carve_out',
+                    stage=f'{step}_carve_out',
                     action='derived',
                     world=world,
                     old=levels[asset_id],
@@ -2545,6 +2567,7 @@ class HazusEQInventoryCompiler:
                         excluded,
                         new[STAGE_S10_DERIVED],
                         new[STAGE_S10_NONRESIDENTIAL_STRUCTURE],
+                        step='s10',
                     ),
                 }
             )

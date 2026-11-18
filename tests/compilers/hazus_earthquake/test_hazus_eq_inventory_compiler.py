@@ -2188,6 +2188,37 @@ class TestYearAndValueOfTheRest:
         assert 'c02' not in withheld
 
 
+class TestStructureStages:
+    """s08 and s10 file their rows under report stages of their own."""
+
+    def test_s10_files_under_its_own_stages(self) -> None:
+        """A building s09 gives a year is filed under s10, every other under s08."""
+        # c05 is non-residential and has no year. NSI's MH, which no COM1
+        # structure type has, makes s10's loop withhold the letter.
+        inputs = build_inputs()
+        inputs.nsi_points.inventory[28].features['bldgtype'] = 'MH'
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+        ).compile(inputs)
+        picks = result.logs['neighbor_year']
+        dated_by_s09 = set(zip(picks['asset_id'], picks['world']))
+        seen = set()
+        for frame in (result.report.records, result.report.exclusions):
+            for row in frame.itertuples():
+                prefix = row.stage[:4]
+                if prefix not in ('s08_', 's10_'):
+                    continue
+                seen.add(prefix)
+                in_s10 = (row.asset_id, row.world) in dated_by_s09
+                assert prefix == ('s10_' if in_s10 else 's08_'), row
+        assert seen == {'s08_', 's10_'}
+        records = result.report.records
+        rows = records[records['asset_id'] == 'c05']
+        assert list(zip(rows['world'], rows['stage'], rows['action'])) == [
+            (world, 's10_resolution', 'withheld') for world in range(3)
+        ]
+
+
 class TestLastSteps:
     """The gross area, the schema check, the value, the letter and the output."""
 

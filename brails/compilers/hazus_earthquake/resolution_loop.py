@@ -461,7 +461,12 @@ class ResolutionLoop:
     recorded and how an exclusion is filed.
     """
 
-    def __init__(self, screen: ComposedScreen) -> None:
+    def __init__(
+        self,
+        screen: ComposedScreen,
+        *,
+        report_stages: Mapping[str, str] | None = None,
+    ) -> None:
         """
         Set up the loop with the screen it tests against.
 
@@ -471,8 +476,28 @@ class ResolutionLoop:
         Args:
             screen (ComposedScreen):
                 The screen every attempt is tested against.
+            report_stages (Mapping[str, str], optional):
+                The stage of the report that rows of each of the loop's
+                stages are filed under, keyed by :data:`STAGE_DESIGN_LEVEL`,
+                :data:`STAGE_STRUCTURE_TYPE` or :data:`STAGE_RESOLUTION`, for
+                a caller that runs the loop in more than one step. Defaults
+                to ``None``, which files each under the loop's own name.
+
+        Raises:
+            ValueError:
+                If ``report_stages`` holds a key other than those three.
         """
+        unknown = sorted(
+            set(report_stages or {}) - {*SCREEN_STAGES, STAGE_RESOLUTION}
+        )
+        if unknown:
+            msg = (
+                f'report_stages holds {unknown}, which are not stages of the '
+                f'loop: {[*SCREEN_STAGES, STAGE_RESOLUTION]}.'
+            )
+            raise ValueError(msg)
         self.screen = screen
+        self.report_stages = dict(report_stages or {})
 
     def resolve(
         self,
@@ -550,7 +575,7 @@ class ResolutionLoop:
                 report.record_action(
                     asset_id,
                     key,
-                    stage=STAGE_RESOLUTION,
+                    stage=self.report_stages.get(STAGE_RESOLUTION, STAGE_RESOLUTION),
                     action='withheld',
                     world=world,
                     old=features[key],
@@ -573,7 +598,9 @@ class ResolutionLoop:
                     report.record_action(
                         asset_id,
                         key,
-                        stage=STAGE_RESOLUTION,
+                        stage=self.report_stages.get(
+                            STAGE_RESOLUTION, STAGE_RESOLUTION
+                        ),
                         action='restored',
                         world=world,
                         new=features[key],
@@ -583,12 +610,13 @@ class ResolutionLoop:
                     detail = f'{verdict.detail}; without {key}: {retry.detail}'
             if admitted is None:
                 excluded.append(asset_id)
+                # An asset the loop took no action on was excluded by the
+                # stage that refused it.
+                stage = STAGE_RESOLUTION if acted_on else verdict.stage
                 report.record_exclusion(
                     asset_id,
                     world=world,
-                    # An asset the loop took no action on was excluded by
-                    # the stage that refused it.
-                    stage=STAGE_RESOLUTION if acted_on else verdict.stage,
+                    stage=self.report_stages.get(stage, stage),
                     category=_exclusion_category(
                         self.screen,
                         verdict,

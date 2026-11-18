@@ -408,8 +408,10 @@ occupancy classes. It reads that world's realization of the frozen view
 building the year of a nearby residential building of that world, as
 ``brails/imputers/residential_neighbor_year_sampler/README.rst`` states. The
 design level, structure type and height class of the building then follow as a
-residential building's do. A building the sampler finds no donor for, or one
-without an occupancy class, is excluded from that world.
+residential building's do, and the report files their rows under the stages
+of s10, such as ``s10_design_level`` and ``s10_resolution``, in place of those
+of s08. A building the sampler finds no donor for, or one without an occupancy
+class, is excluded from that world.
 
 The last five steps follow. ``s11_gross_area`` computes, in each world, the
 gross area of every building of the view ``STAGE_S08_VIEW``, excluded buildings

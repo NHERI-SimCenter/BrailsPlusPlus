@@ -786,3 +786,31 @@ def test_loop_discovered_and_exported() -> None:
     assert Importer().get_class('ResolutionLoop') is ResolutionLoop
     assert 'ResolutionLoop' in brails.compilers.__all__
     assert brails.compilers.ResolutionLoop is ResolutionLoop
+
+
+def test_report_stages_rename_what_the_loop_files() -> None:
+    """The loop files its rows under the report stages it is given."""
+    inventory = AssetInventory()
+    for asset_id, features in (('a', MASONRY_WALKUP), ('b', MASONRY_WALKUP)):
+        inventory.add_asset(
+            asset_id, Asset(asset_id, [[-122.4, 37.8]], dict(features))
+        )
+    report = CompilationReport(
+        TYPE_SEED, stages=REPORT_STAGES, exclusion_categories=EXCLUSION_CATEGORIES
+    )
+    stages = {
+        STAGE_DESIGN_LEVEL: 's10_design_level',
+        STAGE_STRUCTURE_TYPE: 's10_structure_type',
+        STAGE_RESOLUTION: 's10_resolution',
+    }
+    ResolutionLoop(_screen(), report_stages=stages).resolve(
+        inventory, report, building_type_sources={'a': 'nsi', 'b': 'local'}
+    )
+    assert set(report.records['stage']) == {'s10_resolution'}
+    assert set(report.exclusions['stage']) <= {
+        's10_structure_type',
+        's10_resolution',
+    }
+    assert not report.exclusions.empty
+    with pytest.raises(ValueError, match='not stages of the loop'):
+        ResolutionLoop(_screen(), report_stages={'year': 's10_year'})
