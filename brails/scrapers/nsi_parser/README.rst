@@ -27,21 +27,9 @@ Both keep NSI's field names and values by default. With
 ``simcenter_format=True``, each record passes through ``to_simcenter``,
 which renames the fields listed in ``NSI_TO_SIMCENTER`` to SimCenter feature
 names, maps the building type codes, and decodes the occupancy code. A field
-the mapping does not list keeps its NSI name.
-
-The NSI footprint join, ``NSIFootprintJoin`` in
-``brails/aggregators/points_to_polygons/``, takes the points under their NSI
-names, as ``NSIFileReader`` reads them, and links each point to at most one
-building footprint. A footprint that receives points takes the fields of one
-of its records, the governing record, through ``to_simcenter``, with that
-record's ``OccupancyClass`` renamed ``NSIOccupancyClass``. The footprint's own
-``OccupancyClass`` is the governing record's class or, for single-family and
-multi-family records, the class of the footprint's unit count, summed from
-the records' ``resunits``. Its ``GrossArea`` and ``ReplacementCost`` are the
-value where one record states it and the sum where several do. The join
-returns the stated values in one inventory, ``observed``, and the derived
-ones, sums included, in another, ``derived``. Its docstrings state how it
-links the points and which record governs.
+the mapping does not list keeps its NSI name. ``NSIFootprintJoin``, in
+``brails/aggregators/points_to_polygons/``, takes the records under their NSI
+names, as ``NSIFileReader`` returns them by default, and converts them itself.
 
 The fields and the features they become
 ---------------------------------------
@@ -156,7 +144,8 @@ record have a median of 0.118. On the 7,849 NSI footprints of San Francisco
 that hold several records (the 27,283 records above), the sum of ``sqft``
 over a footprint's records divided by its area times its stories lies
 between 0.99998 and 1.00002. The ratio of ``sqft`` to the gross area computed
-from the footprints the join assigns NSI records to has not been measured.
+from the footprints that ``NSIFootprintJoin`` assigns NSI records to has not
+been measured.
 What these ratios mean for a value computed from a rate is in
 ``brails/imputers/replacement_cost/README.rst``.
 
@@ -181,4 +170,4 @@ themselves and rename the fields through ``nsi2brailsmap``, which
 ``NSI_Parser`` sets when it is constructed. That mapping takes ``sqft`` as
 ``fparea``, the building's plan area in those methods' output, and
 ``val_struct``, the depreciated value, as ``repaircost``. This page
-describes ``to_simcenter`` and the join, not that mapping.
+describes ``to_simcenter``, not that mapping.

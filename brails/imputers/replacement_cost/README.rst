@@ -215,10 +215,10 @@ default weights of 1 and 1.
 
 The occupancy class filter also pools NSI's single-family subtypes, since the
 occupancy class ``NSIFootprintJoin`` gives a footprint carries no subtype
-(``brails/scrapers/nsi_parser/README.rst``, "How the records reach an
-inventory"). In San Francisco the median rate for ``RES1-1SNB`` is 316 dollars
-per square foot and for ``RES1-1SWB`` 381. A candidate whose occupancy class
-was itself imputed or drawn is left out of the draw
+(``brails/scrapers/nsi_parser/README.rst``, "The fields and the features
+they become"). In San Francisco the median rate for ``RES1-1SNB`` is 316
+dollars per square foot and for ``RES1-1SWB`` 381. A candidate whose occupancy
+class was itself imputed or drawn is left out of the draw
 (``NEIGHBOR_CLASS_CODES``).
 
 The draw's defaults are not yet calibrated for the value: ``k`` and ``cap_m``
