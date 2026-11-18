@@ -65,7 +65,7 @@ from brails.aggregators.stacked_footprints.stacked_footprints import (
     RULE_STACKED,
     StackedFootprintMerge,
 )
-from brails.compilers.compilation_report import CompilationReport
+from brails.compilers.compilation_report import DROPPED_CATEGORY, CompilationReport
 from brails.compilers.hazus_earthquake.pair_redraw import PairRedraw
 from brails.compilers.hazus_earthquake.resolution_loop import (
     ComposedScreen,
@@ -237,6 +237,38 @@ STAGE_STEP7_DERIVED = 'step7_derived'
 STAGE_STEP8_VALUES = 'step8_values'
 STAGE_STEP8_WITHHELD = 'step8_withheld'
 STAGE_OUTPUT = 'output'
+
+# The stages the report records actions and exclusions under.
+REPORT_STAGES = (
+    'footprints',
+    'join',
+    'stories',
+    'units',
+    'imputation',
+    'year',
+    'design_level',
+    'pair_redraw',
+    'screen',
+    'resolution',
+    'structure_type',
+    'height_class',
+    'carve_out',
+    'nonresidential_year',
+    'value',
+    'certificate',
+)
+
+# The categories the run files an exclusion under, besides the report's
+# DROPPED_CATEGORY. The section "Exclusion categories" of the compilers'
+# README defines each.
+EXCLUSION_CATEGORIES = (
+    'missing_driver',
+    'unsupported',
+    'conflict',
+    'empty_cell',
+    'undetermined',
+    'certificate',
+)
 
 # The Hazus input schema every compiled realization is checked against.
 DLML_DATASET = 'seismic/building/portfolio/Hazus v5.1'
@@ -1111,7 +1143,12 @@ class HazusEQInventoryCompiler:
             'sampler_options': dict(self.sampler_options),
             'merge_stacked': self.merge_stacked,
         }
-        report = CompilationReport(self.seed, settings=settings)
+        report = CompilationReport(
+            self.seed,
+            stages=REPORT_STAGES,
+            exclusion_categories=EXCLUSION_CATEGORIES,
+            settings=settings,
+        )
         report.set_world_count(n_computed)
         freeze = StageFreeze()
         sources = _WorldSources(freeze)
@@ -1550,7 +1587,7 @@ class HazusEQInventoryCompiler:
                     asset_id,
                     world=world,
                     stage='units',
-                    category='dropped',
+                    category=DROPPED_CATEGORY,
                     detail=detail,
                 )
         return _Step4(imputer, inferer, targets, imputation.log)

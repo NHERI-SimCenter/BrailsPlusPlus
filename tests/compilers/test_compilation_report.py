@@ -35,6 +35,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 from typing import TYPE_CHECKING
 
@@ -44,11 +45,11 @@ import pytest
 
 import brails.compilers
 from brails.compilers.compilation_report import (
+    DROPPED_CATEGORY,
     EXCLUSION_COLUMNS,
     EXCLUSION_DTYPES,
     RECORD_COLUMNS,
     RECORD_DTYPES,
-    STAGES,
     CompilationReport,
 )
 from brails.constants import (
@@ -65,23 +66,34 @@ from brails.utils import Importer
 if TYPE_CHECKING:
     from pathlib import Path
 
-# A block group identifier, carried through the records as text.
-BLOCK_GROUP = '060750101001'
+# The steps and categories of a compiler, for the tests to record under.
+STAGES = ('allocate', 'sample', 'screen', 'resolve', 'redraw', 'adjust', 'validate')
+CATEGORIES = (
+    'missing_input',
+    'unsupported',
+    'conflict',
+    'no_plausible_value',
+    'fails_schema',
+)
+
+# A report with those steps and categories.
+new_report = functools.partial(
+    CompilationReport, stages=STAGES, exclusion_categories=CATEGORIES
+)
 
 
 def test_a_recorded_action_appears_in_the_records() -> None:
     """A recorded action is one row carrying every field it was given."""
-    report = CompilationReport(11)
+    report = new_report(11)
     report.record_action(
         'a',
         BUILDING_TYPE_KEY,
-        stage='resolution',
+        stage='resolve',
         action='withheld',
         world=2,
         old='M',
         source='nsi',
         reason='the structure type cell holds no masonry type',
-        block_group=BLOCK_GROUP,
     )
 
     frame = report.records
@@ -90,57 +102,59 @@ def test_a_recorded_action_appears_in_the_records() -> None:
     assert frame.iloc[0].to_dict() == {
         'asset_id': 'a',
         'world': 2,
-        'stage': 'resolution',
+        'stage': 'resolve',
         'action': 'withheld',
         'feature': BUILDING_TYPE_KEY,
         'old': 'M',
         'new': None,
         'source': 'nsi',
         'reason': 'the structure type cell holds no masonry type',
-        'block_group': BLOCK_GROUP,
+        'block_group': None,
     }
 
 
 def test_values_are_recorded_as_text() -> None:
-    """Old and new values and the block group are kept as text, None as None."""
-    report = CompilationReport(11)
+    """Old and new values are kept as text, None as None."""
+    report = new_report(11)
     report.record_action(
         'a',
         STORIES_KEY,
-        stage='pair_redraw',
+        stage='redraw',
         action='redrawn',
         world=0,
         old=7,
         new=2,
-        block_group=60750101001,
     )
     report.record_action(
-        'b', BUILDING_TYPE_KEY, stage='resolution', action='withheld', world=0
+        'b', BUILDING_TYPE_KEY, stage='resolve', action='withheld', world=0
     )
 
     frame = report.records
 
     assert list(frame['old']) == ['7', None]
     assert list(frame['new']) == ['2', None]
-    assert list(frame['block_group']) == ['60750101001', None]
 
 
 @pytest.mark.parametrize('stage', STAGES)
 def test_every_stage_is_accepted(stage: str) -> None:
-    """The record's stage takes each stage of the run."""
-    report = CompilationReport(11)
+    """The record's stage takes each step the compiler names."""
+    report = new_report(11)
     report.record_action('a', STORIES_KEY, stage=stage, action='withheld', world=0)
 
     assert list(report.records['stage']) == [stage]
-    assert 'stories' in STAGES
 
 
 @pytest.mark.parametrize('source', list(SOURCE_CODES))
 def test_every_source_label_is_accepted(source: str) -> None:
     """The record's source takes each label of the source string's codes."""
-    report = CompilationReport(11)
+    report = new_report(11)
     report.record_action(
-        'a', YEAR_BUILT_KEY, stage='year', action='derived', world=0, source=source
+        'a',
+        YEAR_BUILT_KEY,
+        stage='sample',
+        action='derived',
+        world=0,
+        source=source,
     )
 
     assert list(report.records['source']) == [source]
@@ -149,10 +163,20 @@ def test_every_source_label_is_accepted(source: str) -> None:
 @pytest.mark.parametrize(
     ('arguments', 'message', 'named', 'listed'),
     [
-        ({'stage': 'guessing', 'action': 'withheld'}, 'stage', 'guessing', 'units'),
-        ({'stage': 'year', 'action': 'held'}, 'action', 'held', 'restored'),
         (
-            {'stage': 'year', 'action': 'withheld', 'source': 'N'},
+            {'stage': 'guessing', 'action': 'withheld'},
+            'stage',
+            'guessing',
+            'allocate',
+        ),
+        (
+            {'stage': 'sample', 'action': 'held'},
+            'action',
+            'held',
+            'restored',
+        ),
+        (
+            {'stage': 'sample', 'action': 'withheld', 'source': 'N'},
             'source',
             'N',
             'imputed',
@@ -163,7 +187,7 @@ def test_a_value_outside_its_set_is_refused(
     arguments: dict[str, str], message: str, named: str, listed: str
 ) -> None:
     """An unknown stage, action or source raises and names the valid values."""
-    report = CompilationReport(11)
+    report = new_report(11)
 
     with pytest.raises(ValueError, match=f'not a recognized {message}') as raised:
         report.record_action('a', YEAR_BUILT_KEY, world=0, **arguments)
@@ -175,7 +199,7 @@ def test_a_value_outside_its_set_is_refused(
 
 def test_an_unknown_exclusion_category_is_refused() -> None:
     """An unknown category raises and the error names the valid ones."""
-    report = CompilationReport(11)
+    report = new_report(11)
 
     with pytest.raises(
         ValueError, match='not a recognized exclusion category'
@@ -187,22 +211,70 @@ def test_an_unknown_exclusion_category_is_refused() -> None:
     assert report.exclusions.empty
 
 
+def test_the_compiler_gives_the_stages_and_categories() -> None:
+    """A report accepts the stages and categories it was given, and DROPPED_CATEGORY."""
+    report = CompilationReport(11, stages=('sort',), exclusion_categories=('odd',))
+    report.record_exclusion('a', world=0, stage='sort', category='odd')
+    report.record_exclusion('b', world=0, stage='sort', category=DROPPED_CATEGORY)
+
+    assert report.stages == ('sort',)
+    assert report.exclusion_categories == ('odd', DROPPED_CATEGORY)
+    assert list(report.exclusions['category']) == ['odd', DROPPED_CATEGORY]
+    with pytest.raises(ValueError, match='not a recognized stage'):
+        report.record_action(
+            'a',
+            YEAR_BUILT_KEY,
+            stage='sample',
+            action='derived',
+            world=0,
+        )
+    with pytest.raises(ValueError, match='not a recognized exclusion category'):
+        report.record_exclusion('a', world=0, stage='sort', category='conflict')
+    with pytest.raises(ValueError, match='accepted by every report'):
+        CompilationReport(
+            11, stages=('sort',), exclusion_categories=('odd', DROPPED_CATEGORY)
+        )
+    with pytest.raises(TypeError):
+        CompilationReport(11)
+
+
+@pytest.mark.parametrize(
+    ('stages', 'categories', 'error', 'message'),
+    [
+        ('sort', ('odd',), TypeError, 'stages must be a sequence of names'),
+        (('sort',), 'odd', TypeError, 'exclusion_categories must be a sequence'),
+        (('sort', 'sort'), ('odd',), ValueError, 'stages names a value twice'),
+        (('sort',), ('odd', 'odd'), ValueError, 'categories names a value twice'),
+    ],
+)
+def test_names_given_as_a_string_or_twice_are_refused(
+    stages: object, categories: object, error: type[Exception], message: str
+) -> None:
+    """A string in place of a sequence of names, or a name given twice, raises."""
+    with pytest.raises(error, match=message):
+        CompilationReport(11, stages=stages, exclusion_categories=categories)
+
+
 def test_a_record_needs_a_world() -> None:
     """An action or an exclusion recorded without a world is refused."""
-    report = CompilationReport(11)
+    report = new_report(11)
 
     with pytest.raises(TypeError, match='world'):
-        report.record_action('a', YEAR_BUILT_KEY, stage='year', action='derived')
+        report.record_action('a', YEAR_BUILT_KEY, stage='sample', action='derived')
     with pytest.raises(TypeError, match='world'):
         report.record_exclusion('a', stage='screen', category='unsupported')
 
 
 def test_worlds_outside_the_run_are_refused() -> None:
     """A world that is negative, a bool, not an integer or past the count raises."""
-    report = CompilationReport(11)
+    report = new_report(11)
     with pytest.raises(ValueError, match='cannot be negative'):
         report.record_action(
-            'a', YEAR_BUILT_KEY, stage='year', action='derived', world=-1
+            'a',
+            YEAR_BUILT_KEY,
+            stage='sample',
+            action='derived',
+            world=-1,
         )
     with pytest.raises(TypeError):
         report.record_exclusion(
@@ -233,17 +305,17 @@ def test_worlds_outside_the_run_are_refused() -> None:
 
 def test_a_numpy_seed_is_kept_as_an_integer() -> None:
     """A seed given as a numpy integer is summarized as a Python integer."""
-    report = CompilationReport(np.int64(5))
+    report = new_report(np.int64(5))
 
     assert json.dumps(report.summary()['seed']) == '5'
 
 
 def test_every_exclusion_row_carries_its_world() -> None:
     """Each exclusion row holds the world it was recorded for, as an integer."""
-    report = CompilationReport(11)
-    report.record_exclusion('a', world=0, stage='units', category='dropped')
-    report.record_exclusion('a', world=1, stage='units', category='dropped')
-    report.record_exclusion('b', world=1, stage='resolution', category='conflict')
+    report = new_report(11)
+    report.record_exclusion('a', world=0, stage='allocate', category='dropped')
+    report.record_exclusion('a', world=1, stage='allocate', category='dropped')
+    report.record_exclusion('b', world=1, stage='resolve', category='conflict')
 
     frame = report.exclusions
 
@@ -254,7 +326,7 @@ def test_every_exclusion_row_carries_its_world() -> None:
 
 def test_an_empty_report_carries_the_columns_and_dtypes() -> None:
     """Frames of a report holding nothing keep their columns and dtypes."""
-    report = CompilationReport(11)
+    report = new_report(11)
 
     assert report.records.dtypes.to_dict() == RECORD_DTYPES
     assert report.exclusions.dtypes.to_dict() == EXCLUSION_DTYPES
@@ -262,9 +334,9 @@ def test_an_empty_report_carries_the_columns_and_dtypes() -> None:
 
 def test_the_records_frame_is_a_copy() -> None:
     """Changing the returned records leaves the report alone."""
-    report = CompilationReport(11)
+    report = new_report(11)
     report.record_action(
-        'a', YEAR_BUILT_KEY, stage='year', action='derived', world=0
+        'a', YEAR_BUILT_KEY, stage='sample', action='derived', world=0
     )
 
     frame = report.records
@@ -275,18 +347,18 @@ def test_the_records_frame_is_a_copy() -> None:
 
 def test_the_summary_counts_actions_and_exclusions() -> None:
     """The summary counts actions, and exclusion rows per world and category."""
-    report = CompilationReport(11)
+    report = new_report(11)
     report.record_action(
-        'a', BUILDING_TYPE_KEY, stage='resolution', action='withheld', world=0
+        'a', BUILDING_TYPE_KEY, stage='resolve', action='withheld', world=0
     )
     report.record_action(
-        'a', BUILDING_TYPE_KEY, stage='resolution', action='restored', world=0
+        'a', BUILDING_TYPE_KEY, stage='resolve', action='restored', world=0
     )
     report.record_action(
-        'b', DESIGN_LEVEL_KEY, stage='carve_out', action='derived', world=1
+        'b', DESIGN_LEVEL_KEY, stage='adjust', action='derived', world=1
     )
     report.record_exclusion(
-        'c', world=1, stage='resolution', category='conflict', diagnosis='infeasible'
+        'c', world=1, stage='resolve', category='conflict', diagnosis='infeasible'
     )
     report.record_exclusion(
         'a', world=1, stage='screen', category='unsupported', diagnosis='unsupported'
@@ -321,21 +393,21 @@ def test_the_summary_counts_actions_and_exclusions() -> None:
 
 def test_assets_excluded_in_every_world_and_in_some_are_separated() -> None:
     """An asset excluded in every world is told apart from one excluded in some."""
-    report = CompilationReport(11)
+    report = new_report(11)
     report.set_world_count(3)
     for world in range(3):
         report.record_exclusion(
-            'a', world=world, stage='certificate', category='certificate'
+            'a', world=world, stage='validate', category='fails_schema'
         )
         # A dropped footprint is in the group 'dropped', not 'every' or 'some'.
-        report.record_exclusion('d', world=world, stage='units', category='dropped')
+        report.record_exclusion(
+            'd', world=world, stage='allocate', category='dropped'
+        )
     report.record_exclusion('b', world=1, stage='screen', category='unsupported')
     # Asset 'c' has two rows in world 1, which count as one world.
-    report.record_exclusion('c', world=1, stage='screen', category='missing_driver')
-    report.record_exclusion('c', world=1, stage='resolution', category='conflict')
-    report.record_exclusion(
-        'c', world=2, stage='certificate', category='certificate'
-    )
+    report.record_exclusion('c', world=1, stage='screen', category='missing_input')
+    report.record_exclusion('c', world=1, stage='resolve', category='conflict')
+    report.record_exclusion('c', world=2, stage='validate', category='fails_schema')
 
     groups = report.exclusion_groups()
 
@@ -368,7 +440,7 @@ def test_assets_excluded_in_every_world_and_in_some_are_separated() -> None:
 
 def test_the_groups_need_a_known_world_set() -> None:
     """Without a world count or a selection the groups are not counted."""
-    report = CompilationReport(11)
+    report = new_report(11)
     report.record_exclusion('a', world=0, stage='screen', category='unsupported')
 
     assert report.summary()['assets_excluded'] == {
@@ -384,7 +456,7 @@ def test_the_groups_need_a_known_world_set() -> None:
 
 def test_the_summary_holds_timings_worlds_and_stages() -> None:
     """Seconds per stage and world, the world numbers and the stage order."""
-    report = CompilationReport(11)
+    report = new_report(11)
     report.set_world_count(6)
     report.set_manifest_stages(['footprints', 'join_nsi', 'step4'])
     report.set_timing('footprints', 1.5)
@@ -408,29 +480,30 @@ def test_the_summary_holds_timings_worlds_and_stages() -> None:
 
 def test_save_writes_the_files_it_documents(tmp_path: Path) -> None:
     """The records, the exclusions and the summary read back as recorded."""
-    report = CompilationReport(11, settings={'n_worlds': 2})
+    report = new_report(11, settings={'n_worlds': 2})
     report.set_world_count(2)
     report.record_action(
         'a',
         STORIES_KEY,
-        stage='pair_redraw',
+        stage='redraw',
         action='redrawn',
         world=1,
         old=7,
         new=2,
         source='imputed',
-        block_group=BLOCK_GROUP,
     )
     report.record_exclusion(
         'b',
         world=0,
-        stage='resolution',
+        stage='resolve',
         category='conflict',
         diagnosis='infeasible',
         detail='no structure type left to draw',
         resolvable_by=(YEAR_BUILT_KEY, BUILDING_TYPE_KEY),
     )
-    report.record_exclusion('c', world=1, stage='screen', category='empty_cell')
+    report.record_exclusion(
+        'c', world=1, stage='screen', category='no_plausible_value'
+    )
     report.note('two observed features disagree on asset b')
     report.set_coverage({BLOCK_GROUP_KEY: 1.0})
     report.set_certificate('passed')
@@ -460,23 +533,25 @@ def test_save_writes_the_files_it_documents(tmp_path: Path) -> None:
     assert summary['certificate'] == 'passed'
     assert summary['exclusions']['by_world'] == {
         '0': {'conflict': 1},
-        '1': {'empty_cell': 1},
+        '1': {'no_plausible_value': 1},
     }
 
 
 def test_save_keeps_the_rows_of_the_selected_worlds(tmp_path: Path) -> None:
     """A selection of worlds writes their rows only, and a summary of them."""
-    report = CompilationReport(11)
+    report = new_report(11)
     report.set_world_count(4)
     for world in range(4):
         report.record_action(
             'a',
             BUILDING_TYPE_KEY,
-            stage='resolution',
+            stage='resolve',
             action='withheld',
             world=world,
         )
-        report.record_exclusion('b', world=world, stage='units', category='dropped')
+        report.record_exclusion(
+            'b', world=world, stage='allocate', category='dropped'
+        )
     report.record_exclusion('c', world=1, stage='screen', category='unsupported')
 
     report.save(tmp_path / 'report.parquet', worlds=(3, 1))
@@ -508,7 +583,7 @@ def test_save_keeps_the_rows_of_the_selected_worlds(tmp_path: Path) -> None:
 
 def test_an_empty_report_saves(tmp_path: Path) -> None:
     """A report holding nothing saves, with the columns of its frames."""
-    report = CompilationReport(11)
+    report = new_report(11)
 
     report.save(tmp_path / 'empty.parquet')
 
@@ -520,7 +595,7 @@ def test_an_empty_report_saves(tmp_path: Path) -> None:
 
 def test_save_logs_writes_each_log_by_name(tmp_path: Path) -> None:
     """Each log is written under its name; a selection filters world columns."""
-    report = CompilationReport(11)
+    report = new_report(11)
     per_world = pd.DataFrame({'asset_id': ['a', 'a', 'b'], 'world': [0, 1, 2]})
     once = pd.DataFrame({'asset_id': ['a', 'b'], 'tie': [True, False]})
 
@@ -547,7 +622,7 @@ def test_save_logs_writes_each_log_by_name(tmp_path: Path) -> None:
 
 def test_save_logs_refuses_a_name_that_is_a_path(tmp_path: Path) -> None:
     """A log name holding a directory is refused before anything is written."""
-    report = CompilationReport(11)
+    report = new_report(11)
 
     with pytest.raises(ValueError, match='plain file name'):
         report.save_logs(tmp_path / 'logs', 'run', {'../join': pd.DataFrame()})
@@ -558,7 +633,7 @@ def test_save_logs_refuses_a_name_that_is_a_path(tmp_path: Path) -> None:
 @pytest.mark.parametrize('name', ['report', 'report_exclusions'])
 def test_save_logs_refuses_the_report_file_names(tmp_path: Path, name: str) -> None:
     """A log named as one of the report's own files is refused."""
-    report = CompilationReport(11)
+    report = new_report(11)
 
     with pytest.raises(ValueError, match='overwrite the files of a report'):
         report.save_logs(tmp_path, 'run', {name: pd.DataFrame({'world': [0]})})

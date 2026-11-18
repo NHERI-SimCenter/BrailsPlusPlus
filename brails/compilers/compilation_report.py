@@ -33,7 +33,7 @@
 
 
 """
-Record what a Hazus earthquake compilation did to each asset in each world.
+Record what a compilation did to each asset in each world.
 
 .. autosummary::
 
@@ -55,60 +55,18 @@ from brails.types.asset_inventory import SOURCE_CODES
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping
 
-# The stages of the compilation. Every recorded action and exclusion names
-# the stage it came from.
-STAGES = (
-    'footprints',
-    'join',
-    'stories',
-    'units',
-    'imputation',
-    'year',
-    'design_level',
-    'pair_redraw',
-    'screen',
-    'resolution',
-    'structure_type',
-    'height_class',
-    'carve_out',
-    'nonresidential_year',
-    'value',
-    'certificate',
-)
-
-# What a stage did to a feature. ``withheld`` is a value kept out of a
-# draw or removed from its source, ``restored`` a withheld value put back
-# after a failed attempt, ``redrawn`` a value the pair re-draw replaced,
-# and ``derived`` a value computed from another feature of the asset, such
-# as a design level the W1 carve-out changed.
+# What a step did to a feature: ``withheld``, a value kept out of a draw or
+# removed from its source; ``restored``, a withheld value put back after a
+# failed attempt; ``redrawn``, a value a new draw replaced; ``derived``, a
+# value computed from other features of the asset. The README beside this
+# module gives examples.
 ACTIONS = ('withheld', 'restored', 'redrawn', 'derived')
 
-# Why an asset left the inventory of a world, the vocabulary every
-# exclusion is filed under.
-# ``missing_driver``: a driver an inferer reads is absent or holds a value
-# it cannot use, or no step supplied a year.
-# ``unsupported``: a driver is present in a form the inferers do not read,
-# such as a list of values per world.
-# ``conflict``: the asset's own features empty a published or filled row
-# of the structure type tables, or its refusal named a feature the caller
-# acted on without admitting the asset.
-# ``empty_cell``: the structure type cell has neither a published nor a
-# filled row.
-# ``undetermined``: an infeasible asset whose cause the caller could not
-# separate.
-# ``certificate``: the input schema refused the asset in the compiled
-# world.
-# ``dropped``: a footprint left out before any world was compiled, the
-# same in every world.
-EXCLUSION_CATEGORIES = (
-    'missing_driver',
-    'unsupported',
-    'conflict',
-    'empty_cell',
-    'undetermined',
-    'certificate',
-    'dropped',
-)
+# The exclusion category every report accepts besides its compiler's: a
+# footprint a step removes in every world. The report counts these
+# footprints in a group of their own, apart from the assets excluded in
+# every world and from those excluded in some.
+DROPPED_CATEGORY = 'dropped'
 
 # The columns of the frame :attr:`CompilationReport.records` returns, in
 # order, with the dtype each one carries. A report holding no rows
@@ -178,52 +136,89 @@ def _in_set(value: str, valid: Collection[str], kind: str) -> str:
 
 class CompilationReport:
     """
-    What a Hazus earthquake compilation did, world by world.
+    Record what a compilation did to each asset, world by world.
 
-    A report holds one long-form row per action taken on a feature and one
-    row per asset excluded from a world, both carrying the world number,
-    together with the seconds the run spent per stage and world, the
-    stage order of the run's manifest, notices, driver coverage and the
-    result of checking the buildings against an input schema.
-    :meth:`summary` counts that state and :meth:`save` and :meth:`save_logs`
-    write it.
+    A report holds one row per action taken on a feature and one row per
+    asset excluded from a world, with the run's timings, notices, input
+    coverage and schema check. The section "The compilation report" of the
+    README beside this module states what the rows hold and what
+    :meth:`summary` counts.
 
-    The stage, action, source and category of each row must come from
-    :data:`STAGES`, :data:`ACTIONS`,
-    :data:`~brails.types.asset_inventory.SOURCE_CODES` and
-    :data:`EXCLUSION_CATEGORIES`, and a value outside its set is refused.
-    ``old``, ``new`` and ``block_group`` are recorded as text. Asset ids
-    must be all strings or all integers, or :meth:`save` fails.
+    A row names one of the steps the compiler gave the constructor, and an
+    exclusion one of its categories. Its action must be one of
+    :data:`ACTIONS` and its source a key of
+    :data:`~brails.types.asset_inventory.SOURCE_CODES`. A value outside its
+    set is refused. Asset ids must be all strings or all integers, or
+    :meth:`save` fails. After :meth:`set_world_count`, a world outside
+    ``range(count)`` is refused when recorded or selected.
 
-    World numbers start at 0. After :meth:`set_world_count`, a world
-    outside ``range(count)`` is refused when recorded or selected. The
-    methods that take ``worlds`` read the rows of those worlds only.
-    Without a selection, :meth:`summary` and :meth:`save` read every row
-    and :meth:`exclusion_groups` the worlds counted.
+    Attributes:
+        stages (tuple[str, ...]):
+            The names of the compiler's steps, in the order given. They are
+            not the names of frozen stages.
+        exclusion_categories (tuple[str, ...]):
+            The compiler's categories, in the order given, followed by
+            :data:`DROPPED_CATEGORY`.
     """
 
     def __init__(
         self,
         seed: int,
         *,
+        stages: Iterable[str],
+        exclusion_categories: Iterable[str],
         settings: Mapping[str, object] | None = None,
     ) -> None:
         """
-        Initialize an empty report.
+        Initialize an empty report for a compiler's stages and categories.
 
         Args:
             seed (int):
                 The seed the run drew from. A run is repeated by passing
                 this value back.
+            stages (Iterable[str]):
+                The names of the compiler's steps, one of which every action
+                and exclusion names, each once.
+            exclusion_categories (Iterable[str]):
+                The reasons the compiler files exclusions under, each once,
+                besides :data:`DROPPED_CATEGORY`, which every report accepts.
             settings (Mapping[str, object] or None):
                 The settings the run resolved, echoed into
                 :meth:`summary`. ``None`` records no settings.
 
         Raises:
             TypeError:
-                If ``seed`` is not an integer.
+                If ``seed`` is not an integer, or ``stages`` or
+                ``exclusion_categories`` is a string.
+            ValueError:
+                If ``stages`` or ``exclusion_categories`` names one value
+                twice, or ``exclusion_categories`` holds
+                :data:`DROPPED_CATEGORY`.
         """
         self.seed = operator.index(seed)
+        named = {}
+        for argument, given in (
+            ('stages', stages),
+            ('exclusion_categories', exclusion_categories),
+        ):
+            if isinstance(given, str):
+                msg = f'{argument} must be a sequence of names, not a string.'
+                raise TypeError(msg)
+            names = tuple(given)
+            if len(set(names)) < len(names):
+                msg = f'{argument} names a value twice: {list(names)}.'
+                raise ValueError(msg)
+            named[argument] = names
+        self.stages = named['stages']
+        categories = named['exclusion_categories']
+        if DROPPED_CATEGORY in categories:
+            msg = (
+                f'{DROPPED_CATEGORY!r} is accepted by every report and must not '
+                'be listed in exclusion_categories.'
+            )
+            raise ValueError(msg)
+        # Every category the report accepts, the compiler's and its own.
+        self.exclusion_categories = (*categories, DROPPED_CATEGORY)
         self.settings: dict[str, object] = dict(settings or {})
         self._rows: list[tuple] = []
         self._exclusion_rows: list[tuple] = []
@@ -232,7 +227,7 @@ class CompilationReport:
         self._certificate: object = None
         self._timings: dict[tuple[str, int | None], float] = {}
         self._computed: int | None = None
-        self._stages: list[str] = []
+        self._manifest_stages: list[str] = []
 
     def record_action(
         self,
@@ -257,7 +252,8 @@ class CompilationReport:
             feature (str):
                 The feature the action was taken on.
             stage (str):
-                The stage that took the action, one of :data:`STAGES`.
+                The step that took the action, one of the names in
+                :attr:`stages`.
             action (str):
                 What was done to the feature, one of :data:`ACTIONS`.
             world (int):
@@ -290,7 +286,7 @@ class CompilationReport:
             (
                 asset_id,
                 self._checked_world(world),
-                _in_set(stage, STAGES, 'stage'),
+                _in_set(stage, self.stages, 'stage'),
                 _in_set(action, ACTIONS, 'action'),
                 feature,
                 None if old is None else str(old),
@@ -323,10 +319,10 @@ class CompilationReport:
             world (int):
                 The index of the world it was excluded from.
             stage (str):
-                The stage that excluded it, one of :data:`STAGES`.
+                The step that excluded it, one of the names in
+                :attr:`stages`.
             category (str):
-                Why it was excluded, one of
-                :data:`EXCLUSION_CATEGORIES`.
+                Why it was excluded, one of :attr:`exclusion_categories`.
             diagnosis (str):
                 The diagnosis the refusing component returned, one of the
                 ``DIAGNOSIS_*`` constants of
@@ -352,8 +348,8 @@ class CompilationReport:
             (
                 asset_id,
                 self._checked_world(world),
-                _in_set(stage, STAGES, 'stage'),
-                _in_set(category, EXCLUSION_CATEGORIES, 'exclusion category'),
+                _in_set(stage, self.stages, 'stage'),
+                _in_set(category, self.exclusion_categories, 'exclusion category'),
                 diagnosis,
                 detail,
                 tuple(resolvable_by),
@@ -408,7 +404,7 @@ class CompilationReport:
             stage (str):
                 The caller's name for the timed part of the run, such as
                 a frozen stage or the manifest. It is not checked against
-                :data:`STAGES`.
+                the names in :attr:`stages`.
             seconds (float):
                 The wall-clock seconds spent.
             world (int or None):
@@ -459,7 +455,7 @@ class CompilationReport:
             stages (Iterable[str]):
                 The stage names, echoed into :meth:`summary`.
         """
-        self._stages = list(stages)
+        self._manifest_stages = list(stages)
 
     @property
     def records(self) -> pd.DataFrame:
@@ -498,7 +494,7 @@ class CompilationReport:
         """
         Return the exclusion rows of the selected worlds, each marked by group.
 
-        A row of category ``'dropped'`` is in the group ``'dropped'``. The
+        A row of :data:`DROPPED_CATEGORY` is in the group ``'dropped'``. The
         other rows are grouped by asset: an asset is excluded in a world
         where it has at least one such row for that world, and its rows
         are in the group ``'every'`` when that holds in every selected
@@ -529,7 +525,7 @@ class CompilationReport:
             )
         frame = self.exclusions
         frame = frame[frame['world'].isin(selected)].reset_index(drop=True)
-        dropped = frame['category'] == 'dropped'
+        dropped = frame['category'] == DROPPED_CATEGORY
         worlds_per_asset = (
             frame[~dropped].groupby('asset_id', sort=False)['world'].nunique()
         )
@@ -554,33 +550,9 @@ class CompilationReport:
 
         Returns:
             dict[str, object]:
-                The summary, with these keys:
-
-                - ``seed`` and ``settings``, as given to the constructor.
-                - ``worlds``: ``computed``, the count given to
-                  :meth:`set_world_count` or ``None``, and ``written``,
-                  the selected worlds in ascending order, so position
-                  ``i`` of a file holding them is world ``written[i]``
-                  (every computed world without a selection, ``None``
-                  when neither is known).
-                - ``manifest_stages``: the manifest's order.
-                - ``timings``: one ``{'stage', 'world', 'seconds'}`` per
-                  stage and world, in the order first set.
-                - ``actions``: rows counted ``by_action`` and
-                  ``by_feature``.
-                - ``exclusions``: rows counted ``by_category``,
-                  ``by_diagnosis``, ``by_world`` (world to category to
-                  count) and ``total``.
-                - ``assets_excluded``: distinct assets counted as
-                  ``total`` and per group of :meth:`exclusion_groups` as
-                  ``dropped``, ``every`` and ``some``, the last two
-                  ``None`` when the world set is unknown.
-                - ``notices``, ``coverage`` and ``certificate``.
-
-                Counts are keyed in sorted order. JSON can serialize every
-                value except a setting or verdict the caller gave in
-                another form, and it writes the world keys of
-                ``by_world`` as text.
+                The summary. The section "The summary" of the README beside
+                this module lists its keys. Counts are keyed in sorted
+                order.
 
         Raises:
             ValueError:
@@ -604,13 +576,15 @@ class CompilationReport:
             groups = groups.drop_duplicates(['asset_id', 'group'])['group']
             every = int((groups == 'every').sum())
             some = int((groups == 'some').sum())
-        dropped = exclusions.loc[exclusions['category'] == 'dropped', 'asset_id']
+        dropped = exclusions.loc[
+            exclusions['category'] == DROPPED_CATEGORY, 'asset_id'
+        ]
 
         return {
             'seed': self.seed,
             'settings': dict(self.settings),
             'worlds': {'computed': self._computed, 'written': selected},
-            'manifest_stages': list(self._stages),
+            'manifest_stages': list(self._manifest_stages),
             'timings': [
                 {'stage': stage, 'world': world, 'seconds': seconds}
                 for (stage, world), seconds in self._timings.items()

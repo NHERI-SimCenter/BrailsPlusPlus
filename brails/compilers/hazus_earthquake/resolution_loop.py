@@ -241,7 +241,7 @@ def _category(
     Returns:
         str:
             A category of
-            :data:`~brails.compilers.compilation_report.EXCLUSION_CATEGORIES`.
+            :data:`~brails.compilers.hazus_earthquake.hazus_eq_inventory_compiler.EXCLUSION_CATEGORIES`.
     """
     if verdict.diagnosis == DIAGNOSIS_UNSUPPORTED:
         return 'unsupported'

@@ -186,3 +186,137 @@ list of positions from one vector value. The rule differs from
 ``collapse_realizations`` in ``brails/utils/world_values.py``, which keeps a
 list where every world holds ``None`` and compares with ``==`` alone.
 
+
+The compilation report
+----------------------
+
+A compiler records what it did in a ``CompilationReport``, in
+``compilation_report.py`` beside this page. The report holds a row for each
+change a step made to a feature and a row for each building a step excluded
+from a world, so that a value or a missing building of the compiled inventory
+can be traced to the step responsible. This section states what the rows hold,
+the categories exclusions are filed under, and what the summary counts.
+
+Rows
+~~~~
+
+Every row carries the asset id and the world number, and the name of the step
+of the compiler that wrote it. These names are those the compiler gives the
+report, ``REPORT_STAGES`` in the Hazus earthquake compiler. They name steps of
+the run, not the frozen stages of "Stages and freezing", and the report keeps
+them in its ``stages`` attribute.
+
+An action row records what one step did to one feature of one asset: the
+step's name, the action, the feature, the values before and after, the source
+the action concerns, and the reason in words. The action is one of
+``ACTIONS``:
+
+- ``withheld``, a value kept out of a draw or removed from its source, such as
+  an NSI story count that the footprint height replaces;
+- ``restored``, a withheld value put back after a failed attempt;
+- ``redrawn``, a value that a new draw replaced, such as a member of an
+  implausible pair of occupancy class and story count;
+- ``derived``, a value computed from other features of the asset, such as a
+  design level the W1 carve-out changed.
+
+The values are recorded as text, and ``None`` as no value. The source is a
+label of ``SOURCE_CODES``, as in the source string.
+
+An exclusion row records that a step excluded an asset from one world: the
+step's name, the category, the diagnosis of the component that refused the
+asset, a detail in words, and ``resolvable_by``, the features whose change
+alone would let that component accept the asset. An asset excluded from
+several worlds has one row in each.
+
+A report accepts the step names and categories its compiler gives it when the
+report is created, and refuses a row that names any other. The Hazus
+earthquake compiler gives ``REPORT_STAGES`` and ``EXCLUSION_CATEGORIES`` of
+``brails/compilers/hazus_earthquake/hazus_eq_inventory_compiler.py``.
+``summary``, ``save`` and ``exclusion_groups`` take a selection of worlds and
+read the rows of those worlds only. Without one, ``summary`` and ``save`` read
+every row, and ``exclusion_groups`` reads worlds 0 to ``count - 1``, for the
+count given to ``set_world_count``.
+
+Exclusion categories
+~~~~~~~~~~~~~~~~~~~~
+
+A category says why a step excluded a building, in terms that do not depend on
+the step. Each category below has a general definition, followed by examples
+from the Hazus earthquake compiler.
+
+``missing_driver``
+    A value the step reads is absent, or holds a value the step cannot use,
+    and no earlier step supplied a usable one. Examples: a block group without
+    ACS counts, a local building type letter other than W, S, C, M and MH, and
+    a building for which the replacement cost imputer finds no donor.
+
+``unsupported``
+    A value the step reads is present in a form the step does not handle.
+    Example: a feature held as one value per world, where the step reads the
+    value of one world.
+
+``empty_cell``
+    The step's model has no value for the building's combination of inputs,
+    whatever else the building holds. Example: a structure type table with no
+    distribution for the building's occupancy class, story band and era.
+
+``conflict``
+    The model has values for the building's combination of inputs, and other
+    values the building holds rule out all of them. A building is also filed
+    here when the compiler set one of its values aside to admit it and the
+    building was refused again. Example: a local building type letter S on a
+    single-family house, for which the structure type table holds no steel
+    type.
+
+``undetermined``
+    The step refused the building, and the reason fits none of the other
+    categories. Example: in the composed screen, the design level inferer
+    refuses a building as infeasible, meaning that no design level fits its
+    other values. The design level inferer in BRAILS never refuses a building
+    this way, so with BRAILS's own inferers this category stays empty.
+
+``certificate``
+    The compiled building fails the check against the schema of the output.
+    Example: a building that the Hazus 5.1 input schema of the damage and loss
+    model library refuses.
+
+``dropped``
+    A step's rule removes the footprint from every world. Example: a small
+    footprint to which the unit budget gives no housing units. Every report
+    accepts this category, ``DROPPED_CATEGORY``, besides those of its
+    compiler, and counts these footprints in a group of their own, apart from
+    both the buildings excluded in every world and those excluded in some.
+
+The summary
+~~~~~~~~~~~
+
+``summary`` returns a dictionary, which ``save`` writes as JSON beside the
+rows. Its keys are these:
+
+- ``seed`` and ``settings``, as the report was given them.
+- ``worlds``: ``computed``, the count given to ``set_world_count`` or
+  ``None``, and ``written``, the selected worlds in ascending order, so that
+  position ``i`` of a file holding them is world ``written[i]``. Without a
+  selection, ``written`` lists every computed world, and it is ``None`` when
+  the count is not known.
+- ``manifest_stages``: the stages of the run's manifest, in its order.
+- ``timings``: one entry of ``stage``, ``world`` and ``seconds`` for each
+  timed part of the run and each world, in the order first recorded.
+- ``actions``: the action rows counted ``by_action`` and ``by_feature``.
+- ``exclusions``: the exclusion rows counted ``by_category``,
+  ``by_diagnosis`` and ``by_world`` (by world, then by category), and their
+  ``total``.
+- ``assets_excluded``: the number of distinct excluded assets as ``total``,
+  and the number in each group of ``exclusion_groups`` as ``dropped``,
+  ``every`` and ``some``. The last two are ``None`` when the worlds are not
+  known.
+- ``notices``: the notices the compiler recorded about the run, such as a
+  contradiction it met.
+- ``coverage``: for each input the compiler reads, the fraction of assets
+  that state it.
+- ``certificate``: the result of the schema check of the compiled buildings,
+  as the compiler recorded it.
+
+Counts are keyed in sorted order. ``save`` writes a setting or a schema check
+result that JSON cannot hold as its ``str`` text, and JSON writes the world
+keys of ``by_world`` as text.

@@ -40,9 +40,10 @@ from typing import TYPE_CHECKING
 import pytest
 
 import brails.compilers
-from brails.compilers.compilation_report import (
+from brails.compilers.compilation_report import CompilationReport
+from brails.compilers.hazus_earthquake.hazus_eq_inventory_compiler import (
     EXCLUSION_CATEGORIES,
-    CompilationReport,
+    REPORT_STAGES,
 )
 from brails.compilers.hazus_earthquake.resolution_loop import (
     SCREEN_ASSET_ID,
@@ -478,7 +479,9 @@ def _resolve(
     inventory = AssetInventory(vector_features=list(vector_features))
     for asset_id, asset in features.items():
         inventory.add_asset(asset_id, Asset(asset_id, [[-122.4, 37.8]], dict(asset)))
-    report = CompilationReport(TYPE_SEED)
+    report = CompilationReport(
+        TYPE_SEED, stages=REPORT_STAGES, exclusion_categories=EXCLUSION_CATEGORIES
+    )
     loop = ResolutionLoop(_screen() if screen is None else screen)
     result = loop.resolve(
         inventory, report, building_type_sources=building_type_sources
@@ -667,7 +670,9 @@ def test_a_refused_input_leaves_the_report_as_it_was() -> None:
         inventory.add_asset(
             asset_id, Asset(asset_id, [[-122.4, 37.8]], dict(MASONRY_WALKUP))
         )
-    report = CompilationReport(TYPE_SEED)
+    report = CompilationReport(
+        TYPE_SEED, stages=REPORT_STAGES, exclusion_categories=EXCLUSION_CATEGORIES
+    )
 
     with pytest.raises(ValueError, match='building_type_sources'):
         ResolutionLoop(_screen()).resolve(

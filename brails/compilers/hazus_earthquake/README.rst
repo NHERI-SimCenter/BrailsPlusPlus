@@ -230,16 +230,16 @@ The exclusion category
 ~~~~~~~~~~~~~~~~~~~~~~
 
 A refused asset that the caller excludes is filed under one of the categories
-of ``EXCLUSION_CATEGORIES`` in ``brails/compilers/compilation_report.py``,
-whose comment defines
-each. An unsupported refusal is ``unsupported`` and an invalid one
-``missing_driver``. An infeasible refusal is ``conflict`` where the caller
-acted on a feature the refusal named and the asset was refused again. The
-resolution loop below is such a caller, but with the structure type inferer in
-BRAILS it never reaches this case. Any other infeasible refusal at the
-structure type stage is classified by the asset's cell: the combination of
-occupancy class, story band and, in the West Coast tables, era that selects
-a distribution of structure types. The Hazus manual prints that
+in ``EXCLUSION_CATEGORIES`` of ``hazus_eq_inventory_compiler.py``. The section
+"Exclusion categories" of ``brails/compilers/README.rst`` defines each one. An
+unsupported refusal is ``unsupported`` and an invalid one ``missing_driver``.
+An infeasible refusal is ``conflict`` where the caller acted on a feature the
+refusal named and the asset was refused again. The resolution loop below is
+such a caller, but with the structure type inferer in BRAILS it never reaches
+this case. Any other infeasible refusal at the structure type stage is
+classified by the asset's cell: the combination of occupancy class, story band
+and, in the West Coast tables, era that selects a distribution of structure
+types. The Hazus manual prints that
 distribution for some cells and BRAILS's completed tables fill others, and
 the structure type inferer's ``cell_fill`` and ``cell_is_unpublished``
 report which applies. The refusal is ``empty_cell`` where the cell has
