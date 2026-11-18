@@ -72,8 +72,6 @@ if TYPE_CHECKING:
         HazusEQStructureTypeInferer,
     )
 
-# The stages of the composed screen, in the order it runs them. Each name
-# is also a stage of the compilation report.
 # The exclusion categories the loop and the Hazus earthquake compiler file
 # under, besides the report's DROPPED_CATEGORY. The section "Exclusion
 # categories" of the compilers' README defines each.
@@ -84,6 +82,9 @@ NO_PLAUSIBLE_VALUE_CATEGORY = 'no_plausible_value'
 UNDETERMINED_CATEGORY = 'undetermined'
 FAILS_SCHEMA_CATEGORY = 'fails_schema'
 
+# The stages of the composed screen, in the order it runs them. Each name
+# is also the stage of the compilation report that the loop records under,
+# unless the loop's report_stages maps it to another.
 STAGE_DESIGN_LEVEL = 's08_design_level'
 STAGE_STRUCTURE_TYPE = 's08_structure_type'
 SCREEN_STAGES = (STAGE_DESIGN_LEVEL, STAGE_STRUCTURE_TYPE)
@@ -96,7 +97,8 @@ SCREEN_ASSET_ID = 'screened_asset'
 # a valid coordinate and no stage of the screen reads one.
 SCREEN_COORDINATES = ((0.0, 0.0),)
 
-# The stage of the compilation report the loop records under.
+# The stage of the compilation report the loop records its own rows under,
+# unless the loop's report_stages maps it to another.
 STAGE_RESOLUTION = 's08_resolution'
 
 # The source whose general building type the loop withholds.
@@ -481,11 +483,15 @@ class ResolutionLoop:
                 stages are filed under, keyed by :data:`STAGE_DESIGN_LEVEL`,
                 :data:`STAGE_STRUCTURE_TYPE` or :data:`STAGE_RESOLUTION`, for
                 a caller that runs the loop in more than one step. Defaults
-                to ``None``, which files each under the loop's own name.
+                to ``None``, which files each under the loop's own name. The
+                report checks each value against its stages when a row is
+                recorded.
 
         Raises:
             ValueError:
                 If ``report_stages`` holds a key other than those three.
+            TypeError:
+                If a value of ``report_stages`` is not a string.
         """
         unknown = sorted(
             set(report_stages or {}) - {*SCREEN_STAGES, STAGE_RESOLUTION}
@@ -496,6 +502,14 @@ class ResolutionLoop:
                 f'loop: {[*SCREEN_STAGES, STAGE_RESOLUTION]}.'
             )
             raise ValueError(msg)
+        not_strings = sorted(
+            key
+            for key, value in (report_stages or {}).items()
+            if not isinstance(value, str)
+        )
+        if not_strings:
+            msg = f'report_stages maps {not_strings} to values that are not strings.'
+            raise TypeError(msg)
         self.screen = screen
         self.report_stages = dict(report_stages or {})
 

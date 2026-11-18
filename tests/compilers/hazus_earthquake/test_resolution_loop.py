@@ -812,5 +812,11 @@ def test_report_stages_rename_what_the_loop_files() -> None:
         's10_resolution',
     }
     assert not report.exclusions.empty
+
+
+def test_report_stages_refuse_unknown_keys_and_values_that_are_not_strings() -> None:
+    """The loop refuses a key it has no stage for and a value that is no string."""
     with pytest.raises(ValueError, match='not stages of the loop'):
         ResolutionLoop(_screen(), report_stages={'year': 's10_year'})
+    with pytest.raises(TypeError, match='values that are not strings'):
+        ResolutionLoop(_screen(), report_stages={STAGE_RESOLUTION: 10})

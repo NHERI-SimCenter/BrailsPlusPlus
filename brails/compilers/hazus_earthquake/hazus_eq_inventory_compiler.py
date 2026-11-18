@@ -273,7 +273,6 @@ REPORT_STAGES = (
     's06_residential_year',
     's07_pair_redraw',
     's08_design_level',
-    's08_screen',
     's08_resolution',
     's08_structure_type',
     's08_height_class',
