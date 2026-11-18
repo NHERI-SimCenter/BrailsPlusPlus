@@ -13,24 +13,21 @@ of the defaults.
 
 The imputer values a building as a rate per square foot times the building's
 gross area, which it computes from the footprint as the plan area times the
-number of stories. The rates come from the buildings whose replacement cost is
-stated: a rate is a building's ``ReplacementCost`` divided by its
-``GrossArea``, for a value from NSI, from a local source such as the user's
-own inventory, or derived, a code that also marks the values this imputer
-computes from a building's own rate. Every building is valued this way,
-including those whose replacement cost is stated, except that a replacement
-cost from a local source is kept as it is. An inventory can hold several
-possible worlds, each one realization of the features whose values are
-uncertain, such as the story count, and the imputer values each world on its
-own.
+number of stories unless the caller names a feature that holds the gross area.
+The rates come from the buildings whose replacement cost is stated: a rate is a
+building's ``ReplacementCost`` divided by its ``GrossArea``, for a value from
+NSI, from a local source such as the user's own inventory, or derived, a code
+that also marks the values this imputer computes from a building's own rate.
+Every building is valued this way, including those whose replacement cost is
+stated, except that a replacement cost from a local source is kept as it is.
+The imputer values each world of an inventory on its own.
 
-A building with a rate of its own takes that rate. A building without one
-takes the rate of its donor, the building from which ``ObservedDonorImputer``
-copied its missing features, and failing that the rate of a nearby building
-of the same occupancy class, drawn at random among the nearest by location,
-plan area, and story count (the same-class neighbor draw). A building that
-gets no rate, or whose footprint encloses no area, gets no value, and the
-imputer's log records why.
+A building with a rate of its own takes that rate. A building without one takes
+the rate of its donor, the building from which ``ObservedDonorImputer`` copied
+its missing features, and failing that the rate of a nearby building of the
+same occupancy class, drawn at random among the nearest by location, plan area,
+and story count (the same-class neighbor draw). A building that gets no rate or
+no gross area gets no value, and the imputer's log records why.
 
 The value and the rate
 ----------------------
@@ -84,40 +81,54 @@ become", and states, in its section on NSI's footprint, how the
 NSI's story count. A local inventory can supply either feature from any
 other source.
 
-A value NSI states is divided by ``GrossArea``, and the rate multiplies the
-gross area computed from the footprint, so the value computed for the same
-building is NSI's value divided by the ratio of ``GrossArea`` to that gross
-area. For a building with one NSI record whose footprint and story count in
-the inventory agree with NSI's, the value is NSI's for the median of the San
-Francisco records alone on their NSI footprint, whose ratio is 1.0, and about
-1.42 times NSI's value or more for the quarter of those records with a ratio
-of 0.706 or less. On a footprint that holds several NSI records, where its
-footprint and story count in the inventory agree with NSI's, the value is the
-join's sum (the NSI README's section on NSI's footprint gives the ratio). No
-scale factor is applied.
+A value NSI states is divided by ``GrossArea``, and by default the rate
+multiplies the gross area computed from the footprint, so the value computed
+for the same building is NSI's value divided by the ratio of ``GrossArea`` to
+that gross area. For a building with one NSI record whose footprint and story
+count in the inventory agree with NSI's, the value is NSI's for the median of
+the San Francisco records alone on their NSI footprint, whose ratio is 1.0, and
+about 1.42 times NSI's value or more for the quarter of those records with a
+ratio of 0.706 or less. On a footprint that holds several NSI records, where
+its footprint and story count in the inventory agree with NSI's, the value is
+the join's sum (the NSI README's section on NSI's footprint gives the ratio).
+No scale factor is applied.
 
 Procedure
 ---------
 
-``impute_stage`` reads two inventories that earlier steps froze with
-``StageFreeze``: each was frozen once under its name, and the imputer changes
-neither. The first holds the buildings. The second, the donor stage, is the
-inventory that ``imputation_donors_from_log`` builds from the log of
-``ObservedDonorImputer.impute_stage``. It names, for each building and world,
-the donor whose copied values the building kept. In each world, the imputer
-reads that world's realization of both inventories. The section "Concepts" of
-``brails/compilers/README.rst`` describes these terms under "Possible worlds",
-"Stages and freezing", and "Donors".
+The imputer values each world on its own. It first reads every building's
+own rate. It then gives each building, in ascending order of its id, the
+first of three rates that exists, its own, its donor's or that of a nearby
+building of the same occupancy class, and multiplies that rate by the
+building's gross area, which is computed from the footprint unless the
+caller names a feature that holds it. A local value is kept, and a building
+without a rate or without a gross area gets no value. The section
+"Concepts" of ``brails/compilers/README.rst`` describes possible worlds,
+frozen stages and donors under "Possible worlds", "Stages and freezing", and
+"Donors".
 
-The imputer first reads the own rate of every building of the stage, so
-every rate comes from the values as frozen and none from a value the imputer
-writes. It then values each building in ascending order of its id as a
-string, an order the result does not depend on. A building whose
-``ReplacementCost`` is coded ``L`` keeps that value unchanged, logged as
-``OUTCOME_LOCAL_VALUE``. A building whose coordinates enclose no area gets
-no value (``OUTCOME_NO_AREA``). Every other building takes the first rate
-that exists of three, and its value is that rate times its gross area
-computed from the footprint.
+``impute_stage`` reads inventories that earlier steps froze with
+``StageFreeze``, each frozen once under its name, and changes none of them. The
+first holds the buildings. The second, the donor stage, is the inventory that
+``imputation_donors_from_log`` builds from the log of
+``ObservedDonorImputer.impute_stage``. It names, for each building and world,
+the donor whose copied values the building kept. Given ``target_area_key``, the
+imputer reads the gross areas from that feature of the stage the caller names
+as ``area_stage``, for buildings frozen before their areas were computed, and
+otherwise from the buildings' stage. In each world, the imputer reads that
+world's realization of each inventory, or the one world of an inventory that
+holds one.
+
+The imputer first reads the own rate of every building of the stage, so every
+rate comes from the values as frozen and none from a value the imputer writes.
+It then values each building in ascending order of its id as a string, an order
+the result does not depend on. A building whose ``ReplacementCost`` is coded
+``L`` keeps that value unchanged, logged as ``OUTCOME_LOCAL_VALUE``. Every
+other building needs a gross area: by default the one computed from its
+footprint as "The value and the rate" states, and with ``target_area_key`` the
+finite number above zero that feature holds. A building without one gets no
+value (``OUTCOME_NO_AREA``). The others take the first rate that exists of
+three, and the value is that rate times the gross area.
 
 1. The building's own rate, logged as ``OUTCOME_OWN_RATE``.
 2. The own rate of the donor that the donor stage names for the building
@@ -130,15 +141,17 @@ computed from the footprint.
 
 A building without a rate gets no value. Every stated value other than a local
 one is replaced. The log holds one row per building and world, with the gross
-area computed from the footprint as ``footprint_gross_area_sqft`` and the rate
-the value came from as ``rate``, which on the row of a kept local value is the
-building's own rate, where it has one. ``OUTCOME_VALUE_CODES`` gives the
-source code of the value by the row's outcome: ``L`` for a local value, ``R``
-for the building's own rate, ``I`` for another building's, and none for an
-outcome it does not list. ``impute``, which reads no donor stage, values an
-inventory the same way with no donor named, removes the value of a building
-left without a rate, and writes the value's code into each source string,
-``SOURCE_CODE_NONE`` where there is no value.
+area the rate multiplies as ``footprint_gross_area_sqft``, whether computed
+from the footprint or read from ``target_area_key``, where it came from as
+``area_source`` (``AREA_FROM_STORIES``, ``AREA_FROM_PLAN_AREA`` or
+``AREA_FROM_FEATURE``), and the rate the value came from as ``rate``, which on
+the row of a kept local value is the building's own rate, where it has one.
+``OUTCOME_VALUE_CODES`` gives the source code of the value by the row's
+outcome: ``L`` for a local value, ``R`` for the building's own rate, ``I`` for
+another building's, and none for an outcome it does not list. ``impute``, which
+reads no donor stage, values an inventory the same way with no donor named,
+removes the value of a building left without a rate, and writes the value's
+code into each source string, ``SOURCE_CODE_NONE`` where there is no value.
 
 The same-class neighbor draw
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

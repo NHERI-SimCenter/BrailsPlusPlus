@@ -24,6 +24,15 @@ years. The cap is the imputer's own bound and is not calibrated yet either.
 The method
 ----------
 
+The sampler gives each building outside the residential occupancy classes
+the construction year of a residential building near it. The donors are the
+residential buildings of one world of a frozen stage that hold a year. Each
+building draws one of its nearest donors, with weights that fall with
+distance, or a donor of its block group where none lies within the cap, and
+takes that donor's year. The section "Concepts" of
+``brails/compilers/README.rst`` describes these terms under "Possible
+worlds", "Stages and freezing", and "Donors".
+
 ``select_donors`` reads one world of a frozen stage: the world the sampler
 is constructed with where the stage holds several, the stage as it is where
 it holds one. It takes as donors the buildings whose ``occupancy_key`` is in
@@ -58,14 +67,14 @@ block group that covers a large area the donor may lie beyond the cap.
 
 The donor's year is copied. Both the pick among the nearest donors and the
 block-group pick are the draw of ``ObservedDonorImputer``, run with the
-building's status given as residential. The draw then matches the
-residential donors; on its own class, which lies outside the residential
-classes, it would match none. The pick reads one uniform number keyed by
-the asset id, the seed, the world, the iteration and a purpose label,
-``PURPOSE_DONOR`` or, in the block group, ``PURPOSE_FALLBACK`` of the
-observed-donor imputer, with ``NEIGHBOR_YEAR_PURPOSE_PREFIX`` and a colon
-put before it. A draw is therefore reproducible and depends on no
-processing order and on no other building's draw.
+building's status given as residential. The draw then matches the residential
+donors; on its own class, which lies outside the residential classes, it would
+match none. The pick's uniform is keyed as the section "Possible worlds" under
+"Concepts" of ``brails/compilers/README.rst`` describes, by the building's id
+among other keys, so a building's draw depends on no other building's. Its
+purpose label is ``PURPOSE_DONOR`` or, in the block group, ``PURPOSE_FALLBACK``
+of the observed-donor imputer, with ``NEIGHBOR_YEAR_PURPOSE_PREFIX`` and a
+colon put before it, which keeps it apart from the imputer's own draws.
 
 Scope
 -----

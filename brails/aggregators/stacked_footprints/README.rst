@@ -53,6 +53,15 @@ The same buildings hold no copies at a ``COPY_IOU`` of 0.7, 0.75 or 0.8.
 The method
 ----------
 
+The merge returns the Overture footprints it reads with the outlines of each
+stacked building joined into one asset. It finds the footprints that are
+copies of one another, of which it keeps one, and the footprints nested
+inside a larger one. A nested footprint merges into the outermost footprint
+around it where Overture's heights, or a ``class`` marking either of the two
+a roof, show the two to be parts of one building, the stacking signal. The
+merged asset covers the union of its parts and takes the height of the tallest,
+and the footprints that remain receive new asset ids.
+
 ``merge`` runs in six steps, in this order.
 
 It first finds the pairs. Two footprints are copies when their intersection

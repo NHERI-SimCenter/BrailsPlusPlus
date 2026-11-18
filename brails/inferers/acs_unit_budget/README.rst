@@ -59,6 +59,22 @@ missing margin, which the Census API uses to code special cases, reads as zero.
 The method
 ----------
 
+The budget works one block group at a time. From the census count of each bin
+it subtracts the units of the footprints passed as ``reached``, which hold an
+occupancy class and a unit count, and it places the units that remain on the
+other footprints, the targets. Mobile homes come first, on footprints near
+mobile-home park points. For the structure-size bins, the budget then reserves
+the targets that will hold the structures each bin needs, the dwellings. It
+prefers the targets most likely to be residential, by a probability the
+observed-donor imputer computes for each target with the ``reached`` footprints
+as donors. In each possible world it gives the bins' structures and units to
+the dwellings in a random order weighted by gross area. A target that becomes
+neither a mobile home nor a dwelling is dropped when its plan area is under
+``threshold_sqft`` and it lies beyond ``mh_park_radius_m`` of every mobile-home
+park point, and passed on as non-residential otherwise. The section "Concepts"
+of ``brails/compilers/README.rst`` describes these terms under "Possible
+worlds" and "Donors".
+
 ``allocate`` first measures every footprint, the targets and the reached alike:
 its plan area, its gross area and capacity as the class docstring defines
 them, and the great-circle distance in meters from its centroid to the nearest

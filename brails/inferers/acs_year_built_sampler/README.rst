@@ -49,6 +49,16 @@ as zero, and ``fit_report`` counts such values per block group.
 The method
 ----------
 
+The sampler fits, for each block group, one distribution of construction years
+per size class, and draws each asset's year from the distribution of its block
+group and size class. B25034 sets how the block group's units fall over the ten
+B25034 bins of year built, and B25127 sets how the years of each size class
+spread over the tract's six coarse bins. The fit splits each coarse bin by the
+B25034 shares and then adjusts the size-class distributions, weighted by the
+block group's units of each size class, toward those shares. The section
+"Concepts" of ``brails/compilers/README.rst`` describes the world a fit reads
+and the keyed random numbers of a draw under "Possible worlds".
+
 ``fit`` reads one world's inventory and sums, for each block group among its
 residential assets, the units of the assets in each size class. It then fits
 each block group separately.
@@ -81,11 +91,9 @@ its last rows.
 ``draw`` gives each asset a year from the fitted row of its block group and
 class. The row's probability for a bin is spread evenly over the bin's years,
 and one uniform number per asset picks the year from the result. The uniform
-is keyed by the asset id, the seed, the purpose label ``ACS_YEAR_PURPOSE``,
-the world and the iteration, so a draw is reproducible and does not depend
-on the order of the assets. A call on an
-inventory of one asset reads that asset's row from the fit, so it draws what
-the asset would draw in the fitted inventory.
+carries the purpose label ``ACS_YEAR_PURPOSE``. A call on an inventory of one
+asset reads that asset's row from the fit, so it draws what the asset would
+draw in the fitted inventory.
 
 Defaults and scope
 ------------------
