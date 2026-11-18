@@ -150,16 +150,15 @@ a stage with several through its realization ``world``.
 
 The parts are then united in the order given. An asset held by any part is
 in the result, and an asset the ``dropped`` record holds, in any world, is
-left out. An asset in ``excluded`` takes no value from the parts named in
-``excluded_parts`` and keeps the values of the others. Each feature takes
-the value of the one part that holds a value for it, a value being anything
-``AssetInventory.merge`` does not count as missing. A feature no part holds
-a value for keeps a missing value, as ``merge`` keeps a source's marker,
-where ``union_disjoint`` in ``brails/utils/inventory_union.py`` drops such a
-feature. Two parts holding a value for one feature of one asset, and an id
-in ``excluded`` that no part and no ``dropped`` record holds, are refused
-once the union is built. Last, each feature of an asset whose value in a
-``withheld`` record, in ``world``, is the source label ``label`` is removed.
+left out. Each feature takes the value of the one part that holds a value
+for it, a value being anything ``AssetInventory.merge`` does not count as
+missing. A feature no part holds a value for keeps a missing value, as
+``merge`` keeps a source's marker, where ``union_disjoint`` in
+``brails/utils/inventory_union.py`` drops such a feature. If two parts hold a
+value for the same feature of one asset, ``compose_source_parts`` raises
+``ValueError`` once the union is built. Last, each feature of an asset whose
+value in a ``withheld`` record, in ``world``, is the source label ``label`` is
+removed.
 
 The result shares a stage's asset record wherever no step changes the asset
 and the stage has one possible world or holds no list for the asset.

@@ -163,7 +163,7 @@ def freeze() -> StageFreeze:
 
 
 class TestComposeSource:
-    """A source composes from frozen stages by union and three removals."""
+    """A source is the union of frozen parts, less the dropped assets and the withheld values."""
 
     def test_union_across_worlds(self, freeze: StageFreeze) -> None:
         """Parts holding a feature in different worlds unite, markers kept."""
@@ -236,20 +236,18 @@ class TestComposeSource:
             'Area': 120.0,
         }
 
-    def test_dropped_and_excluded(self, freeze: StageFreeze) -> None:
-        """Dropped assets leave, and excluded ones lose only the named part's values."""
+    def test_dropped(self, freeze: StageFreeze) -> None:
+        """An asset of the dropped record leaves the source."""
         composed = compose_source_parts(
             freeze,
             ['spine', 'drawn', 'later'],
             world=0,
             label='imputed',
             dropped='dropped',
-            excluded={'c', 'b'},
-            excluded_parts=['later'],
         )
         assert features(composed) == {
             'a': {OCCUPANCY_KEY: 'RES1', 'Area': 'NA', YEAR_BUILT_KEY: 1950},
-            'c': {OCCUPANCY_KEY: 'RES3A', 'Area': None},
+            'c': {OCCUPANCY_KEY: 'RES3A', 'Area': 120.0},
         }
 
     def test_shares_and_leaves_stages_unchanged(self, freeze: StageFreeze) -> None:
@@ -270,8 +268,6 @@ class TestComposeSource:
             withheld=['withheld'],
             label='nsi',
             dropped='dropped',
-            excluded={'c'},
-            excluded_parts=['later'],
         )
         assert composed.inventory['a'] is not spine.inventory['a']
         merged = spine.merge(
@@ -296,17 +292,8 @@ class TestComposeSource:
             ({'world': 1.0}, TypeError, 'world must be an integer'),
             ({'world': -1}, ValueError, 'not be negative'),
             ({'parts': ['drawn'], 'world': 2}, ValueError, "'drawn' holds 2 worlds"),
-            ({'excluded': ['c']}, TypeError, 'set of asset ids'),
-            ({'excluded_parts': 'spine'}, TypeError, 'sequence of stage names'),
             ({'parts': []}, ValueError, 'at least one stage, each once'),
             ({'parts': ['spine', 'spine']}, ValueError, 'each once'),
-            ({'excluded_parts': ['drawn']}, ValueError, 'must be among the parts'),
-            ({'excluded': {'c'}}, ValueError, 'excluded_parts names no part'),
-            (
-                {'excluded': {'c', 'x', 7}, 'excluded_parts': ['spine']},
-                ValueError,
-                r"2 excluded .* no dropped record: 7, 'x'",
-            ),
         ],
     )
     def test_refusals(

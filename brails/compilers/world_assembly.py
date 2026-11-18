@@ -42,7 +42,6 @@ Compose one source of one world from frozen stages.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from collections.abc import Set as AbstractSet
 from copy import copy
 from numbers import Integral
 from typing import TYPE_CHECKING, Any
@@ -50,8 +49,6 @@ from typing import TYPE_CHECKING, Any
 from brails.types.asset_inventory import (
     MAX_REPORTED_WORLD_PROBLEMS,
     AssetInventory,
-    _merge_id_order,
-    _report_first_problems,
     is_missing_value,
     is_probabilistic_feature,
 )
@@ -71,17 +68,14 @@ def compose_source_parts(  # noqa: C901
     withheld: Sequence[str] = (),
     label: str,
     dropped: str | None = None,
-    excluded: AbstractSet[str] = frozenset(),
-    excluded_parts: Sequence[str] = (),
 ) -> AssetInventory:
     """
     Compose one source of one world from frozen stages.
 
     The source is the union of ``parts`` in ``world``, less the assets of
-    the ``dropped`` record, the values ``excluded`` assets take from
-    ``excluded_parts``, and the values a ``withheld`` record withholds from
-    ``label``. Every stage is read from ``freeze`` by name. At most one part
-    may hold a value for a feature of an asset. An asset takes the
+    the ``dropped`` record and the values a ``withheld`` record withholds
+    from ``label``. Every stage is read from ``freeze`` by name. At most one
+    part may hold a value for a feature of an asset. An asset takes the
     coordinates of the first part that holds it, and a feature no part
     holds a value for keeps the first part's missing value. The result may
     share records and shares values with the frozen stages, so a caller
@@ -107,13 +101,6 @@ def compose_source_parts(  # noqa: C901
         dropped (str, optional):
             Name of a record holding the assets to leave out. Defaults to
             ``None``, no record.
-        excluded (AbstractSet[str], optional):
-            Ids of the assets that take no value from ``excluded_parts``,
-            each held by a part or by the ``dropped`` record. Defaults to
-            the empty set.
-        excluded_parts (Sequence[str], optional):
-            Names, among ``parts``, of the parts whose values the assets in
-            ``excluded`` do not take. Defaults to none.
 
     Returns:
         AssetInventory:
@@ -122,29 +109,21 @@ def compose_source_parts(  # noqa: C901
 
     Raises:
         TypeError:
-            If ``parts``, ``withheld`` or ``excluded_parts`` is a string or
-            not a sequence, a stage name is not a string, ``label`` is not
-            a string, ``world`` is not an integer, or ``excluded`` is not a
-            set.
+            If ``parts`` or ``withheld`` is a string or not a sequence, a
+            stage name is not a string, ``label`` is not a string, or
+            ``world`` is not an integer.
         LookupError:
             If a named stage is not frozen.
         ValueError:
-            If ``parts`` is empty or names a stage twice; if
-            ``excluded_parts`` names a stage that is not among ``parts``, or
-            ``excluded`` holds ids while ``excluded_parts`` is empty; if
-            ``world`` is negative, or not below the number of possible
-            worlds of a part or withheld record that holds more than one; if
-            ``excluded`` holds an id that no part and no ``dropped`` record
-            holds; or if two parts hold a value for one feature of one asset
-            in ``world``. A message names up to
+            If ``parts`` is empty or names a stage twice; if ``world`` is
+            negative, or not below the number of possible worlds of a part
+            or withheld record that holds more than one; or if two parts
+            hold a value for one feature of one asset in ``world``. A
+            message names up to
             :data:`~brails.types.asset_inventory.MAX_REPORTED_WORLD_PROBLEMS`
             assets or features.
     """
-    for argument, names in (
-        ('parts', parts),
-        ('withheld', withheld),
-        ('excluded_parts', excluded_parts),
-    ):
+    for argument, names in (('parts', parts), ('withheld', withheld)):
         if isinstance(names, str) or not isinstance(names, Sequence):
             msg = (
                 f'{argument} must be a sequence of stage names, not '
@@ -152,7 +131,7 @@ def compose_source_parts(  # noqa: C901
             )
             raise TypeError(msg)
     named = [*parts, *withheld, *([] if dropped is None else [dropped])]
-    for name in (*named, *excluded_parts):
+    for name in named:
         if not isinstance(name, str):
             msg = (
                 'compose_source_parts reads frozen stages by name only, and a stage '
@@ -166,20 +145,8 @@ def compose_source_parts(  # noqa: C901
         msg = f'world must be an integer, not {type(world).__name__}.'
         raise TypeError(msg)
     world = int(world)
-    if not isinstance(excluded, AbstractSet):
-        msg = f'excluded must be a set of asset ids, not {type(excluded).__name__}.'
-        raise TypeError(msg)
     if not parts or len(set(parts)) < len(parts):
         msg = f'parts must name at least one stage, each once, not {list(parts)}.'
-        raise ValueError(msg)
-    if not set(excluded_parts) <= set(parts):
-        msg = (
-            f'excluded_parts {list(excluded_parts)} must be among the parts '
-            f'{list(parts)}.'
-        )
-        raise ValueError(msg)
-    if excluded and not excluded_parts:
-        msg = 'excluded holds assets, but excluded_parts names no part.'
         raise ValueError(msg)
     if world < 0:
         msg = f'world must not be negative, not {world}.'
@@ -249,12 +216,11 @@ def compose_source_parts(  # noqa: C901
     n_conflicts = 0
     for name in parts:
         stage = stages[name]
-        leaving = excluded if name in excluded_parts else ()
         vector_features.update(dict.fromkeys(stage.vector_features))
         for asset_id, asset in stage.inventory.items():
             if asset_id in dropped_ids:
                 continue
-            features = {} if asset_id in leaving else realized(stage, asset)
+            features = realized(stage, asset)
             if asset_id not in records:
                 if features is asset.features:
                     records[asset_id] = asset
@@ -282,20 +248,6 @@ def compose_source_parts(  # noqa: C901
         msg = (
             f'{n_conflicts} feature(s) hold a value in more than one of the '
             f'parts {list(parts)} in world {world}: {"; ".join(conflicts)}{tail}.'
-        )
-        raise ValueError(msg)
-    unknown = sorted(
-        (
-            asset_id
-            for asset_id in excluded
-            if asset_id not in records and asset_id not in dropped_ids
-        ),
-        key=_merge_id_order,
-    )
-    if unknown:
-        msg = (
-            f'{len(unknown)} excluded asset id(s) are held by no part and no '
-            f'dropped record: {_report_first_problems(list(map(repr, unknown)), ", ")}.'
         )
         raise ValueError(msg)
 
