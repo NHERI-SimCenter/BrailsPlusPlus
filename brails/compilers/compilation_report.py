@@ -352,7 +352,7 @@ class CompilationReport:
 
     def note(self, text: str) -> None:
         """
-        Record a notice about the run, such as a contradiction it met.
+        Record a notice about the run, such as a count of missing default values.
 
         Args:
             text (str):

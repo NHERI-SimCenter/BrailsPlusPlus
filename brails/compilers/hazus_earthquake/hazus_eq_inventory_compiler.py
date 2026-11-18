@@ -272,6 +272,7 @@ REPORT_STAGES = (
     'nonresidential_year',
     'value',
     'certificate',
+    's14_building_type',
 )
 
 # The categories the run files an exclusion under, besides the report's
@@ -2873,9 +2874,10 @@ class HazusEQInventoryCompiler:
         Every building without a local ``BuildingType`` takes the letter of
         its structure type in the world, excluded ones included, by the
         pairing of ``get_hazus_general_type_membership`` that the structure
-        type inferer draws with. A local letter is kept, and a notice counts
-        the buildings not excluded whose local letter differs from the
-        letter of their structure type.
+        type inferer draws with. A local letter is kept. A building not yet
+        excluded whose local letter differs from the letter of its structure
+        type is excluded from the world as a ``conflict``, since its local
+        inventory contradicts itself.
 
         Args:
             world (int):
@@ -2888,10 +2890,11 @@ class HazusEQInventoryCompiler:
             centroids (Mapping[str, list[list[float]]]):
                 Each footprint's centroid.
             excluded (set[str]):
-                The buildings excluded from the world.
+                The buildings excluded from the world, to which those whose
+                letters contradict each other are added.
             report (CompilationReport):
-                The report, which receives the notice and the step's time in
-                the world.
+                The report, which receives an exclusion for each such
+                building and the step's time in the world.
 
         Returns:
             AssetInventory:
@@ -2906,23 +2909,27 @@ class HazusEQInventoryCompiler:
             if not is_missing_value(asset.features.get(BUILDING_TYPE_KEY))
         }
         letters: dict[str, dict[str, Any]] = {}
-        contradicted = 0
         for asset_id, asset in merged.inventory.items():
-            letter = _LETTER_OF_TYPE.get(asset.features.get(STRUCTURE_TYPE_KEY))
+            structure_type = asset.features.get(STRUCTURE_TYPE_KEY)
+            letter = _LETTER_OF_TYPE.get(structure_type)
             if asset_id not in local_letters:
                 if letter is not None:
                     letters[asset_id] = {BUILDING_TYPE_KEY: letter}
             elif (
                 asset_id not in excluded
+                and letter is not None
                 and asset.features[BUILDING_TYPE_KEY] != letter
             ):
-                contradicted += 1
-        if contradicted:
-            report.note(
-                f'World {world}: {contradicted} compiled building(s) keep a '
-                f'local {BUILDING_TYPE_KEY} other than the letter of their '
-                f'{STRUCTURE_TYPE_KEY}.'
-            )
+                report.record_exclusion(
+                    asset_id,
+                    world=world,
+                    stage='s14_building_type',
+                    category='conflict',
+                    detail=f'the local {BUILDING_TYPE_KEY} '
+                    f'{asset.features[BUILDING_TYPE_KEY]!r} is not the letter '
+                    f'{letter!r} of the {STRUCTURE_TYPE_KEY} {structure_type!r}',
+                )
+                excluded.add(asset_id)
         report.set_timing(
             STAGE_S14_BUILDING_TYPE, time.perf_counter() - started, world=world
         )

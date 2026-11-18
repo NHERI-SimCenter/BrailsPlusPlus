@@ -803,16 +803,16 @@ class TestWrittenFile:
     @pytest.mark.parametrize(
         ('building', 'key'),
         [
-            ('q03', OCCUPANCY_KEY),
+            ('c01', OCCUPANCY_KEY),
             ('h01', UNITS_KEY),
-            ('q03', STORIES_KEY),
-            ('q03', YEAR_BUILT_KEY),
-            ('q03', DESIGN_LEVEL_KEY),
-            ('q03', STRUCTURE_TYPE_KEY),
-            ('q03', HEIGHT_CLASS_KEY),
+            ('c01', STORIES_KEY),
+            ('c01', YEAR_BUILT_KEY),
+            ('c01', DESIGN_LEVEL_KEY),
+            ('c01', STRUCTURE_TYPE_KEY),
+            ('c01', HEIGHT_CLASS_KEY),
             ('c02', REPLACEMENT_COST_KEY),
-            ('q03', BLOCK_GROUP_KEY),
-            ('q03', PLAN_AREA_KEY),
+            ('c01', BLOCK_GROUP_KEY),
+            ('c01', PLAN_AREA_KEY),
             ('c02', SOURCE_STRING_KEY),
         ],
     )
@@ -876,7 +876,7 @@ class TestWrittenFile:
 
         def validate(inventory: AssetInventory) -> object:
             """
-            Check an inventory, then remove q03's year in the second world.
+            Check an inventory, then remove c01's year in the second world.
 
             Args:
                 inventory (AssetInventory):
@@ -890,7 +890,7 @@ class TestWrittenFile:
             verdict = real(inventory)
             calls.append(None)
             if len(calls) == 2:
-                inventory.inventory['q03'].features.pop(YEAR_BUILT_KEY)
+                inventory.inventory['c01'].features.pop(YEAR_BUILT_KEY)
             return verdict
 
         monkeypatch.setattr(compiler._validator, 'validate', validate)
@@ -1608,7 +1608,7 @@ class TestYearsAndTypes:
             )
 
     def test_building_type(self, compiled: object) -> None:
-        """A local letter is kept, and every other follows the structure type."""
+        """A local letter is kept, every other follows the structure type, and a contradicting local letter excludes the building."""
         result = compiled(n_worlds=3)
         local = {
             asset_id: values[BUILDING_TYPE_KEY]
@@ -1624,20 +1624,31 @@ class TestYearsAndTypes:
                 elif not values[EXCLUDED_KEY] or letter is not None:
                     assert letter == hc._LETTER_OF_TYPE[values[STRUCTURE_TYPE_KEY]]
                     derived.add(asset_id)
-        # q03's local W stands beside its local C1; NSI's C is not written,
-        # and a notice counts the disagreement in each world.
+        # q03's local W stands beside its local C1, NSI's C is not written,
+        # and q03 is excluded as a conflict in each world, without its value
+        # and gross area, and with no notice.
         assert local['q03'] != hc._LETTER_OF_TYPE[LOCAL['q03'][STRUCTURE_TYPE_KEY]]
         assert derived & UNREACHED
-        notices = result.report.summary()['notices']
+        rows = result.report.exclusions
+        conflicts = rows[rows['stage'] == 's14_building_type']
+        assert set(zip(conflicts['asset_id'], conflicts['world'])) == {
+            ('q03', world) for world in range(3)
+        }
+        assert set(conflicts['category']) == {'conflict'}
         for world in range(3):
-            assert (
-                f'World {world}: 1 compiled building(s) keep a local '
-                f'{BUILDING_TYPE_KEY} other than the letter of their '
-                f'{STRUCTURE_TYPE_KEY}.'
-            ) in notices
+            q03 = features_in(result.inventory, world)['q03']
+            assert q03[EXCLUDED_KEY] is True
+            assert REPLACEMENT_COST_KEY not in q03
+            assert GROSS_AREA_KEY not in q03
+        # q03 remains a donor of s05.
+        assert 'q03' in set(result.logs['imputer']['donor_id'])
+        assert not any(
+            BUILDING_TYPE_KEY in notice
+            for notice in result.report.summary()['notices']
+        )
 
-    def test_letters_disagreeing_are_counted(self, study_area: object) -> None:
-        """The notice counts compiled buildings whose local letter is not the type's."""
+    def test_letters_disagreeing_are_excluded(self, study_area: object) -> None:
+        """A building whose local letter is not its type's is excluded where it is not yet."""
         # u06 gets a local C beside a local W1, as q03 holds a local W beside
         # a local C1, and is excluded from world 1; h04's local W agrees.
         local = build_inputs().local
@@ -1680,13 +1691,16 @@ class TestYearsAndTypes:
             result = HazusEQInventoryCompiler(
                 seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
             ).compile(study_area._replace(local=local))
-        notices = result.report.summary()['notices']
-        for world, count in ((0, 2), (1, 1), (2, 2)):
-            assert (
-                f'World {world}: {count} compiled building(s) keep a local '
-                f'{BUILDING_TYPE_KEY} other than the letter of their '
-                f'{STRUCTURE_TYPE_KEY}.'
-            ) in notices
+        rows = result.report.exclusions
+        conflicts = rows[rows['stage'] == 's14_building_type']
+        assert set(zip(conflicts['asset_id'], conflicts['world'])) == {
+            ('q03', 0),
+            ('q03', 1),
+            ('q03', 2),
+            ('u06', 0),
+            ('u06', 2),
+        }
+        assert 'h04' not in set(rows['asset_id'])
 
     def test_pairing_covers_every_type(self) -> None:
         """Every Hazus structure type has a general type letter."""
@@ -1761,13 +1775,16 @@ class TestYearsAndTypes:
             assert 'required property' not in detail
 
     def test_local_type(self, compiled: object) -> None:
-        """A local type the schema accepts compiles with its derived height class."""
+        """A local type the schema accepts takes its derived height class."""
         result = compiled(n_worlds=3)
         height = HAZUS_EQ_SOURCE_FEATURES.index(HEIGHT_CLASS_KEY)
         kind = HAZUS_EQ_SOURCE_FEATURES.index(STRUCTURE_TYPE_KEY)
+        rows = result.report.exclusions
+        assert 'fails_schema' not in set(
+            rows.loc[rows['asset_id'] == 'q03', 'category']
+        )
         for world in range(3):
             features = features_in(result.inventory, world)['q03']
-            assert features[EXCLUDED_KEY] is False
             assert features[HEIGHT_CLASS_KEY] == 'Low-Rise'
             codes = features[SOURCE_STRING_KEY]
             assert (codes[kind], codes[height]) == ('L', 'R')

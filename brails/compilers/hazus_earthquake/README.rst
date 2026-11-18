@@ -466,10 +466,12 @@ the letter of its structure type in the world, excluded buildings included, by
 the pairing of ``get_hazus_general_type_membership`` in
 ``brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py`` that the
 structure type inferer draws with. NSI's letter, which the draw reads, is not
-written. Where a local letter differs from the letter of the building's
-structure type, the file carries the local letter, and a notice in the report
-counts such compiled buildings in each world. The letters are frozen, over
-the worlds, as ``STAGE_S14_BUILDING_TYPE``.
+written. A building not yet excluded whose local letter differs from the
+letter of its structure type in a world is excluded from that world as
+``conflict``: its local inventory contradicts itself. Every earlier step has
+run in that world by then, so the building is processed by each of them and
+remains a donor like any other. The letters are frozen, over the worlds, as
+``STAGE_S14_BUILDING_TYPE``.
 
 ``s15_output`` writes the results into the merge. Each building receives
 ``Excluded``, true in a world from which the report lists it as excluded, and
