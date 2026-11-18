@@ -143,7 +143,7 @@ FOOTPRINT_VALUES = {
 }
 OCCUPANCY_CODE = HAZUS_EQ_SOURCE_FEATURES.index(OCCUPANCY_KEY)
 YEAR_CODE = HAZUS_EQ_SOURCE_FEATURES.index(YEAR_BUILT_KEY)
-# The footprints no NSI record reaches.
+# The footprints no NSI point is joined to.
 UNREACHED = set(FOOTPRINTS) - {record[0] for record in NSI_RECORDS.values()}
 FREEZE_ORDER = (
     's01_footprints',
@@ -286,9 +286,10 @@ def features_in(inventory: AssetInventory, world: int) -> dict[str, dict]:
 
     An assembled inventory holds a feature as a list over its worlds, with
     ``None`` in a world where it has no value, so a realization of a longer
-    run holds ``None`` where a shorter run holds no key. The merges the run
-    builds hold no ``None`` (``test_merge_keys_do_not_depend_on_n_worlds``),
-    and the comparison of realizations leaves ``None`` out.
+    run holds ``None`` where a shorter run holds no key. The merged
+    inventories the run builds hold no ``None``
+    (``test_merge_keys_do_not_depend_on_n_worlds``), and the comparison of
+    realizations leaves ``None`` out.
 
     Args:
         inventory (AssetInventory):
@@ -313,7 +314,7 @@ def rows_of(frame: pd.DataFrame, world: int) -> list[tuple]:
 
     Args:
         frame (pandas.DataFrame):
-            The records or the exclusions of a report.
+            The action rows or the exclusion rows of a report.
         world (int):
             The index of the world whose rows are returned.
 
@@ -440,7 +441,7 @@ class TestCompileArguments:
 
 
 class TestFootprintsAndJoin:
-    """Steps 1 to 3: the spine, the footprint features and the join's parts."""
+    """Steps s01 and s02: the footprints stage, its features and the join's parts."""
 
     def test_footprint_source_and_source_string(self, compiled: object) -> None:
         """Every footprint names its source and carries a source string."""
@@ -506,7 +507,7 @@ class TestFootprintsAndJoin:
     def test_stacked_footprints_merge_into_the_spine(
         self, study_area: object, height_unit: str, merged: int
     ) -> None:
-        """With merge_stacked the spine holds the merged set, under its keys."""
+        """With merge_stacked the footprints stage holds the merged footprints, under their new keys."""
         footprints = build_inputs().footprints
         for asset_id, asset in footprints.inventory.items():
             asset.features.update(
@@ -570,7 +571,7 @@ class TestFootprintsAndJoin:
         assert notice in summary['notices']
 
     def test_join_parts(self, compiled: object) -> None:
-        """The spine holds every footprint, and the other parts centroids."""
+        """The footprints stage holds every footprint with its outline, and the other parts of s01 and s02 place each asset at its centroid."""
         result = compiled(n_worlds=3)
         read = result.freeze.read
         assert result.freeze.order == FREEZE_ORDER
@@ -596,7 +597,7 @@ class TestFootprintsAndJoin:
             freeze: object, parts: list, **kwargs: object
         ) -> AssetInventory:
             """
-            Compose a source, then change a record it shares with a part.
+            Compose a source, then change an asset it shares with a part.
 
             Args:
                 freeze (object):
@@ -627,7 +628,7 @@ class TestOutput:
     """The last steps' output and what `write` makes of it."""
 
     def test_output_holds_the_excluded_values(self, study_area: object) -> None:
-        """An exclusion recorded before s12 marks its world."""
+        """An exclusion recorded before s12 sets Excluded in its world."""
         real = hc.CompilationReport.set_world_count
 
         def counted(report: CompilationReport, count: int) -> None:
@@ -816,7 +817,7 @@ class TestWrittenFile:
             inventory['l01'].features[GROSS_AREA_KEY],
             inventory['l01'].features[PLAN_AREA_KEY],
         )
-        # The join's sum of l02's two records, a derived value.
+        # The join's sum over l02's two NSI points, a derived value.
         assert inventory['l02'].features[NSI_GROSS_AREA_KEY] == 7000.0
 
     def test_coverage(self, compiled: object) -> None:
@@ -873,8 +874,8 @@ class TestWrittenFile:
 
             Args:
                 inventory (AssetInventory):
-                    The buildings checked, which share their records with
-                    the merge s12 to s15 work on.
+                    The buildings checked, which share their asset objects
+                    with the merged inventory s12 to s15 work on.
 
             Returns:
                 object:
@@ -917,8 +918,8 @@ class TestWrittenFile:
 
             Args:
                 inventory (AssetInventory):
-                    The buildings checked, which share their records with
-                    the merge s12 to s15 work on.
+                    The buildings checked, which share their asset objects
+                    with the merged inventory s12 to s15 work on.
 
             Returns:
                 object:
@@ -1182,7 +1183,7 @@ class TestStoriesUnitsAndImputation:
                 assert features[asset_id][OCCUPANCY_KEY] not in UNIT_COUNT_CLASSES
 
     def test_local_class_is_a_source_class(self, study_area: object) -> None:
-        """A footprint with a local occupancy class is reached and a story donor."""
+        """A footprint with a local occupancy class goes to the budget as one with a class from a source, and is an observed donor."""
         allocate = hc.ACSUnitBudget.allocate
         impute = hc.ObservedDonorImputer.impute_stage
         with (
@@ -1199,13 +1200,13 @@ class TestStoriesUnitsAndImputation:
             HazusEQInventoryCompiler(
                 seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
-        # l01 is a local RES1 over NSI's COM1 record.
+        # l01 is a local RES1 over the COM1 of its NSI point.
         assert 'l01' in allocated.call_args.args[2].inventory
         assert 'l01' not in allocated.call_args.args[1].inventory
         assert 'l01' in imputed.call_args.args[2].inventory
 
     def test_validation(self, study_area: object) -> None:
-        """The imputer's copies are checked for implausible pairs."""
+        """The values the imputer copies from a donor are checked for implausible pairs."""
         assert not hc._is_plausible_pair(
             'a', 0, {OCCUPANCY_KEY: 'RES2', STORIES_KEY: 4}
         )
@@ -1224,7 +1225,8 @@ class TestStoriesUnitsAndImputation:
         self, study_area: CompilerInputs, tmp_path: Path
     ) -> None:
         """A run that drops every footprint writes the report rows of every world."""
-        # d01 alone: a small footprint far from the park, which the budget drops.
+        # d01 alone: a small footprint far from the mobile-home park, which the
+        # budget drops.
         footprints = AssetInventory()
         footprints.add_asset('d01', study_area.footprints.inventory['d01'])
         result = HazusEQInventoryCompiler(
@@ -1348,7 +1350,7 @@ class TestWorlds:
     """A world does not depend on the number of worlds compiled."""
 
     def test_merge_keys_do_not_depend_on_n_worlds(self, study_area: object) -> None:
-        """World 0's last merge holds the same features at one world and seven."""
+        """World 0's last merged inventory holds the same features at one world and seven."""
         real = hc._WorldSources.merge_world
         keys = {}
         for n_worlds in (1, 7):
@@ -1442,7 +1444,7 @@ class TestWorlds:
 
 
 class TestYearsAndTypes:
-    """Steps 5 and 6: years, design levels, pairs, types and height classes."""
+    """Steps s06 to s08: years, pairs, design levels, types and height classes."""
 
     def test_components_receive_worlds(
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
@@ -1468,7 +1470,7 @@ class TestYearsAndTypes:
     def test_frozen_inputs_cross_the_boundary(
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """In each world, the year fit and the re-draw's donors read that world's step4 view."""
+        """In each world, the year fit and the re-draw's donors read that world's realization of s05_view."""
         # The mocks record the inventories they are called with, not copies,
         # so the comparison after the run also sees a change made to them
         # after the call.
@@ -1499,12 +1501,12 @@ class TestYearsAndTypes:
     def test_changed_view_raises_at_the_manifest(
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A component that changes the frozen step4 view it read stops the run."""
+        """A component that changes s05_view after reading it stops the run."""
         real = hc.StageFreeze.read
 
         def changing(self: object, stage: str) -> AssetInventory:
             """
-            Return a frozen stage, changing the step4 view.
+            Return a frozen stage, changing s05_view.
 
             Args:
                 self (object):
@@ -1529,7 +1531,7 @@ class TestYearsAndTypes:
             ).compile(study_area)
 
     def test_parts_of_s06_to_s08(self, compiled: object) -> None:
-        """Each per-world part and record of steps s06 to s08 holds the spine after the drops."""
+        """Each per-world part and record of steps s06 to s08 holds every footprint the run kept."""
         result = compiled(n_worlds=3)
         kept = set(result.inventory.inventory)
         for stage in (
@@ -1847,7 +1849,7 @@ class TestYearsAndTypes:
             assert labels['h01'] == 'nsi'
 
     def test_status_drawn_per_world(self, compiled: object) -> None:
-        """A status drawn per world takes its year from step 5 or from step 7."""
+        """A status drawn per world takes its year from s06 or from s09."""
         result = compiled(n_worlds=3)
         year = HAZUS_EQ_SOURCE_FEATURES.index(YEAR_BUILT_KEY)
         mixed = [
@@ -1923,7 +1925,7 @@ class TestYearsAndTypes:
 
 
 class TestYearAndValueOfTheRest:
-    """Steps 7 and 8: the year of a non-residential building, and every value."""
+    """Steps s09 and s13: the year of a non-residential building, and every replacement cost."""
 
     def test_components_receive_worlds(
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
@@ -1969,7 +1971,7 @@ class TestYearAndValueOfTheRest:
         )
 
     def test_targets_from_the_frozen_stage(self, study_area: object) -> None:
-        """In each world, step 7's targets come from that world's realization of step6."""
+        """In each world, s09's targets come from that world's realization of s08_view."""
         real = hc.ResidentialNeighborYearSampler.check
         with mock.patch.object(
             hc.ResidentialNeighborYearSampler,
@@ -1999,7 +2001,7 @@ class TestYearAndValueOfTheRest:
             assert features[row.asset_id][YEAR_BUILT_KEY] == row.YearBuilt
             assert features[row.donor_id][YEAR_BUILT_KEY] == row.YearBuilt
             assert features[row.asset_id][SOURCE_STRING_KEY][year] == 'I'
-        # The donors are the frozen step 6 stage's, years drawn in step 5 among them.
+        # The donors are those of s08_view, years drawn in s06 among them.
         drawn = {
             features_in(result.inventory, row.world)[row.donor_id][
                 SOURCE_STRING_KEY
@@ -2014,7 +2016,7 @@ class TestYearAndValueOfTheRest:
             assert features_in(result.inventory, world)['c01'][STRUCTURE_TYPE_KEY]
 
     def test_no_class_no_year(self, compiled: object) -> None:
-        """A footprint past every donor has no occupancy class or year in any world."""
+        """A footprint beyond the donor cap of every donor has no occupancy class or year in any world."""
         result = compiled(n_worlds=3)
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'f01']
@@ -2070,7 +2072,7 @@ class TestYearAndValueOfTheRest:
         own = log[log['asset_id'] == 'c02']
         assert set(own['outcome']) == {OUTCOME_LOCAL_VALUE}
         assert set(own['rate']) == {5.0e6 / 40000.0}
-        # The buildings that named c02 as their step 4 donor take c02's rate.
+        # The buildings that named c02 as their s05 donor take c02's rate.
         served = log[log['donor_id'] == 'c02']
         assert set(zip(served['asset_id'], served['world'])) == {
             ('u11', 3),
@@ -2121,7 +2123,7 @@ class TestYearAndValueOfTheRest:
         assert set(served['rate']) == {350000.0 / 1400.0}
 
     def test_no_class_fails_the_schema_first(self, study_area: object) -> None:
-        """A footprint without an occupancy class fails the schema, and the value step files nothing."""
+        """A footprint without an occupancy class fails the schema, and s13 files no exclusion for it."""
         local = build_inputs().local
         x, y, side = FOOTPRINTS['f01'][:3]
         local.add_asset(
@@ -2179,7 +2181,7 @@ class TestYearAndValueOfTheRest:
         assert set(log.loc[log['asset_id'] == 'u08', 'world']) == {0, 1, 2}
         for world in range(3):
             features = features_in(result.inventory, world)
-            # u08 has no NSI record, and l02 the join's sum of two.
+            # u08 has no NSI point, and l02 the join's sum over two.
             assert REPLACEMENT_COST_KEY not in features['u08']
             assert REPLACEMENT_COST_KEY not in features['l02']
         withheld = result.freeze.read('s13_withheld').inventory
@@ -2245,7 +2247,7 @@ class TestLastSteps:
         )
 
     def test_value_inputs(self, compiled: object) -> None:
-        """The value step reads the view ``STAGE_S08_VIEW`` and the donor stage, at the area of s11."""
+        """Step s13 reads the view ``STAGE_S08_VIEW`` and the donor stage, with the gross areas of s11."""
         result = compiled(n_worlds=3)
         log = result.logs['value']
         from_footprints = ReplacementCostImputer(
@@ -2366,7 +2368,7 @@ class TestLastSteps:
         self,
         carried: bool,  # noqa: FBT001
     ) -> None:
-        """The merge s12 to s15 work on holds no area, letter or value they replace."""
+        """The merged inventory s12 to s15 work on holds no gross area, building type or replacement cost that s11, s13 and s14 replace."""
         inputs = build_inputs()
         if carried:
             # Footprints that carry an area and a letter of their own.
@@ -2383,15 +2385,15 @@ class TestLastSteps:
             report: object,
         ) -> object:
             """
-            Keep a copy of each world's merge, then check its schema.
+            Keep a copy of each world's merged inventory, then check its schema.
 
             Args:
                 compiler (object):
-                    The compiler.
+                    The compiler whose schema check is wrapped.
                 world (int):
-                    The world the merge holds.
+                    The world the merged inventory holds.
                 merged (AssetInventory):
-                    The world's merge.
+                    The world's merged inventory.
                 excluded (set):
                     The buildings excluded from the world.
                 report (object):

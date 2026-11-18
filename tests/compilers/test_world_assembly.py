@@ -172,7 +172,7 @@ class TestComposeSource:
     """A source is the union of frozen parts, less the dropped assets and the withheld values."""
 
     def test_union_across_worlds(self, freeze: StageFreeze) -> None:
-        """Parts holding a feature in different worlds unite, markers kept."""
+        """Parts holding a feature in different worlds unite, and a missing-value marker such as 'NA' is kept."""
         world_0, world_1 = (
             features(
                 compose_source_parts(
@@ -257,7 +257,7 @@ class TestComposeSource:
         }
 
     def test_shares_and_leaves_stages_unchanged(self, freeze: StageFreeze) -> None:
-        """Unchanged assets are the frozen records, and no stage changes."""
+        """Unchanged assets are the frozen stages' own asset objects, and no stage changes."""
         manifest = freeze.manifest()
         spine = freeze.read('spine')
         alone = compose_source_parts(freeze, ['spine'], world=1, label='nsi')

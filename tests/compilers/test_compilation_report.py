@@ -136,7 +136,7 @@ def test_values_are_recorded_as_text() -> None:
 
 @pytest.mark.parametrize('stage', STAGES)
 def test_every_stage_is_accepted(stage: str) -> None:
-    """The record's stage takes each step the compiler names."""
+    """An action row accepts each report stage the compiler names."""
     report = new_report(11)
     report.record_action('a', STORIES_KEY, stage=stage, action='withheld', world=0)
 
@@ -145,7 +145,7 @@ def test_every_stage_is_accepted(stage: str) -> None:
 
 @pytest.mark.parametrize('source', list(SOURCE_CODES))
 def test_every_source_label_is_accepted(source: str) -> None:
-    """The record's source takes each label of the source string's codes."""
+    """An action row's source takes each label of the source string's codes."""
     report = new_report(11)
     report.record_action(
         'a',
@@ -332,7 +332,7 @@ def test_an_empty_report_carries_the_columns_and_dtypes() -> None:
 
 
 def test_the_records_frame_is_a_copy() -> None:
-    """Changing the returned records leaves the report alone."""
+    """Changing the returned frame of action rows leaves the report alone."""
     report = new_report(11)
     report.record_action(
         'a', YEAR_BUILT_KEY, stage='sample', action='derived', world=0
@@ -482,7 +482,7 @@ def test_the_summary_holds_timings_worlds_and_stages() -> None:
 
 
 def test_save_writes_the_files_it_documents(tmp_path: Path) -> None:
-    """The records, the exclusions and the summary read back as recorded."""
+    """The action rows, the exclusion rows and the summary read back as recorded."""
     report = new_report(11, settings={'n_worlds': 2})
     report.set_world_count(2)
     report.record_action(

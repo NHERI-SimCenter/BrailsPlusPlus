@@ -427,7 +427,8 @@ class PairRedraw:
             features (Mapping[str, Any]):
                 The asset's features in the merged inventory.
             codes (str):
-                The asset's source string.
+                The asset's source string, whose codes for the occupancy
+                class and the story count select the action.
 
         Returns:
             dict[str, Any] | None:
@@ -488,8 +489,8 @@ class PairRedraw:
         Call the imputer's draw for one planned asset.
 
         The draw is given the asset's residential status and the test
-        :meth:`_build_admission_test` builds, and may not change its local and footprint
-        features.
+        :meth:`_build_admission_test` builds, and may not change the asset's
+        local and footprint features.
 
         Args:
             pool (DonorPool):
@@ -504,7 +505,7 @@ class PairRedraw:
             row (Mapping[str, Any]):
                 The asset's row of the plan.
             drawn_features (tuple[str, ...]):
-                The features re-drawn.
+                The features whose values the draw replaces.
             kept_stories (int):
                 The story count the class must pair with when the count is
                 not re-drawn: the asset's, or the height count replacing it.
@@ -555,12 +556,12 @@ class PairRedraw:
 
         Args:
             drawn_features (tuple[str, ...]):
-                The features re-drawn.
+                The features whose values the draw replaces.
             kept_stories (int):
                 The story count kept when ``drawn_features`` does not hold
                 the story count feature.
             residential (bool):
-                The asset's residential status.
+                Whether the asset is residential.
             units (object):
                 The asset's unit count, or a missing value.
 
@@ -667,7 +668,7 @@ def _read_story_count(value: object) -> int | None:
 
     Args:
         value (object):
-            A feature value.
+            A story count as an asset holds it, of any type.
 
     Returns:
         int | None:

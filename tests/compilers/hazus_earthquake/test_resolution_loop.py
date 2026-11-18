@@ -120,7 +120,7 @@ WOOD_TOWER = {
 TALL_WOOD_STORE = {**STORE, STORIES_KEY: 8, BUILDING_TYPE_KEY: 'W'}
 
 # The world the loop's tests resolve, other than the first so that a
-# record of the wrong world shows.
+# row of the wrong world shows.
 WORLD = 3
 
 # A masonry walk-up whose refusal names its occupancy, story count, year
@@ -132,7 +132,7 @@ MASONRY_WALKUP = {
     BUILDING_TYPE_KEY: 'M',
 }
 
-# The columns of a ledger row the loop's tests compare.
+# The columns of an action row the loop's tests compare.
 LEDGER_COLUMNS = [
     'asset_id',
     'world',
@@ -479,7 +479,8 @@ def _resolve(
         features (Mapping[str, dict]):
             Features by asset id.
         building_type_sources (Mapping[str, str]):
-            The sources of the assets' building types.
+            The label of the source holding each asset's building type, by
+            asset id.
         screen (ComposedScreen or None):
             The screen the loop tests against. ``None`` takes
             :func:`_screen`'s.

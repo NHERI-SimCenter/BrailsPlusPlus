@@ -83,7 +83,7 @@ RECORD_DTYPES = {
     'reason': 'object',
 }
 
-# The columns of the record frame, in order.
+# The columns of the frame of action rows, in order.
 RECORD_COLUMNS = tuple(RECORD_DTYPES)
 
 # The columns of the frame :attr:`CompilationReport.exclusions` returns,
@@ -169,7 +169,7 @@ class CompilationReport:
         settings: Mapping[str, object] | None = None,
     ) -> None:
         """
-        Initialize an empty report for a compiler's stages and categories.
+        Initialize an empty report for a compiler's steps and categories.
 
         Args:
             seed (int):
@@ -394,9 +394,9 @@ class CompilationReport:
         self, stage: str, seconds: float, *, world: int | None = None
     ) -> None:
         """
-        Record the seconds the run spent on one stage, in one world or once.
+        Record the seconds spent on one named piece of work, in one world or once.
 
-        Setting the same stage and world again replaces the earlier value.
+        Setting the same name and world again replaces the earlier value.
 
         Args:
             stage (str):
@@ -406,7 +406,7 @@ class CompilationReport:
             seconds (float):
                 The wall-clock seconds spent.
             world (int or None):
-                The world the seconds belong to. ``None`` for a stage run
+                The world the seconds belong to. ``None`` for work done
                 once for every world.
 
         Raises:
@@ -451,7 +451,7 @@ class CompilationReport:
 
         Args:
             stages (Iterable[str]):
-                The stage names, echoed into :meth:`summary`.
+                The names of the frozen stages, echoed into :meth:`summary`.
         """
         self._manifest_stages = list(stages)
 
@@ -490,7 +490,7 @@ class CompilationReport:
         self, *, worlds: Iterable[int] | None = None
     ) -> pd.DataFrame:
         """
-        Return the exclusion rows of the selected worlds, each marked by group.
+        Return the exclusion rows of the selected worlds, each with its group.
 
         A row of :data:`DROPPED_CATEGORY` is in the group ``'dropped'``. The
         other rows are grouped by asset: an asset is excluded in a world
@@ -612,9 +612,9 @@ class CompilationReport:
 
     def save(self, path: str | Path, *, worlds: Iterable[int] | None = None) -> None:
         """
-        Write the records, the exclusions and the summary from one path.
+        Write the action rows, the exclusion rows and the summary from one path.
 
-        The records go to ``path`` as Parquet, and beside it the exclusions
+        The action rows go to ``path`` as Parquet, and beside it the exclusions
         to the stem, :data:`EXCLUSIONS_SUFFIX` and the suffix of ``path``,
         and the summary to the stem and ``_summary.json``: given
         ``run/report.parquet``, ``run/report_exclusions.parquet`` and
@@ -623,7 +623,7 @@ class CompilationReport:
 
         Args:
             path (str or Path):
-                Where the records go. Its parent directory is created if
+                Where the action rows go. Its parent directory is created if
                 it is absent.
             worlds (Iterable[int] or None):
                 The worlds whose rows are written, with the summary of

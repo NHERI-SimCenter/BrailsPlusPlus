@@ -193,7 +193,8 @@ DEFAULT_N_WORLDS = 10
 # The source labels of a world's merge, highest precedence first.
 PRECEDENCE = ('local', 'footprint', 'nsi', 'derived', 'imputed', 'drawn')
 
-# The label of the footprints, the spine of every merge.
+# The label of the footprints, the spine of every merge: a merged inventory
+# holds the footprints' assets and geometries.
 SPINE_LABEL = 'footprint'
 
 # The features the compiler writes for itself and reads back, which a local
@@ -319,7 +320,7 @@ _DIAGNOSIS_CATEGORY = {
     DIAGNOSIS_INFEASIBLE: MISSING_INPUT_CATEGORY,
 }
 
-# The feature of the record of s13's values holding the source label of each
+# The feature of the stage of s13's values holding the source label of each
 # value.
 _VALUE_SOURCE_KEY = 'ReplacementCostSource'
 
@@ -357,8 +358,12 @@ _CODE_POSITION = {
     feature: position for position, feature in enumerate(HAZUS_EQ_SOURCE_FEATURES)
 }
 
-# The sources whose occupancy class makes a footprint reached, and those of
-# them whose occupancy class the unit budget's mobile-home rule may relabel.
+# The sources of an observed occupancy class: the local inventory, NSI, and
+# the classes the NSI join sets from a unit count band. An asset whose
+# occupancy class comes from one of them has an occupancy class from a
+# source: the unit budget reads it as observed, and with a story count the
+# asset is an observed donor. The second tuple holds the sources whose
+# occupancy class the unit budget's mobile-home rule may relabel.
 _OCCUPANCY_SOURCE_LABELS = ('local', 'nsi', 'derived')
 _RELABELED_SOURCES = ('nsi', 'derived')
 
@@ -450,7 +455,7 @@ class CompilerInputs(NamedTuple):
 
 class CompilationResult(NamedTuple):
     """
-    The compiled inventory, with the record of how it was compiled.
+    The compiled inventory, with the report, frozen stages and logs of the run.
 
     Attributes:
         inventory (AssetInventory):
@@ -463,7 +468,8 @@ class CompilationResult(NamedTuple):
             without assets, which holds one world. :meth:`write` still
             writes the report rows of every world the run computed.
         report (CompilationReport):
-            The ledger, the exclusions, the timings and the summary.
+            The actions, the exclusions, the timings and the summary of the
+            run.
         freeze (StageFreeze):
             Every frozen stage, in freeze order.
         manifest (dict):
@@ -625,11 +631,11 @@ class CompilationResult(NamedTuple):
             w: set(rows) for w, rows in groups.groupby('world')['asset_id']
         }
         # Every world is written from the inventory as it is, unless a building
-        # to be written has Excluded marks that differ from the report's
+        # to be written has an Excluded value that differs from the report's
         # exclusion rows, as after a caller adds an exclusion to the report.
         # One world, and every world after such a change, is assembled from
-        # the written worlds' realizations, each building marked from the
-        # report.
+        # the written worlds' realizations, each building's Excluded value
+        # taken from the report.
         written = {
             asset_id: asset
             for asset_id, asset in self.inventory.inventory.items()
@@ -666,7 +672,8 @@ class CompilationResult(NamedTuple):
                     key: value
                     for key, value in asset.features.items()
                     if (key in selected or (everything and key != EXCLUDED_KEY))
-                    # In one world, None marks a feature of another world.
+                    # In one world, None stands for a feature that only
+                    # another world holds.
                     and (world is None or value is not None)
                 }
                 for asset_id, asset in written.items()
@@ -689,8 +696,9 @@ class _ImputationOutcome(NamedTuple):
     Attributes:
         imputer (ObservedDonorImputer):
             The imputer that ran, configured by the compiler's options. The
-            pair re-draw draws with it, and the year draw of nonresidential
-            buildings and the value step take its settings.
+            pair re-draw draws with it, and the year draw of non-residential
+            buildings (s09) and the replacement cost imputation (s13) take its
+            settings.
         targets (AssetInventory):
             The imputer's targets, carrying the budget's values.
         log (pandas.DataFrame):
@@ -706,11 +714,11 @@ class _WorldSources:
     """
     The frozen parts of each source, and the records that act on them.
 
-    A part is registered under the label of the source it belongs to, a
+    A part is registered under the label of the source it belongs to. A
     withheld record names, per asset and feature, the source a value is
-    withheld from, and the dropped record, named by :attr:`dropped`, holds
-    the footprints removed from every source. :meth:`merge_world` builds one
-    world's merge from them.
+    withheld from. The dropped record, named by :attr:`dropped`, holds the
+    footprints removed from every source. :meth:`merge_world` builds one
+    world's merged inventory from them.
     """
 
     def __init__(self, freeze: StageFreeze) -> None:
@@ -765,10 +773,10 @@ class _WorldSources:
 
         Returns:
             AssetInventory:
-                The merge, with one possible world, its source string
-                written. A feature whose value is ``None`` is left out, so
-                the merge of a world holds the same features whatever the
-                number of worlds.
+                The world's merged inventory, with one possible world and
+                its source string written. A feature whose value is
+                ``None`` is left out, so the merged inventory of a world
+                holds the same features whatever the number of worlds.
         """
         sources = {
             label: compose_source_parts(
@@ -902,14 +910,14 @@ def _write_coded_values(
     asset_id: str, features: dict[str, Any], values: Mapping[str, Any], label: str
 ) -> None:
     """
-    Write values from one source into a working merge, with their codes.
+    Write values from one source into a world's merged inventory, with codes.
 
     Args:
         asset_id (str):
             The asset's id, which an error message names.
         features (dict[str, Any]):
-            The asset's features in a merge, its source string included,
-            changed in place.
+            The asset's features in the merged inventory, its source
+            string included, changed in place.
         values (Mapping[str, Any]):
             The values to write, by feature name.
         label (str):
@@ -1005,7 +1013,7 @@ class HazusEQInventoryCompiler:
                 Keyword arguments of :class:`ACSYearBuiltSampler` other than
                 its tables, seed and world, which the compiler passes.
             merge_stacked (bool, optional):
-                Whether step 1 first merges the stacked footprints of one
+                Whether s01 first merges the stacked footprints of one
                 building with :class:`StackedFootprintMerge`, in the
                 footprints' height unit, which re-keys them by geohash. The
                 footprints must then all be Overture footprints with an
@@ -1117,7 +1125,8 @@ class HazusEQInventoryCompiler:
 
         Returns:
             CompilationResult:
-                The compiled inventory and the record of the run.
+                The compiled inventory, with the report, frozen stages and
+                logs of the run.
 
         Raises:
             TypeError:
@@ -1282,9 +1291,9 @@ class HazusEQInventoryCompiler:
         report.set_timing(STAGE_S11_GROSS_AREA, time.perf_counter() - started)
         self._withhold_replaced_values(sources, centroids)
 
-        # Steps s12 to s15 run world by world on one merge of the world, which
-        # s15 completes, and each world's results are added to those of the
-        # earlier worlds.
+        # Steps s12 to s15 run world by world on the world's merged inventory,
+        # which s15 completes, and each world's results are added to those of
+        # the earlier worlds.
         excluded_in = {
             world: set(ids)
             for world, ids in report.exclusions.groupby('world')['asset_id']
@@ -1382,7 +1391,7 @@ class HazusEQInventoryCompiler:
         report: CompilationReport,
     ) -> dict[str, list[list[float]]]:
         """
-        Run s01: block groups and footprint features, frozen as the spine.
+        Run s01: freeze the footprints with their block groups and plan areas.
 
         With :attr:`merge_stacked`, the stacked footprints are merged first,
         and the rest of the step reads the merged set.
@@ -1424,7 +1433,8 @@ class HazusEQInventoryCompiler:
                 merged.id_log,
                 columns=['position', 'geohash', 'area_m2', 'rank', 'id', 'reason'],
             )
-            # A copy set's keeper is a head too, so the rule tells them apart.
+            # The drawing kept of a set of duplicates is a head too, so the
+            # rule tells it from the head of a stack.
             rule = merged.parts['rule']
             head = merged.parts['is_head']
             report.note(
@@ -1484,7 +1494,7 @@ class HazusEQInventoryCompiler:
         centroids: Mapping[str, list[list[float]]],
     ) -> None:
         """
-        Run s02: join NSI points to the frozen footprints.
+        Run s02: join the NSI points to the frozen footprints.
 
         Args:
             inputs (CompilerInputs):
@@ -1498,7 +1508,8 @@ class HazusEQInventoryCompiler:
                 The logs, which receive the join's links, unlinked points
                 and branch counts.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
         """
         result = NSIFootprintJoin(
             cap_m=self.join_cap_m, seed=self.seed, projected_crs=self.projected_crs
@@ -1543,7 +1554,8 @@ class HazusEQInventoryCompiler:
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``stories``.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
             report (CompilationReport):
                 The report, which receives the withheld NSI counts of every
                 world.
@@ -1651,7 +1663,8 @@ class HazusEQInventoryCompiler:
                 The logs, which receive ``budget``, ``budget_diagnostic``,
                 ``budget_gaps`` and ``budget_nonresidential``.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
             report (CompilationReport):
                 The report, which receives the relabeled classes and the
                 dropped footprints of every world.
@@ -1671,7 +1684,8 @@ class HazusEQInventoryCompiler:
             UnitBudgetResult:
                 The budget's allocation, whose values s05's targets carry.
         """
-        # A footprint is reached where a source holds its occupancy class.
+        # A footprint has an occupancy class from a source where one of
+        # _OCCUPANCY_SOURCE_LABELS holds its class.
         with_occupancy_source = _select_assets(
             merged,
             (
@@ -1820,7 +1834,8 @@ class HazusEQInventoryCompiler:
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``imputer``.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
             n_computed (int):
                 The number of worlds computed.
             merged (AssetInventory):
@@ -1832,7 +1847,7 @@ class HazusEQInventoryCompiler:
             imputer (ObservedDonorImputer):
                 The imputer s04's budget was given.
             allocation (UnitBudgetResult):
-                The allocation of s04.
+                The allocation of s04, whose values the targets carry.
 
         Returns:
             _ImputationOutcome:
@@ -1876,7 +1891,7 @@ class HazusEQInventoryCompiler:
         logs['imputer'] = imputer_log
         # A footprint with an occupancy class from a source and outside the
         # residential classes is a target for its story count only, since the
-        # join gives units to housing records alone.
+        # join gives units only to the NSI points of housing.
         for asset_id, asset in imputation.imputed.inventory.items():
             class_of = merged.inventory[asset_id].features.get(OCCUPANCY_KEY)
             if (
@@ -1928,7 +1943,8 @@ class HazusEQInventoryCompiler:
                 The logs, which receive ``year_fit``, with a ``world``
                 column.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
             report (CompilationReport):
                 The report, which receives the exclusions of every world.
             n_computed (int):
@@ -2020,7 +2036,8 @@ class HazusEQInventoryCompiler:
                 The logs, which receive ``pair_redraw``, with a ``world``
                 column.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
             report (CompilationReport):
                 The report, which receives the actions of every world.
             n_computed (int):
@@ -2048,7 +2065,7 @@ class HazusEQInventoryCompiler:
             new: dict[str, dict[str, dict[str, Any]]] = {
                 stage: {} for stage in stages
             }
-            # The re-draw draws from the observed donors of the frozen view.
+            # The re-draw draws from the observed donors of the view.
             donors = _select_observed_donors(frozen, _read_occupancy_sources(frozen))
             redraw = PairRedraw(imputer, donors, stories, world=world).redraw(
                 merged_world
@@ -2145,9 +2162,9 @@ class HazusEQInventoryCompiler:
         Give each building its design level, structure type and height class.
 
         This runs in every world and also applies the W1 carve-out. Each
-        world's draws read that world merged after s07, and a building that an
-        earlier step excluded from the world, today only s06, takes none. The
-        section "The run" of the README beside this module states the
+        world's draws read that world merged after s07. A building excluded
+        from the world by an earlier step, which can only be s06, takes none.
+        The section "The run" of the README beside this module states the
         procedure.
 
         Args:
@@ -2157,7 +2174,8 @@ class HazusEQInventoryCompiler:
                 The logs, which receive ``resolution``, with a ``world``
                 column.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
             report (CompilationReport):
                 The report, whose exclusions are read and which receives the
                 actions and exclusions of every world.
@@ -2248,7 +2266,8 @@ class HazusEQInventoryCompiler:
             report (CompilationReport):
                 The report, which receives the actions and exclusions.
             merged_world (AssetInventory):
-                The world's working merge, whose design levels are written.
+                The world's merged inventory, into which the design levels
+                are written.
             candidates (Sequence[str]):
                 The ids of the assets to give values; those in
                 ``excluded`` are skipped.
@@ -2289,7 +2308,7 @@ class HazusEQInventoryCompiler:
 
         def holds_value(asset_id: str, key: str) -> bool:
             """
-            Say whether an asset holds a value of a feature in the working merge.
+            Say whether an asset holds a feature's value in the merged inventory.
 
             Args:
                 asset_id (str):
@@ -2485,7 +2504,8 @@ class HazusEQInventoryCompiler:
                 The logs, which receive ``neighbor_year`` and
                 ``nonresidential_resolution``, each with a ``world`` column.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
             report (CompilationReport):
                 The report, whose exclusions are read and which receives the
                 actions and exclusions of every world.
@@ -2606,7 +2626,7 @@ class HazusEQInventoryCompiler:
         n_computed: int,
     ) -> None:
         """
-        Freeze the merge of every registered source over the worlds.
+        Freeze each world's merged inventory of every source as one view.
 
         The report receives the time of each world's merge under
         ``f'{stage}_merge'`` and that of the freeze under
@@ -2614,9 +2634,9 @@ class HazusEQInventoryCompiler:
 
         Args:
             stage (str):
-                The view's stage name.
+                The name the view is frozen under.
             sources (_WorldSources):
-                The sources.
+                The sources whose parts and records each world's merge takes.
             report (CompilationReport):
                 The report, which receives the timings.
             n_computed (int):
@@ -2651,14 +2671,15 @@ class HazusEQInventoryCompiler:
         Args:
             sources (_WorldSources):
                 The sources, in whose freeze the areas are frozen as
-                :data:`STAGE_S11_GROSS_AREA`, a record that s13 and s15 read
+                :data:`STAGE_S11_GROSS_AREA`, a stage that s13 and s15 read
                 and no merge takes.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``gross_area``: per building and
                 world, the ``area_source`` that ``footprint_gross_area``
                 gives.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
             n_computed (int):
                 The number of worlds computed.
 
@@ -2713,7 +2734,8 @@ class HazusEQInventoryCompiler:
             sources (_WorldSources):
                 The sources, to which the six records are added.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
         """
         local = [
             (asset_id, asset.features)
@@ -2789,10 +2811,10 @@ class HazusEQInventoryCompiler:
 
         Args:
             world (int):
-                The index of the world the merge holds, which the report
-                records.
+                The index of the world the merged inventory holds, which
+                the report records.
             merged (AssetInventory):
-                The world's merge of every source.
+                The world's merged inventory.
             excluded (set[str]):
                 The buildings excluded from the world, to which those the
                 schema refuses are added.
@@ -2848,7 +2870,8 @@ class HazusEQInventoryCompiler:
                 The sources, whose freeze holds the view, the donor stage and
                 the areas.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
             imputer (ObservedDonorImputer):
                 The imputer of s05, whose ``k``, ``cap_m`` and distance
                 weights the value imputer takes.
@@ -2910,7 +2933,7 @@ class HazusEQInventoryCompiler:
                     f'{outcome}',
                 )
                 excluded.add(asset_id)
-            # A local value is the merge's own and is left alone.
+            # A local value is already in the merged inventory and is left alone.
             elif code is not None and code != SOURCE_CODES['local']:
                 values[asset_id] = {
                     REPLACEMENT_COST_KEY: result.costs.inventory[asset_id].features[
@@ -2949,14 +2972,15 @@ class HazusEQInventoryCompiler:
 
         Args:
             world (int):
-                The index of the world the merge holds.
+                The index of the world the merged inventory holds.
             merged (AssetInventory):
-                The world's merge of every source.
+                The world's merged inventory.
             sources (_WorldSources):
                 The sources, whose local parts say which building has a local
                 letter.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
+                Each footprint's centroid, which the assets built here take as
+                their coordinates.
             excluded (set[str]):
                 The buildings excluded from the world, to which those whose
                 letters contradict each other are added.
@@ -2966,8 +2990,8 @@ class HazusEQInventoryCompiler:
 
         Returns:
             AssetInventory:
-                One asset per building of the merge, holding the letter where
-                the step gives one.
+                One asset per building of the merged inventory, holding the
+                letter where the step gives one.
         """
         started = time.perf_counter()
         local_letters = {
@@ -3016,7 +3040,7 @@ class HazusEQInventoryCompiler:
         report: CompilationReport,
     ) -> list[tuple[str, int, str]]:
         """
-        Run s15 in one world: write the last steps' results into the merge.
+        Run s15 in one world: write Excluded and the results of s11, s13 and s14.
 
         Every building receives ``Excluded`` and the letter of s14. A
         building not excluded from the world also receives its value of s13,
@@ -3026,9 +3050,9 @@ class HazusEQInventoryCompiler:
 
         Args:
             world (int):
-                The index of the world the merge holds.
+                The index of the world the merged inventory holds.
             merged (AssetInventory):
-                The world's merge of every source, changed in place.
+                The world's merged inventory, changed in place.
             excluded (set[str]):
                 The buildings excluded from the world.
             costs (AssetInventory):

@@ -253,7 +253,8 @@ def compose_source_parts(  # noqa: C901
 
         Args:
             asset_id (Hashable):
-                An asset of the result.
+                The id of the asset of the result whose features are about to
+                be written.
 
         Returns:
             dict[str, Any]:
@@ -274,7 +275,7 @@ def compose_source_parts(  # noqa: C901
             stage (AssetInventory):
                 The stage holding the asset.
             asset (Asset):
-                The asset.
+                The asset whose features are read.
 
         Returns:
             dict[str, Any]:

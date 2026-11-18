@@ -111,7 +111,9 @@ class ScreenVerdict(NamedTuple):
 
     Attributes:
         diagnosis (str):
-            The verdict, from the shared diagnosis vocabulary.
+            The verdict, ``DIAGNOSIS_OK``, ``DIAGNOSIS_INVALID``,
+            ``DIAGNOSIS_UNSUPPORTED`` or ``DIAGNOSIS_INFEASIBLE`` of
+            :mod:`~brails.inferers.inference_diagnosis`.
         detail (str):
             What happened, in words.
         stage (str):
@@ -452,15 +454,16 @@ class ResolutionLoop:
     Withhold the NSI building type of a refused asset and screen it again.
 
     The loop screens a merged inventory through
-    :meth:`ComposedScreen.screen_inventory`. Where a refusal names the building
-    type and :data:`WITHHELD_SOURCE` holds it, the type is withheld and the
-    asset screened again, the loop's one action. An unsupported asset is
-    excluded without action. Every other refused asset, and one still refused
-    without its type, is excluded in the world of the screen's structure type
-    inferer. It reads an inventory of one possible world and raises
-    ``ValueError`` for an inventory of several. It draws nothing and does not
-    change the inventory it reads. The section "Resolution loop" of the README
-    beside this module states what is recorded and how an exclusion is filed.
+    :meth:`ComposedScreen.screen_inventory`. Where a refusal names the
+    building type and :data:`WITHHELD_SOURCE` holds it, the type is
+    withheld and the asset screened again, the loop's one action. An
+    unsupported asset is excluded without action. Every other refused
+    asset, and one still refused without its type, is excluded in the
+    world of the screen's structure type inferer. The loop reads an
+    inventory of one possible world and raises ``ValueError`` for an
+    inventory of several. It draws nothing and does not change the
+    inventory it reads. The section "Resolution loop" of the README beside
+    this module states what is recorded and how an exclusion is filed.
     """
 
     def __init__(
@@ -529,8 +532,8 @@ class ResolutionLoop:
 
         Args:
             inventory (AssetInventory):
-                The merged inventory of one possible world, its values
-                scalars. Read and not written.
+                The merged inventory of one possible world, holding one
+                scalar value per feature. Read and not written.
             report (CompilationReport):
                 Where every action and exclusion is recorded.
             building_type_sources (Mapping[str | int, str]):

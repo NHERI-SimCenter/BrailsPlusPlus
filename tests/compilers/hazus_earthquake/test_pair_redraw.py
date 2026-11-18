@@ -105,7 +105,7 @@ OSM_HEIGHT = {'footprint_provider': 'overture', 'sources': f'dataset: {OSM}'}
 
 MAX_ATTEMPTS = 5
 
-# Golden donors of the keyed re-draw on keyed_target(), computed with SEED
+# The donors the keyed re-draw picks for keyed_target(), computed with SEED
 # and SECOND_SEED, and with SEED under the imputer's own labels.
 GOLDEN_DONOR = 'd4'
 SECOND_SEED = 1
@@ -1070,12 +1070,9 @@ class TestWithTheImputer:
         assert log.loc[0, 'donor_id'] == STAGE_LABEL_DONOR
 
     def test_locality_bound(self) -> None:
-        """
-        A donor beyond the cap and outside the block group changes nothing.
-
-        Two admissible donors lie within the cap, fewer than ``k``, so a wider
-        cap lets the donor beyond it into the candidates and changes the pick.
-        """
+        """A donor beyond the cap and outside the block group changes nothing."""
+        # Two admissible donors lie within the cap, fewer than k, so a wider
+        # cap lets the donor beyond it into the candidates and changes the pick.
         assert bounded_pick(OUTSIDE_THE_CAP)[0] == LOCALITY_DONOR
         assert bounded_pick(OUTSIDE_THE_CAP[:2])[0] == LOCALITY_DONOR
         changed = (*OUTSIDE_THE_CAP[:2], ('out', 2050.0, 'IND1', BG_B))
@@ -1085,11 +1082,8 @@ class TestWithTheImputer:
         assert bounded_pick(OUTSIDE_THE_CAP, cap_m=2100.0)[0] == 'out'
 
     def test_block_group_fallback(self) -> None:
-        """
-        Once no donor within the cap passes, the target's block group serves.
-
-        A donor beyond the cap in another block group is never drawn.
-        """
+        """Once no donor within the cap passes, a donor of the target's block group is drawn."""
+        # A donor beyond the cap in another block group is never drawn.
         within_the_group = (*NO_ADMISSIBLE_DONOR, ('bg', 2500.0, 'COM1', BG_A))
         assert bounded_pick(within_the_group) == ('bg', OUTCOME_BLOCK_GROUP)
         assert bounded_pick(NO_ADMISSIBLE_DONOR) == (None, OUTCOME_EXHAUSTED)

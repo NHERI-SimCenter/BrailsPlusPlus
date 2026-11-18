@@ -121,8 +121,8 @@ DESIGN_LEVEL_KEY = 'DesignLevel'
 STRUCTURE_TYPE_KEY = 'StructureType'
 HEIGHT_CLASS_KEY = 'HeightClass'
 
-# Feature HazusEQInventoryCompiler writes to mark, per world, a building
-# excluded from that world.
+# The feature HazusEQInventoryCompiler writes on every building: true in a
+# world the building is excluded from, false in the others.
 EXCLUDED_KEY = 'Excluded'
 
 # Features under which HazusEQInventoryCompiler keeps the GROSS_AREA_KEY

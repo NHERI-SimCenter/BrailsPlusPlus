@@ -35,12 +35,13 @@
 A synthetic study area for the compiler tests.
 
 Four block groups of one tract make up the area. The western one holds
-houses, apartments and shops that NSI reaches, and the eastern one mostly
-footprints NSI does not reach, around a mobile-home park point. The
-northern one has no B25024 counts, so its footprints NSI does not reach
+houses, apartments and shops with NSI points, and the eastern one mostly
+footprints without an NSI point, around a mobile-home park point. The
+northern one has no B25024 counts, so its footprints without an NSI point
 take their residential status from the imputer, world by world. The
-fourth, 3 km away, holds one footprint beyond every donor. Positions are in
-meters in UTM zone 10N near San Francisco and stored in EPSG:4326.
+fourth, 3 km away, holds one footprint beyond the donor cap of every
+donor. Positions are in meters in UTM zone 10N near San Francisco and
+stored in EPSG:4326.
 Footprint heights are in feet, the scraper's default unit.
 """
 
@@ -153,7 +154,7 @@ FOOTPRINTS: dict[str, tuple[float, float, float, float | None, str | None]] = {
     'f01': (3000, 0, 12, None, OSM),
 }
 
-# NSI records as fd_id: (footprint, dx, dy, fields). The point lies at the
+# NSI points as fd_id: (footprint, dx, dy, fields). The point lies at the
 # footprint's lower left corner plus (dx, dy) meters, so (5, 5) is inside an
 # eleven-meter house and a negative offset puts it outside, for the walk.
 _HOUSE = {
@@ -262,7 +263,7 @@ NSI_RECORDS: dict[int, tuple[str, float, float, dict[str, Any]]] = {
             'bldgtype': 'M',
         },
     ),
-    # A second record on l02, so the join sums its value.
+    # A second NSI point on l02, so the join sums the two values.
     29: (
         'l02',
         12,
