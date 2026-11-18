@@ -86,7 +86,10 @@ from brails.constants import (
     UNITS_KEY,
     YEAR_BUILT_KEY,
 )
-from brails.imputers.observed_donor_imputer.donor_records import OUTCOME_DONOR
+from brails.imputers.observed_donor_imputer.donor_records import (
+    OUTCOME_DONOR,
+    OUTCOME_NO_DONOR,
+)
 from brails.imputers.replacement_cost.replacement_cost_imputer import (
     OUTCOME_IMPUTATION_DONOR,
     OUTCOME_LOCAL_VALUE,
@@ -1914,7 +1917,7 @@ class TestYearAndValueOfTheRest:
         assert 'no_class' in rows['detail'].iloc[0]
 
     def test_no_value_excluded(self, compiled: object) -> None:
-        """A building the value step leaves without a value is excluded there."""
+        """A building without a donor is excluded as no_plausible_value, and any other building without a value as missing_input."""
         result = compiled(n_worlds=3)
         log = result.logs['value']
         rows = result.report.exclusions.set_index(['asset_id', 'world'])
@@ -1926,8 +1929,16 @@ class TestYearAndValueOfTheRest:
             assert features[EXCLUDED_KEY] is True
             assert REPLACEMENT_COST_KEY not in features
         valued = rows[rows['stage'] == 'value']
-        assert set(valued['category']) == {'missing_input'}
         assert set(valued.index) <= set(zip(without['asset_id'], without['world']))
+        outcomes = without.set_index(['asset_id', 'world'])['outcome']
+        expected = [
+            'no_plausible_value'
+            if outcomes[key] == OUTCOME_NO_DONOR
+            else 'missing_input'
+            for key in valued.index
+        ]
+        assert list(valued['category']) == expected
+        assert 'no_plausible_value' in expected
 
     def test_certificate_takes_no_value(self, compiled: object) -> None:
         """A building the schema refuses takes no value, NSI's included."""

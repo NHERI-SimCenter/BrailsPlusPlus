@@ -96,6 +96,7 @@ from brails.constants import (
     UNITS_KEY,
     YEAR_BUILT_KEY,
 )
+from brails.imputers.observed_donor_imputer.donor_records import OUTCOME_NO_DONOR
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     ObservedDonorImputer,
     imputation_donors_from_log,
@@ -2226,11 +2227,17 @@ class HazusEQInventoryCompiler:
             ):
                 code = OUTCOME_VALUE_CODES.get(outcome)
                 if code is None and asset_id not in excluded:
+                    # A building without a donor has no plausible value. Any
+                    # other outcome without a value, such as a footprint that
+                    # encloses no area or a building without an occupancy
+                    # class, is filed as a missing input.
                     report.record_exclusion(
                         asset_id,
                         world=world,
                         stage='value',
-                        category='missing_input',
+                        category='no_plausible_value'
+                        if outcome == OUTCOME_NO_DONOR
+                        else 'missing_input',
                         detail=f'the value step gives no {REPLACEMENT_COST_KEY}: '
                         f'{outcome}',
                     )

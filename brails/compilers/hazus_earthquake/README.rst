@@ -416,12 +416,15 @@ NSI's, the join's sum of NSI's or a local one, by ``NSIGrossArea``, NSI's
 ``sqft``, which the compiler gives the imputer in place of ``GrossArea``. A
 local value therefore gives a rate only on a building whose NSI records give a
 ``sqft``, and a local ``GrossArea`` enters neither a rate nor the area a rate
-multiplies. A building the imputer leaves without a value is excluded from that
-world as ``missing_input``. The step keeps a local value as it is. Where that
-value gives a rate, the rate also values each building that names the local
-building as its donor or draws it as a neighbor. The step replaces every other
-value: the join's ``ReplacementCost`` is withheld from every later merge, and
-the output step writes the step's values over the merge.
+multiplies. A building for which the imputer finds no donor is excluded from
+that world as ``no_plausible_value``. A building the imputer cannot value
+because its footprint encloses no area or it has no occupancy class is
+excluded as ``missing_input``. The step keeps a local value as it is.
+Where that value gives a rate, the rate also values
+each building that names the local building as its donor or draws it as a
+neighbor. The step replaces every other value: the join's ``ReplacementCost``
+is withheld from every later merge, and the output step writes the step's
+values over the merge.
 
 The output step merges each world's sources in the precedence of
 ``PRECEDENCE``: local values first, then the footprint, NSI, derived, imputed

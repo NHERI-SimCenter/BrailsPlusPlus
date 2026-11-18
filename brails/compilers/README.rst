@@ -246,9 +246,9 @@ from the Hazus earthquake compiler.
 
 ``missing_input``
     A value the step reads is absent, or holds a value the step cannot use,
-    and no earlier step supplied a usable one. Examples: a block group without
-    ACS counts, a local building type letter other than W, S, C, M and MH, and
-    a building for which the replacement cost imputer finds no donor.
+    and no earlier step supplied a usable one. Examples: a building whose block
+    group has no ACS counts and a building whose local building type letter is
+    not W, S, C, M or MH.
 
 ``unsupported``
     A value the step reads is present in a form the step does not handle.
@@ -257,8 +257,10 @@ from the Hazus earthquake compiler.
 
 ``no_plausible_value``
     The step's model has no value for the building's combination of inputs,
-    whatever else the building holds. Example: a structure type table with no
-    distribution for the building's occupancy class, story band and era.
+    whatever else the building holds. Examples: a building whose occupancy
+    class, story band and, in the West Coast tables, era select no
+    distribution in the structure type table, and a building for which the
+    replacement cost imputer finds no donor.
 
 ``conflict``
     The model has values for the building's combination of inputs, and other
