@@ -135,16 +135,16 @@ replacement cost imputer.
 Composition and assembly
 ------------------------
 
-``compose_source`` builds one source of one world from stages frozen in a
+``compose_source_parts`` builds one source of one world from stages frozen in a
 ``StageFreeze``, and ``AssetInventory.add_world`` adds one-world inventories,
-one world at a time, to an inventory over the worlds. ``compose_source`` is in
-``world_assembly.py`` beside this page, and ``add_world`` in
+one world at a time, to an inventory over the worlds. ``compose_source_parts``
+is in ``world_assembly.py`` beside this page, and ``add_world`` in
 ``brails/types/asset_inventory.py``. This section states how they run.
 
 Composition
 ~~~~~~~~~~~
 
-``compose_source`` checks its arguments and reads every stage from the
+``compose_source_parts`` checks its arguments and reads every stage from the
 freeze by name. A stage with one possible world is read as it is held, and
 a stage with several through its realization ``world``.
 

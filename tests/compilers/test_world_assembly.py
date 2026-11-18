@@ -40,7 +40,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from brails.compilers.world_assembly import compose_source
+from brails.compilers.world_assembly import compose_source_parts
 from brails.constants import (
     DROPPED_KEY,
     OCCUPANCY_KEY,
@@ -169,7 +169,7 @@ class TestComposeSource:
         """Parts holding a feature in different worlds unite, markers kept."""
         world_0, world_1 = (
             features(
-                compose_source(
+                compose_source_parts(
                     freeze, ['spine', 'drawn', 'later'], world=w, label='nsi'
                 )
             )
@@ -183,7 +183,7 @@ class TestComposeSource:
         assert world_1['a'][YEAR_BUILT_KEY] == 1960
         assert world_1['c']['Area'] == 90.0
         units = [
-            features(compose_source(freeze, ['units'], world=w, label='nsi'))
+            features(compose_source_parts(freeze, ['units'], world=w, label='nsi'))
             for w in (np.int64(0), 1)
         ]
         assert units == [
@@ -198,8 +198,8 @@ class TestComposeSource:
             ValueError,
             match=r"1 feature.* world 1: asset 'a', feature 'YearBuilt' \('clashing'",
         ):
-            compose_source(freeze, parts, world=1, label='nsi')
-        world_0 = features(compose_source(freeze, parts, world=0, label='nsi'))
+            compose_source_parts(freeze, parts, world=1, label='nsi')
+        world_0 = features(compose_source_parts(freeze, parts, world=0, label='nsi'))
         assert world_0['a'] == {YEAR_BUILT_KEY: 1950, 'Area': 'NA'}
 
     def test_withheld_values_are_removed_by_label_and_world(
@@ -208,7 +208,7 @@ class TestComposeSource:
         """Only the values withheld from the label in that world are removed."""
         composed = {
             (label, world): features(
-                compose_source(
+                compose_source_parts(
                     freeze,
                     ['spine', 'drawn', 'later'],
                     world=world,
@@ -238,7 +238,7 @@ class TestComposeSource:
 
     def test_dropped_and_excluded(self, freeze: StageFreeze) -> None:
         """Dropped assets leave, and excluded ones lose only the named part's values."""
-        composed = compose_source(
+        composed = compose_source_parts(
             freeze,
             ['spine', 'drawn', 'later'],
             world=0,
@@ -256,12 +256,14 @@ class TestComposeSource:
         """Unchanged assets are the frozen records, and no stage changes."""
         manifest = freeze.manifest()
         spine = freeze.read('spine')
-        alone = compose_source(freeze, ['spine'], world=1, label='nsi')
+        alone = compose_source_parts(freeze, ['spine'], world=1, label='nsi')
         assert all(alone.inventory[i] is spine.inventory[i] for i in 'abc')
-        unchanged = compose_source(freeze, ['spine', 'drawn'], world=0, label='nsi')
+        unchanged = compose_source_parts(
+            freeze, ['spine', 'drawn'], world=0, label='nsi'
+        )
         assert unchanged.inventory['b'] is spine.inventory['b']
         assert unchanged.inventory['c'] is spine.inventory['c']
-        composed = compose_source(
+        composed = compose_source_parts(
             freeze,
             ['spine', 'drawn', 'later'],
             world=0,
@@ -317,4 +319,4 @@ class TestComposeSource:
         """Only names of frozen stages enter, and the arguments are checked."""
         given = {'parts': ['spine'], 'world': 0, 'label': 'nsi', **arguments}
         with pytest.raises(error, match=message):
-            compose_source(freeze, **given)
+            compose_source_parts(freeze, **given)

@@ -36,7 +36,7 @@ Compose one source of one world from frozen stages.
 
 .. autosummary::
 
-      compose_source
+      compose_source_parts
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ if TYPE_CHECKING:
     from brails.utils.stage_freeze import StageFreeze
 
 
-def compose_source(  # noqa: C901
+def compose_source_parts(  # noqa: C901
     freeze: StageFreeze,
     parts: Sequence[str],
     *,
@@ -155,7 +155,7 @@ def compose_source(  # noqa: C901
     for name in (*named, *excluded_parts):
         if not isinstance(name, str):
             msg = (
-                'compose_source reads frozen stages by name only, and a stage '
+                'compose_source_parts reads frozen stages by name only, and a stage '
                 f'name must be a string, not {type(name).__name__}.'
             )
             raise TypeError(msg)

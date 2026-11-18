@@ -470,21 +470,20 @@ Frozen stages
 
 The run is a sequence of stages, each frozen when it ends, as the section
 "Stages and freezing" of ``brails/compilers/README.rst`` describes. The stage
-names are the module's ``STAGE_``
-constants and the value imputer's ``DONOR_STAGE``. Three kinds of stage are
-frozen. A part holds the values one step adds, such as the join's NSI values. A
-record holds what a step withholds from a source or drops from every source. A
-view holds the merge of every part and record frozen so far, over the worlds,
-and the last view, the output, is the compiled inventory. Two stages feed step
-8 and are not sources: the donors that ``imputation_donors_from_log`` names
-from step 4's log, under ``DONOR_STAGE``, and ``STAGE_STEP8_VALUES``, which the
-output step writes over its merge. Every part other than the footprints, and
-every record, holds each footprint's centroid as its coordinates. The
-footprints and the views hold the footprint polygons. A world's source is
-composed from its parts and records by ``compose_source``, and the worlds of a
-view are added to it by ``AssetInventory.add_world``, as the section
-"Composition and assembly" of ``brails/compilers/README.rst`` states.
-The run ends with the manifest.
+names are the module's ``STAGE_`` constants and the value imputer's
+``DONOR_STAGE``. Three kinds of stage are frozen. A part holds the values one
+step adds, such as the join's NSI values. A record holds what a step withholds
+from a source or drops from every source. A view holds the merge of every part
+and record frozen so far, over the worlds, and the last view, the output, is
+the compiled inventory. Two stages feed step 8 and are not sources: the donors
+that ``imputation_donors_from_log`` names from step 4's log, under
+``DONOR_STAGE``, and ``STAGE_STEP8_VALUES``, which the output step writes over
+its merge. Every part other than the footprints, and every record, holds each
+footprint's centroid as its coordinates. The footprints and the views hold the
+footprint polygons. A world's source is composed from its parts and records by
+``compose_source_parts``, and the worlds of a view are added to it by
+``AssetInventory.add_world``, as the section "Composition and assembly" of
+``brails/compilers/README.rst`` states. The run ends with the manifest.
 
 Worlds
 ~~~~~~

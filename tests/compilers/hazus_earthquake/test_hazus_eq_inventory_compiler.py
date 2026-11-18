@@ -511,7 +511,7 @@ class TestFootprintsAndJoin:
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A component that changes a frozen part it read stops the run."""
-        real = hc.compose_source
+        real = hc.compose_source_parts
 
         def changing(
             freeze: object, parts: list, **kwargs: object
@@ -525,7 +525,7 @@ class TestFootprintsAndJoin:
                 parts (list):
                     The names of the stages composed into the source.
                 **kwargs (object):
-                    The other arguments of ``compose_source``, passed on.
+                    The other arguments of ``compose_source_parts``, passed on.
 
             Returns:
                 AssetInventory:
@@ -537,7 +537,7 @@ class TestFootprintsAndJoin:
                 composed.inventory['h01'].features[STORIES_KEY] = 9
             return composed
 
-        monkeypatch.setattr(hc, 'compose_source', changing)
+        monkeypatch.setattr(hc, 'compose_source_parts', changing)
         with pytest.raises(RuntimeError, match='join_nsi'):
             HazusEQInventoryCompiler(
                 seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
@@ -1244,13 +1244,13 @@ class TestWorlds:
 
     def test_merge_keys_do_not_depend_on_n_worlds(self, study_area: object) -> None:
         """World 0's last merge holds the same features at one world and seven."""
-        real = hc._WorldSources.merge
+        real = hc._WorldSources.merge_world
         keys = {}
         for n_worlds in (1, 7):
             merges: list = []
             with mock.patch.object(
                 hc._WorldSources,
-                'merge',
+                'merge_world',
                 autospec=True,
                 side_effect=lambda sources, world, _merges=merges, **kwargs: (
                     _merges.append((world, real(sources, world, **kwargs)))

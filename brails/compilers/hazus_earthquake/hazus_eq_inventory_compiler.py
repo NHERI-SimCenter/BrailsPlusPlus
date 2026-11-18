@@ -71,7 +71,7 @@ from brails.compilers.hazus_earthquake.resolution_loop import (
     ComposedScreen,
     ResolutionLoop,
 )
-from brails.compilers.world_assembly import compose_source
+from brails.compilers.world_assembly import compose_source_parts
 from brails.constants import (
     BLOCK_GROUP_KEY,
     BUILDING_TYPE_KEY,
@@ -675,7 +675,7 @@ class _WorldSources:
     A part is registered under the label of the source it belongs to, a
     withheld record names, per asset and feature, the source a value is
     withheld from, and the dropped record, named by :attr:`dropped`, holds
-    the footprints removed from every source. :meth:`merge` builds one
+    the footprints removed from every source. :meth:`merge_world` builds one
     world's merge from them.
     """
 
@@ -721,7 +721,7 @@ class _WorldSources:
         self.freeze.freeze(stage, inventory)
         self.withheld.append(stage)
 
-    def merge(self, world: int) -> AssetInventory:
+    def merge_world(self, world: int) -> AssetInventory:
         """
         Compose every registered source in one world and merge them.
 
@@ -737,7 +737,7 @@ class _WorldSources:
                 number of worlds.
         """
         sources = {
-            label: compose_source(
+            label: compose_source_parts(
                 self.freeze,
                 stages,
                 world=world,
@@ -1387,7 +1387,7 @@ class HazusEQInventoryCompiler:
                 :func:`~brails.types.asset_inventory.read_source_string`
                 reads.
         """
-        merged = sources.merge(0)
+        merged = sources.merge_world(0)
 
         inferer = StoriesFromHeightInferer(length_unit=inputs.height_unit)
         verdicts = inferer.check(merged)
@@ -2296,7 +2296,7 @@ class HazusEQInventoryCompiler:
         view = AssetInventory()
         for world in range(n_computed):
             started = time.perf_counter()
-            view.add_world(sources.merge(world))
+            view.add_world(sources.merge_world(world))
             report.set_timing(
                 f'{stage}_view', time.perf_counter() - started, world=world
             )
@@ -2361,7 +2361,7 @@ class HazusEQInventoryCompiler:
         output = AssetInventory()
         for world in range(n_computed):
             started = time.perf_counter()
-            merged = sources.merge(world)
+            merged = sources.merge_world(world)
             values = valued.get_world_realization(world).inventory
             excluded = excluded_in.get(world, set())
             checked = AssetInventory(vector_features=list(merged.vector_features))
