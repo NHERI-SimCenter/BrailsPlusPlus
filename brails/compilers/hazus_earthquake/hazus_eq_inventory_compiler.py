@@ -380,9 +380,6 @@ class CompilerInputs(NamedTuple):
         nsi_points (AssetInventory):
             The NSI points keyed by ``fd_id``, as
             :class:`~brails.scrapers.NSIFileReader` reads them.
-        block_groups (geopandas.GeoDataFrame):
-            One polygon per census block group, with a ``GEOID`` column, as
-            a TIGER/Line file holds them. Every footprint must lie in one.
         b25024_block_groups (pandas.DataFrame):
             Table B25024 per block group, as
             :class:`~brails.inferers.acs_unit_budget.acs_unit_budget.ACSUnitBudget`
@@ -415,11 +412,17 @@ class CompilerInputs(NamedTuple):
             The length unit of the footprints' heights, as the footprint
             scraper wrote them. Defaults to the length unit of
             :data:`brails.constants.DEFAULT_UNITS`.
+        block_groups (geopandas.GeoDataFrame | None):
+            One polygon per census block group, with a ``GEOID`` column, as
+            a TIGER/Line file holds them. Given ``None``, the default, the
+            compiler queries the Census 2020 block groups from the Census
+            Bureau's TIGERweb service, which needs network access. Give the
+            polygons to avoid the query. Every footprint must lie in a block
+            group either way.
     """
 
     footprints: AssetInventory
     nsi_points: AssetInventory
-    block_groups: gpd.GeoDataFrame
     b25024_block_groups: pd.DataFrame
     b25034_block_groups: pd.DataFrame
     b25034_tracts: pd.DataFrame
@@ -429,6 +432,7 @@ class CompilerInputs(NamedTuple):
     local: AssetInventory | None = None
     study_area: str = ''
     height_unit: str = DEFAULT_UNITS['length']
+    block_groups: gpd.GeoDataFrame | None = None
 
 
 class CompilationResult(NamedTuple):

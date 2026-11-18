@@ -331,14 +331,16 @@ option is off by default, since the merge takes Overture footprints only.
 With it, the compiler refuses a local inventory, whose ids are those of the
 footprints before the merge.
 
-Each footprint receives its census block group from the block-group polygons,
-its plan area in square feet as ``PlanArea`` and, if it is an Overture
-footprint, the release and the datasets of its sources, which with the caller's
-``footprint_provider`` make up ``FOOTPRINT_PROVENANCE_FEATURES``. Steps 2 and 3
-join the NSI points to the footprints with ``NSIFootprintJoin`` and derive
-their unit counts and occupancy classes: the join's observed values form the
-NSI source, and the values it derives, such as an occupancy class set by the
-count of units, the derived source.
+Each footprint receives its census block group, its plan area in square feet as
+``PlanArea`` and, if it is an Overture footprint, the release and the datasets
+of its sources, which with the caller's ``footprint_provider`` make up
+``FOOTPRINT_PROVENANCE_FEATURES``. The block group is read from the polygons
+that ``CompilerInputs`` holds as ``block_groups``, or, without them, queried
+from the Census Bureau's TIGERweb service. Steps 2 and 3 join the NSI points to
+the footprints with ``NSIFootprintJoin`` and derive their unit counts and
+occupancy classes: the join's observed values form the NSI source, and the
+values it derives, such as an occupancy class set by the count of units, the
+derived source.
 
 A local inventory, which takes precedence over every other source, may hold no
 feature of ``RESERVED_LOCAL_FEATURES`` (``BLOCKGROUP_GEOID`` and
