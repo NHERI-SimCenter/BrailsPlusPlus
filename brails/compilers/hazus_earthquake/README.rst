@@ -321,7 +321,7 @@ one building, as the section "The method" of
 ``brails/aggregators/stacked_footprints/README.rst`` states, and every later
 step reads the merged set under its geohash keys. A merged asset takes the
 height of its tallest part over the union of the parts, as that section
-states. Where its story count comes from that height, step 8 values a podium
+states. Where its story count comes from that height, the run values a podium
 under a tower as the tower's story count times the merged plan area, and
 its ``GrossArea`` is that product. The
 merge's parts table and id log are written as the logs ``stacked_parts`` and
@@ -408,55 +408,78 @@ design level, structure type and height class of the building then follow as a
 residential building's do. A building the sampler finds no donor for, or one
 without an occupancy class, is excluded from that world.
 
-Step 8 values every building in each world. ``ReplacementCostImputer`` reads
-that world's realization of the view ``STAGE_STEP6`` and the donors that
-``imputation_donors_from_log`` names from step 4's log, as the section "Donors"
-of ``brails/compilers/README.rst`` describes, and gives each building a rate
-per square foot times its gross area computed from the footprint, as
-``brails/imputers/replacement_cost/README.rst`` states. A rate divides a value,
-NSI's, the join's sum of NSI's or a local one, by ``NSIGrossArea``, NSI's
-``sqft``, which the compiler gives the imputer in place of ``GrossArea``. A
-local value therefore gives a rate only on a building whose NSI records give a
-``sqft``, and a local ``GrossArea`` enters neither a rate nor the area a rate
-multiplies. A building for which the imputer finds no donor is excluded from
-that world as ``no_plausible_value``. A building the imputer cannot value
-because its footprint encloses no area or it has no occupancy class is
-excluded as ``missing_input``. The step keeps a local value as it is.
-Where that value gives a rate, the rate also values
-each building that names the local building as its donor or draws it as a
-neighbor. The step replaces every other value: the join's ``ReplacementCost``
-is withheld from every later merge, and the output step writes the step's
-values over the merge.
+The last five steps follow. ``s11_gross_area`` computes, in each world, the
+gross area of every building of the view ``STAGE_STEP6``, excluded buildings
+included: its plan area times its story count in that world, or its plan area
+alone without a positive story count, from ``footprint_gross_area`` of the
+value imputer's module, so it differs between worlds where the story count
+does. It is frozen as ``STAGE_S11_GROSS_AREA``, and the log ``gross_area``
+names for each building and world whether the area came from the story count
+(``stories``) or the plan area alone (``plan_area``). The run then withholds
+from every later merge the values that the last steps replace: the local and
+NSI ``GrossArea``, the join's ``ReplacementCost`` where no local value
+outranks it, NSI's ``BuildingType``, and a ``GrossArea`` or ``BuildingType``
+that the footprints carry, in six records named by the step whose value takes
+their place. The views ``STAGE_STEP4`` and ``STAGE_STEP6`` are frozen before
+the records, so the unit budget, the structure type draw and the rates of
+``s13_replacement_cost`` still read these values. A ``GrossArea`` that a local
+inventory gives is kept as ``LocalGrossArea``, which the first step writes on
+the local values, and NSI's as ``NSIGrossArea``, which the compiler writes on
+the join's values.
 
-The output step merges each world's sources in the precedence of
-``PRECEDENCE``: local values first, then the footprint, NSI, derived, imputed
-and drawn values. ``AssetInventory.merge`` writes the source string, as the
-section "The source string" of ``brails/compilers/README.rst`` describes. NSI's
-gross area, the ``GrossArea`` feature the join writes, is kept as
-``NSIGrossArea``, which the compiler writes on the join's values, and a
-``GrossArea`` that a local inventory gives as ``LocalGrossArea``. Every
-building not yet excluded from the world is checked against the Hazus 5.1 input
-schema of the damage and loss model library, ``DLML_DATASET``, and a building
-it refuses is excluded from that world. The schema reads none of
-``ReplacementCost``, ``GrossArea`` and ``BuildingType``, which the step writes
-after the check. Each building receives ``Excluded``, true in a world from
-which the report lists it as excluded. Its ``BuildingType`` is the letter a
-local inventory gives it, where one does, and otherwise the letter of its
-structure type in that world, by the pairing of
-``get_hazus_general_type_membership`` in
+Steps ``s12`` to ``s15`` then run world by world, on one merge of each
+world's sources in the precedence of ``PRECEDENCE``: local values first, then
+the footprint, NSI, derived, imputed and drawn values. ``AssetInventory.merge``
+writes the source string, as the section "The source string" of
+``brails/compilers/README.rst`` describes.
+
+``s12_schema_check`` checks every building not yet excluded from the world
+against the Hazus 5.1 input schema of the damage and loss model library,
+``DLML_DATASET``, and a building it refuses is excluded from that world. The
+schema reads none of ``ReplacementCost``, ``GrossArea`` and ``BuildingType``,
+which ``s15_output`` writes after the check.
+
+``s13_replacement_cost`` values every building of ``STAGE_STEP6`` in the
+world, excluded buildings included. ``ReplacementCostImputer`` reads that
+world's realization of the view and the donors that
+``imputation_donors_from_log`` names from step 4's log, as the section
+"Donors" of ``brails/compilers/README.rst`` describes, and gives each building
+a rate per square foot times its gross area of ``s11_gross_area``, as
+``brails/imputers/replacement_cost/README.rst`` states. A rate divides a
+value, NSI's, the join's sum of NSI's or a local one, by ``NSIGrossArea``,
+NSI's ``sqft``, which the compiler gives the imputer in place of
+``GrossArea``. A local value therefore gives a rate only on a building whose
+NSI records give a ``sqft``, and a local ``GrossArea`` enters neither a rate
+nor the area a rate multiplies. A building not yet excluded for which the
+imputer finds no donor is excluded from that world as ``no_plausible_value``.
+A building not yet excluded has an occupancy class, which the schema requires,
+and a positive area, so the step files no other outcome. A building it left
+without a value for another reason would be excluded as ``missing_input``.
+A building the schema refused is not filed again. The step
+keeps a local value as it is. Where that value gives a rate, the rate also
+values each building that names the local building as its donor or draws it
+as a neighbor. The step's values are frozen, over the worlds, as
+``STAGE_S13_REPLACEMENT_COST``.
+
+``s14_building_type`` gives every building without a local ``BuildingType``
+the letter of its structure type in the world, excluded buildings included, by
+the pairing of ``get_hazus_general_type_membership`` in
 ``brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py`` that the
 structure type inferer draws with. NSI's letter, which the draw reads, is not
 written. Where a local letter differs from the letter of the building's
 structure type, the file carries the local letter, and a notice in the report
-counts such compiled buildings in each world. Each compiled building without a
-local value then takes its step 8 value in that world, coded by its outcome
-through ``OUTCOME_VALUE_CODES``: ``R`` for its own rate and ``I`` for another
-building's. Every compiled building, one with a local value included, takes as
-its ``GrossArea`` the gross area computed from the footprint, by which step 8
-values a building, from ``footprint_gross_area`` of the value imputer's module:
-its plan area times its story count in that world, or its plan area alone
-without a positive story count, so it differs between worlds where the story
-count does.
+counts such compiled buildings in each world. The letters are frozen, over
+the worlds, as ``STAGE_S14_BUILDING_TYPE``.
+
+``s15_output`` writes the results into the merge. Each building receives
+``Excluded``, true in a world from which the report lists it as excluded, and
+the letter of ``s14_building_type``. Each compiled building without a local
+value takes its value of ``s13_replacement_cost`` in that world, coded by its
+outcome through ``OUTCOME_VALUE_CODES``: ``R`` for its own rate and ``I`` for
+another building's. Every compiled building, one with a local value included,
+takes its area of ``s11_gross_area`` as its ``GrossArea``. A building excluded
+from the world keeps a local value and its ``LocalGrossArea`` and takes no
+computed value or area.
 
 Last, every compiled building must hold every property of
 ``DEFAULT_PROPERTIES`` that applies to it, ``NumberOfUnits`` applying to the
@@ -466,7 +489,7 @@ lack them. A building that lacks one in a world it is compiled in is a defect
 of the run: the log ``MISSING_DEFAULTS_LOG`` names each such building, world
 and property, a notice in the report counts them, and ``write`` saves the
 report, the logs and the manifest and then refuses the GeoJSON. The worlds are
-then assembled into one inventory.
+assembled into one inventory, frozen as ``STAGE_S15_OUTPUT``.
 
 Frozen stages
 ~~~~~~~~~~~~~
@@ -478,12 +501,14 @@ names are the module's ``STAGE_`` constants and the value imputer's
 step adds, such as the join's NSI values. A record holds what a step withholds
 from a source or drops from every source. A view holds the merge of every part
 and record frozen so far, over the worlds, and the last view, the output, is
-the compiled inventory. Two stages feed step 8 and are not sources: the donors
-that ``imputation_donors_from_log`` names from step 4's log, under
-``DONOR_STAGE``, and ``STAGE_STEP8_VALUES``, which the output step writes over
-its merge. Every part other than the footprints, and every record, holds each
-footprint's centroid as its coordinates. The footprints and the views hold the
-footprint polygons. A world's source is composed from its parts and records by
+the compiled inventory. Four stages are not sources: the donors that
+``imputation_donors_from_log`` names from step 4's log, under
+``DONOR_STAGE``, and the areas, values and letters of ``s11_gross_area``,
+``s13_replacement_cost`` and ``s14_building_type``, which ``s15_output``
+writes over its merge. Every part other than the footprints, and every
+record, holds each footprint's centroid as its coordinates. The footprints and
+the views hold the footprint polygons. A world's source is composed from its
+parts and records by
 ``compose_source_parts``, and the worlds of a view are added to it by
 ``AssetInventory.add_world``, as the section "Composition and assembly" of
 ``brails/compilers/README.rst`` states. The run ends with the manifest.
@@ -510,12 +535,12 @@ the file holds is stated on ``CompilationResult.write``. The properties of
 ``DEFAULT_PROPERTIES`` are those a Hazus earthquake assessment reads. The
 report lists each excluded building with its reason in each world, whether or
 not the file holds it. A building's ``ReplacementCost`` divided by its
-``GrossArea`` is the rate per square foot that step 8 gave it, except for a
-building that keeps a local ``ReplacementCost``. Step 8 computes the rate of
-such a building as the local value divided by ``NSIGrossArea``, the ``sqft`` of
-the building's NSI records (their sum where it has several), not by its
-``GrossArea``, and gives that rate to the buildings that take their rate from
-it.
+``GrossArea`` is the rate per square foot that ``s13_replacement_cost`` gave
+it, except for a building that keeps a local ``ReplacementCost``. The step
+computes the rate of such a building as the local value divided by
+``NSIGrossArea``, the ``sqft`` of the building's NSI records (their sum where
+it has several), not by its ``GrossArea``, and gives that rate to the
+buildings that take their rate from it.
 
 The imputer's settings
 ~~~~~~~~~~~~~~~~~~~~~~

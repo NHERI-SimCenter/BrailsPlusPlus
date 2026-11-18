@@ -70,6 +70,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - The Hazus earthquake inventory compiler merges stacked Overture footprints before assigning block groups when given `merge_stacked=True`.
 - The Hazus earthquake inventory compiler computes `n_worlds` worlds, and `CompilationResult.write` writes every world or, given `world`, the one world it names. A file of one world leaves out a property whose value is `None` in that world.
 - `ReplacementCostImputer.impute` and `impute_stage` take `target_area_key`, a feature holding each building's gross area, which the rate then multiplies in place of the area computed from the footprint, and `impute_stage` takes `area_stage`, a frozen stage holding that feature. A building without a positive number there gets no value, logged as `no_area`, and the log labels a feature's area `AREA_FROM_FEATURE`.
+- The Hazus earthquake inventory compiler runs its last five steps, `s11_gross_area` to `s15_output`, as steps of their own: the gross area is computed before the schema check, the schema check runs before the value, and the log `gross_area` names the source of each area. A building that fails the schema and has no value is excluded as `fails_schema`.
 
 ### Changed
 - **Python 3.9 is no longer supported.** BRAILS++ requires Python 3.10, 3.11 or 3.12, the versions the tests run on.

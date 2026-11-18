@@ -243,9 +243,16 @@ STAGE_STEP6 = 'step6'
 STAGE_STEP7_IMPUTED = 'step7_imputed'
 STAGE_STEP7_DRAWN = 'step7_drawn'
 STAGE_STEP7_DERIVED = 'step7_derived'
-STAGE_STEP8_VALUES = 'step8_values'
-STAGE_STEP8_WITHHELD = 'step8_withheld'
-STAGE_OUTPUT = 'output'
+STAGE_S11_GROSS_AREA = 's11_gross_area'
+STAGE_S11_WITHHELD_LOCAL = 's11_withheld_local'
+STAGE_S11_WITHHELD_JOIN = 's11_withheld_join'
+STAGE_S11_WITHHELD_FOOTPRINT = 's11_withheld_footprint'
+STAGE_S13_WITHHELD = 's13_withheld'
+STAGE_S14_WITHHELD = 's14_withheld'
+STAGE_S14_WITHHELD_FOOTPRINT = 's14_withheld_footprint'
+STAGE_S13_REPLACEMENT_COST = 's13_replacement_cost'
+STAGE_S14_BUILDING_TYPE = 's14_building_type'
+STAGE_S15_OUTPUT = 's15_output'
 
 # The stages the report records actions and exclusions under.
 REPORT_STAGES = (
@@ -298,8 +305,8 @@ _DIAGNOSIS_CATEGORY = {
     DIAGNOSIS_INFEASIBLE: 'missing_input',
 }
 
-# The feature of the record of step 8's values holding the source label of
-# each value.
+# The feature of the record of s13's values holding the source label of each
+# value.
 _VALUE_SOURCE_KEY = 'ReplacementCostSource'
 
 # The occupancy class whose NSI story count is kept over the height count.
@@ -1245,9 +1252,90 @@ class HazusEQInventoryCompiler:
         self._step6(sources, logs, centroids, report, n_computed)
         self._view(STAGE_STEP6, sources, report, n_computed)
         self._step7(sources, logs, centroids, report, n_computed, imputer)
-        self._step8(sources, logs, centroids, report, n_computed, imputer)
 
-        inventory = self._output(sources, report, n_computed, logs)
+        started = time.perf_counter()
+        self._compute_gross_areas(sources, logs, centroids, n_computed)
+        report.set_timing(STAGE_S11_GROSS_AREA, time.perf_counter() - started)
+        self._withhold_replaced_values(sources, centroids)
+
+        # Steps s12 to s15 run world by world on one merge of the world, which
+        # s15 completes, and each world's results are added to those of the
+        # earlier worlds.
+        excluded_in = {
+            world: set(ids)
+            for world, ids in report.exclusions.groupby('world')['asset_id']
+        }
+        costs, letters, inventory = (
+            AssetInventory(),
+            AssetInventory(),
+            AssetInventory(),
+        )
+        violations, value_logs, lacking = [], [], []
+        for world in range(n_computed):
+            started = time.perf_counter()
+            merged = sources.merge_world(world)
+            report.set_timing(
+                f'{STAGE_S15_OUTPUT}_merge',
+                time.perf_counter() - started,
+                world=world,
+            )
+            excluded = set(excluded_in.get(world, ()))
+            violations.append(self._check_schema(world, merged, excluded, report))
+            world_costs, value_log = self._impute_replacement_costs(
+                world, sources, centroids, imputer, excluded, report
+            )
+            world_letters = self._derive_building_types(
+                world, merged, sources, centroids, excluded, report
+            )
+            lacking.extend(
+                self._assemble_output(
+                    world,
+                    merged,
+                    excluded,
+                    world_costs,
+                    world_letters,
+                    sources,
+                    report,
+                )
+            )
+            costs.add_world(world_costs)
+            letters.add_world(world_letters)
+            inventory.add_world(merged)
+            value_logs.append(value_log)
+            del merged
+
+        # s12: the schema's violations and the count of each world's refusals.
+        logs['certificate'] = pd.concat(violations, ignore_index=True)
+        report.set_certificate(
+            {
+                'dataset': DLML_DATASET,
+                'excluded_by_world': {
+                    world: int(frame['asset_id'].nunique())
+                    for world, frame in enumerate(violations)
+                },
+            }
+        )
+        # s13: the value imputer's log of every world.
+        logs['value'] = pd.concat(value_logs, ignore_index=True)
+        # s15: the default properties compiled buildings lack.
+        logs[MISSING_DEFAULTS_LOG] = pd.DataFrame(
+            lacking, columns=['asset_id', 'world', 'property'], dtype=object
+        )
+        if lacking:
+            report.note(
+                f'{len(lacking)} default value(s) that apply to compiled '
+                f'buildings are missing; the log {MISSING_DEFAULTS_LOG} names '
+                'them, and write refuses the file.'
+            )
+        # The stages of s13, s14 and s15, over the worlds.
+        for stage, assembled in (
+            (STAGE_S13_REPLACEMENT_COST, costs),
+            (STAGE_S14_BUILDING_TYPE, letters),
+            (STAGE_S15_OUTPUT, inventory),
+        ):
+            started = time.perf_counter()
+            freeze.freeze(stage, assembled)
+            report.set_timing(f'{stage}_freeze', time.perf_counter() - started)
 
         started = time.perf_counter()
         manifest = freeze.manifest()
@@ -1355,6 +1443,12 @@ class HazusEQInventoryCompiler:
             local = deepcopy(inputs.local)
             for asset_id, asset in local.inventory.items():
                 asset.coordinates = centroids[asset_id]
+                # The local GrossArea also under a name of its own, which the
+                # output keeps where the GrossArea of s11 takes its place.
+                if not is_missing_value(asset.features.get(GROSS_AREA_KEY)):
+                    asset.features[LOCAL_GROSS_AREA_KEY] = asset.features[
+                        GROSS_AREA_KEY
+                    ]
             sources.add_part('local', STAGE_LOCAL, local)
         return centroids
 
@@ -2435,127 +2529,6 @@ class HazusEQInventoryCompiler:
             sources.add_part(label, stage, assembled[stage])
         report.set_timing('step7_parts_freeze', time.perf_counter() - started)
 
-    def _step8(
-        self,
-        sources: _WorldSources,
-        logs: dict[str, pd.DataFrame],
-        centroids: Mapping[str, list[list[float]]],
-        report: CompilationReport,
-        n_computed: int,
-        imputer: ObservedDonorImputer,
-    ) -> None:
-        """
-        Run step 8 in every world: the value of every building.
-
-        The section "The run" of the README beside this module states the
-        procedure.
-
-        Args:
-            sources (_WorldSources):
-                The sources. The values and the source labels of their codes
-                are frozen as :data:`STAGE_STEP8_VALUES`, a record the
-                output step writes over its merge, and the join's values are
-                withheld from every later merge by :data:`STAGE_STEP8_WITHHELD`.
-            logs (dict[str, pandas.DataFrame]):
-                The logs, which receive ``value``, with a ``world`` column.
-            centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid.
-            report (CompilationReport):
-                The report, whose exclusions are read and which receives the
-                exclusions of the buildings left without a value and the
-                timings.
-            n_computed (int):
-                The number of worlds computed.
-            imputer (ObservedDonorImputer):
-                The imputer of step 4, whose ``k``, ``cap_m`` and distance
-                weights the value imputer takes.
-
-        Raises:
-            ValueError:
-                As :meth:`ReplacementCostImputer.impute_stage` raises, for a
-                building without a readable footprint or source string.
-        """
-        kept = list(sources.freeze.read(STAGE_STEP6).inventory)
-        exclusions = report.exclusions
-        valuer = ReplacementCostImputer(
-            seed=self.seed,
-            k=imputer.k,
-            cap_m=imputer.cap_m,
-            location_scale_m=imputer.location_scale_m,
-            area_weight=imputer.area_weight,
-            stories_weight=imputer.stories_weight,
-            # A rate divides a value, NSI's, the join's sum of NSI's or a local
-            # one, by NSI's sqft, never by a local GrossArea.
-            gross_area_key=NSI_GROSS_AREA_KEY,
-        )
-        value_record = AssetInventory()
-        rows = []
-        for world in range(n_computed):
-            started = time.perf_counter()
-            excluded = set(exclusions.loc[exclusions['world'] == world, 'asset_id'])
-            result = valuer.impute_stage(
-                sources.freeze, STAGE_STEP6, DONOR_STAGE, world=world
-            )
-            rows.append(result.log)
-            values: dict[str, dict[str, Any]] = {}
-            for asset_id, outcome in zip(
-                result.log['asset_id'], result.log['outcome']
-            ):
-                code = OUTCOME_VALUE_CODES.get(outcome)
-                if code is None and asset_id not in excluded:
-                    # A building without a donor has no plausible value. Any
-                    # other outcome without a value, such as a footprint that
-                    # encloses no area or a building without an occupancy
-                    # class, is filed as a missing input.
-                    report.record_exclusion(
-                        asset_id,
-                        world=world,
-                        stage='value',
-                        category='no_plausible_value'
-                        if outcome == OUTCOME_NO_DONOR
-                        else 'missing_input',
-                        detail=f'the value step gives no {REPLACEMENT_COST_KEY}: '
-                        f'{outcome}',
-                    )
-                # A local value is the merge's own and is left alone.
-                elif code is not None and code != SOURCE_CODES['local']:
-                    values[asset_id] = {
-                        REPLACEMENT_COST_KEY: result.costs.inventory[
-                            asset_id
-                        ].features[REPLACEMENT_COST_KEY],
-                        _VALUE_SOURCE_KEY: SOURCE_LABELS[code],
-                    }
-            value_record.add_world(
-                _build_inventory(kept, centroids, values, vector_features=())
-            )
-            report.set_timing('step8', time.perf_counter() - started, world=world)
-        logs['value'] = pd.concat(rows, ignore_index=True)
-
-        started = time.perf_counter()
-        sources.freeze.freeze(STAGE_STEP8_VALUES, value_record)
-        # Withhold the join's value from every later merge, so that no
-        # building keeps it, except where a local value outranks it.
-        kept_ids = set(kept) - {
-            asset_id
-            for stage in sources.parts['local']
-            for asset_id, asset in sources.freeze.read(stage).inventory.items()
-            if not is_missing_value(asset.features.get(REPLACEMENT_COST_KEY))
-        }
-        withheld = {}
-        for label, stage in (
-            ('nsi', STAGE_JOIN_NSI),
-            ('derived', STAGE_JOIN_DERIVED),
-        ):
-            for asset_id, asset in sources.freeze.read(stage).inventory.items():
-                if asset_id in kept_ids and not is_missing_value(
-                    asset.features.get(REPLACEMENT_COST_KEY)
-                ):
-                    withheld[asset_id] = {REPLACEMENT_COST_KEY: label}
-        sources.add_withheld(
-            STAGE_STEP8_WITHHELD, _build_inventory(withheld, centroids, withheld)
-        )
-        report.set_timing('step8_freeze', time.perf_counter() - started)
-
     def _view(
         self,
         stage: str,
@@ -2591,163 +2564,456 @@ class HazusEQInventoryCompiler:
         sources.freeze.freeze(stage, view)
         report.set_timing(f'{stage}_freeze', time.perf_counter() - started)
 
-    def _output(  # noqa: C901
+    def _compute_gross_areas(
         self,
         sources: _WorldSources,
-        report: CompilationReport,
-        n_computed: int,
         logs: dict[str, pd.DataFrame],
-    ) -> AssetInventory:
+        centroids: Mapping[str, list[list[float]]],
+        n_computed: int,
+    ) -> None:
         """
-        Run the output step: each world's final merge, checked, completed, assembled.
+        Run s11 in every world: the gross area of every building.
 
+        The area is computed from the footprint in the view
+        :data:`STAGE_STEP6`, whose story counts are final, for every building
+        of the view, excluded ones included. The section "The run" of the
+        README beside this module states the procedure.
+
+        Args:
+            sources (_WorldSources):
+                The sources, in whose freeze the areas are frozen as
+                :data:`STAGE_S11_GROSS_AREA`, a record that s13 and s15 read
+                and no merge takes.
+            logs (dict[str, pandas.DataFrame]):
+                The logs, which receive ``gross_area``: per building and
+                world, the ``area_source`` that ``footprint_gross_area``
+                gives.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+            n_computed (int):
+                The number of worlds computed.
+
+        Raises:
+            ValueError:
+                As :func:`footprint_gross_area` raises, for a building
+                without a readable footprint.
+        """
+        view = sources.freeze.read(STAGE_STEP6)
+        kept = list(view.inventory)
+        areas = AssetInventory()
+        rows = []
+        for world in range(n_computed):
+            realization = view.get_world_realization(world)
+            values = {}
+            for asset_id, asset in realization.inventory.items():
+                area, area_source = footprint_gross_area(asset_id, asset)
+                rows.append((asset_id, world, area_source))
+                if area is not None:
+                    values[asset_id] = {GROSS_AREA_KEY: area}
+            areas.add_world(
+                _build_inventory(kept, centroids, values, vector_features=())
+            )
+            del realization
+        logs['gross_area'] = pd.DataFrame(
+            rows, columns=['asset_id', 'world', 'area_source']
+        ).astype({'asset_id': object, 'area_source': 'category'})
+        sources.freeze.freeze(STAGE_S11_GROSS_AREA, areas)
+
+    def _withhold_replaced_values(  # noqa: C901
+        self, sources: _WorldSources, centroids: Mapping[str, list[list[float]]]
+    ) -> None:
+        """
+        Withhold from every later merge the values that s11, s13 and s14 replace.
+
+        Each record is named by the step whose value takes the place of the
+        values it withholds, and each names, per building, the source a value
+        is withheld from: :data:`STAGE_S11_WITHHELD_LOCAL` the local
+        ``GrossArea``, :data:`STAGE_S11_WITHHELD_JOIN` NSI's ``GrossArea``,
+        :data:`STAGE_S11_WITHHELD_FOOTPRINT` a ``GrossArea`` the footprints
+        carry, :data:`STAGE_S13_WITHHELD` the join's ``ReplacementCost`` where
+        no local value outranks it, :data:`STAGE_S14_WITHHELD` NSI's
+        ``BuildingType`` and :data:`STAGE_S14_WITHHELD_FOOTPRINT` a
+        ``BuildingType`` the footprints carry. One building's ``GrossArea``
+        of two sources needs two records, since a record withholds a feature
+        from one source. The run calls this after the view
+        :data:`STAGE_STEP6` is frozen and before the first merge of s12, so
+        that the unit budget, the structure type draw and the rates of s13
+        read these values.
+
+        Args:
+            sources (_WorldSources):
+                The sources, to which the six records are added.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+        """
+        local = [
+            (asset_id, asset.features)
+            for stage in sources.parts['local']
+            for asset_id, asset in sources.freeze.read(stage).inventory.items()
+        ]
+        kept = sources.freeze.read(STAGE_STEP6).inventory.keys() - {
+            asset_id
+            for asset_id, features in local
+            if not is_missing_value(features.get(REPLACEMENT_COST_KEY))
+        }
+        records: dict[str, dict[str, dict[str, str]]] = {
+            STAGE_S11_WITHHELD_LOCAL: {
+                asset_id: {GROSS_AREA_KEY: 'local'}
+                for asset_id, features in local
+                if not is_missing_value(features.get(GROSS_AREA_KEY))
+            },
+            STAGE_S11_WITHHELD_JOIN: {},
+            STAGE_S11_WITHHELD_FOOTPRINT: {},
+            STAGE_S13_WITHHELD: {},
+            STAGE_S14_WITHHELD: {},
+            STAGE_S14_WITHHELD_FOOTPRINT: {},
+        }
+        # Footprints from BRAILS's scrapers carry neither feature, but a
+        # caller's footprints may.
+        for stage in sources.parts[SPINE_LABEL]:
+            for asset_id, asset in sources.freeze.read(stage).inventory.items():
+                for key, record in (
+                    (GROSS_AREA_KEY, STAGE_S11_WITHHELD_FOOTPRINT),
+                    (BUILDING_TYPE_KEY, STAGE_S14_WITHHELD_FOOTPRINT),
+                ):
+                    if not is_missing_value(asset.features.get(key)):
+                        records[record][asset_id] = {key: SPINE_LABEL}
+        for label, stage in (
+            ('nsi', STAGE_JOIN_NSI),
+            ('derived', STAGE_JOIN_DERIVED),
+        ):
+            for asset_id, asset in sources.freeze.read(stage).inventory.items():
+                features = asset.features
+                if not is_missing_value(features.get(GROSS_AREA_KEY)):
+                    records[STAGE_S11_WITHHELD_JOIN][asset_id] = {
+                        GROSS_AREA_KEY: label
+                    }
+                if asset_id in kept and not is_missing_value(
+                    features.get(REPLACEMENT_COST_KEY)
+                ):
+                    records[STAGE_S13_WITHHELD][asset_id] = {
+                        REPLACEMENT_COST_KEY: label
+                    }
+                # The join puts a BuildingType in its observed part only; the
+                # derived part is read in case a join ever puts one there.
+                if not is_missing_value(features.get(BUILDING_TYPE_KEY)):
+                    records[STAGE_S14_WITHHELD][asset_id] = {
+                        BUILDING_TYPE_KEY: label
+                    }
+        for stage, withheld in records.items():
+            sources.add_withheld(
+                stage, _build_inventory(withheld, centroids, withheld)
+            )
+
+    def _check_schema(
+        self,
+        world: int,
+        merged: AssetInventory,
+        excluded: set[str],
+        report: CompilationReport,
+    ) -> pd.DataFrame:
+        """
+        Run s12 in one world: check every building not yet excluded against the schema.
+
+        The schema reads none of ``ReplacementCost``, ``GrossArea`` and
+        ``BuildingType``, which s15 writes after the check.
+
+        Args:
+            world (int):
+                The index of the world the merge holds, which the report
+                records.
+            merged (AssetInventory):
+                The world's merge of every source.
+            excluded (set[str]):
+                The buildings excluded from the world, to which those the
+                schema refuses are added.
+            report (CompilationReport):
+                The report, which receives an exclusion for each building the
+                schema refuses and the step's time in the world.
+
+        Returns:
+            pandas.DataFrame:
+                The schema's violations in the world, with a ``world``
+                column.
+        """
+        started = time.perf_counter()
+        checked = _select_assets(
+            merged, (a for a in merged.inventory if a not in excluded)
+        )
+        verdict = self._validator.validate(checked)
+        for asset_id, messages in verdict.by_asset().items():
+            report.record_exclusion(
+                asset_id,
+                world=world,
+                stage='certificate',
+                category='fails_schema',
+                detail='; '.join(messages),
+            )
+            excluded.add(asset_id)
+        report.set_timing(
+            's12_schema_check', time.perf_counter() - started, world=world
+        )
+        return verdict.to_dataframe().drop(columns='world_index').assign(world=world)
+
+    def _impute_replacement_costs(
+        self,
+        world: int,
+        sources: _WorldSources,
+        centroids: Mapping[str, list[list[float]]],
+        imputer: ObservedDonorImputer,
+        excluded: set[str],
+        report: CompilationReport,
+    ) -> tuple[AssetInventory, pd.DataFrame]:
+        """
+        Run s13 in one world: the value of every building.
+
+        Every building of the view :data:`STAGE_STEP6` is valued, excluded
+        ones included, at the gross area of :data:`STAGE_S11_GROSS_AREA`.
         The section "The run" of the README beside this module states the
         procedure.
 
         Args:
+            world (int):
+                The index of the world valued.
             sources (_WorldSources):
-                The sources, whose freeze holds :data:`STAGE_STEP8_VALUES`.
+                The sources, whose freeze holds the view, the donor stage and
+                the areas.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+            imputer (ObservedDonorImputer):
+                The imputer of s05, whose ``k``, ``cap_m`` and distance
+                weights the value imputer takes.
+            excluded (set[str]):
+                The buildings excluded from the world, to which those left
+                without a value are added.
             report (CompilationReport):
-                The report, whose exclusion rows mark the buildings and which
-                receives the exclusions of the schema check, the timings and
-                a notice of missing default values.
-            n_computed (int):
-                The number of worlds computed.
-            logs (dict[str, pandas.DataFrame]):
-                The logs, which receive ``certificate``, the schema's
-                violations, and :data:`MISSING_DEFAULTS_LOG`.
+                The report, which receives an exclusion for each building
+                left without a value that is not yet excluded, and the step's
+                time in the world.
+
+        Returns:
+            tuple[AssetInventory, pandas.DataFrame]:
+                One asset per building of the view, holding its value and the
+                value's source label where the value is not a kept local one,
+                and the value imputer's log of the world.
+
+        Raises:
+            ValueError:
+                As :meth:`ReplacementCostImputer.impute_stage` raises.
+        """
+        started = time.perf_counter()
+        valuer = ReplacementCostImputer(
+            seed=self.seed,
+            k=imputer.k,
+            cap_m=imputer.cap_m,
+            location_scale_m=imputer.location_scale_m,
+            area_weight=imputer.area_weight,
+            stories_weight=imputer.stories_weight,
+            # A rate divides a value, NSI's, the join's sum of NSI's or a local
+            # one, by NSI's sqft, never by a local GrossArea.
+            gross_area_key=NSI_GROSS_AREA_KEY,
+        )
+        result = valuer.impute_stage(
+            sources.freeze,
+            STAGE_STEP6,
+            DONOR_STAGE,
+            world=world,
+            target_area_key=GROSS_AREA_KEY,
+            area_stage=STAGE_S11_GROSS_AREA,
+        )
+        values: dict[str, dict[str, Any]] = {}
+        for asset_id, outcome in zip(result.log['asset_id'], result.log['outcome']):
+            code = OUTCOME_VALUE_CODES.get(outcome)
+            if code is None and asset_id not in excluded:
+                # A building without a donor has no plausible value. A
+                # building without an occupancy class fails the schema check
+                # first, and every footprint encloses an area, so no other
+                # outcome without a value is expected here. One that occurs
+                # is filed as a missing input rather than passed over.
+                report.record_exclusion(
+                    asset_id,
+                    world=world,
+                    stage='value',
+                    category='no_plausible_value'
+                    if outcome == OUTCOME_NO_DONOR
+                    else 'missing_input',
+                    detail=f'the value step gives no {REPLACEMENT_COST_KEY}: '
+                    f'{outcome}',
+                )
+                excluded.add(asset_id)
+            # A local value is the merge's own and is left alone.
+            elif code is not None and code != SOURCE_CODES['local']:
+                values[asset_id] = {
+                    REPLACEMENT_COST_KEY: result.costs.inventory[asset_id].features[
+                        REPLACEMENT_COST_KEY
+                    ],
+                    _VALUE_SOURCE_KEY: SOURCE_LABELS[code],
+                }
+        kept = list(sources.freeze.read(STAGE_STEP6).inventory)
+        report.set_timing(
+            STAGE_S13_REPLACEMENT_COST, time.perf_counter() - started, world=world
+        )
+        return (
+            _build_inventory(kept, centroids, values, vector_features=()),
+            result.log,
+        )
+
+    def _derive_building_types(
+        self,
+        world: int,
+        merged: AssetInventory,
+        sources: _WorldSources,
+        centroids: Mapping[str, list[list[float]]],
+        excluded: set[str],
+        report: CompilationReport,
+    ) -> AssetInventory:
+        """
+        Run s14 in one world: the letter of each building's structure type.
+
+        Every building without a local ``BuildingType`` takes the letter of
+        its structure type in the world, excluded ones included, by the
+        pairing of ``get_hazus_general_type_membership`` that the structure
+        type inferer draws with. A local letter is kept, and a notice counts
+        the buildings not excluded whose local letter differs from the
+        letter of their structure type.
+
+        Args:
+            world (int):
+                The index of the world the merge holds.
+            merged (AssetInventory):
+                The world's merge of every source.
+            sources (_WorldSources):
+                The sources, whose local parts say which building has a local
+                letter.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+            excluded (set[str]):
+                The buildings excluded from the world.
+            report (CompilationReport):
+                The report, which receives the notice and the step's time in
+                the world.
 
         Returns:
             AssetInventory:
-                The output, frozen as :data:`STAGE_OUTPUT`.
+                One asset per building of the merge, holding the letter where
+                the step gives one.
         """
-        # The GrossArea a local inventory gives, by building, and the buildings
-        # whose BuildingType it gives.
-        local_areas = {
-            asset_id: asset.features[GROSS_AREA_KEY]
-            for stage in sources.parts['local']
-            for asset_id, asset in sources.freeze.read(stage).inventory.items()
-            if not is_missing_value(asset.features.get(GROSS_AREA_KEY))
-        }
+        started = time.perf_counter()
         local_letters = {
             asset_id
             for stage in sources.parts['local']
             for asset_id, asset in sources.freeze.read(stage).inventory.items()
             if not is_missing_value(asset.features.get(BUILDING_TYPE_KEY))
         }
-        violations = []
-        exclusions = report.exclusions
-        excluded_in = {
-            world: set(rows)
-            for world, rows in exclusions.groupby('world')['asset_id']
-        }
-        valued = sources.freeze.read(STAGE_STEP8_VALUES)
-        # (asset id, world, property) of each property a compiled building
-        # lacks where it applies.
-        lacking: list[tuple[str, int, str]] = []
-        output = AssetInventory()
-        for world in range(n_computed):
-            started = time.perf_counter()
-            merged = sources.merge_world(world)
-            values = valued.get_world_realization(world).inventory
-            excluded = excluded_in.get(world, set())
-            checked = _select_assets(
-                merged, (a for a in merged.inventory if a not in excluded)
-            )
-            # The schema reads none of ReplacementCost, GrossArea and
-            # BuildingType, which this step writes after the check.
-            verdict = self._validator.validate(checked)
-            for asset_id, messages in verdict.by_asset().items():
-                report.record_exclusion(
-                    asset_id,
-                    world=world,
-                    stage='certificate',
-                    category='fails_schema',
-                    detail='; '.join(messages),
-                )
-                excluded = excluded | {asset_id}
-            violations.append(
-                verdict.to_dataframe()
-                .drop(columns='world_index')
-                .assign(world=world)
-            )
-            contradicted = 0
-            for asset_id, asset in merged.inventory.items():
-                features = asset.features
-                features.pop(GROSS_AREA_KEY, None)
-                if asset_id in local_areas:
-                    features[LOCAL_GROSS_AREA_KEY] = local_areas[asset_id]
-                features[EXCLUDED_KEY] = asset_id in excluded
-                # A local letter, else that of the structure type, never NSI's.
-                letter = _LETTER_OF_TYPE.get(features.get(STRUCTURE_TYPE_KEY))
-                if asset_id not in local_letters:
-                    features.pop(BUILDING_TYPE_KEY, None)
-                    if letter is not None:
-                        features[BUILDING_TYPE_KEY] = letter
-                elif (
-                    asset_id not in excluded
-                    and features[BUILDING_TYPE_KEY] != letter
-                ):
-                    contradicted += 1
-                if asset_id in excluded:
-                    continue
-                value = values[asset_id].features
-                if not is_missing_value(value.get(REPLACEMENT_COST_KEY)):
-                    _overlay(
-                        asset_id,
-                        features,
-                        {REPLACEMENT_COST_KEY: value[REPLACEMENT_COST_KEY]},
-                        value[_VALUE_SOURCE_KEY],
-                    )
-                # The gross area computed from the footprint, by which step 8
-                # values the building.
-                area = footprint_gross_area(asset_id, asset)[0]
-                if area is not None:
-                    features[GROSS_AREA_KEY] = area
-                lacking.extend(
-                    (asset_id, world, key)
-                    for key in DEFAULT_PROPERTIES
-                    if is_missing_value(features.get(key))
-                    and not (
-                        key == UNITS_KEY
-                        and features.get(OCCUPANCY_KEY) not in UNIT_COUNT_CLASSES
-                    )
-                    and not (
-                        key == HEIGHT_CLASS_KEY
-                        and features.get(STRUCTURE_TYPE_KEY) in _WITHOUT_HEIGHT_CLASS
-                    )
-                )
-            if contradicted:
-                report.note(
-                    f'World {world}: {contradicted} compiled building(s) keep a '
-                    f'local {BUILDING_TYPE_KEY} other than the letter of their '
-                    f'{STRUCTURE_TYPE_KEY}.'
-                )
-            output.add_world(merged)
-            del merged
-            report.set_timing(
-                STAGE_OUTPUT, time.perf_counter() - started, world=world
-            )
-        logs[MISSING_DEFAULTS_LOG] = pd.DataFrame(
-            lacking, columns=['asset_id', 'world', 'property'], dtype=object
-        )
-        if lacking:
+        letters: dict[str, dict[str, Any]] = {}
+        contradicted = 0
+        for asset_id, asset in merged.inventory.items():
+            letter = _LETTER_OF_TYPE.get(asset.features.get(STRUCTURE_TYPE_KEY))
+            if asset_id not in local_letters:
+                if letter is not None:
+                    letters[asset_id] = {BUILDING_TYPE_KEY: letter}
+            elif (
+                asset_id not in excluded
+                and asset.features[BUILDING_TYPE_KEY] != letter
+            ):
+                contradicted += 1
+        if contradicted:
             report.note(
-                f'{len(lacking)} default value(s) that apply to compiled '
-                f'buildings are missing; the log {MISSING_DEFAULTS_LOG} names '
-                'them, and write refuses the file.'
+                f'World {world}: {contradicted} compiled building(s) keep a '
+                f'local {BUILDING_TYPE_KEY} other than the letter of their '
+                f'{STRUCTURE_TYPE_KEY}.'
             )
-        logs['certificate'] = pd.concat(violations, ignore_index=True)
-        report.set_certificate(
-            {
-                'dataset': DLML_DATASET,
-                'excluded_by_world': {
-                    world: int(frame['asset_id'].nunique())
-                    for world, frame in enumerate(violations)
-                },
-            }
+        report.set_timing(
+            STAGE_S14_BUILDING_TYPE, time.perf_counter() - started, world=world
         )
+        return _build_inventory(
+            list(merged.inventory), centroids, letters, vector_features=()
+        )
+
+    def _assemble_output(
+        self,
+        world: int,
+        merged: AssetInventory,
+        excluded: set[str],
+        costs: AssetInventory,
+        letters: AssetInventory,
+        sources: _WorldSources,
+        report: CompilationReport,
+    ) -> list[tuple[str, int, str]]:
+        """
+        Run s15 in one world: write the last steps' results into the merge.
+
+        Every building receives ``Excluded`` and the letter of s14. A
+        building not excluded from the world also receives its value of s13,
+        coded by its source label, and its gross area of s11 as
+        ``GrossArea``, and is checked for the properties of
+        :data:`DEFAULT_PROPERTIES` that apply to it.
+
+        Args:
+            world (int):
+                The index of the world the merge holds.
+            merged (AssetInventory):
+                The world's merge of every source, changed in place.
+            excluded (set[str]):
+                The buildings excluded from the world.
+            costs (AssetInventory):
+                The values of s13 in the world.
+            letters (AssetInventory):
+                The letters of s14 in the world.
+            sources (_WorldSources):
+                The sources, whose freeze holds :data:`STAGE_S11_GROSS_AREA`.
+            report (CompilationReport):
+                The report, which receives the step's time in the world.
+
+        Returns:
+            list[tuple[str, int, str]]:
+                The (asset id, world, property) of each default property a
+                compiled building lacks where it applies.
+
+        Raises:
+            ValueError:
+                If a source string is not one that
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads.
+        """
         started = time.perf_counter()
-        sources.freeze.freeze(STAGE_OUTPUT, output)
-        report.set_timing(f'{STAGE_OUTPUT}_freeze', time.perf_counter() - started)
-        return output
+        areas = (
+            sources.freeze.read(STAGE_S11_GROSS_AREA)
+            .get_world_realization(world)
+            .inventory
+        )
+        lacking = []
+        for asset_id, asset in merged.inventory.items():
+            features = asset.features
+            features[EXCLUDED_KEY] = asset_id in excluded
+            features.update(letters.inventory[asset_id].features)
+            if asset_id in excluded:
+                continue
+            value = costs.inventory[asset_id].features
+            if not is_missing_value(value.get(REPLACEMENT_COST_KEY)):
+                _overlay(
+                    asset_id,
+                    features,
+                    {REPLACEMENT_COST_KEY: value[REPLACEMENT_COST_KEY]},
+                    value[_VALUE_SOURCE_KEY],
+                )
+            area = areas[asset_id].features.get(GROSS_AREA_KEY)
+            if area is not None:
+                features[GROSS_AREA_KEY] = area
+            lacking.extend(
+                (asset_id, world, key)
+                for key in DEFAULT_PROPERTIES
+                if is_missing_value(features.get(key))
+                and not (
+                    key == UNITS_KEY
+                    and features.get(OCCUPANCY_KEY) not in UNIT_COUNT_CLASSES
+                )
+                and not (
+                    key == HEIGHT_CLASS_KEY
+                    and features.get(STRUCTURE_TYPE_KEY) in _WITHOUT_HEIGHT_CLASS
+                )
+            )
+        report.set_timing(
+            STAGE_S15_OUTPUT, time.perf_counter() - started, world=world
+        )
+        return lacking

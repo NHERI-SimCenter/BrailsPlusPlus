@@ -62,6 +62,7 @@ from brails.compilers.hazus_earthquake.hazus_eq_inventory_compiler import (
     HazusEQInventoryCompiler,
 )
 from brails.constants import (
+    AREA_FROM_FEATURE,
     BLOCK_GROUP_KEY,
     BUILDING_TYPE_KEY,
     DESIGN_LEVEL_KEY,
@@ -91,10 +92,13 @@ from brails.imputers.observed_donor_imputer.donor_records import (
     OUTCOME_NO_DONOR,
 )
 from brails.imputers.replacement_cost.replacement_cost_imputer import (
+    DONOR_STAGE,
     OUTCOME_IMPUTATION_DONOR,
     OUTCOME_LOCAL_VALUE,
     OUTCOME_OWN_RATE,
     OUTCOME_VALUE_CODES,
+    ReplacementCostImputer,
+    footprint_gross_area,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_height_classes_by_type,
@@ -129,6 +133,14 @@ if TYPE_CHECKING:
     from brails.compilers.compilation_report import CompilationReport
 
 STORIES_CODE = HAZUS_EQ_SOURCE_FEATURES.index(STORIES_KEY)
+# Values carried on some footprints, as a caller's footprints may carry them:
+# f01 and u08 are excluded in every world, h05 and u03 are not.
+FOOTPRINT_VALUES = {
+    'f01': {GROSS_AREA_KEY: 789.0, BUILDING_TYPE_KEY: 'C'},
+    'u08': {GROSS_AREA_KEY: 456.0, BUILDING_TYPE_KEY: 'S'},
+    'u03': {BUILDING_TYPE_KEY: 'S'},
+    'h05': {GROSS_AREA_KEY: 123.0},
+}
 OCCUPANCY_CODE = HAZUS_EQ_SOURCE_FEATURES.index(OCCUPANCY_KEY)
 YEAR_CODE = HAZUS_EQ_SOURCE_FEATURES.index(YEAR_BUILT_KEY)
 # The footprints no NSI record reaches.
@@ -156,9 +168,16 @@ FREEZE_ORDER = (
     'step7_imputed',
     'step7_drawn',
     'step7_derived',
-    'step8_values',
-    'step8_withheld',
-    'output',
+    's11_gross_area',
+    's11_withheld_local',
+    's11_withheld_join',
+    's11_withheld_footprint',
+    's13_withheld',
+    's14_withheld',
+    's14_withheld_footprint',
+    's13_replacement_cost',
+    's14_building_type',
+    's15_output',
 )
 # The timed units of a run, once and per world.
 TIMED_ONCE = (
@@ -171,7 +190,10 @@ TIMED_ONCE = (
     's06_residential_year_freeze',
     's07_pair_redraw_freeze',
     'step6_freeze',
-    'output_freeze',
+    's11_gross_area',
+    's13_replacement_cost_freeze',
+    's14_building_type_freeze',
+    's15_output_freeze',
     'manifest',
 )
 TIMED_PER_WORLD = (
@@ -181,8 +203,11 @@ TIMED_PER_WORLD = (
     'step6',
     'step6_view',
     'step7',
-    'step8',
-    'output',
+    's15_output_merge',
+    's12_schema_check',
+    's13_replacement_cost',
+    's14_building_type',
+    's15_output',
 )
 
 
@@ -383,7 +408,7 @@ class TestCompileArguments:
     @pytest.mark.parametrize('key', hc.RESERVED_LOCAL_FEATURES)
     def test_reserved_local_feature_refused(self, key: str) -> None:
         """A local inventory holding a feature the compiler reads back is refused."""
-        # Were a local NSIGrossArea of 7.0 on h02 accepted, step 8 would divide
+        # Were a local NSIGrossArea of 7.0 on h02 accepted, s13 would divide
         # NSI's ReplacementCost by 7 sq ft to get the rate of h02 and of every
         # building that takes its rate from h02.
         inputs = build_inputs()
@@ -524,7 +549,7 @@ class TestFootprintsAndJoin:
         for stage in ('local', 'join_nsi', 'join_derived'):
             for asset in read(stage).inventory.values():
                 assert len(asset.coordinates) == 1, stage
-        assert read('output') is result.inventory
+        assert read('s15_output') is result.inventory
 
     def test_changed_part_raises_at_the_manifest(
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
@@ -564,10 +589,10 @@ class TestFootprintsAndJoin:
 
 
 class TestOutput:
-    """The output step and what `write` makes of it."""
+    """The last steps' output and what `write` makes of it."""
 
     def test_output_marks_exclusions(self, study_area: object) -> None:
-        """An exclusion recorded before the output step marks its world."""
+        """An exclusion recorded before s12 marks its world."""
         real = hc.CompilationReport.set_world_count
 
         def counted(report: CompilationReport, count: int) -> None:
@@ -602,7 +627,7 @@ class TestOutput:
         for asset_id in ('h01', 'u02'):
             marks = result.inventory.inventory[asset_id].features[EXCLUDED_KEY]
             assert marks == [False, True, False]
-        # An excluded building takes no value from step 8 in that world.
+        # An excluded building takes no value from s13 in that world.
         values = result.inventory.inventory['u02'].features[REPLACEMENT_COST_KEY]
         assert values[1] is None
         assert values[0] is not None
@@ -812,7 +837,7 @@ class TestWrittenFile:
             Args:
                 inventory (AssetInventory):
                     The buildings checked, which share their records with
-                    the output step's merge.
+                    the merge s12 to s15 work on.
 
             Returns:
                 object:
@@ -856,7 +881,7 @@ class TestWrittenFile:
             Args:
                 inventory (AssetInventory):
                     The buildings checked, which share their records with
-                    the output step's merge.
+                    the merge s12 to s15 work on.
 
             Returns:
                 object:
@@ -884,10 +909,12 @@ class TestWrittenFile:
     @pytest.mark.parametrize(
         ('name', 'replacement', 'building', 'key'),
         [
+            # Without an area every other building gets no value and is
+            # excluded, and c02 keeps its local value.
             (
                 'footprint_gross_area',
                 lambda *_args, **_kwargs: (None, None),
-                'q03',
+                'c02',
                 GROSS_AREA_KEY,
             ),
             ('_LETTER_OF_TYPE', {'C1': 'C'}, 'h01', BUILDING_TYPE_KEY),
@@ -902,7 +929,7 @@ class TestWrittenFile:
         building: str,
         key: str,
     ) -> None:
-        """A value the output step cannot write is logged as missing."""
+        """A value s15 cannot write is logged as missing."""
         monkeypatch.setattr(hc, name, replacement)
         result = HazusEQInventoryCompiler(
             seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
@@ -913,7 +940,7 @@ class TestWrittenFile:
         assert (building, 0, key) in lacking
 
     def test_schema_reads_no_value_written_after_it(self) -> None:
-        """The input schema reads none of the values the output step writes later."""
+        """The input schema reads none of the values s15 writes after it."""
         schema = json.dumps(SchemaValidator(hc.DLML_DATASET)._schema, default=str)
         for key in (REPLACEMENT_COST_KEY, GROSS_AREA_KEY, BUILDING_TYPE_KEY):
             assert f'"{key}"' not in schema
@@ -1841,7 +1868,7 @@ class TestYearAndValueOfTheRest:
     def test_components_receive_worlds(
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Both draw per world with the imputer's k and cap, step 8 its weights too."""
+        """Both draw per world with the imputer's k and cap, s13 its weights too."""
         compiler = HazusEQInventoryCompiler(
             seed=SEED,
             n_worlds=6,
@@ -2033,8 +2060,8 @@ class TestYearAndValueOfTheRest:
         assert not served.empty
         assert set(served['rate']) == {350000.0 / 1400.0}
 
-    def test_no_class_excluded_at_the_value(self, study_area: object) -> None:
-        """A footprint with a year and a structure type but no occupancy class has no value."""
+    def test_no_class_fails_the_schema_first(self, study_area: object) -> None:
+        """A footprint without an occupancy class fails the schema, and the value step files nothing."""
         local = build_inputs().local
         x, y, side = FOOTPRINTS['f01'][:3]
         local.add_asset(
@@ -2051,9 +2078,11 @@ class TestYearAndValueOfTheRest:
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'f01']
         assert list(zip(rows['stage'], rows['category'])) == [
-            ('value', 'missing_input')
+            ('certificate', 'fails_schema')
         ]
-        assert 'no_class' in rows['detail'].iloc[0]
+        assert OCCUPANCY_KEY in rows['detail'].iloc[0]
+        log = result.logs['value']
+        assert list(log.loc[log['asset_id'] == 'f01', 'outcome']) == ['no_class']
 
     def test_no_value_excluded(self, compiled: object) -> None:
         """A building without a donor is excluded as no_plausible_value, and any other building without a value as missing_input."""
@@ -2093,7 +2122,262 @@ class TestYearAndValueOfTheRest:
             # u08 has no NSI record, and l02 the join's sum of two.
             assert REPLACEMENT_COST_KEY not in features['u08']
             assert REPLACEMENT_COST_KEY not in features['l02']
-        withheld = result.freeze.read('step8_withheld').inventory
+        withheld = result.freeze.read('s13_withheld').inventory
         assert withheld['l02'].features == {REPLACEMENT_COST_KEY: 'derived'}
         assert withheld['h01'].features == {REPLACEMENT_COST_KEY: 'nsi'}
         assert 'c02' not in withheld
+
+
+class TestLastSteps:
+    """The gross area, the schema check, the value, the letter and the output."""
+
+    def test_gross_area(self, compiled: object) -> None:
+        """The area of s11 is the footprint's in each world, and the output's GrossArea."""
+        result = compiled(n_worlds=3)
+        view = result.freeze.read(hc.STAGE_STEP6)
+        areas = result.freeze.read(hc.STAGE_S11_GROSS_AREA)
+        log = result.logs['gross_area'].set_index(['asset_id', 'world'])
+        assert len(log) == 3 * len(view.inventory)
+        for world in range(3):
+            realization = view.get_world_realization(world)
+            stage = features_in(areas, world)
+            output = features_in(result.inventory, world)
+            for asset_id, asset in realization.inventory.items():
+                area, area_source = footprint_gross_area(asset_id, asset)
+                assert stage[asset_id][GROSS_AREA_KEY] == area
+                assert log.loc[(asset_id, world), 'area_source'] == area_source
+                if not output[asset_id][EXCLUDED_KEY]:
+                    assert output[asset_id][GROSS_AREA_KEY] == area
+        assert any(
+            isinstance(asset.features[GROSS_AREA_KEY], list)
+            for asset in areas.inventory.values()
+        )
+
+    def test_value_inputs(self, compiled: object) -> None:
+        """The value step reads the view ``STAGE_STEP6`` and the donor stage, at the area of s11."""
+        result = compiled(n_worlds=3)
+        log = result.logs['value']
+        from_footprints = ReplacementCostImputer(
+            seed=SEED,
+            **dict(DEFAULT_IMPUTER_OPTIONS),
+            gross_area_key=NSI_GROSS_AREA_KEY,
+        ).impute_stage(result.freeze, hc.STAGE_STEP6, DONOR_STAGE)
+        columns = [c for c in log.columns if c != 'area_source']
+        pd.testing.assert_frame_equal(log[columns], from_footprints.log[columns])
+        has_area = log['footprint_gross_area_sqft'].notna()
+        assert set(log.loc[has_area, 'area_source']) == {AREA_FROM_FEATURE}
+        assert set(log.loc[~has_area, 'outcome']) == {OUTCOME_LOCAL_VALUE}
+        # The value of a building the schema refuses is computed and kept in
+        # the stage, and the view still holds what the rates read.
+        costs = result.freeze.read(hc.STAGE_S13_REPLACEMENT_COST)
+        assert costs.inventory['u08'].features[REPLACEMENT_COST_KEY] is not None
+        view = features_in(result.freeze.read(hc.STAGE_STEP6), 0)
+        assert view['l01'][GROSS_AREA_KEY] == 777.0
+        assert view['h01'][REPLACEMENT_COST_KEY] == 350000.0
+        assert view['h01'][NSI_GROSS_AREA_KEY] == 1400.0
+        assert view['c01'][BUILDING_TYPE_KEY] == 'C'
+
+    def test_excluded_buildings(self, compiled: object) -> None:
+        """An excluded building keeps its local values and letter, and no computed value or area."""
+        result = compiled(n_worlds=3)
+        rows = result.report.exclusions
+        assert set(zip(rows['asset_id'], rows['world'])) >= {
+            (asset_id, world)
+            for asset_id in ('f01', 'l02', 'u03', 'u08', 'u10')
+            for world in range(3)
+        }
+        for asset_id, world in set(zip(rows['asset_id'], rows['world'])):
+            features = features_in(result.inventory, world).get(asset_id)
+            if features is None:
+                continue
+            assert features[EXCLUDED_KEY] is True
+            assert GROSS_AREA_KEY not in features
+            local = LOCAL.get(asset_id, {})
+            assert features.get(REPLACEMENT_COST_KEY) == local.get(
+                REPLACEMENT_COST_KEY
+            )
+            assert features.get(LOCAL_GROSS_AREA_KEY) == local.get(GROSS_AREA_KEY)
+            letter = local.get(
+                BUILDING_TYPE_KEY,
+                hc._LETTER_OF_TYPE.get(features.get(STRUCTURE_TYPE_KEY)),
+            )
+            assert features.get(BUILDING_TYPE_KEY) == letter
+        l02 = features_in(result.inventory, 0)['l02']
+        assert (l02[BUILDING_TYPE_KEY], l02[NSI_GROSS_AREA_KEY]) == ('M', 7000.0)
+
+    def test_schema_ahead_of_the_value(self, study_area: object) -> None:
+        """A building that fails the schema and has no value is filed by the schema check."""
+        # u10 has no value in any world; a local URM of 1980 fails the schema.
+        local = build_inputs().local
+        x, y, side = FOOTPRINTS['u10'][:3]
+        local.add_asset(
+            'u10',
+            Asset(
+                'u10',
+                square(x, y, side),
+                {STRUCTURE_TYPE_KEY: 'URM', YEAR_BUILT_KEY: 1980},
+            ),
+        )
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+        ).compile(study_area._replace(local=local))
+        log = result.logs['value']
+        assert not set(log.loc[log['asset_id'] == 'u10', 'outcome']) & set(
+            OUTCOME_VALUE_CODES
+        )
+        rows = result.report.exclusions
+        rows = rows[rows['asset_id'] == 'u10']
+        assert sorted(rows['world']) == [0, 1, 2]
+        assert set(zip(rows['stage'], rows['category'])) == {
+            ('certificate', 'fails_schema')
+        }
+        certificate = result.report.summary()['certificate']['excluded_by_world']
+        assert {int(w): n for w, n in certificate.items()} == {0: 3, 1: 3, 2: 3}
+
+    def test_areas_of_other_sources(self, compiled: object) -> None:
+        """The output keeps the local and NSI gross areas beside the computed one."""
+        result = compiled(n_worlds=3)
+        for world in range(3):
+            features = features_in(result.inventory, world)
+            l01 = features['l01']
+            assert math.isclose(
+                l01[GROSS_AREA_KEY], l01[PLAN_AREA_KEY] * l01[STORIES_KEY]
+            )
+            assert (l01[LOCAL_GROSS_AREA_KEY], l01[NSI_GROSS_AREA_KEY]) == (
+                777.0,
+                1400.0,
+            )
+        read = result.freeze.read
+        assert {
+            asset_id: asset.features
+            for asset_id, asset in read(
+                hc.STAGE_S11_WITHHELD_LOCAL
+            ).inventory.items()
+        } == {'l01': {GROSS_AREA_KEY: 'local'}}
+        joined = read(hc.STAGE_S11_WITHHELD_JOIN).inventory
+        holders = {
+            asset_id
+            for stage in (hc.STAGE_JOIN_NSI, hc.STAGE_JOIN_DERIVED)
+            for asset_id, asset in read(stage).inventory.items()
+            if GROSS_AREA_KEY in asset.features
+        }
+        assert set(joined) == holders
+        assert joined['l02'].features == {GROSS_AREA_KEY: 'derived'}
+        lettered = read(hc.STAGE_S14_WITHHELD).inventory
+        assert set(lettered) == {
+            asset_id
+            for asset_id, asset in read(hc.STAGE_JOIN_NSI).inventory.items()
+            if BUILDING_TYPE_KEY in asset.features
+        }
+
+    @pytest.mark.parametrize('carried', [False, True])
+    def test_the_merge_holds_no_withheld_value(
+        self,
+        carried: bool,  # noqa: FBT001
+    ) -> None:
+        """The merge s12 to s15 work on holds no area, letter or value they replace."""
+        inputs = build_inputs()
+        if carried:
+            # Footprints that carry an area and a letter of their own.
+            for asset_id, values in FOOTPRINT_VALUES.items():
+                inputs.footprints.inventory[asset_id].features.update(values)
+        real = hc.HazusEQInventoryCompiler._check_schema
+        merges = []
+
+        def spied(
+            compiler: object,
+            world: int,
+            merged: AssetInventory,
+            excluded: set,
+            report: object,
+        ) -> object:
+            """
+            Keep a copy of each world's merge, then check its schema.
+
+            Args:
+                compiler (object):
+                    The compiler.
+                world (int):
+                    The world the merge holds.
+                merged (AssetInventory):
+                    The world's merge.
+                excluded (set):
+                    The buildings excluded from the world.
+                report (object):
+                    The run's report.
+
+            Returns:
+                object:
+                    The schema check's violations.
+            """
+            merges.append({a: dict(x.features) for a, x in merged.inventory.items()})
+            return real(compiler, world, merged, excluded, report)
+
+        with mock.patch.object(
+            hc.HazusEQInventoryCompiler,
+            '_check_schema',
+            autospec=True,
+            side_effect=spied,
+        ):
+            HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            ).compile(inputs)
+        assert len(merges) == 3
+        for merged in merges:
+            for asset_id, features in merged.items():
+                local = LOCAL.get(asset_id, {})
+                assert GROSS_AREA_KEY not in features, asset_id
+                for key in (BUILDING_TYPE_KEY, REPLACEMENT_COST_KEY):
+                    assert (key in features) == (key in local), (asset_id, key)
+
+    def test_carried_footprint_values_leave_excluded_buildings(self) -> None:
+        """An area or a letter the footprints carry is not written on an excluded building."""
+        inputs = build_inputs()
+        for asset_id, values in FOOTPRINT_VALUES.items():
+            inputs.footprints.inventory[asset_id].features.update(values)
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+        ).compile(inputs)
+        for world in range(3):
+            features = features_in(result.inventory, world)
+            for asset_id in ('f01', 'u08'):
+                assert features[asset_id][EXCLUDED_KEY] is True
+                assert GROSS_AREA_KEY not in features[asset_id]
+                assert features[asset_id].get(
+                    BUILDING_TYPE_KEY
+                ) == hc._LETTER_OF_TYPE.get(
+                    features[asset_id].get(STRUCTURE_TYPE_KEY)
+                )
+
+    def test_the_value_guard_files_a_building_without_a_class(
+        self, study_area: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A building s12 lets through without an occupancy class is filed as missing_input."""
+        local = build_inputs().local
+        x, y, side = FOOTPRINTS['f01'][:3]
+        local.add_asset(
+            'f01',
+            Asset(
+                'f01',
+                square(x, y, side),
+                {YEAR_BUILT_KEY: 1970, STRUCTURE_TYPE_KEY: 'W1', STORIES_KEY: 1},
+            ),
+        )
+        compiler = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+        )
+        real = compiler._validator.validate
+        # The schema check refuses nothing, as if the schema did not require
+        # an occupancy class.
+        monkeypatch.setattr(
+            compiler._validator,
+            'validate',
+            lambda _inventory: real(AssetInventory()),
+        )
+        result = compiler.compile(study_area._replace(local=local))
+        rows = result.report.exclusions
+        rows = rows[rows['asset_id'] == 'f01']
+        assert list(zip(rows['stage'], rows['category'])) == [
+            ('value', 'missing_input')
+        ]
+        assert 'no_class' in rows['detail'].iloc[0]
