@@ -1,14 +1,791 @@
 Hazus earthquake inventory compiler
 ===================================
 
-The modules of ``brails.compilers.hazus_earthquake`` compile a Hazus
-earthquake building inventory. ``HazusEQInventoryCompiler`` runs the
-compilation, and ``PairRedraw``, ``ComposedScreen`` and ``ResolutionLoop``
-carry out three of its steps. This page describes each of them in a section
-of its own. The concepts they share with the imputers and inferers they call
-are explained in the section "Concepts" of ``brails/compilers/README.rst``,
-and the composition of a source from frozen stages in its section
-"Composition and assembly".
+``HazusEQInventoryCompiler`` builds the building inventory that a Hazus
+earthquake damage and loss assessment reads, for one study area and over
+several possible worlds. It is in ``hazus_eq_inventory_compiler.py`` beside
+this page, with ``CompilerInputs``, which holds the data of the study area, and
+``CompilationResult``, which holds what a run produces. Three classes in the
+same folder carry out pieces of the run: ``PairRedraw`` in ``pair_redraw.py``,
+and ``ComposedScreen`` and ``ResolutionLoop`` in ``resolution_loop.py``. This
+page states what the compiler produces and from which inputs, the settings it
+gives the observed-donor imputer, the run step by step in the order the code
+runs it, the frozen stages, the possible worlds, the local inputs, the block
+groups, the written file and the scope, and then the three classes. The terms
+this page shares with the general compilers page, such as possible world,
+stage, part, record, view, computed stage, source and donor, are defined in the
+section "Concepts" of ``brails/compilers/README.rst``. Its section "Composition
+and assembly" states how a source is put together from frozen stages. The
+docstrings state what a caller passes and receives.
+
+The inventory and its inputs
+----------------------------
+
+A run produces one building for each footprint it keeps. A feature whose
+value is uncertain, such as a construction year drawn from census tables, can
+take a different value in each possible world. The run computes the
+compiler's ``n_worlds`` worlds. A building that a step cannot complete in a
+world, or finds inconsistent there, is excluded from that world: it stays in
+the inventory, its feature ``Excluded`` is true in that world, and the run's
+report names the step that excluded it and the reason. In each world it is
+not excluded from, a building holds the features of ``DEFAULT_PROPERTIES``
+that apply to it: its occupancy class, unit count, story count, construction
+year, design level, structure type, height class, replacement cost, census
+block group, plan area, gross area, general building type and source string.
+It also holds the other features the run gave it, such as the values of the
+NSI records joined to it.
+
+On this page, the residential occupancy classes are those of
+``UNIT_COUNT_CLASSES`` in ``brails/utils/unit_count_rules.py``: RES1, RES2
+and RES3A to RES3F. RES4 to RES6, such as hotels and nursing homes, are not
+among them, so the run gives them the years of residential neighbors and not
+census years (see ``s06_residential_year`` and ``s09_nonresidential_year``).
+
+The caller gives the data of the study area in a ``CompilerInputs``:
+
+- the building footprints, as polygons, each carrying ``type`` where the file
+  is to be written with ``integer_ids``;
+- the points of the National Structure Inventory (NSI), as the NSI reader
+  returns them;
+- three tables of the American Community Survey: B25024, the housing units by
+  the number of units in their structure, per block group; B25034, the
+  housing units by the year their structure was built, per block group and
+  per tract; and B25127, the occupied housing units by year built and
+  structure size, per tract;
+- the points of the mobile-home parks;
+- optionally, a local inventory of values known locally, which takes
+  precedence over every other source (see "Local inputs" below);
+- optionally, the polygons of the census block groups (see "Block groups"
+  below);
+- the Overture release of the footprints, the length unit of their heights
+  and a label of the study area for the report.
+
+The constructor of the compiler takes the settings of the run: the seed of
+every random draw, the number of worlds, the state, the seismic zone and the
+design level method that the Hazus inferers read, the distance cap of the NSI
+join and the projected coordinate system of its distances, the options of
+three components, and whether to merge stacked footprints first. Given no
+seed, the compiler draws one, which ``CompilationResult.seed`` and the
+report's summary hold, so that the run can be repeated. The constructor
+checks the settings. It also builds four of the components, so that each can
+refuse its own settings and a bad setting raises an error in the
+constructor, before any data is read.
+
+``compile`` returns a ``CompilationResult``. Its ``inventory`` is the compiled
+inventory over every world, with each building's ``Excluded`` true in the
+worlds it is excluded from. Its ``report`` is a ``CompilationReport``: one row
+for each change a step made to a value and one row for each building a step
+excluded from a world, as the section "The compilation report" of
+``brails/compilers/README.rst`` states. Its ``freeze`` holds every frozen
+stage of the run and its ``manifest`` their digests. Its ``logs`` hold, by
+name, the logs of the components and those the compiler writes itself, such
+as ``gross_area`` and ``schema_check``. Its ``seed`` is the seed of the run's
+random draws. ``write`` saves the inventory as GeoJSON with the report, the
+manifest and the logs beside it (see "The written file" below).
+
+The imputer's settings
+----------------------
+
+The compiler gives ``ObservedDonorImputer`` its own values of three settings
+in place of the imputer's defaults: the number of nearest donors from which
+one is picked (``k``), the meters of separation counted as one unit of donor
+distance (``location_scale_m``) and the weight of the difference of log plan
+areas (``area_weight``). ``DEFAULT_IMPUTER_OPTIONS`` holds ``k`` of 10, a
+``location_scale_m`` of 500 and an ``area_weight`` of 2. They come from a
+SimCenter masking test on the buildings with an NSI record in San Francisco
+and Richmond, California, in which the occupancy class, unit count and story
+count of about a fifth of them were hidden and imputed again from the others.
+Compared with the test's starting values (``k`` of 5, 100 m and a weight of
+1), these values gave better overall occupancy class, story and unit scores
+in both cities and a lower exact-label agreement for non-residential
+buildings. The test measured donor distance on footprint heights, whereas
+the imputer compares story counts. The test is therefore a comparison of
+settings, and the three values are not calibrated yet. ``imputer_options``
+overrides them one by one. The compiler gives the imputer its donors
+directly, so the imputer runs without batch feedback, in which targets
+filled in one batch become donors for later batches, and ``n_batches`` is
+refused. ``ResidentialNeighborYearSampler`` takes the imputer's ``k`` and
+``cap_m``, and ``ReplacementCostImputer`` takes those and the imputer's
+``location_scale_m``, ``area_weight`` and ``stories_weight``.
+
+The run in outline
+------------------
+
+The run has fifteen steps, labeled ``s01`` to ``s15``.
+
+==================================  ========================================
+Step                                What it gives the buildings
+==================================  ========================================
+``s01_footprints``                  block group, plan area and footprint
+                                    provenance
+``s02_nsi_join``                    the values of the NSI records joined to
+                                    them
+``s03_story_counts``                story counts from the footprint height
+``s04_unit_budget``                 occupancy classes and unit counts from
+                                    the census counts of housing units
+``s05_imputation``                  what is still missing, from observed
+                                    donors
+``s06_residential_year``            construction years of the residential
+                                    buildings
+``s07_pair_redraw``                 new values for implausible pairs of
+                                    occupancy class and story count
+``s08_structure``                   design level, structure type and height
+                                    class
+``s09_nonresidential_year``         construction years of the other
+                                    buildings
+``s10_nonresidential_structure``    what ``s08`` gives, for those buildings
+``s11_gross_area``                  gross area
+``s12_schema_check``                the check against the Hazus input schema
+``s13_replacement_cost``            replacement cost
+``s14_building_type``               general building type
+``s15_output``                      the compiled inventory
+==================================  ========================================
+
+The first five steps place the footprints and complete the occupancy class,
+the unit count and the story count of each one. Steps ``s01`` to ``s03`` give
+the same values in every world. From ``s04`` on, a step can give a building a
+different value in each world. ``s06`` gives a construction year from the
+census tables to each residential building without one, and ``s07`` replaces
+implausible pairs of occupancy class and story count. ``s08`` gives a design
+level and a structure type to every building that holds a year by then, and a
+height class to every building with a structure type. ``s09`` and ``s10`` do
+the same for the other buildings, whose years are copied from residential
+neighbors. The last five steps compute the gross area, check each building
+against the input schema of the assessment, give it its replacement cost and
+its general building type, and assemble the output.
+
+Each step adds its values to the run as frozen stages, and the steps after it
+read them from there. Many steps read each world's merged inventory: the
+values of every source in that world, merged in the order of precedence of the
+sources, so that each feature takes the value of the source of highest
+precedence that holds one. Between steps, the run also freezes two views,
+``s05_view`` after ``s05`` and ``s08_view`` after ``s08``. They hold the
+merged inventory of every world as it stands, and later steps read them. The
+section "Frozen stages" below lists the stages.
+
+The names of most of the stages a step freezes, of the report stages it files
+rows under, and of its timings in the report's summary begin with the step's
+label. The exceptions are these. The run freezes the two views and the donor
+stage ``DONOR_STAGE`` between steps, under names of their own. Three of the
+six records frozen right after ``s11`` are named after ``s13`` and ``s14``,
+because the values of those steps replace what the records withhold.
+``s10`` runs inside the loop of ``s09`` over the worlds, and its time is
+counted in the timing of ``s09``.
+
+From ``s06`` on, a step that cannot complete a building in a world, or finds
+it inconsistent, excludes it from that world. Steps ``s08``, ``s09``, ``s10``
+and ``s12`` then skip the building in that world. The other steps compute
+their values for it as for any building, and ``s15`` leaves the computed
+gross area and replacement cost out of its output. Earlier, ``s04`` drops
+footprints from every world: a small footprint that becomes no dwelling, as
+the subsection ``s04_unit_budget`` states. A dropped footprint is not in the
+compiled inventory. The report files each exclusion under one of the
+categories that the section "Exclusion categories" of
+``brails/compilers/README.rst`` defines.
+
+The run
+-------
+
+Each subsection below states what the step reads, what it does, what it
+freezes, and which exclusions it files under which report stage.
+
+``s01_footprints``
+~~~~~~~~~~~~~~~~~~
+
+The step gives each footprint its census block group and its plan area.
+``CensusTractScraper`` gives each footprint the GEOID of the census block group
+that holds the centroid of its outline, as ``BLOCKGROUP_GEOID``. The footprints
+whose centroid lies on an edge or a corner shared by several block groups are
+listed in the log ``footprint_ties``. A footprint outside every block group, or
+one whose outline encloses no area, stops the run with ``ValueError``. Each
+footprint also receives its plan area in square feet as ``PlanArea``. An
+Overture footprint also receives the release and the datasets of its sources.
+The release, the datasets and the caller's ``footprint_provider`` make up
+``FOOTPRINT_PROVENANCE_FEATURES``.
+
+The step freezes the footprints as ``s01_footprints``, the one part of the
+source labeled ``footprint``, which holds every building of the run and its
+outline. Where a local inventory is given, the step freezes it as
+``s01_local``, the one part of the source labeled ``local``. A local asset
+in it takes its footprint's centroid as its coordinates, and a ``GrossArea``
+it holds is copied to ``LocalGrossArea``, which the output keeps (see
+``s11_gross_area``). The step files no row in the report.
+
+With ``merge_stacked``, which is off by default, ``StackedFootprintMerge``
+first merges the stacked Overture footprints of one building, such as a podium
+and the towers drawn on it, into one footprint, as the section "The method" of
+``brails/aggregators/stacked_footprints/README.rst`` states. Every later step
+reads the merged footprints under their new geohash ids. A merged footprint
+takes the height of the tallest of the footprints it merges, over the union
+of their outlines. Where its story count comes from that height, the podium
+therefore counts as many stories as the tower. The merge's table of the
+footprints it merged and its log of ids are written as the logs
+``stacked_parts`` and ``stacked_asset_ids``, and a notice in the report
+counts the merges. Without the option the footprints are taken as given,
+keyed by the caller's asset ids.
+
+``s02_nsi_join``
+~~~~~~~~~~~~~~~~
+
+The step joins the NSI points to the footprints with ``NSIFootprintJoin``,
+within the compiler's ``join_cap_m``, measuring distances in its
+``projected_crs``. Each point goes to at most one footprint: one that holds
+the point, or the nearest that accepts it within the cap. The class
+docstring of ``NSIFootprintJoin`` states the rules.
+
+The join returns the values of each footprint in two inventories. One holds the
+values as the NSI records state them, and it is frozen as ``s02_nsi_join``, the
+one part of the source labeled ``nsi``. These values include the occupancy
+class, story count and building type of the footprint's governing record, the
+one record whose values the footprint takes: a housing record first, then the
+record that states the largest ``sqft``, then the lowest ``fd_id``. They also
+include, where one record states them, the ``sqft`` as ``GrossArea`` and the
+replacement cost. The other inventory holds the values the join computes, such
+as the sum of the replacement costs of several records or an occupancy class
+set by the number of units. It is frozen as ``s02_derived``, a part of the
+source labeled ``derived``. A ``GrossArea`` in either inventory is copied to
+``NSIGrossArea``, which ``s13_replacement_cost`` divides by. The join's links,
+its unlinked points and its counts of points by branch, that is by how a point
+reached its footprint (inside it, or by the walk to a footprint within the cap)
+or why it was left unlinked, are the logs ``join_links``, ``join_unlinked`` and
+``join_branch_counts``. The step files no row in the report.
+
+``s03_story_counts``
+~~~~~~~~~~~~~~~~~~~~
+
+The step reads the merged inventory of the sources so far. These sources
+hold one world, so the step gives the same counts in every world.
+``StoriesFromHeightInferer`` checks each footprint's height, in the length
+unit the caller gives, and its verdicts are the log ``stories``. For each
+footprint it accepts, it converts the height to a story count, kept as
+``StoriesFromHeight``. That count becomes the footprint's
+``NumberOfStories`` where no source holds one. The count also replaces a
+story count from NSI, unless the footprint's occupancy class is
+``NSI_STORIES_CLASS``, the single-family house, whose NSI count is kept. A
+local story count is never replaced. The counts are frozen as
+``s03_story_counts``, a part of the ``derived`` source, and the NSI counts
+they replace as the record ``s03_withheld``. The report holds a ``withheld``
+row under ``s03_story_counts`` for each replaced count, in every world. The
+step excludes no building.
+
+``s04_unit_budget``
+~~~~~~~~~~~~~~~~~~~
+
+The step reads the merged inventory after ``s03`` and the source of each
+footprint's occupancy class. A footprint has an occupancy class from a source
+when the local inventory, NSI or the NSI join's derived values give it one. The
+other footprints are the budget's targets. ``ACSUnitBudget``, configured by the
+compiler's ``budget_options``, distributes among them the housing units that
+table B25024 counts in their block group, less the units of the footprints that
+already have an occupancy class, as
+``brails/inferers/acs_unit_budget/README.rst`` states. Near a mobile-home park
+point, it makes some footprints mobile homes. It converts only targets and
+footprints whose single-family occupancy class came from NSI or the join. It
+gives other targets a residential occupancy class and a unit count, and it
+drops the small targets that it does not make dwellings. To judge how many
+units a footprint can hold, the budget takes its gross area to be its
+``GrossArea`` where that is a positive number, a local one included, otherwise
+its plan area times its story count where that is a positive number, and
+otherwise its plan area alone. A local gross area can therefore change the
+occupancy classes and unit counts this step gives and the draws of the steps
+after it.
+
+In a block group with B25024 counts, the same targets become dwellings, and
+the same targets are dropped, in every world. Which dwelling receives which
+occupancy class can still differ between worlds. In a block group without
+these counts, the budget decides no target's residential status. ``s05``
+decides it in each world, so it can differ between worlds. In such a block
+group the budget drops a target only under its option ``drop_without_acs``,
+and then only a small target whose residential probability is below
+``DROP_PROBABILITY``.
+
+The step freezes three stages. ``s04_dropped`` is the record of the dropped
+footprints, which leave every source and every world. ``s04_withheld`` is the
+record of the occupancy classes the mobile-home rule replaces, each withheld
+from its source. ``s04_unit_budget`` is a part of the ``imputed`` source and
+holds the budget's values in each world. The report holds a ``withheld`` row
+under ``s04_unit_budget`` for each replaced occupancy class, and a row in the
+category ``dropped`` for each dropped footprint, both in every world. The
+budget's logs are ``budget``, ``budget_diagnostic``, ``budget_gaps`` and
+``budget_nonresidential``.
+
+``s05_imputation``
+~~~~~~~~~~~~~~~~~~
+
+The step fills the occupancy class, the unit count and the story count that are
+still missing. It reads the same merged inventory as ``s04``, with the budget's
+values. The observed donors are the footprints that have an occupancy class
+from a source and hold a story count. Every other footprint the budget kept is
+a target. ``ObservedDonorImputer``, with the settings of "The imputer's
+settings" above, copies each of those three features that a target lacks from
+one observed donor in each world, as the section "Donors" of
+``brails/compilers/README.rst`` describes. For a target whose residential
+status the budget decided, the imputer takes that status from the budget. For
+the other targets, the imputer's own status round decides it, in each world: a
+first draw from the donors within the cap that gives the target a residential
+status. The imputer checks each copy for an implausible pair of occupancy class
+and story count (see "Pair re-draw" below), and it gives a target whose copy
+fails this check one more draw, from another donor. A target that fails again
+keeps its first values, and its pair stays implausible, since ``s07`` only logs
+a pair with an imputed member. A target whose occupancy class comes from a
+source and is not a residential occupancy class keeps no imputed unit count.
+The values are frozen as ``s05_imputation``, a part of the ``imputed`` source,
+and the imputer's draws are the log ``imputer``. The step excludes no building.
+
+The run then freezes the view ``s05_view``. From the imputer's log it freezes
+the computed stage ``DONOR_STAGE``: the donor whose values each target kept in
+each world, which ``s13_replacement_cost`` reads.
+
+``s06_residential_year``
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The step runs world by world on the world's realization of ``s05_view``.
+``ACSYearBuiltSampler`` is fitted on that realization from tables B25034 and
+B25127 and configured by the compiler's ``sampler_options``. It draws a
+construction year for each building of a residential occupancy class that
+has none, from the census tables of the building's block group and tract, as
+``brails/inferers/acs_year_built_sampler/README.rst`` states. Its fits are
+the log ``year_fit``. The years are frozen, over the worlds, as
+``s06_residential_year``, a part of the ``drawn`` source.
+
+The sampler refuses a building whose unit count is missing or unusable, or
+whose block group the census tables do not cover. Such a building is
+excluded from the world under ``s06_residential_year``, as
+``missing_input``.
+
+``s07_pair_redraw``
+~~~~~~~~~~~~~~~~~~~
+
+The step runs world by world on the world's merged inventory after ``s06``,
+excluded buildings included. In each implausible pair of occupancy class and
+story count, ``PairRedraw`` replaces the member that came from NSI, as the
+section "Pair re-draw" below states. It draws new values from the observed
+donors of the world's realization of ``s05_view``, with the imputer of
+``s05``. The step freezes three stages over the worlds: the record
+``s07_withheld`` of the values replaced, the part ``s07_pair_redraw`` of the
+re-drawn values in the ``imputed`` source, and the part ``s07_derived`` of the
+story counts from the footprint height that replace NSI's, in the
+``derived`` source. Under ``s07_pair_redraw``, the report holds a
+``withheld`` row for each value replaced and a ``redrawn`` or ``derived``
+row for each new value. The re-draw's plan and outcomes are the log
+``pair_redraw``. The step excludes no building. After it, no step changes a
+story count.
+
+``s08_structure``
+~~~~~~~~~~~~~~~~~
+
+The step runs world by world on the world's merged inventory after ``s07``,
+and it skips the buildings already excluded from the world. The design
+level and the structure type go to the buildings that hold a construction
+year by then: those that ``s06`` gave a year and those whose year comes from
+the local inventory. The height class goes to every building that holds a
+structure type. The step runs five operations in this order, each filing its
+rows under its own report stage.
+
+The design level. ``HazusEQDesignLevelInferer``, with the compiler's
+``design_level_method``, ``state`` and ``seismic_zone``, derives a design
+level from the construction year for each building that has a year and no
+design level. A building it refuses is excluded under ``s08_design_level``.
+The design level inferer in BRAILS refuses a building only for a missing or
+unreadable year, such as a local ``YearBuilt`` that is not a number, and the
+step files that refusal as ``missing_input``. The step files an infeasible
+refusal, which that inferer does not give, as ``missing_input`` too. The
+composed screen files such a refusal as ``undetermined`` instead (see "The
+exclusion category" below).
+
+The composed screen and the resolution loop. Each building that has a year
+and no structure type passes through ``ComposedScreen`` and
+``ResolutionLoop``, as the sections "Composed screen" and "Resolution loop"
+below state. The screen asks the design level and structure type inferers
+whether they can accept the building. Where the structure type inferer
+refuses it because of a building type that NSI gave, the loop withholds that
+type and screens the building again. The report holds the loop's
+``withheld`` and ``restored`` rows under ``s08_resolution``. It files an
+exclusion under the report stage of the check that refused the building,
+``s08_design_level`` or ``s08_structure_type``, or under ``s08_resolution``
+where the loop acted and the building was refused again.
+
+The structure type. ``HazusEQStructureTypeInferer`` draws a structure type
+for each building the loop admits, from the completed West Coast tables of
+the Hazus manual. A general building type the building holds, such as NSI's
+letter ``W``, restricts the draw to the structure types of that letter.
+
+The height class. ``HazusEQHeightClassInferer`` gives a height class to each
+building that holds a structure type and no height class, whether this step
+drew the structure type or the building already held it. A building whose
+structure type has no height class in Hazus gets none. The inferer refuses a
+building whose structure type is not a Hazus structure type, such as a local
+``W1X``, or whose story count is missing or not a whole number of one or
+more where its structure type needs one. Such a building is excluded under
+``s08_height_class``, as ``missing_input``.
+
+The W1 carve-out. The carve-out applies in the state ``CARVE_OUT_STATE``
+under the design level method ``CARVE_OUT_METHOD``, which are the state and
+the edition of Table C-10 of the Hazus manual. There, a building whose
+structure type this step drew as W1 and whose design level this step derived
+as Pre-Code is raised to Moderate-Code, as that table assumes. The report
+holds a ``derived`` row under ``s08_carve_out`` for each such building.
+
+A building without a construction year therefore receives only a height
+class in this step, and only where it holds its own structure type. A
+building excluded within the step keeps what the step gave it before the
+refusal, such as a design level derived before its height class was refused.
+The design levels, height classes and carve-out levels are frozen, over the
+worlds, as ``s08_derived``, a part of the ``derived`` source, and the
+structure types as ``s08_structure``, a part of the ``drawn`` source. The
+loop's counts per world are the log ``resolution``. The run then freezes the
+view ``s08_view``.
+
+``s09_nonresidential_year``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Steps ``s09`` and ``s10`` run together, world by world, on the world's
+realization of ``s08_view``. ``s09`` gives a construction year to each
+building that is not excluded from the world and has no year, where the
+building's occupancy class is missing or is not one of the residential
+occupancy classes. ``ResidentialNeighborYearSampler``, with the ``k`` and
+``cap_m`` of the imputer of ``s05``, copies to each such building the year
+of a nearby residential building that holds one in that world, as
+``brails/imputers/residential_neighbor_year_sampler/README.rst`` states. Its
+picks are the log ``neighbor_year``. The years are frozen, over the worlds,
+as ``s09_nonresidential_year``, a part of the ``imputed`` source.
+
+The sampler refuses a building that has no occupancy class, or that has no
+residential building with a year within ``cap_m`` or in its block group.
+Such a building is excluded from the world under
+``s09_nonresidential_year``, as ``missing_input`` in either case.
+
+``s10_nonresidential_structure``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The step runs the five operations of ``s08`` for the buildings that ``s09``
+gave a year, on the same realization with those years written in. It files
+its rows under report stages of its own, ``s10_design_level``,
+``s10_resolution``, ``s10_structure_type``, ``s10_height_class`` and
+``s10_carve_out``, so the report keeps the buildings of ``s10`` apart from
+those of ``s08``. A building that one of the operations refuses is excluded
+from the world under the report stage of that operation, in the same
+category as in ``s08``. The structure types are frozen as
+``s10_nonresidential_structure``, a part of the ``drawn`` source, and the
+design levels, height classes and carve-out levels as ``s10_derived``, a
+part of the ``derived`` source. The loop's counts per world are the log
+``nonresidential_resolution``.
+
+``s11_gross_area``
+~~~~~~~~~~~~~~~~~~
+
+The step computes the gross area of every building of ``s08_view``, excluded
+buildings included, in each world. ``footprint_gross_area`` of the
+replacement cost imputer's module gives the plan area of the footprint's
+outline times the story count in that world, or the plan area alone where the
+building has no positive story count. The area therefore differs between
+worlds where the story count does. The areas are frozen, over the worlds, as
+the computed stage ``s11_gross_area``, which ``s13`` and ``s15`` read. The
+log ``gross_area`` names for each building and world whether its area came
+from the story count (``stories``) or from the plan area alone
+(``plan_area``). The step excludes no building.
+
+Right after ``s11``, the run freezes six records of withheld values. Each
+removes from every later merged inventory a value that a later step replaces,
+and each is named by the step whose value takes its place:
+
+- ``s11_withheld_local``: a local ``GrossArea``;
+- ``s11_withheld_join``: the ``GrossArea`` of the NSI join, one record's
+  ``sqft`` or the sum of several;
+- ``s11_withheld_footprint``: a ``GrossArea`` the footprints carry;
+- ``s13_withheld``: the join's ``ReplacementCost`` of each building without a
+  local one;
+- ``s14_withheld``: NSI's ``BuildingType``;
+- ``s14_withheld_footprint``: a ``BuildingType`` the footprints carry.
+
+Every step before ``s12`` merged its sources before these records existed.
+The unit budget and the structure type draw therefore read these values, and
+so does ``s13_replacement_cost`` when it computes its rates, since it reads
+``s08_view``. The local and NSI gross areas stay in every merged inventory
+as ``LocalGrossArea`` and ``NSIGrossArea``.
+
+``s12_schema_check``
+~~~~~~~~~~~~~~~~~~~~
+
+Steps ``s12`` to ``s15`` run world by world on one merged inventory of the
+world's sources, which ``s15`` completes. ``s12`` checks every building not
+yet excluded from the world against the Hazus input schema of the damage and
+loss model library, ``DLML_DATASET``. The schema states the features the
+assessment reads and the values it accepts, such as the design levels it
+accepts for each structure type. A building the schema refuses is excluded
+from the world under ``s12_schema_check``, as ``fails_schema``, with the
+schema's messages as the detail. The messages are the log
+``schema_check``, and the report's summary holds the dataset and the number
+of buildings refused in each world. The schema reads none of
+``ReplacementCost``, ``GrossArea`` and ``BuildingType``, which the next steps
+give, so the check does not depend on them.
+
+``s13_replacement_cost``
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The step gives every building of ``s08_view`` its replacement cost in the
+world, excluded buildings included. ``ReplacementCostImputer`` takes the
+``k``, ``cap_m`` and distance weights of the imputer of ``s05``. It reads the
+world's realization of ``s08_view`` and the donors of ``DONOR_STAGE``. It
+computes each building's replacement cost as a rate per square foot times
+its gross area of ``s11_gross_area``, as
+``brails/imputers/replacement_cost/README.rst`` states. A building takes its
+own rate where it has one. Otherwise it takes the rate of the donor whose
+values ``s05`` copied to it, or of a nearby building of the same occupancy
+class. A rate is a replacement cost divided by ``NSIGrossArea``, the
+``sqft`` of the building's NSI records. The replacement cost is NSI's, the
+join's sum of NSI's or a local one. A local ``ReplacementCost`` therefore
+gives a rate only to a building whose NSI records state a ``sqft``, and a
+local ``GrossArea`` enters neither a rate nor the area a rate multiplies.
+The step keeps a local ``ReplacementCost`` as it is. Where a local
+``ReplacementCost`` gives a rate, that rate also serves each building that
+takes its rate from the local building.
+
+A building not yet excluded for which the imputer finds no donor is excluded
+from the world under ``s13_replacement_cost``, as ``no_plausible_value``. A
+building not yet excluded has an occupancy class, which the schema requires,
+and a footprint that encloses an area, so the step files no other outcome. A
+building that the step left without a replacement cost for another reason
+would be excluded as ``missing_input``. A building excluded earlier is not
+filed again. The imputer's log is the log ``value``, and the replacement
+costs that are not local ones are frozen, over the worlds, as the computed
+stage ``s13_replacement_cost`` (see ``s15_output``).
+
+``s14_building_type``
+~~~~~~~~~~~~~~~~~~~~~
+
+The step gives every building without a local ``BuildingType``, excluded
+buildings included, the letter of its structure type in the world: ``W``,
+``S``, ``C``, ``M`` or ``MH``. The letter follows the pairing of
+``get_hazus_general_type_membership`` in
+``brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py``, the same
+pairing that the structure type draw restricts itself with. A building
+without a structure type gets no letter. NSI's letter, which the draw read,
+is not written. A local letter is kept. A building not yet excluded whose
+local letter is not the letter of its structure type in a world, such as a
+local ``W`` beside a ``C1``, is excluded from that world under
+``s14_building_type``, as ``conflict``. The structure type draw keeps to a
+local letter. A local letter can therefore contradict only a structure type
+that the building held before the draw: a local structure type, or one its
+footprint carries. Every earlier step has run in that world by then, so
+such a building has served as a donor like any other. The letters are
+frozen, over the worlds, as the computed stage ``s14_building_type`` (see
+``s15_output``).
+
+``s15_output``
+~~~~~~~~~~~~~~
+
+The step writes the values of the last steps into the world's merged
+inventory. Every building receives ``Excluded``, true where the report lists
+it as excluded from the world, and the letter of ``s14_building_type``. Each
+building not excluded that has no local replacement cost also receives its
+replacement cost of ``s13_replacement_cost``, with its source code in the
+source string. By ``OUTCOME_VALUE_CODES``, the code is ``R`` for a
+replacement cost from the building's own rate and ``I`` for one from another
+building's rate. Each building not excluded, one with a local
+``ReplacementCost`` included, receives its area of ``s11_gross_area`` as
+``GrossArea``.
+
+A building excluded from the world receives no computed replacement cost and
+no gross area there. It keeps a local ``ReplacementCost``, its
+``LocalGrossArea`` and ``NSIGrossArea``, the letter of its structure type or
+its local letter, and every other value its sources hold in that world.
+Steps ``s08``, ``s09`` and ``s10`` gave it nothing in a world it was excluded
+from before them, so a building excluded at ``s06`` has, for example, no
+structure type drawn in that world.
+
+Last, every building not excluded must hold each property of
+``DEFAULT_PROPERTIES`` that applies to it: ``NumberOfUnits`` applies to the
+residential occupancy classes only, and ``HeightClass`` to the structure
+types for which Hazus defines one. A building that lacks one is a defect of
+the run. The log ``MISSING_DEFAULTS_LOG`` names each such building, world and
+property, a notice in the report counts them, and ``write`` refuses to write
+the GeoJSON. The worlds are added one by one, with
+``AssetInventory.add_world``, to the compiled inventory, which is frozen as
+the view ``s15_output``. The computed stages ``s13_replacement_cost`` and
+``s14_building_type`` are frozen at the same time, from the values ``s13``
+and ``s14`` gave in every world. No step reads them.
+
+Frozen stages
+-------------
+
+The run freezes each stage once, under its name, in the order of the
+subsections above. The names are the module's ``STAGE_`` constants and the
+replacement cost imputer's ``DONOR_STAGE``. The stages fall into the four
+kinds that the section "Stages and freezing" of ``brails/compilers/README.rst``
+defines:
+
+- Parts, each holding the values one step adds to one source:
+  ``s01_footprints`` (``footprint``), ``s01_local`` (``local``),
+  ``s02_nsi_join`` (``nsi``), ``s02_derived``, ``s03_story_counts``,
+  ``s07_derived``, ``s08_derived`` and ``s10_derived`` (``derived``),
+  ``s04_unit_budget``, ``s05_imputation``, ``s07_pair_redraw`` and
+  ``s09_nonresidential_year`` (``imputed``), and ``s06_residential_year``,
+  ``s08_structure`` and ``s10_nonresidential_structure`` (``drawn``).
+- Records: ``s04_dropped``, the dropped footprints, and the records of
+  withheld values ``s03_withheld``, ``s04_withheld``, ``s07_withheld`` and the
+  six frozen right after ``s11_gross_area``.
+- Views: ``s05_view``, ``s08_view`` and ``s15_output``, the compiled
+  inventory.
+- Computed stages, whose values no merge takes: ``DONOR_STAGE``, the donors
+  named from the log of ``s05``, which ``s13`` reads; ``s11_gross_area``, the
+  gross areas, which ``s13`` and ``s15`` read; and ``s13_replacement_cost`` and
+  ``s14_building_type``, the replacement costs and letters that ``s13`` and
+  ``s14`` give, which the run freezes after ``s15`` and which no step reads.
+
+Every part other than the footprints, and every record and computed stage other
+than ``DONOR_STAGE``, holds each footprint's centroid as its coordinates. The
+footprints, the views and ``DONOR_STAGE`` hold the footprint polygons. The run
+ends with the manifest, which checks that no frozen stage changed after it was
+frozen.
+
+Possible worlds
+---------------
+
+A run computes the worlds 0 to ``n_worlds - 1``, numbered as the section
+"Possible worlds" of ``brails/compilers/README.rst`` describes. The
+footprints, the NSI values, the local values and the story counts of ``s03``
+are the same in every world. The values that the steps from ``s04`` on draw
+or copy can differ between worlds:
+
+- the occupancy class and unit count that the budget gives;
+- the values the imputer copies;
+- the residential status of a target in a block group without B25024
+  counts, and with it whether ``s06`` or ``s09`` gives the building its
+  year;
+- the construction year, and with it the design level, the structure type
+  and the height class;
+- the values of a re-drawn pair;
+- the gross area, the replacement cost and the general building type that
+  follow from these values.
+
+A building can be excluded from some worlds and not others.
+
+The draws are keyed by the building, the seed and the world, and a world's
+values do not depend on how many worlds the run computes: world 2 of a run of
+three worlds equals world 2 of a run of ten, and so do its exclusions. A run
+always computes the worlds from 0. A single world ``w`` is therefore written
+from a run of at least ``w + 1`` worlds, with ``write`` and its ``world``
+argument.
+
+Local inputs
+------------
+
+A local inventory holds values known locally, keyed by the ids of the
+footprints, in one possible world. ``compile`` refuses a local inventory that
+holds an asset the footprints lack, more than one possible world, or a
+feature of ``RESERVED_LOCAL_FEATURES``, which the run writes for itself and
+reads back. In each merged inventory the sources take precedence in the
+order of ``PRECEDENCE``: local values first, then the footprints, NSI, the
+derived values (the NSI join's sums and the values later steps compute from a
+building's other features), the imputed values and the drawn values. A local
+value therefore stays in every merged inventory, and no step replaces one
+with a value of its own. There are two exceptions. From ``s12`` on, the
+merged inventory leaves a local ``GrossArea`` out, the output's
+``GrossArea`` is the area of ``s11``, and the local one is kept as
+``LocalGrossArea``. And ``s15`` writes ``Excluded`` for every building in
+every world, over a local one.
+
+Some local values act on more than their own feature:
+
+- A local ``GrossArea`` is read by the unit budget, which can change the
+  occupancy classes, unit counts and draws of ``s04`` and of the steps after
+  it.
+- A local ``ReplacementCost`` is kept, and it gives the other buildings a rate
+  only where the building's NSI records state a ``sqft``
+  (``s13_replacement_cost``).
+- A local ``BuildingType`` restricts the structure type draw to its letter and
+  is written as it is, and a local structure type is never re-drawn.
+
+These limits hold:
+
+- A local ``BuildingType`` that names no Hazus general building type, such as
+  ``RM`` or ``URM``, leaves the draw no structure type to choose. A building
+  whose structure type would be drawn is then excluded as ``missing_input``
+  under ``s08_structure_type`` or ``s10_structure_type``, in each world from
+  which no earlier step excluded it.
+- A local ``StructureType`` that is not a Hazus structure type, such as
+  ``W1X``, is never drawn, so no draw refuses it. Where the building holds no
+  height class, the height class operation of ``s08`` excludes it as
+  ``missing_input``, with a construction year or without. Where the building
+  also holds a local ``HeightClass``, ``s12_schema_check`` excludes it as
+  ``fails_schema``. Either way, it is excluded in each world from which no
+  earlier step excluded it.
+- A local ``BuildingType`` that is not the letter of the building's structure
+  type, a local one or one its footprint carries, excludes the building as
+  ``conflict`` under ``s14_building_type``, in each world from which no
+  earlier step excluded it.
+- The compiler refuses a local inventory when it is built with
+  ``merge_stacked``: the local ids are those of the footprints, which the
+  stacked-footprint merge changes.
+- A local ``PlanArea`` is written as the output's ``PlanArea``, while ``s11``
+  computes the gross area from the footprint's outline. A local ``Excluded``
+  is overwritten by ``s15``. A local ``SourceString`` stops the run at the
+  first merged inventory with ``ValueError``.
+
+Block groups
+------------
+
+``CompilerInputs.block_groups`` holds one polygon per census block group,
+with a ``GEOID`` column, as a TIGER/Line file holds them. Without it, the
+compiler queries the Census 2020 block groups from the Census Bureau's
+TIGERweb service, which needs network access. Give the polygons to avoid the
+query, or give nothing. Either way, every footprint must lie in a block
+group.
+
+The written file
+----------------
+
+``CompilationResult.write`` writes the compiled inventory as GeoJSON, one
+feature per building with its asset id and its footprint. Without
+``world``, it writes every world the run computed, and a property whose
+value differs between worlds holds a list of values, one per world in world
+order. Given ``world``, it writes that one world alone. A one-world file
+leaves out a property whose value is ``None`` in that world, so its buildings
+and properties are the same whatever number of worlds the run computed. A
+building excluded from every written world is not written. A building
+excluded from some of them is written only with ``keep_partly_excluded``,
+which also writes ``Excluded``. Such a building may lack its default
+properties in the worlds it is excluded from. With ``integer_ids`` the file
+takes the form the R2D tools read: the features are numbered within each
+value of ``type``, which each footprint must carry, and each building holds
+its asset id as ``unique_id``.
+
+Each building holds the properties of ``DEFAULT_PROPERTIES`` that apply to
+it, the features listed under "The inventory and its inputs" above.
+``extra_properties`` adds other features of the compiled inventory, or, with
+``ALL_PROPERTIES``, every one of them except ``Excluded``, which only
+``keep_partly_excluded`` writes. Among them are the footprint's own features
+and its provenance, such as ``footprint_provider`` and ``height``; the values
+the NSI join adds, such as ``NSIOccupancyClass``, ``NSIRecords``,
+``NSIReach`` and ``NSIGrossArea``; ``StoriesFromHeight``; and
+``LocalGrossArea``. An extra property changes no value of a default one.
+
+Beside the GeoJSON, under the stem of its path, ``write`` saves the report as
+three files: its action rows as ``<stem>_report.parquet``, its exclusion rows
+as ``<stem>_report_exclusions.parquet`` and its summary as
+``<stem>_report_summary.json``. It also saves the manifest as
+``<stem>_manifest.json`` and each log as ``<stem>_<name>.parquet``. The saved
+report keeps the rows of the written worlds, and so does each log with a
+``world`` column. A log without a ``world`` column is written whole. The saved
+report lists each excluded building with its reason in each written world,
+whether or not the GeoJSON holds the building. A building's ``ReplacementCost``
+divided by its ``GrossArea`` is the rate per square foot that
+``s13_replacement_cost`` gave it, except for a building that keeps a local
+``ReplacementCost``, whose rate the step computes from ``NSIGrossArea``.
+
+Scope
+-----
+
+The compiler draws structure types from the completed West Coast tables, so
+its constructor accepts only states of that region with a RES1 distribution.
+It checks the buildings against the one input schema ``DLML_DATASET``, and
+the W1 carve-out of ``s08`` applies only in ``CARVE_OUT_STATE`` under
+``CARVE_OUT_METHOD``. Without polygons it reads the Census 2020 block groups.
+``merge_stacked`` takes Overture footprints only, and a compiler built with
+it takes no local inventory. A local inventory holds one possible world. The
+implausible pairs of occupancy class and story count are those of the West
+Coast tables, as the section "Pair re-draw" states.
 
 Pair re-draw
 ------------
@@ -17,68 +794,70 @@ Pair re-draw
 class and story count form an implausible pair, such as a ten-story
 agricultural building. For each, it decides from the sources of the two
 values which one gives way, and it replaces or re-draws that value. The
-re-draw takes an inventory of one possible world (see the section "Possible
-worlds" of ``brails/compilers/README.rst``). The names of its actions and the
-columns of its plan and log are constants in ``pair_redraw.py`` beside this
-page. This section states which pairs are implausible, which value gives way,
-and how the re-draw runs.
+re-draw takes an inventory of one possible world. The names of its actions
+and the columns of its plan and log are constants in ``pair_redraw.py``
+beside this page. This section states which pairs are implausible, which
+value gives way, and how the re-draw runs.
 
 Pairs and their sources
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The re-draw reads the class from ``OccupancyClass`` and the story count from
-``NumberOfStories``, the default feature names. The count is read by
-``get_hazus_story_count``, as the structure type inferer reads it, so a
-count stored as ``'10'`` reads as 10. An asset whose class is not a string,
-or whose count that function refuses, forms no pair. The re-draw leaves it,
-and the structure type inferer refuses it.
+The re-draw reads the occupancy class from ``OccupancyClass`` and the story
+count from ``NumberOfStories``, the default feature names. The count is read
+by ``get_hazus_story_count``, as the structure type inferer reads it, so a
+count stored as ``'10'`` reads as 10. An asset whose occupancy class is not
+a string, or whose count that function refuses, forms no pair. The re-draw
+leaves such an asset unchanged, and the structure type inferer refuses it.
 
 Each count falls in one of the three story bands of the Hazus Appendix A
 tables, which ``get_hazus_sampling_height_bands`` returns and the plan's
 ``band`` column prints: ``low_rise`` for 1 to 3 stories, ``mid_rise`` for 4
-to 7 and ``high_rise`` for 8 or more. A class and a count form an
-implausible pair when ``is_implausible`` finds the class and the count's band
-in ``IMPLAUSIBLE_PAIRS``. That list holds RES2 and AGR1 in ``mid_rise`` and
-``high_rise``, and IND1 to IND4, IND6, EDU1, GOV2 and REL1 in ``high_rise``.
-``get_hazus_story_count`` and ``get_hazus_sampling_height_bands`` are in
-``hazus_rulesets.py``, and ``is_implausible`` and ``IMPLAUSIBLE_PAIRS`` in
-``hazus_table_completion.py``, both in
-``brails/inferers/hazus_inferer_earthquake/``.
-
-The re-draw reads the codes of the occupancy class and the story count from
-the asset's source string (see the section "The source string" of
-``brails/compilers/README.rst``). It never changes a local
-or footprint value, the sources of ``FIXED_SOURCES``, and a pair with a local
-or footprint occupancy class is only logged, whatever the source of its count.
-A derived story count is the one ``StoriesFromHeightInferer`` gives from the
-footprint height, so it is kept like a local one. An imputed value is left to
-the validation that ``ObservedDonorImputer.impute_stage`` runs on the values
-it copies when given ``validate``, which can re-draw a target it rejects, so a
-pair with an imputed member is only logged. That leaves the pairs with an NSI
-class. Of these, an NSI story count gives way where the footprint height gives
-a count in another story band, and the class is then re-drawn only if the pair
-stays implausible at that count. Where the height gives no count, the class
-and the NSI count are re-drawn together. In every other case the class gives
-way.
+to 7 and ``high_rise`` for 8 or more. An occupancy class and a count form an
+implausible pair when ``is_implausible`` finds the occupancy class and the
+count's band in ``IMPLAUSIBLE_PAIRS``. That list holds RES2 and AGR1 in
+``mid_rise`` and ``high_rise``, and IND1 to IND4, IND6, EDU1, GOV2 and REL1 in
+``high_rise``. ``get_hazus_story_count`` and
+``get_hazus_sampling_height_bands`` are in ``hazus_rulesets.py``, and
+``is_implausible`` and ``IMPLAUSIBLE_PAIRS`` in ``hazus_table_completion.py``,
+both in ``brails/inferers/hazus_inferer_earthquake/``.
 
 The count the footprint height gives, the height count, comes from
 ``StoriesFromHeightInferer.stories_of``. An NSI story count is corroborated
-when the height count falls in the same story band. The asset has no
-height count wherever ``StoriesFromHeightInferer.check`` would not give
-``OK``: among other cases, where the height is missing, not a positive
-finite number or one value per world, where the footprint provider or the
-height's source has no scale, and where the count exceeds the most stories
-the inferer trusts from that source.
+when the height count falls in the same story band. The asset has no height
+count wherever ``StoriesFromHeightInferer.check`` would not return ``OK``:
+among other cases, where the height is missing, not a positive finite number or
+one value per world, where the inferer's table of meters per story has no scale
+for the footprint provider or the height's source, and where the count exceeds
+the most stories the inferer trusts from that source.
+
+The re-draw reads the codes of the occupancy class and the story count from
+the asset's source string (see the section "The source string" of
+``brails/compilers/README.rst``). It never changes a value from a local or
+footprint source, the sources of ``FIXED_SOURCES``. A pair with a local or
+footprint occupancy class is only logged, whatever the source of its count.
+A derived story count is the one ``StoriesFromHeightInferer`` gives from the
+footprint height, so it is kept like a local one. An imputed value is left
+to the validation that ``ObservedDonorImputer.impute_stage`` runs, when
+given ``validate``, on the values it copies. That validation can re-draw a
+target it rejects, so a pair with an imputed member is only logged. That
+leaves the pairs with an NSI occupancy class. Of these, an NSI story count
+gives way where the height count falls in another story band, and the
+occupancy class is then re-drawn only if the pair stays implausible at that
+count. Where the height gives no count, the occupancy class and the NSI
+count are re-drawn together. In every other case the occupancy class gives
+way.
 
 The action table
 ~~~~~~~~~~~~~~~~
 
-Each row names the sources of the class and the story count and the action
-the plan records for them, as its ``action`` column prints it. In the last
-row the class may come from NSI, a local or footprint source, or imputation.
+Each row names the sources of the occupancy class and the story count and the
+action the plan records for them, as its ``action`` column prints it. In the
+last row the occupancy class may come from NSI, a local or footprint source, or
+imputation.
 
 =========  ============================  ====================================
-Class      Story count                   Action
+Occupancy  Story count                   Action
+class
 =========  ============================  ====================================
 NSI        local, footprint or derived   ``redraw_occupancy``
 NSI        NSI, corroborated             ``redraw_occupancy``
@@ -98,70 +877,81 @@ imputed    local, footprint, NSI or      ``log_imputed``
 any        imputed                       ``log_imputed``
 =========  ============================  ====================================
 
-``redraw_occupancy`` re-draws the class against the story count the asset
-keeps. ``redraw_pair`` re-draws the class and the story count together, from
-one donor. ``replace_stories`` puts the height count in place of the NSI
-count and draws nothing, and ``replace_stories_redraw_occupancy`` does the
-same and then re-draws the class against the height count. ``log_local`` and
-``log_imputed`` change nothing.
+``redraw_occupancy`` re-draws the occupancy class against the story count the
+asset keeps. ``redraw_pair`` re-draws the occupancy class and the story count
+together, from one donor. ``replace_stories`` puts the height count in place of
+the NSI count and draws nothing, and ``replace_stories_redraw_occupancy`` does
+the same and then re-draws the occupancy class against the height count.
+``log_local`` and ``log_imputed`` change nothing.
 
-Any other combination of codes on an implausible pair raises ``ValueError``:
-a class that is derived, drawn or held by no source (``R``, ``D`` or ``-``),
-or a story count that is drawn or held by no source (``D`` or ``-``).
+Any other combination of codes on an implausible pair raises ``ValueError``: an
+occupancy class that is derived, drawn or held by no source (``R``, ``D`` or
+``-``), or a story count that is drawn or held by no source (``D`` or ``-``).
 
 The procedure
 ~~~~~~~~~~~~~
+
+The re-draw runs in two passes. ``plan`` lists the assets with an
+implausible pair and the action the table above gives each, and ``redraw``
+carries the actions out: it puts the height count in place of an NSI story
+count, or draws new values for the asset from one observed donor (see the
+section "Donors" of ``brails/compilers/README.rst``). ``redraw`` returns the
+new values, the values they replace and a log, and leaves the inventory
+unchanged.
 
 ``plan`` reads the inventory and changes nothing. It refuses an inventory of
 more than one possible world, and it visits the assets in ascending order of
 the asset id as a string. Every asset must carry a source string with one
 code for each source feature, whether or not its pair is implausible. For
 each asset with an implausible pair, the plan records one row of
-``PLAN_COLUMNS``: the class and the story count as read, the count's story
-band, the two source codes, the height count, whether the height count
+``PLAN_COLUMNS``: the occupancy class and the story count as read, the count's
+story band, the two source codes, the height count, whether the height count
 corroborates the story count, and the action.
 
 ``redraw`` runs the plan and takes its rows in order. Where the action
 replaces the story count, the height count goes into the result's
 ``derived`` values and the NSI count is withheld. Where the action re-draws,
-the re-draw calls ``ObservedDonorImputer.draw`` once for the asset, which
-copies the re-drawn values from one observed donor. The donor pool is built
-once for each call of ``redraw``, by the imputer's ``pool`` from the donors
-given to ``PairRedraw`` and the inventory, and only if some asset is
-re-drawn. The draw runs in the world given to ``PairRedraw``, from
-iteration 0, under purpose labels prefixed with ``PURPOSE_PAIR_REDRAW``
-(``'pair_redraw'``), so that its random numbers differ from those of the
-imputation stage. It is given the asset's residential status, it may not
-change the asset's local and footprint features, and once its attempts are
-spent or no untried candidate is left it scans the nearest donors.
+the re-draw calls ``ObservedDonorImputer.draw`` once for the asset, and
+``draw`` copies the re-drawn values from one observed donor. The imputer's
+``pool`` builds the donor pool from the donors given to ``PairRedraw`` and
+from the inventory, once for each call of ``redraw`` and only if some asset
+is re-drawn. The draw runs in the world given to ``PairRedraw``, from
+iteration 0, under purpose labels prefixed with ``PURPOSE_PAIR_REDRAW``, so
+that its random numbers differ from those of the imputation step. The draw
+is given the asset's residential status, and it may not change the asset's
+local and footprint features. Once its attempts are spent, or no untried
+candidate is left, it scans the nearest donors.
 
-An asset is residential when its class is one of ``UNIT_COUNT_CLASSES``:
-RES1, RES2 and RES3A to RES3F. A candidate donor passes when its values hold
-every re-drawn feature, its class is a string with the asset's residential
-status, and its class and the story count form a plausible pair. The story
-count is the donor's own where the count is re-drawn, and the donor fails if
+An asset is residential when its occupancy class is one of the residential
+occupancy classes that "The inventory and its inputs" names. A candidate
+donor passes when its values hold every re-drawn feature, its occupancy
+class is a string with the same residential status as the asset, and its
+occupancy class and the story count form a plausible pair. The story count
+is the donor's own where the count is re-drawn, and the donor fails if
 ``get_hazus_story_count`` refuses it. Otherwise the count is the one the
 asset keeps: its own, or the height count that replaces it. For a
-residential asset, the class must also agree with the asset's unit count
-(``NumberOfUnits`` by default) under the count rule that the NSI footprint
-join applies, ``point_class`` in ``brails/utils/unit_count_rules.py``. Under
-that rule a RES1 or RES3 class must be the class of the band the unit count
-falls in, and a missing or non-positive count agrees with every class.
+residential asset, the donor's occupancy class must also agree with the
+asset's unit count (``NumberOfUnits`` by default) under the count rule that
+the NSI footprint join applies, ``point_class`` in
+``brails/utils/unit_count_rules.py``. Under that rule a RES1 or RES3
+occupancy class must be the occupancy class of the unit-count band the unit
+count falls in, and a missing or non-positive count agrees with every
+occupancy class.
 
 A draw that finds a donor gives the asset new values for the re-drawn
 features, and the values they replace are withheld, each with the label of
 its source. A draw that finds none adds no new value, and a story count
-already replaced stays replaced. A donor whose values lack a re-drawn
-feature, which the test above excludes, raises ``RuntimeError``.
+already replaced stays replaced. If a donor's values lack a re-drawn
+feature, which the test above rules out, ``RuntimeError`` is raised.
 
 Every planned asset takes one row of ``LOG_COLUMNS`` in the log: its plan
-row, which names the class it had, then the world and the draw's outcome,
-attempts, iteration and donor. An asset that takes no draw is logged with
-the outcome ``OUTCOME_LOGGED`` (``'logged'``), no attempts, no iteration and
-no donor. The re-draw leaves the inventory unchanged, and the caller writes
-the result into the per-source inventories as the ``PairRedrawResult``
-docstring states. Merged again, a re-drawn value carries the imputed code
-and a height count the derived one.
+row, which names the occupancy class it had, then the world and the draw's
+outcome, attempts, iteration and donor. An asset that takes no draw is logged
+with the outcome ``OUTCOME_LOGGED``, no attempts, no iteration and no donor.
+The re-draw leaves the inventory unchanged, and the caller writes the result
+into the sources as the ``PairRedrawResult`` docstring states. When the
+sources are merged again, a re-drawn value carries the imputed code and a
+height count carries the derived code.
 
 Scope
 ~~~~~
@@ -177,23 +967,25 @@ the cells of those pairs that the Hazus manual leaves without a distribution,
 which in the West Coast tables is every cell of every pair except the pre-1950
 cell of ``AGR1`` in the mid-rise band.
 
-A re-drawn asset keeps its other features, so a RES2 asset re-drawn to
-another class keeps the year drawn for it as RES2.
+A re-drawn asset keeps its other features, so a RES2 asset re-drawn to another
+occupancy class keeps the year drawn for it as RES2.
 
-A ``PairRedraw`` serves one world: the inventory it reads holds one possible
-world, the donors are that world's observed donors, and its draws run in the
-world it is given. Each world of a study takes its own. The plan and the
-result do not depend on the order of the inventory's assets.
+A ``PairRedraw`` works on one world: the inventory it reads holds one
+possible world, the donors are that world's observed donors, and its draws
+run in the world it is given. Each world of a study takes its own
+``PairRedraw``. The plan and the result do not depend on the order of the
+inventory's assets.
 
 Composed screen
 ---------------
 
 ``ComposedScreen`` asks the Hazus earthquake inference chain whether the
-chain can take an asset before a structure type is drawn for it. The chain
-has two stages: the design level inferer reads ``YearBuilt`` and writes
-``DesignLevel``, and the structure type inferer reads both, with the
-occupancy class, the story count and the building type. The stage names
-are ``STAGE_DESIGN_LEVEL`` and ``STAGE_STRUCTURE_TYPE``, constants in
+chain can accept an asset before a structure type is drawn for it. The chain
+runs two checks. In the design level check, the design level inferer reads
+``YearBuilt`` and writes ``DesignLevel``. In the structure type check, the
+structure type inferer reads both features, with the occupancy class, the
+story count and the building type. The report stages of the two checks are
+``STAGE_DESIGN_LEVEL`` and ``STAGE_STRUCTURE_TYPE``, constants in
 ``resolution_loop.py`` beside this page. The screen reads an inventory of
 one possible world, such as the realization that ``get_world_realization``
 returns, and ``screen_inventory`` raises ``ValueError`` for an inventory of
@@ -202,26 +994,31 @@ any other number of worlds.
 The procedure
 ~~~~~~~~~~~~~
 
+The screen runs the two checks in the order the chain runs them and returns
+a verdict for each asset: a pass, or the refusal of the first check that
+refused it, with the features whose change would let that check produce a
+value.
+
 After checking that the inventory holds one world, ``screen_inventory`` passes
 it to the design level inferer's ``check``. An asset the design level inferer
 refuses keeps that refusal and is not screened further. Each other asset is
-copied into a new inventory under its own id. Every copy stands at
+copied into a new inventory under its own id. Every copy is placed at
 ``SCREEN_COORDINATES``, since neither inferer reads a location. Where a copy
 holds a construction year and no design level, the design level inferer's
-``draw`` writes on the copy the level that the year implies. The structure type
-inferer's ``check`` then runs over the copies, and an asset it refuses takes
-that refusal. The screen writes on the copies only, so the inventory it is
-given does not change. Each inferer's ``check`` runs once per call. ``screen``
-runs the same procedure on an inventory holding the one asset under the id
-``SCREEN_ASSET_ID``.
+``draw`` writes on the copy the level that the year implies. The structure
+type inferer's ``check`` then runs over the copies, and an asset it refuses
+receives that refusal. The screen writes on the copies only, so the
+inventory it is given does not change. Each inferer's ``check`` runs once
+per call. ``screen`` runs the same procedure on an inventory holding the one
+asset under the id ``SCREEN_ASSET_ID``.
 
-A refusal names each feature whose change alone would let its stage produce
-a value. These features are the ``resolvable_by`` of the stage's diagnosis,
+A refusal names each feature whose change alone would let its check produce
+a value. These features are the ``resolvable_by`` of the inferer's diagnosis,
 and the screen returns them as the verdict's ``candidates``, in the order
-the stage named them. Neither inferer of the chain names the design level.
-If a stage did, the screen would return the construction year in its place,
+the inferer named them. Neither inferer of the chain names the design level.
+If one did, the screen would return the construction year in its place,
 since the level is derived from the year, listing the year once even where
-the stage also named it.
+the inferer also named it.
 
 The exclusion category
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -231,343 +1028,86 @@ in ``EXCLUSION_CATEGORIES`` of ``hazus_eq_inventory_compiler.py``. The section
 "Exclusion categories" of ``brails/compilers/README.rst`` defines each one. A
 refusal with the diagnosis ``unsupported``, which an inferer gives for a
 feature holding a list of values, is filed as ``unsupported``, and one with
-the diagnosis ``invalid`` as ``missing_input``.
-An infeasible refusal is ``conflict`` where the caller acted on a feature the
-refusal named and the asset was refused again. The resolution loop below is
-such a caller, but with the structure type inferer in BRAILS it never reaches
-this case. Any other infeasible refusal at the structure type stage is
-classified by the asset's cell: the combination of occupancy class, story band
-and, in the West Coast tables, era that selects a distribution of structure
-types. The Hazus manual prints that
-distribution for some cells and BRAILS's completed tables fill others, and
-the structure type inferer's ``cell_fill`` and ``cell_is_unpublished``
-report which applies. The refusal is ``no_plausible_value`` where the cell has
-neither a printed nor a filled distribution. It is ``conflict`` where the
-cell has one, since the asset's own features then rule out every structure
-type in it. An infeasible refusal at the design level stage is
-``undetermined``. The design level inferer in BRAILS never refuses an asset
-as infeasible.
+the diagnosis ``invalid`` as ``missing_input``. An infeasible refusal, at
+either check, is filed as ``conflict`` where the caller acted on a feature
+the refusal named and the asset was refused again. The resolution loop below
+is such a caller, but with the structure type inferer in BRAILS it never
+reaches this case.
+
+Any other infeasible refusal at the structure type check is classified by the
+asset's cell: the combination of occupancy class, story band and, in the West
+Coast tables, era that selects a distribution of structure types. The Hazus
+manual prints that distribution for some cells, and BRAILS's completed tables
+fill others. The structure type inferer's ``cell_fill`` and
+``cell_is_unpublished`` report which applies. The refusal is
+``no_plausible_value`` where the cell has neither a printed nor a filled
+distribution. It is ``conflict`` where the cell has one, since the asset's own
+features then rule out every structure type in it.
+
+Any other infeasible refusal at the design level check is ``undetermined``.
+The design level operation of ``s08_structure``, which runs the same inferer
+outside the screen, files an infeasible refusal as ``missing_input``
+instead. The design level inferer in BRAILS never refuses an asset as
+infeasible.
 
 Resolution loop
 ---------------
 
-``ResolutionLoop`` decides, for each asset of one world's merged
-inventory, whether the structure type draw takes the asset or the asset is
-excluded from that world. The loop has one action by which it can admit a
-refused asset: it withholds the general building type, ``BuildingType``,
-where NSI holds it. The source it acts on and the stage it records under
-are ``WITHHELD_SOURCE`` and ``STAGE_RESOLUTION``, constants in
+``ResolutionLoop`` decides, for each asset of one world's merged inventory,
+whether the asset goes on to the structure type draw or is excluded from
+that world. The loop has one action by which it can admit a refused asset:
+it withholds the general building type, ``BuildingType``, where NSI holds
+it. The source it acts on and the report stage it records under are
+``WITHHELD_SOURCE`` and ``STAGE_RESOLUTION``, constants in
 ``resolution_loop.py``. The loop reads the realization of one world, as the
 composed screen does, and ``resolve`` raises ``ValueError`` for an inventory
-of any other number of worlds. It records its actions and exclusions under the
-world of the screen's structure type inferer. A caller with several worlds
-therefore builds a screen and a loop for each world, as the compiler below
-does.
+of any other number of worlds. The loop records its actions and exclusions
+under the world of the screen's structure type inferer. A caller with
+several worlds therefore builds a screen and a loop for each world, as the
+compiler does. With its ``report_stages`` argument, the loop files the rows
+of each of its report stages under another report stage. The compiler uses
+this argument to file the rows of ``s10`` under that step's own report
+stages.
 
 The procedure
 ~~~~~~~~~~~~~
 
+The loop screens the inventory once and admits every asset the screen
+passes. Where a refusal other than an unsupported one names ``BuildingType``
+among its candidates, and NSI gave the asset that type, the loop withholds the
+type and screens the asset again, admitting it if it then passes. Every other
+refused asset, and one still refused without its type, is excluded from the
+world, and the report records each withholding and each exclusion.
+
 ``resolve`` first checks that the inventory holds one world and that
 ``building_type_sources`` gives a source for each asset that holds a building
-type and for no other, then screens the inventory once, through
-``screen_inventory``. An asset the
-screen passes is admitted as it is, and an unsupported asset is excluded
-without action. Where another refusal names ``BuildingType`` among its
-candidates and ``WITHHELD_SOURCE`` holds the type, the report records the
-type with the action ``withheld``, and the asset is screened again without
-it. An asset that then passes is admitted without the type. A type held by
-any other source is never withheld, nor is one the refusal does not name.
+type and for no other. It then screens the inventory once, through
+``screen_inventory``. An asset the screen passes is admitted as it is, and
+an asset refused as unsupported is excluded without action. Where another
+refusal names ``BuildingType`` among its candidates and ``WITHHELD_SOURCE``
+holds the type, the report records the type with the action ``withheld``,
+and the asset is screened again without it. An asset that then passes is
+admitted without the type. A type held by any other source is never
+withheld, nor is one the refusal does not name.
 
-A refused asset the loop did not act on is excluded at the stage that refused
-it, in the category of the section "The exclusion category". An asset still
-refused once its building type is withheld is the case the section "Scope"
-below describes. The report records its building type again, with the action
-``restored``. The asset's exclusion is recorded at ``STAGE_RESOLUTION``, with a
-detail that holds both refusals, and its category is ``conflict`` where the
-first refusal was infeasible. Every exclusion records the world and the
-diagnosis and candidates of the first refusal. Every ``withheld`` and
-``restored`` row of the report holds the world and the source.
+A refused asset the loop did not act on is excluded under the report stage of
+the check that refused it, in the category that the section "The exclusion
+category" gives. An asset still refused once its building type is withheld
+is the case the section "Scope" below describes. The report records its
+building type again, with the action ``restored``. The asset's exclusion is
+recorded at ``STAGE_RESOLUTION``, with a detail that holds both refusals, and
+its category is ``conflict`` where the first refusal was infeasible. Every
+exclusion records the world and the diagnosis and candidates of the first
+refusal. Every ``withheld`` and ``restored`` row of the report holds the
+world and the source.
 
 Scope
 ~~~~~
 
 The structure type inferer in BRAILS names ``BuildingType`` exactly when the
-asset passes without it, so with that inferer a withheld type always admits
-the asset and the ``restored`` path is not reached. The path serves a
-structure type inferer for which the building type is a required driver,
-which BRAILS does not hold. A building type the inferer cannot read refuses
-the asset as invalid and names no feature, so it is not withheld, and the
-asset is filed as ``missing_input``.
-
-Hazus earthquake inventory compiler
------------------------------------
-
-``HazusEQInventoryCompiler`` builds a Hazus earthquake building inventory of
-one study area from its building footprints, its NSI points and census
-tables, over several possible worlds. The caller gathers the data in a
-``CompilerInputs`` and receives a ``CompilationResult``, whose ``write``
-saves the inventory as GeoJSON beside its report, the manifest of its stages
-and the logs of its components. Both classes are in
-``hazus_eq_inventory_compiler.py`` beside this page. This section states the
-run in the order the code runs it, the stages it freezes, its worlds, the
-file it writes and the settings it gives its components.
-
-The run
-~~~~~~~
-
-Step 1 takes the footprints as given, keyed by the caller's asset ids, unless
-``merge_stacked`` is set. With ``merge_stacked=True``,
-``StackedFootprintMerge`` first merges the stacked Overture footprints of
-one building, as the section "The method" of
-``brails/aggregators/stacked_footprints/README.rst`` states, and every later
-step reads the merged set under its geohash keys. A merged asset takes the
-height of its tallest part over the union of the parts, as that section
-states. Where its story count comes from that height, the run values a podium
-under a tower as the tower's story count times the merged plan area, and
-its ``GrossArea`` is that product. The
-merge's parts table and id log are written as the logs ``stacked_parts`` and
-``stacked_asset_ids``, and a notice in the report counts the merges. The
-option is off by default, since the merge takes Overture footprints only.
-With it, the compiler refuses a local inventory, whose ids are those of the
-footprints before the merge.
-
-Each footprint receives its census block group, its plan area in square feet as
-``PlanArea`` and, if it is an Overture footprint, the release and the datasets
-of its sources, which with the caller's ``footprint_provider`` make up
-``FOOTPRINT_PROVENANCE_FEATURES``. The block group is read from the polygons
-that ``CompilerInputs`` holds as ``block_groups``, or, without them, queried
-from the Census Bureau's TIGERweb service. Steps 2 and 3 join the NSI points to
-the footprints with ``NSIFootprintJoin`` and derive their unit counts and
-occupancy classes: the join's observed values form the NSI source, and the
-values it derives, such as an occupancy class set by the count of units, the
-derived source.
-
-A local inventory, which takes precedence over every other source, may hold no
-feature of ``RESERVED_LOCAL_FEATURES`` (``BLOCKGROUP_GEOID`` and
-``NSIGrossArea``), which the run writes for itself and reads back, and
-``compile`` refuses one that does.
-
-Step 4 completes the story counts, the unit counts and the occupancy classes,
-on the merge of the parts so far. ``StoriesFromHeightInferer`` gives each
-footprint with a usable height the count that height implies, which fills a
-story count no source holds. For an occupancy class other than
-``NSI_STORIES_CLASS`` (RES1) that count also replaces NSI's, which is withheld.
-A RES1 building keeps NSI's count. ``ACSUnitBudget`` then allocates each
-block group's census housing units to the footprints that no source gives an
-occupancy class, as ``brails/inferers/acs_unit_budget/README.rst`` states. It
-reads a footprint's ``GrossArea`` feature first as its gross area, a local one
-included, so a local inventory's gross areas can change the occupancy classes,
-unit counts and draws of this step and of the steps after it. It makes some
-footprints near mobile-home park points mobile homes, relabeling only an
-occupancy class that NSI or the join gave, and drops the small footprints it
-leaves unused. The report lists the dropped footprints in every world.
-``ObservedDonorImputer`` fills what is still missing from observed donors, as
-the section "Donors" of ``brails/compilers/README.rst`` describes, and gives a
-target whose copy forms an implausible pair of occupancy class and story count
-another donor. The
-residential occupancy classes of this section are those of
-``UNIT_COUNT_CLASSES`` (RES1, RES2 and the RES3 classes). A reached footprint
-outside them is a target for its story count alone, since the join gives units
-to housing records only.
-
-Steps 5 and 6 run over every world in three passes, each over all worlds before
-the next. Step 5 (``s06_residential_year``) reads each world's realization of
-the frozen view ``STAGE_S05_VIEW``, the pair re-draw of step 6
-(``s07_pair_redraw``) reads each world merged after step 5, and the rest of
-step 6 reads each world merged after the re-draw. Step 5 gives construction
-years to residential buildings: ``ACSYearBuiltSampler``, fitted on that
-realization, draws a year for each residential building that has no
-construction year, from the census tables of the building's block group and
-tract. Step 6 then runs, in this order, the pair re-draw over every building of
-the world and the design level, structure type and height class components over
-the buildings each one takes. ``PairRedraw`` first replaces the NSI members of
-implausible pairs of occupancy class and story count, as the section "Pair
-re-draw" states, with the observed donors of the world's realization of
-``STAGE_S05_VIEW``. ``HazusEQDesignLevelInferer`` then derives a design level from
-the construction year for each building that has a year and no design level.
-Each building that has a year and no structure type then passes through
-``ComposedScreen`` and ``ResolutionLoop``, as the sections "Composed screen"
-and "Resolution loop" state, and ``HazusEQStructureTypeInferer`` draws a
-structure type for each building the loop admits. Last,
-``HazusEQHeightClassInferer`` gives a height class to each building that holds
-a structure type, drawn in this step or its own, and no height class. A
-building without a construction year therefore takes part in step 6 only
-through the pair re-draw and, where it holds its own structure type, the height
-class. Step 7 then takes up such a building if it is not excluded: it gives the
-building a year, and then a design level, a structure type and a height class
-as step 6 does. A building one of these components refuses is excluded from
-that world. The types are drawn from the completed West Coast tables, so the
-compiler takes states of that region only. In ``CARVE_OUT_STATE`` (California)
-under ``CARVE_OUT_METHOD`` (5.1), a drawn W1 building whose derived level is
-Pre-Code is raised to Moderate-Code, as Table C-10 of the Hazus manual assumes.
-
-Step 7 gives a construction year, in each world, to each building without a
-year whose occupancy class is missing or is not one of the residential
-occupancy classes. It reads that world's realization of the frozen view
-``STAGE_S08_VIEW``. ``ResidentialNeighborYearSampler`` copies to each such
-building the year of a nearby residential building of that world, as
-``brails/imputers/residential_neighbor_year_sampler/README.rst`` states. The
-design level, structure type and height class of the building then follow as a
-residential building's do, and the report files their rows under the stages
-of s10, such as ``s10_design_level`` and ``s10_resolution``, in place of those
-of s08. A building the sampler finds no donor for, or one without an occupancy
-class, is excluded from that world.
-
-The last five steps follow. ``s11_gross_area`` computes, in each world, the
-gross area of every building of the view ``STAGE_S08_VIEW``, excluded buildings
-included: its plan area times its story count in that world, or its plan area
-alone without a positive story count, from ``footprint_gross_area`` of the
-value imputer's module, so it differs between worlds where the story count
-does. It is frozen as ``STAGE_S11_GROSS_AREA``, and the log ``gross_area``
-names for each building and world whether the area came from the story count
-(``stories``) or the plan area alone (``plan_area``). The run then withholds
-from every later merge the values that the last steps replace: the local and
-NSI ``GrossArea``, the join's ``ReplacementCost`` where no local value
-outranks it, NSI's ``BuildingType``, and a ``GrossArea`` or ``BuildingType``
-that the footprints carry, in six records named by the step whose value takes
-their place. The views ``STAGE_S05_VIEW`` and ``STAGE_S08_VIEW`` are frozen before
-the records, so the unit budget, the structure type draw and the rates of
-``s13_replacement_cost`` still read these values. A ``GrossArea`` that a local
-inventory gives is kept as ``LocalGrossArea``, which the first step writes on
-the local values, and NSI's as ``NSIGrossArea``, which the compiler writes on
-the join's values.
-
-Steps ``s12`` to ``s15`` then run world by world, on one merge of each
-world's sources in the precedence of ``PRECEDENCE``: local values first, then
-the footprint, NSI, derived, imputed and drawn values. ``AssetInventory.merge``
-writes the source string, as the section "The source string" of
-``brails/compilers/README.rst`` describes.
-
-``s12_schema_check`` checks every building not yet excluded from the world
-against the Hazus 5.1 input schema of the damage and loss model library,
-``DLML_DATASET``, and a building it refuses is excluded from that world. The
-schema reads none of ``ReplacementCost``, ``GrossArea`` and ``BuildingType``,
-which ``s15_output`` writes after the check.
-
-``s13_replacement_cost`` values every building of ``STAGE_S08_VIEW`` in the
-world, excluded buildings included. ``ReplacementCostImputer`` reads that
-world's realization of the view and the donors that
-``imputation_donors_from_log`` names from step 4's log, as the section
-"Donors" of ``brails/compilers/README.rst`` describes, and gives each building
-a rate per square foot times its gross area of ``s11_gross_area``, as
-``brails/imputers/replacement_cost/README.rst`` states. A rate divides a
-value, NSI's, the join's sum of NSI's or a local one, by ``NSIGrossArea``,
-NSI's ``sqft``, which the compiler gives the imputer in place of
-``GrossArea``. A local value therefore gives a rate only on a building whose
-NSI records give a ``sqft``, and a local ``GrossArea`` enters neither a rate
-nor the area a rate multiplies. A building not yet excluded for which the
-imputer finds no donor is excluded from that world as ``no_plausible_value``.
-A building not yet excluded has an occupancy class, which the schema requires,
-and a positive area, so the step files no other outcome. A building it left
-without a value for another reason would be excluded as ``missing_input``.
-A building the schema refused is not filed again. The step
-keeps a local value as it is. Where that value gives a rate, the rate also
-values each building that names the local building as its donor or draws it
-as a neighbor. The step's values are frozen, over the worlds, as
-``STAGE_S13_REPLACEMENT_COST``.
-
-``s14_building_type`` gives every building without a local ``BuildingType``
-the letter of its structure type in the world, excluded buildings included, by
-the pairing of ``get_hazus_general_type_membership`` in
-``brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py`` that the
-structure type inferer draws with. NSI's letter, which the draw reads, is not
-written. A building not yet excluded whose local letter differs from the
-letter of its structure type in a world is excluded from that world as
-``conflict``: its local inventory contradicts itself. Every earlier step has
-run in that world by then, so the building is processed by each of them and
-remains a donor like any other. The letters are frozen, over the worlds, as
-``STAGE_S14_BUILDING_TYPE``.
-
-``s15_output`` writes the results into the merge. Each building receives
-``Excluded``, true in a world from which the report lists it as excluded, and
-the letter of ``s14_building_type``. Each compiled building without a local
-value takes its value of ``s13_replacement_cost`` in that world, coded by its
-outcome through ``OUTCOME_VALUE_CODES``: ``R`` for its own rate and ``I`` for
-another building's. Every compiled building, one with a local value included,
-takes its area of ``s11_gross_area`` as its ``GrossArea``. A building excluded
-from the world keeps a local value and its ``LocalGrossArea`` and takes no
-computed value or area.
-
-Last, every compiled building must hold every property of
-``DEFAULT_PROPERTIES`` that applies to it, ``NumberOfUnits`` applying to the
-residential occupancy classes only and ``HeightClass`` to the structure types
-for which Hazus defines one. In a world a building is excluded from, it may
-lack them. A building that lacks one in a world it is compiled in is a defect
-of the run: the log ``MISSING_DEFAULTS_LOG`` names each such building, world
-and property, a notice in the report counts them, and ``write`` saves the
-report, the logs and the manifest and then refuses the GeoJSON. The worlds are
-assembled into one inventory, frozen as ``STAGE_S15_OUTPUT``.
-
-Frozen stages
-~~~~~~~~~~~~~
-
-The run is a sequence of stages, each frozen when it ends, as the section
-"Stages and freezing" of ``brails/compilers/README.rst`` describes. The stage
-names are the module's ``STAGE_`` constants and the value imputer's
-``DONOR_STAGE``. Three kinds of stage are frozen. A part holds the values one
-step adds, such as the join's NSI values. A record holds what a step withholds
-from a source or drops from every source. A view holds the merge of every part
-and record frozen so far, over the worlds, and the last view, the output, is
-the compiled inventory. Four stages are not sources: the donors that
-``imputation_donors_from_log`` names from step 4's log, under
-``DONOR_STAGE``, and the areas, values and letters of ``s11_gross_area``,
-``s13_replacement_cost`` and ``s14_building_type``, which ``s15_output``
-writes over its merge. Every part other than the footprints, and every
-record, holds each footprint's centroid as its coordinates. The footprints and
-the views hold the footprint polygons. A world's source is composed from its
-parts and records by
-``compose_source_parts``, and the worlds of a view are added to it by
-``AssetInventory.add_world``, as the section "Composition and assembly" of
-``brails/compilers/README.rst`` states. The run ends with the manifest.
-
-Worlds
-~~~~~~
-
-A run computes the compiler's ``n_worlds`` worlds, numbered as the section
-"Possible worlds" of ``brails/compilers/README.rst`` describes, from 0 to
-``n_worlds - 1``, by the run and by
-every component. A world's values do not depend on how many worlds the run
-computes, so world 3 of a run of four worlds equals world 3 of a run of ten.
-
-The written file
-~~~~~~~~~~~~~~~~
-
-``write`` writes every world the run computed, or only the world that its
-``world`` argument names. The file holds one GeoJSON feature per building, with
-its id and footprint. Where every world is written, a property whose worlds
-differ holds a list of values, one per world. A file of one world leaves out a
-property whose value is ``None`` in that world, so the file is the same
-whatever the number of worlds the run computed. Which buildings and properties
-the file holds is stated on ``CompilationResult.write``. The properties of
-``DEFAULT_PROPERTIES`` are those a Hazus earthquake assessment reads. The
-report lists each excluded building with its reason in each world, whether or
-not the file holds it. A building's ``ReplacementCost`` divided by its
-``GrossArea`` is the rate per square foot that ``s13_replacement_cost`` gave
-it, except for a building that keeps a local ``ReplacementCost``. The step
-computes the rate of such a building as the local value divided by
-``NSIGrossArea``, the ``sqft`` of the building's NSI records (their sum where
-it has several), not by its ``GrossArea``, and gives that rate to the
-buildings that take their rate from it.
-
-The imputer's settings
-~~~~~~~~~~~~~~~~~~~~~~
-
-The compiler gives ``ObservedDonorImputer`` its own values of three settings in
-place of the imputer's defaults: the number of nearest donors picked among
-(``k``), the meters of separation counted as one unit of donor distance
-(``location_scale_m``) and the weight of the difference of log plan areas
-(``area_weight``). ``DEFAULT_IMPUTER_OPTIONS`` holds ``k`` of 10, a
-``location_scale_m`` of 500 and an ``area_weight`` of 2. They come from a
-SimCenter masking test on the buildings NSI reaches in San Francisco and
-Richmond, California, in which the occupancy class, unit count and story count
-of about a fifth of them were hidden and imputed again from the others. Against
-the test's starting values (``k`` of 5, 100 m and a weight of 1), these values
-gave better overall occupancy class, story and unit scores in both cities and a
-lower exact-label agreement for non-residential buildings. The test measured
-donor distance on footprint heights, where the imputer compares story counts,
-so it compares settings, and the three values are not calibrated yet.
-``imputer_options`` overrides them one by one. The imputer runs without batch
-feedback, since the compiler gives it the donors directly, so ``n_batches`` is
-refused. ``ResidentialNeighborYearSampler`` takes the imputer's ``k`` and
-``cap_m``, and ``ReplacementCostImputer`` takes those and the imputer's
-``location_scale_m``, ``area_weight`` and ``stories_weight``.
+asset passes without it. With that inferer, withholding the type therefore
+always admits the asset, and the ``restored`` path is not reached. The path
+serves a structure type inferer for which the building type is a required
+input, and BRAILS holds no such inferer. When the inferer cannot read a
+building type, it refuses the asset as invalid and names no feature. The
+type is then not withheld, and the asset is filed as ``missing_input``.
