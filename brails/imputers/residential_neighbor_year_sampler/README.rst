@@ -1,14 +1,17 @@
 Residential neighbor year sampler
 =================================
 
-``ResidentialNeighborYearSampler`` copies to a building the construction
-year of a nearby residential building that holds one in the same possible
-world. It runs the donor search of ``ObservedDonorImputer``, in
+``ResidentialNeighborYearSampler`` copies to a building the construction year
+of a nearby residential building that holds one in the same possible world. A
+building is residential here when its occupancy class is one of the residential
+occupancy classes, those of ``UNIT_COUNT_CLASSES``: RES1, RES2 and RES3A to
+RES3F, without RES4 to RES6. It runs the donor search of
+``ObservedDonorImputer``, in
 ``brails/imputers/observed_donor_imputer/observed_donor_imputer.py``, on the
 residential buildings of a frozen stage, and takes its defaults from that
 module. ``residential_neighbor_year_sampler.py`` beside this page holds the
-class. This page states where the defaults come from, how the sampler picks
-a donor and why the search is configured as it is, and which buildings the
+class. This page states where the defaults come from, how the sampler picks a
+donor and why the search is configured as it is, and which buildings the
 sampler reads. The docstrings state what a caller passes and receives.
 
 The defaults
@@ -55,8 +58,8 @@ weights are one over the distance, taken as at least
 alone: the great-circle distance in meters between centroids. The
 imputer's own distance also compares log plan area and story count, which
 ranks a building against others of its kind. Every donor here is of
-another kind, a residential building for a building outside the
-residential classes, so those terms would rank the donors by how much they
+another kind, a residential building for a building outside the residential
+occupancy classes, so those terms would rank the donors by how much they
 resemble the building in size, not by where they stand.
 
 A building with no donor within the cap draws one donor of its block
@@ -68,21 +71,22 @@ block group that covers a large area the donor may lie beyond the cap.
 The donor's year is copied. Both the pick among the nearest donors and the
 block-group pick are the draw of ``ObservedDonorImputer``, run with the
 building's status given as residential. The draw then matches the residential
-donors; on its own class, which lies outside the residential classes, it would
-match none. The pick's uniform is keyed as the section "Possible worlds" under
-"Concepts" of ``brails/compilers/README.rst`` describes, by the building's id
-among other keys, so a building's draw depends on no other building's. Its
-purpose label is ``PURPOSE_DONOR`` or, in the block group, ``PURPOSE_FALLBACK``
-of the observed-donor imputer, with ``NEIGHBOR_YEAR_PURPOSE_PREFIX`` and a
-colon put before it, which keeps it apart from the imputer's own draws.
+donors; on its own occupancy class, which lies outside the residential
+occupancy classes, it would match none. The pick's uniform is keyed as the
+section "Possible worlds" under "Concepts" of ``brails/compilers/README.rst``
+describes, by the building's id among other keys, so a building's draw depends
+on no other building's. Its purpose label is ``PURPOSE_DONOR`` or, in the block
+group, ``PURPOSE_FALLBACK`` of the observed-donor imputer, with
+``NEIGHBOR_YEAR_PURPOSE_PREFIX`` and a colon put before it, which keeps it
+apart from the imputer's own draws.
 
 Scope
 -----
 
 Where the donors' years were drawn, by ``ACSYearBuiltSampler`` or another
-sampler, a copied year rests on a draw. The sampler draws for buildings
-outside ``UNIT_COUNT_CLASSES``, the classes ``ACSYearBuiltSampler``
-covers, RES4 to RES6 included, and refuses a building inside them.
+sampler, a copied year rests on a draw. The sampler draws for buildings outside
+``UNIT_COUNT_CLASSES``, the occupancy classes ``ACSYearBuiltSampler`` covers,
+and so for RES4 to RES6, and refuses a building inside them.
 
 NSI's tract median year, ``YearBuiltTractMedian``, is not the year of a
 building and is never read as one.
