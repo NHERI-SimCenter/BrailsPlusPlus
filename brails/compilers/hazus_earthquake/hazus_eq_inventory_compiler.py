@@ -233,8 +233,10 @@ STAGE_S04_DROPPED = 's04_dropped'
 STAGE_S04_WITHHELD = 's04_withheld'
 STAGE_S05_IMPUTATION = 's05_imputation'
 STAGE_STEP4 = 'step4'
-STAGE_STEP6_WITHHELD = 'step6_withheld'
-STAGE_STEP6_IMPUTED = 'step6_imputed'
+STAGE_S06_RESIDENTIAL_YEAR = 's06_residential_year'
+STAGE_S07_WITHHELD = 's07_withheld'
+STAGE_S07_PAIR_REDRAW = 's07_pair_redraw'
+STAGE_S07_DERIVED = 's07_derived'
 STAGE_STEP6_DRAWN = 'step6_drawn'
 STAGE_STEP6_DERIVED = 'step6_derived'
 STAGE_STEP6 = 'step6'
@@ -252,9 +254,9 @@ REPORT_STAGES = (
     's03_story_counts',
     's04_unit_budget',
     's05_imputation',
-    'year',
+    's06_residential_year',
     'design_level',
-    'pair_redraw',
+    's07_pair_redraw',
     'screen',
     'resolution',
     'structure_type',
@@ -1234,9 +1236,13 @@ class HazusEQInventoryCompiler:
         imputer = imputation.imputer
         del imputation
 
-        self._step6(
-            inputs, sources, logs, centroids, report, n_computed, imputer, stories
+        self._draw_residential_years(
+            inputs, sources, logs, centroids, report, n_computed
         )
+        self._redraw_implausible_pairs(
+            sources, logs, centroids, report, n_computed, imputer, stories
+        )
+        self._step6(sources, logs, centroids, report, n_computed)
         self._view(STAGE_STEP6, sources, report, n_computed)
         self._step7(sources, logs, centroids, report, n_computed, imputer)
         self._step8(sources, logs, centroids, report, n_computed, imputer)
@@ -1775,7 +1781,7 @@ class HazusEQInventoryCompiler:
         )
         return _ImputationOutcome(imputer, targets, imputation.log)
 
-    def _step6(
+    def _draw_residential_years(
         self,
         inputs: CompilerInputs,
         sources: _WorldSources,
@@ -1783,62 +1789,37 @@ class HazusEQInventoryCompiler:
         centroids: Mapping[str, list[list[float]]],
         report: CompilationReport,
         n_computed: int,
-        imputer: ObservedDonorImputer,
-        stories: StoriesFromHeightInferer,
     ) -> None:
         """
-        Run steps 5 and 6 in every world: years, levels, pairs and types.
+        Run s06 in every world: the year built of residential buildings.
 
         The section "The run" of the README beside this module states the
         procedure.
 
         Args:
             inputs (CompilerInputs):
-                The study area's data.
+                The study area's data, whose census tables the year sampler
+                reads.
             sources (_WorldSources):
-                The sources, to which the parts and the record are added.
+                The sources, to which the years are added as the part
+                :data:`STAGE_S06_RESIDENTIAL_YEAR`.
             logs (dict[str, pandas.DataFrame]):
-                The logs, which receive ``year_fit``, ``pair_redraw`` and
-                ``resolution``, each with a ``world`` column.
+                The logs, which receive ``year_fit``, with a ``world``
+                column.
             centroids (Mapping[str, list[list[float]]]):
                 Each footprint's centroid.
             report (CompilationReport):
-                The report, which receives the actions and exclusions of
-                every world.
+                The report, which receives the exclusions of every world.
             n_computed (int):
                 The number of worlds computed.
-            imputer (ObservedDonorImputer):
-                The imputer of step 4, whose draw the pair re-draw takes.
-            stories (StoriesFromHeightInferer):
-                The inferer of story counts from footprint heights.
-
-        Raises:
-            ValueError:
-                If an asset's source string is not one
-                :func:`~brails.types.asset_inventory.read_source_string`
-                reads, or, as :meth:`ResolutionLoop.resolve` raises, a
-                building type has no source.
         """
         view = sources.freeze.read(STAGE_STEP4)
         kept = list(view.inventory)
-        stages = (
-            STAGE_STEP6_WITHHELD,
-            STAGE_STEP6_IMPUTED,
-            STAGE_STEP6_DRAWN,
-            STAGE_STEP6_DERIVED,
-        )
-        assembled = {stage: AssetInventory() for stage in stages}
-        fits, redraws, resolutions = [], [], []
+        assembled = AssetInventory()
+        fits = []
         for world in range(n_computed):
             started = time.perf_counter()
             frozen = view.get_world_realization(world)
-            working = view.get_world_realization(world)
-            new: dict[str, dict[str, dict[str, Any]]] = {
-                stage: {} for stage in stages
-            }
-            excluded: set[str] = set()
-
-            # Step 5: the year of each residential asset without one.
             sampler = ACSYearBuiltSampler(
                 inputs.b25034_block_groups,
                 inputs.b25034_tracts,
@@ -1856,11 +1837,10 @@ class HazusEQInventoryCompiler:
             ]
             verdicts = sampler.check(_select_assets(frozen, targets))
             for row in verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK].itertuples():
-                excluded.add(row.Index)
                 report.record_exclusion(
                     row.Index,
                     world=world,
-                    stage='year',
+                    stage='s06_residential_year',
                     category=_DIAGNOSIS_CATEGORY[row.diagnosis],
                     diagnosis=row.diagnosis,
                     detail=row.detail,
@@ -1868,38 +1848,95 @@ class HazusEQInventoryCompiler:
                 )
             passing = list(verdicts.index[verdicts['diagnosis'] == DIAGNOSIS_OK])
             years = sampler.draw(_select_assets(frozen, passing))
-            for asset_id, year in years.items():
-                new[STAGE_STEP6_DRAWN][asset_id] = {YEAR_BUILT_KEY: int(year)}
-                _overlay(
-                    asset_id,
-                    working.inventory[asset_id].features,
-                    {YEAR_BUILT_KEY: int(year)},
-                    'drawn',
+            assembled.add_world(
+                _build_inventory(
+                    kept,
+                    centroids,
+                    {
+                        asset_id: {YEAR_BUILT_KEY: int(year)}
+                        for asset_id, year in years.items()
+                    },
+                    vector_features=(),
                 )
-
-            # The pair re-draw, with the observed donors of the frozen view.
-            donors = _select_assets(
-                frozen,
-                [
-                    asset_id
-                    for asset_id, asset in frozen.inventory.items()
-                    if SOURCE_LABELS.get(
-                        read_source_string(asset_id, asset.features)[
-                            _CODE_POSITION[OCCUPANCY_KEY]
-                        ]
-                    )
-                    in _REACHED_SOURCES
-                    and not is_missing_value(asset.features.get(STORIES_KEY))
-                ],
             )
+            del frozen
+            report.set_timing(
+                's06_residential_year', time.perf_counter() - started, world=world
+            )
+
+        logs['year_fit'] = pd.concat(fits, ignore_index=True)
+        started = time.perf_counter()
+        sources.add_part('drawn', STAGE_S06_RESIDENTIAL_YEAR, assembled)
+        report.set_timing(
+            's06_residential_year_freeze', time.perf_counter() - started
+        )
+
+    def _redraw_implausible_pairs(
+        self,
+        sources: _WorldSources,
+        logs: dict[str, pd.DataFrame],
+        centroids: Mapping[str, list[list[float]]],
+        report: CompilationReport,
+        n_computed: int,
+        imputer: ObservedDonorImputer,
+        stories: StoriesFromHeightInferer,
+    ) -> None:
+        """
+        Run s07 in every world: re-draw implausible pairs of class and stories.
+
+        Each world's re-draw reads that world merged after s06, and its
+        donors are the observed donors of the world's realization of the
+        view :data:`STAGE_STEP4`. The section "The run" of the README beside
+        this module states the procedure.
+
+        Args:
+            sources (_WorldSources):
+                The sources, to which the re-drawn values are added as the
+                part :data:`STAGE_S07_PAIR_REDRAW`, the height counts that
+                replace NSI's as the part :data:`STAGE_S07_DERIVED`, and the
+                values they replace as the record :data:`STAGE_S07_WITHHELD`.
+            logs (dict[str, pandas.DataFrame]):
+                The logs, which receive ``pair_redraw``, with a ``world``
+                column.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+            report (CompilationReport):
+                The report, which receives the actions of every world.
+            n_computed (int):
+                The number of worlds computed.
+            imputer (ObservedDonorImputer):
+                The imputer of s05, whose draw the pair re-draw takes.
+            stories (StoriesFromHeightInferer):
+                The inferer of story counts from footprint heights.
+
+        Raises:
+            ValueError:
+                If an asset's source string is not one
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads.
+        """
+        view = sources.freeze.read(STAGE_STEP4)
+        kept = list(view.inventory)
+        stages = (STAGE_S07_WITHHELD, STAGE_S07_PAIR_REDRAW, STAGE_S07_DERIVED)
+        assembled = {stage: AssetInventory() for stage in stages}
+        redraws = []
+        for world in range(n_computed):
+            started = time.perf_counter()
+            frozen = view.get_world_realization(world)
+            working = sources.merge_world(world)
+            new: dict[str, dict[str, dict[str, Any]]] = {
+                stage: {} for stage in stages
+            }
+            # The re-draw draws from the observed donors of the frozen view.
+            donors = _select_observed_donors(frozen, _read_occupancy_sources(frozen))
             redraw = PairRedraw(imputer, donors, stories, world=world).redraw(
                 working
             )
             redraws.append(redraw.log)
             for row in redraw.withheld.itertuples(index=False):
-                new[STAGE_STEP6_WITHHELD].setdefault(row.asset_id, {})[
-                    row.feature
-                ] = row.source
+                new[STAGE_S07_WITHHELD].setdefault(row.asset_id, {})[row.feature] = (
+                    row.source
+                )
                 replaced = {
                     **redraw.updates.get(row.asset_id, {}),
                     **redraw.derived.get(row.asset_id, {}),
@@ -1907,7 +1944,7 @@ class HazusEQInventoryCompiler:
                 report.record_action(
                     row.asset_id,
                     row.feature,
-                    stage='pair_redraw',
+                    stage='s07_pair_redraw',
                     action='withheld',
                     world=world,
                     old=row.value,
@@ -1921,14 +1958,14 @@ class HazusEQInventoryCompiler:
             for label, stage, action, reason, values_of in (
                 (
                     'imputed',
-                    STAGE_STEP6_IMPUTED,
+                    STAGE_S07_PAIR_REDRAW,
                     'redrawn',
                     "a donor's value for a member of an implausible pair",
                     redraw.updates,
                 ),
                 (
                     'derived',
-                    STAGE_STEP6_DERIVED,
+                    STAGE_S07_DERIVED,
                     'derived',
                     "the footprint height's count for an uncorroborated NSI count",
                     redraw.derived,
@@ -1939,7 +1976,7 @@ class HazusEQInventoryCompiler:
                         report.record_action(
                             asset_id,
                             feature,
-                            stage='pair_redraw',
+                            stage='s07_pair_redraw',
                             action=action,
                             world=world,
                             old=working.inventory[asset_id].features.get(feature),
@@ -1952,6 +1989,73 @@ class HazusEQInventoryCompiler:
                         asset_id, working.inventory[asset_id].features, values, label
                     )
 
+            for stage in stages:
+                assembled[stage].add_world(
+                    _build_inventory(kept, centroids, new[stage], vector_features=())
+                )
+            del frozen, working
+            report.set_timing(
+                's07_pair_redraw', time.perf_counter() - started, world=world
+            )
+
+        logs['pair_redraw'] = pd.concat(redraws, ignore_index=True)
+        started = time.perf_counter()
+        sources.add_withheld(STAGE_S07_WITHHELD, assembled[STAGE_S07_WITHHELD])
+        sources.add_part(
+            'imputed', STAGE_S07_PAIR_REDRAW, assembled[STAGE_S07_PAIR_REDRAW]
+        )
+        sources.add_part('derived', STAGE_S07_DERIVED, assembled[STAGE_S07_DERIVED])
+        report.set_timing('s07_pair_redraw_freeze', time.perf_counter() - started)
+
+    def _step6(
+        self,
+        sources: _WorldSources,
+        logs: dict[str, pd.DataFrame],
+        centroids: Mapping[str, list[list[float]]],
+        report: CompilationReport,
+        n_computed: int,
+    ) -> None:
+        """
+        Give each building its design level, structure type and height class.
+
+        This runs in every world and also applies the W1 carve-out. Each
+        world's draws read that world merged after s07, and a building that
+        an earlier step excluded from the world, today only s06, takes none. The section "The run"
+        of the README beside this module states the procedure.
+
+        Args:
+            sources (_WorldSources):
+                The sources, to which the parts are added.
+            logs (dict[str, pandas.DataFrame]):
+                The logs, which receive ``resolution``, with a ``world``
+                column.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+            report (CompilationReport):
+                The report, whose exclusions are read and which receives the
+                actions and exclusions of every world.
+            n_computed (int):
+                The number of worlds computed.
+
+        Raises:
+            ValueError:
+                If an asset's source string is not one
+                :func:`~brails.types.asset_inventory.read_source_string`
+                reads, or, as :meth:`ResolutionLoop.resolve` raises, a
+                building type has no source.
+        """
+        kept = list(sources.freeze.read(STAGE_STEP4).inventory)
+        exclusions = report.exclusions
+        stages = (STAGE_STEP6_DRAWN, STAGE_STEP6_DERIVED)
+        assembled = {stage: AssetInventory() for stage in stages}
+        resolutions = []
+        for world in range(n_computed):
+            started = time.perf_counter()
+            working = sources.merge_world(world)
+            new: dict[str, dict[str, dict[str, Any]]] = {
+                stage: {} for stage in stages
+            }
+            excluded = set(exclusions.loc[exclusions['world'] == world, 'asset_id'])
             resolutions.append(
                 {
                     'world': world,
@@ -1960,29 +2064,22 @@ class HazusEQInventoryCompiler:
                         sources,
                         report,
                         working,
-                        list(working.inventory),
+                        kept,
                         excluded,
                         new[STAGE_STEP6_DERIVED],
                         new[STAGE_STEP6_DRAWN],
                     ),
                 }
             )
-
             for stage in stages:
                 assembled[stage].add_world(
                     _build_inventory(kept, centroids, new[stage], vector_features=())
                 )
-            del frozen, working
+            del working
             report.set_timing('step6', time.perf_counter() - started, world=world)
 
-        logs['year_fit'] = pd.concat(fits, ignore_index=True)
-        logs['pair_redraw'] = pd.concat(redraws, ignore_index=True)
         logs['resolution'] = pd.DataFrame(resolutions)
         started = time.perf_counter()
-        sources.add_withheld(STAGE_STEP6_WITHHELD, assembled[STAGE_STEP6_WITHHELD])
-        sources.add_part(
-            'imputed', STAGE_STEP6_IMPUTED, assembled[STAGE_STEP6_IMPUTED]
-        )
         sources.add_part('drawn', STAGE_STEP6_DRAWN, assembled[STAGE_STEP6_DRAWN])
         sources.add_part(
             'derived', STAGE_STEP6_DERIVED, assembled[STAGE_STEP6_DERIVED]

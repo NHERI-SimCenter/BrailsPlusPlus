@@ -129,6 +129,8 @@ if TYPE_CHECKING:
     from brails.compilers.compilation_report import CompilationReport
 
 STORIES_CODE = HAZUS_EQ_SOURCE_FEATURES.index(STORIES_KEY)
+OCCUPANCY_CODE = HAZUS_EQ_SOURCE_FEATURES.index(OCCUPANCY_KEY)
+YEAR_CODE = HAZUS_EQ_SOURCE_FEATURES.index(YEAR_BUILT_KEY)
 # The footprints no NSI record reaches.
 UNREACHED = set(FOOTPRINTS) - {record[0] for record in NSI_RECORDS.values()}
 FREEZE_ORDER = (
@@ -144,8 +146,10 @@ FREEZE_ORDER = (
     's05_imputation',
     'step4',
     'imputation_donors',
-    'step6_withheld',
-    'step6_imputed',
+    's06_residential_year',
+    's07_withheld',
+    's07_pair_redraw',
+    's07_derived',
     'step6_drawn',
     'step6_derived',
     'step6',
@@ -164,11 +168,22 @@ TIMED_ONCE = (
     's04_unit_budget',
     's05_imputation',
     'step4_freeze',
+    's06_residential_year_freeze',
+    's07_pair_redraw_freeze',
     'step6_freeze',
     'output_freeze',
     'manifest',
 )
-TIMED_PER_WORLD = ('step4_view', 'step6', 'step6_view', 'step7', 'step8', 'output')
+TIMED_PER_WORLD = (
+    'step4_view',
+    's06_residential_year',
+    's07_pair_redraw',
+    'step6',
+    'step6_view',
+    'step7',
+    'step8',
+    'output',
+)
 
 
 @pytest.fixture(scope='session')
@@ -601,7 +616,11 @@ class TestOutput:
         report = result.report
         assert result.inventory.inventory['h01'].features[EXCLUDED_KEY] is False
         report.record_exclusion(
-            'h01', world=1, stage='year', category='missing_input', detail='x'
+            'h01',
+            world=1,
+            stage='s06_residential_year',
+            category='missing_input',
+            detail='x',
         )
         for world in range(3):
             report.record_exclusion(
@@ -1443,13 +1462,15 @@ class TestYearsAndTypes:
                 seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
 
-    def test_step6_parts(self, compiled: object) -> None:
-        """Each per-world part of steps 5 and 6 holds the spine after the drops."""
+    def test_parts_of_s06_to_s08(self, compiled: object) -> None:
+        """Each per-world part and record of steps s06 to s08 holds the spine after the drops."""
         result = compiled(n_worlds=3)
         kept = set(result.inventory.inventory)
         for stage in (
-            'step6_withheld',
-            'step6_imputed',
+            's06_residential_year',
+            's07_withheld',
+            's07_pair_redraw',
+            's07_derived',
             'step6_drawn',
             'step6_derived',
         ):
@@ -1458,12 +1479,87 @@ class TestYearsAndTypes:
             assert set(part.inventory) == kept
             for asset in part.inventory.values():
                 assert len(asset.coordinates) == 1, stage
-        drawn = {
-            key
-            for asset in result.freeze.read('step6_drawn').inventory.values()
-            for key in asset.features
-        }
-        assert drawn == {YEAR_BUILT_KEY, STRUCTURE_TYPE_KEY}
+        for stage, features in (
+            ('s06_residential_year', {YEAR_BUILT_KEY}),
+            ('step6_drawn', {STRUCTURE_TYPE_KEY}),
+        ):
+            assert {
+                key
+                for asset in result.freeze.read(stage).inventory.values()
+                for key in asset.features
+            } == features
+        for stage, features in (
+            ('s07_pair_redraw', {OCCUPANCY_KEY, STORIES_KEY}),
+            ('s07_derived', {STORIES_KEY}),
+            ('step6_derived', {DESIGN_LEVEL_KEY, HEIGHT_CLASS_KEY}),
+        ):
+            assert {
+                key
+                for asset in result.freeze.read(stage).inventory.values()
+                for key in asset.features
+            } <= features
+
+    def test_the_pair_redraw_reads_the_years(
+        self, study_area: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """In each world, the pair re-draw reads the world merged with s06's years, coded drawn."""
+        compiler = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+        )
+        # The re-draw is watched through its method, which receives the
+        # world's merged inventory.
+        monkeypatch.setattr(
+            hc.PairRedraw,
+            'redraw',
+            mock.create_autospec(
+                hc.PairRedraw.redraw, side_effect=hc.PairRedraw.redraw
+            ),
+        )
+        result = compiler.compile(study_area)
+        years = result.freeze.read('s06_residential_year')
+        calls = hc.PairRedraw.redraw.call_args_list
+        assert len(calls) == 3
+        drawn_somewhere = False
+        for world, call in enumerate(calls):
+            working = call.args[1]
+            for asset_id, values in features_in(years, world).items():
+                if YEAR_BUILT_KEY in values:
+                    drawn_somewhere = True
+                    held = working.inventory[asset_id].features
+                    assert held[YEAR_BUILT_KEY] == values[YEAR_BUILT_KEY]
+                    assert held[SOURCE_STRING_KEY][YEAR_CODE] == 'D'
+        assert drawn_somewhere
+
+    def test_the_structure_draws_read_the_redraw(
+        self, study_area: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """In each world, the structure draws read the world merged with s07's re-drawn values, coded imputed."""
+        compiler = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+        )
+        # The draws are watched through _draw_types, which receives the
+        # world's merged inventory; its first calls in a run are s08's.
+        monkeypatch.setattr(
+            hc.HazusEQInventoryCompiler,
+            '_draw_types',
+            mock.create_autospec(
+                hc.HazusEQInventoryCompiler._draw_types,
+                side_effect=hc.HazusEQInventoryCompiler._draw_types,
+            ),
+        )
+        result = compiler.compile(study_area)
+        redrawn = result.freeze.read('s07_pair_redraw')
+        calls = hc.HazusEQInventoryCompiler._draw_types.call_args_list[:3]
+        seen = False
+        for world, call in enumerate(calls):
+            working = call.args[4]
+            for asset_id, values in features_in(redrawn, world).items():
+                if OCCUPANCY_KEY in values:
+                    seen = True
+                    held = working.inventory[asset_id].features
+                    assert held[OCCUPANCY_KEY] == values[OCCUPANCY_KEY]
+                    assert held[SOURCE_STRING_KEY][OCCUPANCY_CODE] == 'I'
+        assert seen
 
     def test_loop_in_the_run(self, compiled: object) -> None:
         """An NSI building type that no structure type of the asset's cell matches is withheld, and the asset compiles."""
@@ -1584,11 +1680,11 @@ class TestYearsAndTypes:
         result = compiled(n_worlds=3)
         records = result.report.records
         rows = records[
-            (records['asset_id'] == 'c03') & (records['stage'] == 'pair_redraw')
+            (records['asset_id'] == 'c03') & (records['stage'] == 's07_pair_redraw')
         ]
         assert set(rows['action']) == {'withheld', 'redrawn'}
         assert set(rows.loc[rows['action'] == 'withheld', 'source']) == {'nsi'}
-        record = result.freeze.read('step6_withheld').get_world_realization(0)
+        record = result.freeze.read('s07_withheld').get_world_realization(0)
         assert set(record.inventory['c03'].features.values()) == {'nsi'}
         for world in range(3):
             features = features_in(result.inventory, world)['c03']
@@ -1696,7 +1792,7 @@ class TestYearsAndTypes:
             )
         )
         rows = result.report.exclusions
-        rows = rows[rows['stage'] == 'year']
+        rows = rows[rows['stage'] == 's06_residential_year']
         assert set(rows['category']) == {'missing_input'}
         assert set(rows['world']) == {0, 1}
         assert 'h01' in set(rows['asset_id'])
@@ -1720,7 +1816,7 @@ class TestYearsAndTypes:
         ).compile(study_area._replace(local=local))
         rows = result.report.exclusions.set_index(['asset_id', 'world'])
         for asset_id, stage in (
-            ('q02', 'year'),
+            ('q02', 's06_residential_year'),
             ('h05', 'design_level'),
             ('h07', 'height_class'),
         ):

@@ -367,33 +367,36 @@ residential occupancy classes of this section are those of
 outside them is a target for its story count alone, since the join gives units
 to housing records only.
 
-Steps 5 and 6 run in each world, as one stage, on that world's realization of
-the frozen view ``STAGE_STEP4``. Step 5 gives construction years to residential
-buildings: ``ACSYearBuiltSampler``, fitted on that realization, draws a year
-for each residential building that has no construction year, from the census
-tables of the building's block group and tract. Step 6 then runs, in this
-order, the pair re-draw over every building of the realization and the design
-level, structure type and height class components over the buildings each one
-takes. ``PairRedraw`` first replaces the NSI members of implausible pairs of
-occupancy class and story count, as the section "Pair re-draw" states, with the
-observed donors of that realization. ``HazusEQDesignLevelInferer`` then derives
-a design level from the construction year for each building that has a year and
-no design level. Each building that has a year and no structure type then
-passes through ``ComposedScreen`` and ``ResolutionLoop``, as the sections
-"Composed screen" and "Resolution loop" state, and
-``HazusEQStructureTypeInferer`` draws a structure type for each building the
-loop admits. Last, ``HazusEQHeightClassInferer`` gives a height class to each
-building that holds a structure type, drawn in this step or its own, and no
-height class. A building without a construction year therefore takes part in
-step 6 only through the pair re-draw and, where it holds its own structure
-type, the height class. Step 7 then takes up such a building if it is not
-excluded: it gives the building a year, and then a design level, a structure
-type and a height class as step 6 does. A building one of these components
-refuses is excluded from that world. The types are drawn from the completed
-West Coast tables, so the compiler takes states of that region only. In
-``CARVE_OUT_STATE`` (California) under ``CARVE_OUT_METHOD`` (5.1), a drawn W1
-building whose derived level is Pre-Code is raised to Moderate-Code, as Table
-C-10 of the Hazus manual assumes.
+Steps 5 and 6 run over every world in three passes, each over all worlds before
+the next. Step 5 (``s06_residential_year``) reads each world's realization of
+the frozen view ``STAGE_STEP4``, the pair re-draw of step 6
+(``s07_pair_redraw``) reads each world merged after step 5, and the rest of
+step 6 reads each world merged after the re-draw. Step 5 gives construction
+years to residential buildings: ``ACSYearBuiltSampler``, fitted on that
+realization, draws a year for each residential building that has no
+construction year, from the census tables of the building's block group and
+tract. Step 6 then runs, in this order, the pair re-draw over every building of
+the world and the design level, structure type and height class components over
+the buildings each one takes. ``PairRedraw`` first replaces the NSI members of
+implausible pairs of occupancy class and story count, as the section "Pair
+re-draw" states, with the observed donors of the world's realization of
+``STAGE_STEP4``. ``HazusEQDesignLevelInferer`` then derives a design level from
+the construction year for each building that has a year and no design level.
+Each building that has a year and no structure type then passes through
+``ComposedScreen`` and ``ResolutionLoop``, as the sections "Composed screen"
+and "Resolution loop" state, and ``HazusEQStructureTypeInferer`` draws a
+structure type for each building the loop admits. Last,
+``HazusEQHeightClassInferer`` gives a height class to each building that holds
+a structure type, drawn in this step or its own, and no height class. A
+building without a construction year therefore takes part in step 6 only
+through the pair re-draw and, where it holds its own structure type, the height
+class. Step 7 then takes up such a building if it is not excluded: it gives the
+building a year, and then a design level, a structure type and a height class
+as step 6 does. A building one of these components refuses is excluded from
+that world. The types are drawn from the completed West Coast tables, so the
+compiler takes states of that region only. In ``CARVE_OUT_STATE`` (California)
+under ``CARVE_OUT_METHOD`` (5.1), a drawn W1 building whose derived level is
+Pre-Code is raised to Moderate-Code, as Table C-10 of the Hazus manual assumes.
 
 Step 7 gives a construction year, in each world, to each building without a
 year whose occupancy class is missing or is not one of the residential
