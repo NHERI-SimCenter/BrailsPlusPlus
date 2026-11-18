@@ -118,6 +118,7 @@ from brails.inferers.acs_unit_budget.acs_unit_budget import (
     DROP_PROBABILITY,
     GAP_NO_ACS,
     ACSUnitBudget,
+    UnitBudgetResult,
 )
 from brails.inferers.acs_year_built_sampler.acs_year_built_sampler import (
     ACSYearBuiltSampler,
@@ -166,7 +167,6 @@ from brails.types.asset_inventory import (
     is_missing_value,
     read_source_string,
 )
-from brails.utils.inventory_union import union_disjoint
 from brails.utils.stage_freeze import StageFreeze
 from brails.utils.unit_converter import UNIT_TO_METER
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
@@ -226,10 +226,12 @@ STAGE_FOOTPRINTS = 'footprints'
 STAGE_LOCAL = 'local'
 STAGE_JOIN_NSI = 'join_nsi'
 STAGE_JOIN_DERIVED = 'join_derived'
-STAGE_STEP4_DERIVED = 'step4_derived'
-STAGE_STEP4_DROPPED = 'step4_dropped'
-STAGE_STEP4_WITHHELD = 'step4_withheld'
-STAGE_STEP4_IMPUTED = 'step4_imputed'
+STAGE_S03_STORY_COUNTS = 's03_story_counts'
+STAGE_S03_WITHHELD = 's03_withheld'
+STAGE_S04_UNIT_BUDGET = 's04_unit_budget'
+STAGE_S04_DROPPED = 's04_dropped'
+STAGE_S04_WITHHELD = 's04_withheld'
+STAGE_S05_IMPUTATION = 's05_imputation'
 STAGE_STEP4 = 'step4'
 STAGE_STEP6_WITHHELD = 'step6_withheld'
 STAGE_STEP6_IMPUTED = 'step6_imputed'
@@ -247,9 +249,9 @@ STAGE_OUTPUT = 'output'
 REPORT_STAGES = (
     'footprints',
     'join',
-    'stories',
-    'units',
-    'imputation',
+    's03_story_counts',
+    's04_unit_budget',
+    's05_imputation',
     'year',
     'design_level',
     'pair_redraw',
@@ -651,15 +653,15 @@ class CompilationResult(NamedTuple):
         self.freeze.save_manifest(path.with_name(f'{path.stem}_manifest.json'))
 
 
-class _Step4(NamedTuple):
+class _ImputationOutcome(NamedTuple):
     """
-    What step 4 hands to the steps after it.
+    What the imputation from observed donors hands to the steps after it.
 
     Attributes:
         imputer (ObservedDonorImputer):
-            The imputer step 4 ran, configured by the compiler's options.
-        stories (StoriesFromHeightInferer):
-            The inferer of story counts from footprint heights.
+            The imputer that ran, configured by the compiler's options. The
+            pair re-draw draws with it, and the year draw of nonresidential
+            buildings and the value step take its settings.
         targets (AssetInventory):
             The imputer's targets, carrying the budget's values.
         log (pandas.DataFrame):
@@ -667,7 +669,6 @@ class _Step4(NamedTuple):
     """
 
     imputer: ObservedDonorImputer
-    stories: StoriesFromHeightInferer
     targets: AssetInventory
     log: pd.DataFrame
 
@@ -764,6 +765,73 @@ class _WorldSources:
                 if value is not None
             }
         return merged
+
+
+def _read_occupancy_sources(inventory: AssetInventory) -> dict[str, str | None]:
+    """
+    Read the source of each asset's occupancy class from its source string.
+
+    Args:
+        inventory (AssetInventory):
+            A merged inventory of one world, each asset with a source string.
+
+    Returns:
+        dict[str, str | None]:
+            The label of the source of each asset's occupancy class, by
+            asset id in the inventory's order, ``None`` where no source
+            holds one.
+
+    Raises:
+        ValueError:
+            If an asset's source string is not one
+            :func:`~brails.types.asset_inventory.read_source_string` reads.
+    """
+    return {
+        asset_id: SOURCE_LABELS.get(
+            read_source_string(asset_id, asset.features)[
+                _CODE_POSITION[OCCUPANCY_KEY]
+            ]
+        )
+        for asset_id, asset in inventory.inventory.items()
+    }
+
+
+def _select_observed_donors(
+    inventory: AssetInventory,
+    occupancy_source: Mapping[str, str | None],
+    *,
+    vector_features: Sequence[str] | None = None,
+) -> AssetInventory:
+    """
+    Select the observed donors of a merged world.
+
+    An observed donor is a footprint whose occupancy class comes from one of
+    :data:`_REACHED_SOURCES` and that holds a story count.
+
+    Args:
+        inventory (AssetInventory):
+            A merged inventory of one world.
+        occupancy_source (Mapping[str, str | None]):
+            The source of each asset's occupancy class in ``inventory``, as
+            :func:`_read_occupancy_sources` reads it.
+        vector_features (Sequence[str], optional):
+            The features whose values are vectors in the result. ``None``
+            declares those of ``inventory``.
+
+    Returns:
+        AssetInventory:
+            The donors, the asset objects of ``inventory``, in its order.
+    """
+    return _select_assets(
+        inventory,
+        [
+            asset_id
+            for asset_id, asset in inventory.inventory.items()
+            if occupancy_source[asset_id] in _REACHED_SOURCES
+            and not is_missing_value(asset.features.get(STORIES_KEY))
+        ],
+        vector_features=vector_features,
+    )
 
 
 def _plausible(
@@ -1119,17 +1187,52 @@ class HazusEQInventoryCompiler:
         report.set_timing('join', time.perf_counter() - started)
 
         started = time.perf_counter()
-        step4 = self._step4(inputs, sources, logs, centroids, report, n_computed)
-        report.set_timing(STAGE_STEP4, time.perf_counter() - started)
+        stories = self._infer_story_counts(
+            inputs, sources, logs, centroids, report, n_computed
+        )
+        report.set_timing('s03_story_counts', time.perf_counter() - started)
+
+        # The unit budget and the imputation read world 0 as s03 leaves it,
+        # with the source of each footprint's occupancy class, and the budget
+        # is given the imputer that s05 then runs on the budget's targets.
+        started = time.perf_counter()
+        merged = sources.merge_world(0)
+        occupancy_source = _read_occupancy_sources(merged)
+        imputer = ObservedDonorImputer(**self.imputer_options, seed=self.seed)
+        allocation = self._allocate_units(
+            inputs,
+            sources,
+            logs,
+            centroids,
+            report,
+            n_computed,
+            merged,
+            occupancy_source,
+            imputer,
+        )
+        report.set_timing('s04_unit_budget', time.perf_counter() - started)
+        started = time.perf_counter()
+        imputation = self._impute_from_donors(
+            sources,
+            logs,
+            centroids,
+            n_computed,
+            merged,
+            occupancy_source,
+            imputer,
+            allocation,
+        )
+        report.set_timing('s05_imputation', time.perf_counter() - started)
+        del merged, allocation
         self._view(STAGE_STEP4, sources, report, n_computed)
         sources.freeze.freeze(
             DONOR_STAGE,
             imputation_donors_from_log(
-                step4.log, step4.targets, n_worlds=n_computed
+                imputation.log, imputation.targets, n_worlds=n_computed
             ),
         )
-        imputer, stories = step4.imputer, step4.stories
-        del step4
+        imputer = imputation.imputer
+        del imputation
 
         self._step6(
             inputs, sources, logs, centroids, report, n_computed, imputer, stories
@@ -1291,7 +1394,7 @@ class HazusEQInventoryCompiler:
         sources.add_part('nsi', STAGE_JOIN_NSI, result.observed)
         sources.add_part('derived', STAGE_JOIN_DERIVED, result.derived)
 
-    def _step4(  # noqa: C901
+    def _infer_story_counts(
         self,
         inputs: CompilerInputs,
         sources: _WorldSources,
@@ -1299,35 +1402,34 @@ class HazusEQInventoryCompiler:
         centroids: Mapping[str, list[list[float]]],
         report: CompilationReport,
         n_computed: int,
-    ) -> _Step4:
+    ) -> StoriesFromHeightInferer:
         """
-        Run step 4: story counts, the unit budget and the donor imputer.
+        Run s03: story counts from the footprint heights.
 
         The section "The run" of the README beside this module states the
         procedure.
 
         Args:
             inputs (CompilerInputs):
-                The study area's data.
+                The study area's data, whose height unit the inferer reads.
             sources (_WorldSources):
-                The sources, to which the parts and records are added as
-                :data:`STAGE_STEP4_DERIVED`, :data:`STAGE_STEP4_DROPPED`,
-                :data:`STAGE_STEP4_WITHHELD` and :data:`STAGE_STEP4_IMPUTED`.
+                The sources, to which the counts are added as the part
+                :data:`STAGE_S03_STORY_COUNTS` and the NSI counts they
+                replace as the record :data:`STAGE_S03_WITHHELD`.
             logs (dict[str, pandas.DataFrame]):
-                The logs, which receive the stories, budget and imputer
-                logs.
+                The logs, which receive ``stories``.
             centroids (Mapping[str, list[list[float]]]):
                 Each footprint's centroid.
             report (CompilationReport):
-                The report, which receives the withheld values and the
-                dropped footprints of every world.
+                The report, which receives the withheld NSI counts of every
+                world.
             n_computed (int):
                 The number of worlds computed.
 
         Returns:
-            _Step4:
-                The imputer, the stories inferer, the imputer's targets and
-                its log.
+            StoriesFromHeightInferer:
+                The inferer of story counts from footprint heights, which the
+                pair re-draw reads too.
 
         Raises:
             ValueError:
@@ -1336,7 +1438,6 @@ class HazusEQInventoryCompiler:
                 reads.
         """
         merged = sources.merge_world(0)
-
         inferer = StoriesFromHeightInferer(length_unit=inputs.height_unit)
         verdicts = inferer.check(merged)
         logs['stories'] = verdicts.rename_axis('asset_id').reset_index()
@@ -1349,8 +1450,8 @@ class HazusEQInventoryCompiler:
 
         derived: dict[str, dict[str, Any]] = {}
         withheld: dict[str, dict[str, str]] = {}
-        # (asset id, feature, old, new, source label, stage, reason)
-        actions: list[tuple] = []
+        # (asset id, old count) of each NSI count replaced.
+        replaced: list[tuple] = []
         for asset_id, count in counts.items():
             features = merged.inventory[asset_id].features
             values = {STORIES_FROM_HEIGHT_KEY: count}
@@ -1364,32 +1465,89 @@ class HazusEQInventoryCompiler:
                 and features.get(OCCUPANCY_KEY) != NSI_STORIES_CLASS
             ):
                 values[STORIES_KEY] = count
-                withheld.setdefault(asset_id, {})[STORIES_KEY] = 'nsi'
-                actions.append(
-                    (
-                        asset_id,
-                        STORIES_KEY,
-                        features[STORIES_KEY],
-                        count,
-                        'nsi',
-                        'stories',
-                        'the footprint height gives the story count of an '
-                        f'occupancy class other than {NSI_STORIES_CLASS}',
-                    )
-                )
+                withheld[asset_id] = {STORIES_KEY: 'nsi'}
+                replaced.append((asset_id, features[STORIES_KEY]))
             derived[asset_id] = values
-            features.update(values)
 
+        sources.add_part(
+            'derived',
+            STAGE_S03_STORY_COUNTS,
+            _build_inventory(sorted(derived, key=str), centroids, derived),
+        )
+        sources.add_withheld(
+            STAGE_S03_WITHHELD,
+            _build_inventory(sorted(withheld, key=str), centroids, withheld),
+        )
+        for world in range(n_computed):
+            for asset_id, old in replaced:
+                report.record_action(
+                    asset_id,
+                    STORIES_KEY,
+                    stage='s03_story_counts',
+                    action='withheld',
+                    world=world,
+                    old=old,
+                    new=derived[asset_id][STORIES_KEY],
+                    source='nsi',
+                    reason=(
+                        'the footprint height gives the story count of an '
+                        f'occupancy class other than {NSI_STORIES_CLASS}'
+                    ),
+                )
+        return inferer
+
+    def _allocate_units(
+        self,
+        inputs: CompilerInputs,
+        sources: _WorldSources,
+        logs: dict[str, pd.DataFrame],
+        centroids: Mapping[str, list[list[float]]],
+        report: CompilationReport,
+        n_computed: int,
+        merged: AssetInventory,
+        occupancy_source: Mapping[str, str | None],
+        imputer: ObservedDonorImputer,
+    ) -> UnitBudgetResult:
+        """
+        Run s04: the unit budget, which also drops footprints left without units.
+
+        The section "The run" of the README beside this module states the
+        procedure.
+
+        Args:
+            inputs (CompilerInputs):
+                The study area's data, whose B25024 table and mobile-home
+                park points the budget reads.
+            sources (_WorldSources):
+                The sources, to which the budget's values are added as the
+                part :data:`STAGE_S04_UNIT_BUDGET`, the dropped footprints as
+                the record :data:`STAGE_S04_DROPPED`, and the occupancy
+                classes it relabels as the record :data:`STAGE_S04_WITHHELD`.
+            logs (dict[str, pandas.DataFrame]):
+                The logs, which receive ``budget``, ``budget_diagnostic``,
+                ``budget_gaps`` and ``budget_nonresidential``.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+            report (CompilationReport):
+                The report, which receives the relabeled classes and the
+                dropped footprints of every world.
+            n_computed (int):
+                The number of worlds computed.
+            merged (AssetInventory):
+                World 0 merged after s03, which s05 reads as well. Read and
+                not changed.
+            occupancy_source (Mapping[str, str | None]):
+                The source of each footprint's occupancy class in ``merged``,
+                as :func:`_read_occupancy_sources` reads it.
+            imputer (ObservedDonorImputer):
+                The imputer whose status round the budget takes and which
+                s05 runs.
+
+        Returns:
+            UnitBudgetResult:
+                The budget's allocation, whose values s05's targets carry.
+        """
         # A footprint is reached where a source holds its occupancy class.
-        # Donors are the reached footprints with a story count.
-        occupancy_source = {
-            asset_id: SOURCE_LABELS.get(
-                read_source_string(asset_id, asset.features)[
-                    _CODE_POSITION[OCCUPANCY_KEY]
-                ]
-            )
-            for asset_id, asset in merged.inventory.items()
-        }
         reached = _select_assets(
             merged,
             (
@@ -1408,21 +1566,11 @@ class HazusEQInventoryCompiler:
             ),
             vector_features=DEFAULT_VECTOR_FEATURES,
         )
-        donors = _select_assets(
-            reached,
-            (
-                a
-                for a, asset in reached.inventory.items()
-                if not is_missing_value(asset.features.get(STORIES_KEY))
-            ),
-        )
         relabel = {
             a: source
             for a, source in occupancy_source.items()
             if source in _RELABELED_SOURCES
         }
-
-        imputer = ObservedDonorImputer(**self.imputer_options, seed=self.seed)
         budget = ACSUnitBudget(
             inputs.b25024_block_groups,
             inputs.mh_park_points,
@@ -1439,35 +1587,141 @@ class HazusEQInventoryCompiler:
         logs['budget_nonresidential'] = pd.DataFrame(
             {'asset_id': list(allocation.nonresidential)}, dtype=object
         )
+        withheld: dict[str, dict[str, str]] = {}
         for row in allocation.withheld.itertuples(index=False):
             withheld.setdefault(row.asset_id, {})[row.feature] = row.source
-            actions.append(
-                (
-                    row.asset_id,
-                    row.feature,
-                    row.value,
-                    allocation.imputed.inventory[row.asset_id].features.get(
-                        row.feature
-                    ),
-                    row.source,
-                    'units',
-                    'a footprint near a mobile-home park point made a mobile home',
-                )
-            )
         dropped_ids = set(allocation.dropped)
         no_acs = set(
             allocation.gaps.loc[allocation.gaps['kind'] == GAP_NO_ACS, 'block_group']
         )
+        kept = sorted((a for a in merged.inventory if a not in dropped_ids), key=str)
 
+        sources.freeze.freeze(
+            STAGE_S04_DROPPED,
+            _build_inventory(
+                sorted(dropped_ids, key=str),
+                centroids,
+                {asset_id: {DROPPED_KEY: True} for asset_id in dropped_ids},
+            ),
+        )
+        sources.dropped = STAGE_S04_DROPPED
+        sources.add_withheld(
+            STAGE_S04_WITHHELD,
+            _build_inventory(sorted(withheld, key=str), centroids, withheld),
+        )
+        sources.add_part(
+            'imputed',
+            STAGE_S04_UNIT_BUDGET,
+            _build_inventory(
+                kept,
+                centroids,
+                {
+                    asset_id: asset.features
+                    for asset_id, asset in allocation.imputed.inventory.items()
+                },
+                n_pw=n_computed,
+                vector_features=allocation.imputed.vector_features,
+            ),
+        )
+
+        for world in range(n_computed):
+            for row in allocation.withheld.itertuples(index=False):
+                new = allocation.imputed.inventory[row.asset_id].features.get(
+                    row.feature
+                )
+                report.record_action(
+                    row.asset_id,
+                    row.feature,
+                    stage='s04_unit_budget',
+                    action='withheld',
+                    world=world,
+                    old=row.value,
+                    new=new[world] if isinstance(new, list) else new,
+                    source=row.source,
+                    reason=(
+                        'a footprint near a mobile-home park point made a mobile '
+                        'home'
+                    ),
+                )
+            for asset_id in sorted(dropped_ids, key=str):
+                block_group = merged.inventory[asset_id].features.get(
+                    BLOCK_GROUP_KEY
+                )
+                detail = (
+                    f'plan area under {budget.threshold_sqft:g} sq ft and '
+                    f'beyond {budget.mh_park_radius_m:g} m of every mobile-home '
+                    'park point, '
+                    + (
+                        'in a block group without B25024 counts, with a '
+                        f'residential probability under {DROP_PROBABILITY:g}'
+                        if block_group in no_acs
+                        else 'not chosen as a dwelling'
+                    )
+                )
+                report.record_exclusion(
+                    asset_id,
+                    world=world,
+                    stage='s04_unit_budget',
+                    category=DROPPED_CATEGORY,
+                    detail=detail,
+                )
+        return allocation
+
+    def _impute_from_donors(
+        self,
+        sources: _WorldSources,
+        logs: dict[str, pd.DataFrame],
+        centroids: Mapping[str, list[list[float]]],
+        n_computed: int,
+        merged: AssetInventory,
+        occupancy_source: Mapping[str, str | None],
+        imputer: ObservedDonorImputer,
+        allocation: UnitBudgetResult,
+    ) -> _ImputationOutcome:
+        """
+        Run s05: fill what is still missing from observed donors.
+
+        The targets carry the values of s04's allocation, and the imputer
+        takes each target's residential status from it in place of its own
+        status round. The section "The run" of the README beside this module
+        states the procedure.
+
+        Args:
+            sources (_WorldSources):
+                The sources, to which the imputed values are added as the
+                part :data:`STAGE_S05_IMPUTATION`.
+            logs (dict[str, pandas.DataFrame]):
+                The logs, which receive ``imputer``.
+            centroids (Mapping[str, list[list[float]]]):
+                Each footprint's centroid.
+            n_computed (int):
+                The number of worlds computed.
+            merged (AssetInventory):
+                World 0 merged after s03, as s04 read it. Read and not
+                changed.
+            occupancy_source (Mapping[str, str | None]):
+                The source of each footprint's occupancy class in ``merged``,
+                as s04 read it.
+            imputer (ObservedDonorImputer):
+                The imputer s04's budget was given.
+            allocation (UnitBudgetResult):
+                The allocation of s04.
+
+        Returns:
+            _ImputationOutcome:
+                The imputer, its targets and its log.
+        """
+        # Every footprint the budget kept that is not an observed donor is a
+        # target.
+        donors = _select_observed_donors(
+            merged, occupancy_source, vector_features=DEFAULT_VECTOR_FEATURES
+        )
+        dropped_ids = set(allocation.dropped)
         # Each target holds a copy of its merged features, updated with the
         # features the unit budget allocated.
         target_features = {}
         for asset_id, asset in merged.inventory.items():
-            if asset_id in dropped_ids:
-                continue
-            if asset_id in reached.inventory and not is_missing_value(
-                asset.features.get(STORIES_KEY)
-            ):
+            if asset_id in dropped_ids or asset_id in donors.inventory:
                 continue
             features = dict(asset.features)
             budgeted = allocation.imputed.inventory.get(asset_id)
@@ -1493,77 +1747,33 @@ class HazusEQInventoryCompiler:
             for values in imputer_log['values']
         ]
         logs['imputer'] = imputer_log
-        # A reached non-residential footprint is a target for its story
-        # count only, since the join gives units to housing records alone.
+        # A footprint with an occupancy class from a source and outside the
+        # residential classes is a target for its story count only, since the
+        # join gives units to housing records alone.
         for asset_id, asset in imputation.imputed.inventory.items():
             class_of = merged.inventory[asset_id].features.get(OCCUPANCY_KEY)
-            if asset_id in reached.inventory and class_of not in UNIT_COUNT_CLASSES:
+            if (
+                occupancy_source[asset_id] in _REACHED_SOURCES
+                and class_of not in UNIT_COUNT_CLASSES
+            ):
                 asset.features.pop(UNITS_KEY, None)
 
         kept = sorted((a for a in merged.inventory if a not in dropped_ids), key=str)
-        imputed = union_disjoint(allocation.imputed, imputation.imputed)
-        padded = _build_inventory(
-            kept,
-            centroids,
-            {
-                asset_id: asset.features
-                for asset_id, asset in imputed.inventory.items()
-            },
-            n_pw=n_computed,
-            vector_features=imputed.vector_features,
+        sources.add_part(
+            'imputed',
+            STAGE_S05_IMPUTATION,
+            _build_inventory(
+                kept,
+                centroids,
+                {
+                    asset_id: asset.features
+                    for asset_id, asset in imputation.imputed.inventory.items()
+                },
+                n_pw=n_computed,
+                vector_features=imputation.imputed.vector_features,
+            ),
         )
-
-        derived_part = _build_inventory(sorted(derived, key=str), centroids, derived)
-        dropped_record = _build_inventory(
-            sorted(dropped_ids, key=str),
-            centroids,
-            {asset_id: {DROPPED_KEY: True} for asset_id in dropped_ids},
-        )
-        withheld_record = _build_inventory(
-            sorted(withheld, key=str), centroids, withheld
-        )
-        sources.add_part('derived', STAGE_STEP4_DERIVED, derived_part)
-        sources.freeze.freeze(STAGE_STEP4_DROPPED, dropped_record)
-        sources.dropped = STAGE_STEP4_DROPPED
-        sources.add_withheld(STAGE_STEP4_WITHHELD, withheld_record)
-        sources.add_part('imputed', STAGE_STEP4_IMPUTED, padded)
-
-        for world in range(n_computed):
-            for asset_id, feature, old, new, label, stage, reason in actions:
-                report.record_action(
-                    asset_id,
-                    feature,
-                    stage=stage,
-                    action='withheld',
-                    world=world,
-                    old=old,
-                    new=new[world] if isinstance(new, list) else new,
-                    source=label,
-                    reason=reason,
-                )
-            for asset_id in sorted(dropped_ids, key=str):
-                block_group = merged.inventory[asset_id].features.get(
-                    BLOCK_GROUP_KEY
-                )
-                detail = (
-                    f'plan area under {budget.threshold_sqft:g} sq ft and '
-                    f'beyond {budget.mh_park_radius_m:g} m of every mobile-home '
-                    'park point, '
-                    + (
-                        'in a block group without B25024 counts, with a '
-                        f'residential probability under {DROP_PROBABILITY:g}'
-                        if block_group in no_acs
-                        else 'not chosen as a dwelling'
-                    )
-                )
-                report.record_exclusion(
-                    asset_id,
-                    world=world,
-                    stage='units',
-                    category=DROPPED_CATEGORY,
-                    detail=detail,
-                )
-        return _Step4(imputer, inferer, targets, imputation.log)
+        return _ImputationOutcome(imputer, targets, imputation.log)
 
     def _step6(
         self,
@@ -2033,7 +2243,7 @@ class HazusEQInventoryCompiler:
             n_computed (int):
                 The number of worlds computed.
             imputer (ObservedDonorImputer):
-                The imputer of step 4, whose ``k`` and ``cap_m`` the sampler
+                The imputer of s05, whose ``k`` and ``cap_m`` the sampler
                 takes.
 
         Raises:

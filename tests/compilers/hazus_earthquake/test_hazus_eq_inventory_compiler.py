@@ -136,10 +136,12 @@ FREEZE_ORDER = (
     'local',
     'join_nsi',
     'join_derived',
-    'step4_derived',
-    'step4_dropped',
-    'step4_withheld',
-    'step4_imputed',
+    's03_story_counts',
+    's03_withheld',
+    's04_dropped',
+    's04_withheld',
+    's04_unit_budget',
+    's05_imputation',
     'step4',
     'imputation_donors',
     'step6_withheld',
@@ -158,7 +160,9 @@ FREEZE_ORDER = (
 TIMED_ONCE = (
     'footprints',
     'join',
-    'step4',
+    's03_story_counts',
+    's04_unit_budget',
+    's05_imputation',
     'step4_freeze',
     'step6_freeze',
     'output_freeze',
@@ -1015,8 +1019,8 @@ def test_discovered_and_exported() -> None:
     assert brails.compilers.CompilerInputs is CompilerInputs
 
 
-class TestStep4:
-    """Step 4: story counts, the unit budget and the donor imputer."""
+class TestStoriesUnitsAndImputation:
+    """Steps s03 to s05: story counts, the unit budget and the imputation."""
 
     def test_components_receive_settings(
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
@@ -1047,7 +1051,7 @@ class TestStep4:
         result = compiled(n_worlds=1)
         features = features_in(result.inventory, 0)
         records = result.report.records
-        stories = records[records['stage'] == 'stories']
+        stories = records[records['stage'] == 's03_story_counts']
         # RES3C with NSI's 3 stories and a 52 ft height: the height's 4.
         assert features['p01'][STORIES_KEY] == 4
         assert features['p01'][SOURCE_STRING_KEY][STORIES_CODE] == 'R'
@@ -1074,7 +1078,7 @@ class TestStep4:
         # RES1 without an NSI count and a 13 ft height: the height's 1.
         assert features['w02'][STORIES_KEY] == 1
         assert features['w02'][SOURCE_STRING_KEY][STORIES_CODE] == 'R'
-        withheld = result.freeze.read('step4_withheld').inventory
+        withheld = result.freeze.read('s03_withheld').inventory
         assert withheld['p01'].features == {STORIES_KEY: 'nsi'}
         assert 'h02' not in withheld
         assert 'l02' not in withheld
@@ -1161,14 +1165,16 @@ class TestStep4:
         # It is dropped in every world.
         assert sorted(rows['world']) == [0, 1, 2]
         assert set(rows['category']) == {'dropped'}
-        assert set(rows['stage']) == {'units'}
+        assert set(rows['stage']) == {'s04_unit_budget'}
 
     def test_local_values_unchanged(self, compiled: object) -> None:
         """No local value is withheld or replaced, the mobile-home rule's included."""
         result = compiled(n_worlds=3)
         assert math.dist(MH_PARK, FOOTPRINTS['l01'][:2]) < 300.0
         records = result.report.records
-        assert 'r05' in set(records.loc[records['stage'] == 'units', 'asset_id'])
+        assert 'r05' in set(
+            records.loc[records['stage'] == 's04_unit_budget', 'asset_id']
+        )
         for world in range(3):
             features = features_in(result.inventory, world)
             for asset_id, local in LOCAL.items():
@@ -1195,44 +1201,58 @@ class TestStep4:
         for column in ('stage', 'category', 'detail'):
             assert exclusions[column].map(bool).all()
 
-    def test_step4_parts(self, compiled: object) -> None:
-        """Each part and record of step 4 holds only what its kind says."""
+    def test_parts_of_s03_to_s05(self, compiled: object) -> None:
+        """Each part and record of steps s03 to s05 holds only what its kind says."""
         result = compiled(n_worlds=3)
         read = result.freeze.read
         kept = set(result.inventory.inventory)
-        assert set(read('step4_dropped').inventory) == {'d01'}
+        assert set(read('s04_dropped').inventory) == {'d01'}
         assert all(
             a.features == {DROPPED_KEY: True}
-            for a in read('step4_dropped').inventory.values()
+            for a in read('s04_dropped').inventory.values()
         )
-        labels = {
-            value
-            for asset in read('step4_withheld').inventory.values()
-            for value in asset.features.values()
-        }
-        assert labels == {'nsi', 'derived'}
+        assert {
+            (key, value)
+            for asset in read('s03_withheld').inventory.values()
+            for key, value in asset.features.items()
+        } == {(STORIES_KEY, 'nsi')}
         # The mobile-home rule's relabel of an occupancy class the join derived.
-        assert read('step4_withheld').inventory['r05'].features == {
+        assert read('s04_withheld').inventory['r05'].features == {
             OCCUPANCY_KEY: 'derived'
         }
         assert {
+            (key, value)
+            for asset in read('s04_withheld').inventory.values()
+            for key, value in asset.features.items()
+        } == {(OCCUPANCY_KEY, 'derived')}
+        assert {
             key
-            for a in read('step4_derived').inventory.values()
+            for a in read('s03_story_counts').inventory.values()
             for key in a.features
         } == {STORIES_FROM_HEIGHT_KEY, STORIES_KEY}
-        imputed = read('step4_imputed')
-        assert imputed.n_pw == 3
-        assert set(imputed.inventory) == kept
-        assert {k for a in imputed.inventory.values() for k in a.features} <= {
-            OCCUPANCY_KEY,
-            UNITS_KEY,
-            STORIES_KEY,
-        }
+        for stage in ('s04_unit_budget', 's05_imputation'):
+            imputed = read(stage)
+            assert imputed.n_pw == 3
+            assert set(imputed.inventory) == kept
+            assert {k for a in imputed.inventory.values() for k in a.features} <= {
+                OCCUPANCY_KEY,
+                UNITS_KEY,
+                STORIES_KEY,
+            }
+        # The budget gives no story count, and the two parts share no value.
+        budget = read('s04_unit_budget').inventory
+        imputation = read('s05_imputation').inventory
+        assert all(STORIES_KEY not in a.features for a in budget.values())
+        assert all(
+            not set(budget[a].features) & set(imputation[a].features) for a in kept
+        )
         for stage in (
-            'step4_derived',
-            'step4_dropped',
-            'step4_withheld',
-            'step4_imputed',
+            's03_story_counts',
+            's03_withheld',
+            's04_dropped',
+            's04_withheld',
+            's04_unit_budget',
+            's05_imputation',
         ):
             for asset in read(stage).inventory.values():
                 assert len(asset.coordinates) == 1, stage
