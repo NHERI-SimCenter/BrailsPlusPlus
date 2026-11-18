@@ -57,7 +57,6 @@ from brails.compilers.hazus_earthquake.resolution_loop import (
     _category,
 )
 from brails.constants import (
-    BLOCK_GROUP_KEY,
     BUILDING_TYPE_KEY,
     DESIGN_LEVEL_KEY,
     OCCUPANCY_KEY,
@@ -124,9 +123,6 @@ TALL_WOOD_STORE = {**STORE, STORIES_KEY: 8, BUILDING_TYPE_KEY: 'W'}
 # record of the wrong world shows.
 WORLD = 3
 
-# The Census block group an asset states.
-BLOCK_GROUP = '060750101001'
-
 # A masonry walk-up whose refusal names its occupancy, story count, year
 # and building type. Without the building type the tables can take it.
 MASONRY_WALKUP = {
@@ -134,7 +130,6 @@ MASONRY_WALKUP = {
     STORIES_KEY: 5,
     YEAR_BUILT_KEY: 1945,
     BUILDING_TYPE_KEY: 'M',
-    BLOCK_GROUP_KEY: BLOCK_GROUP,
 }
 
 # The columns of a ledger row the loop's tests compare.
@@ -147,7 +142,6 @@ LEDGER_COLUMNS = [
     'old',
     'new',
     'source',
-    'block_group',
 ]
 
 
@@ -513,7 +507,6 @@ def test_an_nsi_type_the_cell_cannot_hold_is_withheld() -> None:
             'old': 'M',
             'new': None,
             'source': 'nsi',
-            'block_group': BLOCK_GROUP,
         }
     ]
 

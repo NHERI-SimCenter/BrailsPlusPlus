@@ -81,7 +81,6 @@ RECORD_DTYPES = {
     'new': 'object',
     'source': 'object',
     'reason': 'object',
-    'block_group': 'object',
 }
 
 # The columns of the record frame, in order.
@@ -241,7 +240,6 @@ class CompilationReport:
         new: object = None,
         source: str | None = None,
         reason: str = '',
-        block_group: str | int | None = None,
     ) -> None:
         """
         Record one action taken on one feature of one asset.
@@ -271,9 +269,6 @@ class CompilationReport:
                 was written to. ``None`` records no source.
             reason (str):
                 What prompted the action, in words.
-            block_group (str or int or None):
-                The asset's ``BLOCKGROUP_GEOID``, recorded as text.
-                ``None`` records no block group.
 
         Raises:
             TypeError:
@@ -293,7 +288,6 @@ class CompilationReport:
                 None if new is None else str(new),
                 None if source is None else _in_set(source, SOURCE_CODES, 'source'),
                 reason,
-                None if block_group is None else str(block_group),
             )
         )
 

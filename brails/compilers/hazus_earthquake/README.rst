@@ -285,8 +285,7 @@ below describes. The report records its building type again, with the action
 detail that holds both refusals, and its category is ``conflict`` where the
 first refusal was infeasible. Every exclusion records the world and the
 diagnosis and candidates of the first refusal. Every ``withheld`` and
-``restored`` record holds the world, the source and the asset's block group,
-which the loop reads from ``block_group_key`` (``BLOCK_GROUP_KEY`` by default).
+``restored`` row of the report holds the world and the source.
 
 Scope
 ~~~~~

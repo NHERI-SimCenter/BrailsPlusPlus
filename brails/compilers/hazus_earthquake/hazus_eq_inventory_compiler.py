@@ -1565,9 +1565,6 @@ class HazusEQInventoryCompiler:
                     new=new[world] if isinstance(new, list) else new,
                     source=label,
                     reason=reason,
-                    block_group=merged.inventory[asset_id].features.get(
-                        BLOCK_GROUP_KEY
-                    ),
                 )
             for asset_id in sorted(dropped_ids, key=str):
                 block_group = merged.inventory[asset_id].features.get(
@@ -1732,9 +1729,6 @@ class HazusEQInventoryCompiler:
                         'a member of an implausible pair of occupancy class and '
                         'story count'
                     ),
-                    block_group=working.inventory[row.asset_id].features.get(
-                        BLOCK_GROUP_KEY
-                    ),
                 )
             for label, stage, action, reason, values_of in (
                 (
@@ -1764,9 +1758,6 @@ class HazusEQInventoryCompiler:
                             new=value,
                             source=label,
                             reason=reason,
-                            block_group=working.inventory[asset_id].features.get(
-                                BLOCK_GROUP_KEY
-                            ),
                         )
                     new[stage].setdefault(asset_id, {}).update(values)
                     _overlay(
@@ -2024,9 +2015,6 @@ class HazusEQInventoryCompiler:
                     new=adjusted[asset_id],
                     source='derived',
                     reason='a Pre-Code W1 building is taken as Moderate-Code',
-                    block_group=working.inventory[asset_id].features.get(
-                        BLOCK_GROUP_KEY
-                    ),
                 )
 
         return {

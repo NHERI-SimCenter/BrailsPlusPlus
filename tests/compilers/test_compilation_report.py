@@ -109,7 +109,6 @@ def test_a_recorded_action_appears_in_the_records() -> None:
         'new': None,
         'source': 'nsi',
         'reason': 'the structure type cell holds no masonry type',
-        'block_group': None,
     }
 
 

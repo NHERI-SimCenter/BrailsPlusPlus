@@ -47,7 +47,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple
 
-from brails.constants import BLOCK_GROUP_KEY
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INVALID,
     DIAGNOSIS_OK,
@@ -425,12 +424,7 @@ class ResolutionLoop:
     recorded and how an exclusion is filed.
     """
 
-    def __init__(
-        self,
-        screen: ComposedScreen,
-        *,
-        block_group_key: str = BLOCK_GROUP_KEY,
-    ) -> None:
+    def __init__(self, screen: ComposedScreen) -> None:
         """
         Set up the loop with the screen it tests against.
 
@@ -440,12 +434,8 @@ class ResolutionLoop:
         Args:
             screen (ComposedScreen):
                 The screen every attempt is tested against.
-            block_group_key (str):
-                Feature name holding the asset's Census block group,
-                recorded against every action.
         """
         self.screen = screen
-        self.block_group_key = block_group_key
 
     def resolve(
         self,
@@ -529,7 +519,6 @@ class ResolutionLoop:
                         'the screen named it as a feature whose removal would '
                         'admit the asset'
                     ),
-                    block_group=features.get(self.block_group_key),
                 )
                 kept = {
                     feature: value
@@ -550,7 +539,6 @@ class ResolutionLoop:
                         new=features[key],
                         source=WITHHELD_SOURCE,
                         reason='withholding it did not admit the asset',
-                        block_group=features.get(self.block_group_key),
                     )
                     detail = f'{verdict.detail}; without {key}: {retry.detail}'
             if admitted is None:
