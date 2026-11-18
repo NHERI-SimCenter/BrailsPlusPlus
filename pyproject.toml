@@ -104,6 +104,7 @@ brails = [
     "inferers/stories_from_height_inferer/README.rst",
     "inferers/acs_unit_budget/README.rst",
     "inferers/acs_year_built_sampler/README.rst",
+    "inferers/README.rst",
     "imputers/residential_neighbor_year_sampler/README.rst",
     "imputers/replacement_cost/README.rst",
     "imputers/observed_donor_imputer/README.rst",
