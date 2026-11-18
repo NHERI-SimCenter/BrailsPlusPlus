@@ -745,11 +745,18 @@ def _plausible(
     """
     Say whether an imputed occupancy class and story count may stand together.
 
+    The compiler passes this function to
+    :meth:`ObservedDonorImputer.impute_stage` as ``validate``, and the imputer
+    calls it with the asset id, the world and the features once it has copied
+    a donor's values. It therefore takes all three arguments and reads only
+    ``features``.
+
     Args:
         asset_id (object):
-            The asset, unused.
+            The id of the asset checked, unused.
         world (int):
-            The world, unused.
+            The index of the world in which the donor's values were copied,
+            unused.
         features (Mapping[str, Any]):
             The asset's features in that world after the copy.
 

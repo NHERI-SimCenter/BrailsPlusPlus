@@ -107,6 +107,7 @@ from brails.types.asset_inventory import (
     AssetInventory,
 )
 from brails.utils import Importer
+from brails.utils.unit_converter import UNIT_TO_METER
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from brails.validators.schema_validator import SchemaValidator
 from tests.compilers.compiler_fixtures import (
@@ -161,7 +162,6 @@ TIMED_ONCE = (
     'manifest',
 )
 TIMED_PER_WORLD = ('step4_view', 'step6', 'step6_view', 'step7', 'step8', 'output')
-SQUARE_FEET_PER_SQUARE_METER = 10.7639
 
 
 @pytest.fixture(scope='session')
@@ -423,7 +423,7 @@ class TestFootprintsAndJoin:
             side = FOOTPRINTS[asset_id][2]
             assert math.isclose(
                 values[PLAN_AREA_KEY],
-                side**2 * SQUARE_FEET_PER_SQUARE_METER,
+                side**2 / UNIT_TO_METER['ft'] ** 2,
                 rel_tol=1e-3,
             )
             if FOOTPRINTS[asset_id][4] is None:
@@ -482,7 +482,7 @@ class TestFootprintsAndJoin:
         (head,) = [a for a in spine.values() if a.features[OVERTURE_ID_KEY] == 'p01']
         assert math.isclose(
             head.features[PLAN_AREA_KEY],
-            (side**2 + 5.0) * SQUARE_FEET_PER_SQUARE_METER,
+            (side**2 + 5.0) / UNIT_TO_METER['ft'] ** 2,
             rel_tol=1e-3,
         )
         parts = sorted(result.logs['stacked_parts'][OVERTURE_ID_KEY])
