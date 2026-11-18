@@ -104,7 +104,9 @@ STORE_WITHOUT_YEAR = {OCCUPANCY_KEY: 'COM1', STORIES_KEY: 2}
 # A store whose year no table can read.
 UNREADABLE_YEAR_STORE = {**STORE, YEAR_BUILT_KEY: 'unknown'}
 
-# A wood high-rise. The tables print the cell, and no wood type in it.
+# A wood high-rise. Its cell, the combination of occupancy class, story band
+# and era that selects a structure type distribution, is printed in the
+# tables and holds no wood type.
 WOOD_TOWER = {
     OCCUPANCY_KEY: 'RES3',
     STORIES_KEY: 9,
@@ -112,8 +114,9 @@ WOOD_TOWER = {
     BUILDING_TYPE_KEY: 'W',
 }
 
-# A wood store at eight stories. The tables print no row for the cell,
-# and the row the completed tables fill it with holds no wood type.
+# A wood store at eight stories. The tables print no distribution for its
+# cell, and the distribution the completed tables fill it with holds no wood
+# type.
 TALL_WOOD_STORE = {**STORE, STORIES_KEY: 8, BUILDING_TYPE_KEY: 'W'}
 
 # The world the loop's tests resolve, other than the first so that a
@@ -161,7 +164,8 @@ def _screen(*, complete_tables: bool = True, **components: object) -> ComposedSc
 
     Returns:
         ComposedScreen:
-            The screen.
+            The screen, with ``components`` in place of the real inferers
+            they name.
     """
     settings = {
         'design_level_inferer': HazusEQDesignLevelInferer(

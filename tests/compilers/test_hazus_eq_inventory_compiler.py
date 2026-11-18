@@ -185,7 +185,7 @@ def compiled(study_area: CompilerInputs) -> Callable[..., CompilationResult]:
 
     Args:
         study_area (CompilerInputs):
-            The study area.
+            The study area's data, from the ``study_area`` fixture.
 
     Returns:
         Callable[..., CompilationResult]:
@@ -222,7 +222,7 @@ def written(path: object) -> dict[str, dict]:
 
     Args:
         path (object):
-            The file.
+            The GeoJSON file to read.
 
     Returns:
         dict[str, dict]:
@@ -249,7 +249,7 @@ def features_in(inventory: AssetInventory, world: int) -> dict[str, dict]:
         inventory (AssetInventory):
             An inventory of several worlds.
         world (int):
-            The world.
+            The index of the world to read.
 
     Returns:
         dict[str, dict]:
@@ -270,7 +270,7 @@ def rows_of(frame: pd.DataFrame, world: int) -> list[tuple]:
         frame (pandas.DataFrame):
             The records or the exclusions of a report.
         world (int):
-            The world.
+            The index of the world whose rows are returned.
 
     Returns:
         list[tuple]:
@@ -378,8 +378,9 @@ class TestCompileArguments:
     @pytest.mark.parametrize('key', hc.RESERVED_LOCAL_FEATURES)
     def test_reserved_local_feature_refused(self, key: str) -> None:
         """A local inventory holding a feature the compiler reads back is refused."""
-        # Unrefused, a local NSIGrossArea of 7.0 on h02 made its rate
-        # NSI's value over 7 sq ft, for h02 and the buildings it serves.
+        # Were a local NSIGrossArea of 7.0 on h02 accepted, step 8 would divide
+        # NSI's ReplacementCost by 7 sq ft to get the rate of h02 and of every
+        # building that takes its rate from h02.
         inputs = build_inputs()
         coordinates = inputs.footprints.inventory['h02'].coordinates
         inputs.local.add_asset('h02', Asset('h02', coordinates, {key: 7.0}))
@@ -534,15 +535,16 @@ class TestFootprintsAndJoin:
 
             Args:
                 freeze (object):
-                    The freeze.
+                    The freeze the stages are read from.
                 parts (list):
-                    The parts composed.
+                    The names of the stages composed into the source.
                 **kwargs (object):
-                    The other arguments.
+                    The other arguments of ``compose_source``, passed on.
 
             Returns:
                 AssetInventory:
-                    The composition.
+                    The composed source, with h01's story count set to 9
+                    where ``parts`` holds ``'join_nsi'``.
             """
             composed = real(freeze, parts, **kwargs)
             if 'join_nsi' in parts:
@@ -1036,7 +1038,7 @@ class TestStep4:
         assert 'l02' not in withheld
 
     def test_imputed_targets(self, compiled: object) -> None:
-        """Reached footprints without a story count are imputed one, not units."""
+        """A house and a store without a story count each get an imputed count, and the store gets no units."""
         result = compiled(n_worlds=3)
         nonresidential = set(result.logs['budget_nonresidential']['asset_id'])
         assert nonresidential
@@ -1088,11 +1090,12 @@ class TestStep4:
         assert impute.call_args.kwargs['validate'] is hc._plausible
 
     def test_dropped(self, compiled: object) -> None:
-        """A small unreached footprint far from the park is dropped in every world."""
+        """A small footprint far from the mobile-home park, with no occupancy class, is dropped."""
         result = compiled(n_worlds=3)
         assert 'd01' not in result.inventory.inventory
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'd01']
+        # It is dropped in every world.
         assert sorted(rows['world']) == [0, 1, 2]
         assert set(rows['category']) == {'dropped'}
         assert set(rows['stage']) == {'units'}
@@ -1301,9 +1304,10 @@ class TestYearsAndTypes:
     def test_frozen_inputs_cross_the_boundary(
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The year fit and the re-draw's donors read realization w of step4."""
-        # The spies keep the inventories they were given, so the comparison
-        # after the run also sees a later change to them.
+        """In each world, the year fit and the re-draw's donors read that world's step4 view."""
+        # The mocks record the inventories they are called with, not copies,
+        # so the comparison after the run also sees a change made to them
+        # after the call.
         compiler = HazusEQInventoryCompiler(
             seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         )
@@ -1340,13 +1344,14 @@ class TestYearsAndTypes:
 
             Args:
                 self (object):
-                    The freeze.
+                    The freeze the stage is read from.
                 stage (str):
-                    The stage read.
+                    The name of the stage to read.
 
             Returns:
                 AssetInventory:
-                    The stage.
+                    The frozen stage, with h01's story count set to 9 where
+                    ``stage`` is ``'step4'``.
             """
             held = real(self, stage)
             if stage == 'step4':
@@ -1382,7 +1387,7 @@ class TestYearsAndTypes:
         assert drawn == {YEAR_BUILT_KEY, STRUCTURE_TYPE_KEY}
 
     def test_loop_in_the_run(self, compiled: object) -> None:
-        """An NSI type its cell rejects is withheld and the asset compiled."""
+        """An NSI building type that no structure type of the asset's cell matches is withheld, and the asset compiles."""
         result = compiled(n_worlds=3)
         records = result.report.records
         rows = records[
@@ -1486,7 +1491,7 @@ class TestYearsAndTypes:
         assert set(hc._LETTER_OF_TYPE) == set(get_hazus_height_classes_by_type())
 
     def test_completed_tables(self, compiled: object) -> None:
-        """The NSI EDU1 at five stories, an empty printed cell, compiles."""
+        """An NSI EDU1 at five stories, for which Hazus prints no structure types, compiles."""
         result = compiled(n_worlds=3)
         printed = hc.HazusEQStructureTypeInferer('California', seed=SEED)
         for world in range(3):
@@ -1702,7 +1707,7 @@ class TestYearAndValueOfTheRest:
         )
 
     def test_targets_from_the_frozen_stage(self, study_area: object) -> None:
-        """Step 7's targets are realization w of the frozen step6 stage."""
+        """In each world, step 7's targets come from that world's realization of step6."""
         real = hc.ResidentialNeighborYearSampler.check
         with mock.patch.object(
             hc.ResidentialNeighborYearSampler,
@@ -1740,7 +1745,8 @@ class TestYearAndValueOfTheRest:
             for row in picks.itertuples()
         }
         assert 'D' in drawn
-        # COM1 with NSI's occupancy class, dated and typed in every world.
+        # COM1 with NSI's occupancy class, given a year and a structure type in
+        # every world.
         assert set(picks.loc[picks['asset_id'] == 'c01', 'world']) == {0, 1, 2}
         for world in range(3):
             assert features_in(result.inventory, world)['c01'][STRUCTURE_TYPE_KEY]
@@ -1794,7 +1800,7 @@ class TestYearAndValueOfTheRest:
             assert features['c02'][SOURCE_STRING_KEY][value] == 'L'
 
     def test_local_value_gives_a_rate(self, compiled: object) -> None:
-        """A local value lends its donees its value over NSI's sqft."""
+        """A building whose donor has a local replacement cost takes the donor's rate: that cost divided by the donor's NSI sqft."""
         result = compiled(n_worlds=10)
         log = result.logs['value']
         value = HAZUS_EQ_SOURCE_FEATURES.index(REPLACEMENT_COST_KEY)
@@ -1802,7 +1808,7 @@ class TestYearAndValueOfTheRest:
         own = log[log['asset_id'] == 'c02']
         assert set(own['outcome']) == {OUTCOME_LOCAL_VALUE}
         assert set(own['rate']) == {5.0e6 / 40000.0}
-        # The buildings that named c02 as their step 4 donor are valued at it.
+        # The buildings that named c02 as their step 4 donor take c02's rate.
         served = log[log['donor_id'] == 'c02']
         assert set(zip(served['asset_id'], served['world'])) == {
             ('u11', 3),
@@ -1853,7 +1859,7 @@ class TestYearAndValueOfTheRest:
         assert set(served['rate']) == {350000.0 / 1400.0}
 
     def test_no_class_excluded_at_the_value(self, study_area: object) -> None:
-        """A dated, typed footprint with no occupancy class has no value."""
+        """A footprint with a year and a structure type but no occupancy class has no value."""
         local = build_inputs().local
         x, y, side = FOOTPRINTS['f01'][:3]
         local.add_asset(

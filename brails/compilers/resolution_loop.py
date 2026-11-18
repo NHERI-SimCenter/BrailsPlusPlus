@@ -187,7 +187,7 @@ def _add_design_levels(
     inferer: HazusEQDesignLevelInferer, inventory: AssetInventory
 ) -> None:
     """
-    Write the design level its year implies on every asset that has none.
+    Give each asset without a design level the level its year implies.
 
     Args:
         inferer (HazusEQDesignLevelInferer):
@@ -195,7 +195,9 @@ def _add_design_levels(
             year. It must take every asset of the inventory, so each year
             is one its table reads.
         inventory (AssetInventory):
-            The caller's own inventory, written here.
+            The inventory whose assets receive the levels, changed in
+            place. Both callers pass an inventory of copies they built, so
+            the assets the screen was given are not changed.
     """
     key = inferer.design_level_key
     missing = [
@@ -227,7 +229,7 @@ def _category(
         screen (ComposedScreen):
             The screen that refused the asset.
         verdict (ScreenVerdict):
-            Its refusal.
+            The screen's refusal of the asset.
         features (Mapping[str, object]):
             The asset's features, as the screen read them.
         acted_on (bool):
@@ -265,11 +267,13 @@ class ComposedScreen:
     Ask the Hazus earthquake inference chain whether it can take an asset.
 
     The design level inferer and then the structure type inferer check the
-    asset, and the verdict is the first refusal, or a pass. The screen is
-    pure: it reads an asset's features and never writes them, and it
-    samples nothing, so the construction year is an input. The section
-    "Composed screen" of the README beside this module states the
-    procedure.
+    asset, and the verdict is the first refusal, or a pass. The screen never
+    changes the features it is given, since it writes design levels on
+    copies of the assets. It samples no construction year, so an asset
+    without one is refused at the design level stage. The screen reads an
+    inventory of one possible world, and both inferers refuse as unsupported
+    a feature that holds one value per world. The section "Composed screen"
+    of the README beside this module states the procedure.
     """
 
     def __init__(
@@ -385,7 +389,9 @@ class ComposedScreen:
 
         Returns:
             ScreenVerdict:
-                The refusal.
+                A verdict holding the stage, its diagnosis and detail, and
+                the features it names, with the construction year in place
+                of a named design level.
         """
         year_key = self.design_level_inferer.year_built_key
         level_key = self.design_level_inferer.design_level_key
@@ -449,7 +455,7 @@ class ResolutionLoop:
         building_type_sources: Mapping[str | int, str],
     ) -> ResolutionResult:
         """
-        Admit every asset of one world's inventory, or exclude it.
+        Admit or exclude each asset of one world's inventory.
 
         ``building_type_sources`` is checked for every asset before the
         first is screened, so an input the loop refuses leaves the report

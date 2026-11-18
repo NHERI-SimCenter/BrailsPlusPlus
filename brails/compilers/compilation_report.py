@@ -163,7 +163,7 @@ def _in_set(value: str, valid: Collection[str], kind: str) -> str:
 
     Returns:
         str:
-            The value.
+            ``value``, unchanged.
 
     Raises:
         ValueError:
@@ -184,8 +184,9 @@ class CompilationReport:
     row per asset excluded from a world, both carrying the world number,
     together with the seconds the run spent per stage and world, the
     stage order of the run's manifest, notices, driver coverage and the
-    verdict of the input-schema check on the run. :meth:`summary` counts
-    that state and :meth:`save` and :meth:`save_logs` write it.
+    result of checking the buildings against an input schema.
+    :meth:`summary` counts that state and :meth:`save` and :meth:`save_logs`
+    write it.
 
     The stage, action, source and category of each row must come from
     :data:`STAGES`, :data:`ACTIONS`,
@@ -260,7 +261,7 @@ class CompilationReport:
             action (str):
                 What was done to the feature, one of :data:`ACTIONS`.
             world (int):
-                The world the action belongs to.
+                The index of the world the action was taken in.
             old (object):
                 The value the feature held. ``None`` records no value;
                 any other value, NaN included, is recorded as its text.
@@ -318,16 +319,22 @@ class CompilationReport:
 
         Args:
             asset_id (str or int):
-                The excluded asset.
+                The id of the excluded asset.
             world (int):
-                The world it was excluded from.
+                The index of the world it was excluded from.
             stage (str):
                 The stage that excluded it, one of :data:`STAGES`.
             category (str):
                 Why it was excluded, one of
                 :data:`EXCLUSION_CATEGORIES`.
             diagnosis (str):
-                The verdict an inferer reached on the asset.
+                The diagnosis the refusing component returned, one of the
+                ``DIAGNOSIS_*`` constants of
+                :mod:`~brails.inferers.inference_diagnosis`, such as
+                ``'infeasible'``. Inferers, samplers and the composed screen
+                return one. Empty for an exclusion that comes with no
+                diagnosis, such as a dropped footprint or a building the
+                input schema refuses.
             detail (str):
                 What happened, in words.
             resolvable_by (Iterable[str]):
@@ -359,7 +366,7 @@ class CompilationReport:
 
         Args:
             text (str):
-                The notice.
+                The notice, as :meth:`summary` lists it.
         """
         self._notices.append(text)
 
@@ -375,11 +382,17 @@ class CompilationReport:
 
     def set_certificate(self, verdict: object) -> None:
         """
-        Record the verdict of the input-schema check on the run.
+        Store the result of checking buildings against a loss model's input schema.
+
+        An input schema states the features a damage and loss model reads
+        and the values it accepts. :meth:`summary` returns the stored result
+        as ``certificate``.
 
         Args:
             verdict (object):
-                The check's result, echoed into :meth:`summary`.
+                The result of the check, stored as given, such as the
+                schema's dataset and the number of buildings it refused in
+                each world.
         """
         self._certificate = verdict
 
@@ -730,7 +743,7 @@ class CompilationReport:
 
         Args:
             world (int):
-                The world number.
+                A world index to check.
 
         Returns:
             int:

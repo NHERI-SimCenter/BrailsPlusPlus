@@ -177,33 +177,37 @@ class StubDraw:
 
         Args:
             pool (object):
-                The pool.
+                The donor pool, recorded only.
             asset_id (str):
-                The asset.
+                The id of the asset drawn for, which selects a forced
+                outcome or forced values.
             features (dict[str, Any]):
-                Its features.
+                The asset's features, recorded as a copy.
             redraw (tuple[str, ...], optional):
-                The features to copy.
+                The features to copy from the donor.
             world (int):
-                The world.
+                The world the draw runs in, recorded and returned.
             iteration (int, optional):
-                The first iteration.
+                The first iteration, recorded only.
             admit (Callable, optional):
-                The test of a candidate's values.
+                The test each candidate's values must pass.
             exclude_donors (tuple, optional):
                 Donors the draw may not pick, recorded only.
             status (bool, optional):
-                The residential status.
+                The residential status, which selects the stub's
+                candidates.
             protected (tuple[str, ...], optional):
-                Features that may not change.
+                Features that may not change, recorded only.
             scan_nearest (bool, optional):
-                Whether the draw ends with the nearest-first scan.
+                Whether the draw ends with the nearest-first scan, recorded
+                only.
             purpose_prefix (str, optional):
-                The prefix of the purpose labels.
+                The prefix of the purpose labels, recorded only.
 
         Returns:
             DonorDraw:
-                The draw.
+                The draw: the donor id, its values, the attempts and the
+                outcome.
         """
         self.calls.append(
             {
@@ -632,7 +636,7 @@ class TestDrawCall:
 
             Returns:
                 Any:
-                    The pool.
+                    The pool the imputer's ``pool`` built.
             """
             built.append((args, stage_pool(*args)))
             return built[-1][1]

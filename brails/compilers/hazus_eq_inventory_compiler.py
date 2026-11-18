@@ -247,7 +247,7 @@ CARVE_OUT_METHOD = '5.1'
 # design level inferer or the height class inferer refuses an asset. An asset
 # ACSYearBuiltSampler finds infeasible lies in a block group the census tables
 # do not cover, and one ResidentialNeighborYearSampler finds infeasible has no
-# dated residential neighbor.
+# residential neighbor with a construction year.
 _DIAGNOSIS_CATEGORY = {
     DIAGNOSIS_INVALID: 'missing_driver',
     DIAGNOSIS_UNSUPPORTED: 'unsupported',
@@ -638,9 +638,9 @@ class _WorldSources:
             label (str):
                 The source label, one of :data:`PRECEDENCE`.
             stage (str):
-                The stage name.
+                The name the part is frozen under.
             inventory (AssetInventory):
-                The part.
+                The inventory to freeze as the part.
         """
         self.freeze.freeze(stage, inventory)
         self.parts[label].append(stage)
@@ -651,7 +651,7 @@ class _WorldSources:
 
         Args:
             stage (str):
-                The stage name.
+                The name the record is frozen under.
             inventory (AssetInventory):
                 One asset per asset with a withheld value, one feature per
                 withheld feature, holding the label of its source.
@@ -665,7 +665,7 @@ class _WorldSources:
 
         Args:
             world (int):
-                The world.
+                The index of the world whose parts are merged, from 0.
 
         Returns:
             AssetInventory:
@@ -792,12 +792,12 @@ def _overlay(
 
     Args:
         asset_id (str):
-            The asset.
+            The asset's id, which an error message names.
         features (dict[str, Any]):
             The asset's features in a merge, its source string included,
             changed in place.
         values (Mapping[str, Any]):
-            The values written.
+            The values to write, by feature name.
         label (str):
             The label of the source they belong to.
 
@@ -843,7 +843,16 @@ class HazusEQInventoryCompiler:
         merge_stacked: bool = False,
     ) -> None:
         """
-        Configure the compiler and check what can be checked before a run.
+        Store the compiler's settings and refuse any that a component would refuse.
+
+        The constructor builds the structure type inferer, the design level
+        inferer, the NSI join and the observed-donor imputer from the
+        settings so that each can refuse a bad setting. It keeps none of
+        them, since :meth:`compile` builds its own. A bad setting therefore
+        raises here, before any data is read, and not partway through a
+        compilation. The constructor also loads the input schema of
+        :data:`DLML_DATASET`, against which every compilation checks its
+        buildings.
 
         Args:
             seed (int, optional):
@@ -925,15 +934,18 @@ class HazusEQInventoryCompiler:
         self.merge_stacked = merge_stacked
 
         try:
+            # Built only to check the state. Each world builds its own.
             HazusEQStructureTypeInferer(state, seed=self.seed, complete_tables=True)
         except ValueError as error:
             msg = f'The compiler cannot draw structure types for {state}: {error}'
             raise ValueError(msg) from error
+        # Built only to check the method, state and zone. Each world builds its own.
         HazusEQDesignLevelInferer(design_level_method, state, seismic_zone)
         self.state = state
         self.seismic_zone = seismic_zone
         self.design_level_method = design_level_method
 
+        # Built only to check the cap and the CRS. The run builds its own join.
         NSIFootprintJoin(
             cap_m=join_cap_m, seed=self.seed, projected_crs=projected_crs
         )
@@ -972,6 +984,7 @@ class HazusEQInventoryCompiler:
             **DEFAULT_IMPUTER_OPTIONS,
             **resolved['imputer_options'],
         }
+        # Built only to check the options. The run builds its own imputer.
         ObservedDonorImputer(**resolved['imputer_options'], seed=self.seed)
         # Built here so that a missing schema stops the compiler before a run.
         self._validator = SchemaValidator(DLML_DATASET)
@@ -983,7 +996,7 @@ class HazusEQInventoryCompiler:
         self, inputs: CompilerInputs, *, worlds: Sequence[int] | None = None
     ) -> CompilationResult:
         """
-        Compile the study area.
+        Compile the building inventory of the study area.
 
         The inputs are not modified.
 
@@ -1767,14 +1780,19 @@ class HazusEQInventoryCompiler:
         drawn: dict[str, dict[str, Any]],
     ) -> dict[str, int]:
         """
-        Give dated assets their design levels, structure types and height classes.
+        Give assets their design levels, structure types and height classes.
+
+        Design levels and structure types go to the assets with a
+        construction year, and height classes to every asset with a
+        structure type and no height class.
 
         The section "The run" of the README beside this module states the
         procedure.
 
         Args:
             world (int):
-                The world.
+                The index of the world being compiled. The structure type
+                inferer draws in it, and the report records it.
             sources (_WorldSources):
                 The sources, whose frozen parts say which source holds a
                 building type.
@@ -1783,7 +1801,8 @@ class HazusEQInventoryCompiler:
             working (AssetInventory):
                 The world's working merge, whose design levels are written.
             candidates (Sequence[str]):
-                The assets considered.
+                The ids of the assets to give values; those in
+                ``excluded`` are skipped.
             excluded (set[str]):
                 The assets excluded in the world, to which the refused ones
                 are added.
@@ -1820,9 +1839,9 @@ class HazusEQInventoryCompiler:
 
             Args:
                 asset_id (str):
-                    The asset.
+                    The id of the asset to look up.
                 key (str):
-                    The feature.
+                    The name of the feature to look up.
 
             Returns:
                 bool:
@@ -1832,7 +1851,7 @@ class HazusEQInventoryCompiler:
                 working.inventory[asset_id].features.get(key)
             )
 
-        # The design level of every asset with a year and none.
+        # Derive a design level for each asset with a year and no design level.
         dated = [
             a
             for a in candidates
@@ -1897,7 +1916,8 @@ class HazusEQInventoryCompiler:
         for asset_id, structure_type in types.items():
             drawn.setdefault(asset_id, {})[STRUCTURE_TYPE_KEY] = structure_type
 
-        # The height class of every asset holding a type and none.
+        # Derive a height class for each asset that has a structure type and no
+        # height class.
         typed = AssetInventory()
         for asset_id in candidates:
             structure_type = types.get(asset_id)

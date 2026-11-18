@@ -423,11 +423,11 @@ class PairRedraw:
 
         Args:
             asset_id (Hashable):
-                The asset.
+                The asset's id, which the row and an error message name.
             features (Mapping[str, Any]):
-                Its features.
+                The asset's features in the merged inventory.
             codes (str):
-                Its source string.
+                The asset's source string.
 
         Returns:
             dict[str, Any] | None:
@@ -495,13 +495,14 @@ class PairRedraw:
             pool (DonorPool):
                 The pool of the donors and the inventory.
             asset_id (Hashable):
-                The asset.
+                The id of the asset drawn for.
             features (Mapping[str, Any]):
-                Its features in this world.
+                The asset's features in the world the re-draw runs in.
             codes (str):
-                Its source string.
+                The asset's source string, whose codes tell which features
+                are local or footprint values the draw may not change.
             row (Mapping[str, Any]):
-                Its plan row.
+                The asset's row of the plan.
             drawn_features (tuple[str, ...]):
                 The features re-drawn.
             kept_stories (int):
@@ -510,7 +511,8 @@ class PairRedraw:
 
         Returns:
             DonorDraw:
-                The imputer's draw.
+                The draw as :meth:`ObservedDonorImputer.draw` returns it,
+                with the donor, its values, the attempts and the outcome.
         """
         residential = row['occupancy'] in UNIT_COUNT_CLASSES
         protected = tuple(
@@ -564,7 +566,8 @@ class PairRedraw:
 
         Returns:
             Callable[[Mapping[str, Any]], bool]:
-                The test.
+                A function that takes a candidate's values for the re-drawn
+                features and returns whether the candidate passes.
         """
 
         def admit(values: Mapping[str, Any]) -> bool:
@@ -614,7 +617,7 @@ def _action(
 
     Args:
         asset_id (Hashable):
-            The asset, for the error message.
+            The asset's id, which the error message names.
         occupancy_code (str):
             The source code of the occupancy class.
         stories_code (str):

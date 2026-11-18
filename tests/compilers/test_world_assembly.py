@@ -92,7 +92,8 @@ def features(source: AssetInventory) -> dict[str, dict[str, Any]]:
 
     Args:
         source (AssetInventory):
-            The inventory.
+            The inventory whose features are returned, shared and not
+            copied.
 
     Returns:
         dict[str, dict[str, Any]]:

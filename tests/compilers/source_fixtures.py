@@ -92,7 +92,7 @@ def merged(
 
     Returns:
         AssetInventory:
-            The inventory.
+            The inventory, its assets inserted in ``order``.
     """
     positions = {asset_id: i for i, asset_id in enumerate(sorted(records))}
     inv = AssetInventory()
@@ -116,7 +116,7 @@ def nsi_tall_industry(**features: Any) -> dict[str, Any]:
 
     Returns:
         dict[str, Any]:
-            The features.
+            The default features, updated with ``features``.
     """
     base = {
         'OccupancyClass': 'IND1',
@@ -176,7 +176,7 @@ def source_features(sources: dict[str, AssetInventory]) -> dict[str, dict]:
 
     Args:
         sources (dict[str, AssetInventory]):
-            The sources.
+            The per-source inventories, by source label.
 
     Returns:
         dict[str, dict]:

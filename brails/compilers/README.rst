@@ -282,8 +282,12 @@ The implausible pairs are those of the completed West Coast tables.
 ``IMPLAUSIBLE_PAIRS`` is a module constant, so a list for another region is
 a change to the code, not an argument. A pair the re-draw only logs stays
 implausible. The structure type inferer still draws a type for such an
-asset under ``complete_tables=True``, since the completion fills the table
-cells of those pairs.
+asset under ``complete_tables=True``. Its tables give a distribution of
+structure types for each cell, a combination of occupancy class, story band
+(none for RES1) and, in the West Coast tables, era. The completed tables fill
+the cells of those pairs that the Hazus manual leaves without a distribution,
+which in the West Coast tables is every cell of every pair except the pre-1950
+cell of ``AGR1`` in the mid-rise band.
 
 A re-drawn asset keeps its other features, so a RES2 asset re-drawn to
 another class keeps the year drawn for it as RES2.
@@ -296,35 +300,43 @@ result do not depend on the order of the inventory's assets.
 Composed screen
 ---------------
 
-``ComposedScreen`` asks the Hazus earthquake inference chain whether it can
-take an asset before a structure type is drawn for it. The chain has two
-stages: the design level inferer reads ``YearBuilt`` and writes
+``ComposedScreen`` asks the Hazus earthquake inference chain whether the
+chain can take an asset before a structure type is drawn for it. The chain
+has two stages: the design level inferer reads ``YearBuilt`` and writes
 ``DesignLevel``, and the structure type inferer reads both, with the
 occupancy class, the story count and the building type. The stage names
 are ``STAGE_DESIGN_LEVEL`` and ``STAGE_STRUCTURE_TYPE``, constants in
-``resolution_loop.py`` beside this page. This section states how the screen
-runs and how the category of a refused asset is settled.
+``resolution_loop.py`` beside this page. The screen reads an inventory of
+one possible world, such as the realization that ``get_world_realization``
+returns. Both inferers refuse as unsupported a feature that holds one value
+per world. Given an inventory of several worlds, the screen therefore
+refuses each asset with a feature that the chain reads and whose value
+differs between worlds. This section states how the screen runs and how
+the category of a refused asset is settled.
 
 The procedure
 ~~~~~~~~~~~~~
 
-``screen_inventory`` passes the inventory to the design level inferer's
-``check``. An asset that stage refuses takes its refusal and goes no
-further. The other assets are copied, under their own ids and at
-``SCREEN_COORDINATES``, since neither stage reads a location, and where a
-copy holds a year and no design level, the design level inferer's ``draw``
-writes the level the year implies on the copy. The structure type
-inferer's ``check`` then runs over the copies, and an asset it refuses
-takes that refusal. Each stage's ``check`` runs once per call. ``screen``
-runs the same procedure on a one-asset inventory, under
+``screen_inventory`` first passes the inventory to the design level
+inferer's ``check``. An asset the design level inferer refuses keeps that
+refusal and is not screened further. Each other asset is copied into a new
+inventory under its own id. Every copy stands at ``SCREEN_COORDINATES``,
+since neither inferer reads a location. Where a copy holds a construction
+year and no design level, the design level inferer's ``draw`` writes on the
+copy the level that the year implies. The structure type inferer's
+``check`` then runs over the copies, and an asset it refuses takes that
+refusal. The screen writes on the copies only, so the inventory it is given
+does not change. Each inferer's ``check`` runs once per call. ``screen``
+runs the same procedure on an inventory holding the one asset under the id
 ``SCREEN_ASSET_ID``.
 
-A refusal names the features whose change alone would let its stage produce
-a value, the ``resolvable_by`` of the stage's diagnosis, and the screen
-returns them as the verdict's ``candidates``, in the order the stage named
-them. Neither inferer of the chain names the design level. A stage that did
-would have it returned as the year, from which the level is derived, and
-named once.
+A refusal names each feature whose change alone would let its stage produce
+a value. These features are the ``resolvable_by`` of the stage's diagnosis,
+and the screen returns them as the verdict's ``candidates``, in the order
+the stage named them. Neither inferer of the chain names the design level.
+If a stage did, the screen would return the construction year in its place,
+since the level is derived from the year, listing the year once even where
+the stage also named it.
 
 The exclusion category
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -334,24 +346,34 @@ of ``EXCLUSION_CATEGORIES`` in ``compilation_report.py``, whose comment defines
 each. An unsupported refusal is ``unsupported`` and an invalid one
 ``missing_driver``. An infeasible refusal is ``conflict`` where the caller
 acted on a feature the refusal named and the asset was refused again. The
-resolution loop below is such a caller, and with the structure type inferer in
-BRAILS it does not reach this case. Otherwise an infeasible refusal at the
-structure type stage is ``empty_cell`` where the asset's cell has neither a
-printed nor a filled row, which the structure type inferer's ``cell_fill`` and
-``cell_is_unpublished`` tell, and ``conflict`` where it has one, since the
-asset's own features then emptied the row. An infeasible refusal at the design
-level stage, which the design level inferer does not give, is ``undetermined``.
+resolution loop below is such a caller, but with the structure type inferer in
+BRAILS it never reaches this case. Any other infeasible refusal at the
+structure type stage is classified by the asset's cell: the combination of
+occupancy class, story band and, in the West Coast tables, era that selects
+a distribution of structure types. The Hazus manual prints that
+distribution for some cells and BRAILS's completed tables fill others, and
+the structure type inferer's ``cell_fill`` and ``cell_is_unpublished``
+report which applies. The refusal is ``empty_cell`` where the cell has
+neither a printed nor a filled distribution. It is ``conflict`` where the
+cell has one, since the asset's own features then rule out every structure
+type in it. An infeasible refusal at the design level stage is
+``undetermined``. The design level inferer in BRAILS never refuses an asset
+as infeasible.
 
 Resolution loop
 ---------------
 
-``ResolutionLoop`` admits each asset of one world's merged inventory to the
-structure type draw, or excludes it from that world, and its one action is
-to withhold the general building type, ``BuildingType``, that NSI holds.
-The source it acts on and the stage it records under are
-``WITHHELD_SOURCE`` and ``STAGE_RESOLUTION``, constants in
-``resolution_loop.py``. This section states how the loop runs and what it
-records.
+``ResolutionLoop`` decides, for each asset of one world's merged
+inventory, whether the structure type draw takes the asset or the asset is
+excluded from that world. The loop has one action by which it can admit a
+refused asset: it withholds the general building type, ``BuildingType``,
+where NSI holds it. The source it acts on and the stage it records under
+are ``WITHHELD_SOURCE`` and ``STAGE_RESOLUTION``, constants in
+``resolution_loop.py``. The loop reads the realization of one world, as the
+composed screen does, and records its actions and exclusions under the
+world of the screen's structure type inferer. A caller with several worlds
+therefore builds a screen and a loop for each world, as the compiler below
+does. This section states how the loop runs and what it records.
 
 The procedure
 ~~~~~~~~~~~~~
@@ -365,16 +387,16 @@ type with the action ``withheld``, and the asset is screened again without
 it. An asset that then passes is admitted without the type. A type held by
 any other source is never withheld, nor is one the refusal does not name.
 
-A refused asset the loop did not act on is excluded at the stage that
-refused it, in the category of the section "The exclusion category". An
-asset still refused once its type is withheld, the case of the section
-"Scope" below, has the type recorded again with the action ``restored``,
-and its exclusion is recorded at ``STAGE_RESOLUTION``, as ``conflict``
-where the refusal was infeasible, with a detail holding both refusals.
-Every exclusion keeps the world and the first refusal's diagnosis and
-candidates, and every ``withheld`` and ``restored`` record the world, the
-source and the asset's block group, read from ``block_group_key``
-(``BLOCK_GROUP_KEY`` by default).
+A refused asset the loop did not act on is excluded at the stage that refused
+it, in the category of the section "The exclusion category". An asset still
+refused once its building type is withheld is the case the section "Scope"
+below describes. The report records its building type again, with the action
+``restored``. The asset's exclusion is recorded at ``STAGE_RESOLUTION``, with a
+detail that holds both refusals, and its category is ``conflict`` where the
+first refusal was infeasible. Every exclusion records the world and the
+diagnosis and candidates of the first refusal. Every ``withheld`` and
+``restored`` record holds the world, the source and the asset's block group,
+which the loop reads from ``block_group_key`` (``BLOCK_GROUP_KEY`` by default).
 
 Scope
 ~~~~~
@@ -510,30 +532,38 @@ outside them is a target for its story count alone, since the join gives units
 to housing records only.
 
 Steps 5 and 6 run in each world, as one stage, on that world's realization of
-the frozen view ``STAGE_STEP4``. Step 5 dates the residential buildings:
-``ACSYearBuiltSampler``, fitted on that realization, draws the construction
-year of each residential building without one from the census tables of its
-block group and tract. Step 6 types the dated buildings. ``PairRedraw`` first
-replaces the NSI members of implausible pairs of occupancy class and story
-count, as the section "Pair re-draw" states, with the observed donors of that
-realization. ``HazusEQDesignLevelInferer`` derives the design level of every
-building with a year and none. Each building with a year and no structure type
-then passes through ``ComposedScreen`` and ``ResolutionLoop``, as the sections
+the frozen view ``STAGE_STEP4``. Step 5 gives construction years to residential
+buildings: ``ACSYearBuiltSampler``, fitted on that realization, draws a year
+for each residential building that has no construction year, from the census
+tables of the building's block group and tract. Step 6 then runs, in this
+order, the pair re-draw over every building of the realization and the design
+level, structure type and height class components over the buildings each one
+takes. ``PairRedraw`` first replaces the NSI members of implausible pairs of
+occupancy class and story count, as the section "Pair re-draw" states, with the
+observed donors of that realization. ``HazusEQDesignLevelInferer`` then derives
+a design level from the construction year for each building that has a year and
+no design level. Each building that has a year and no structure type then
+passes through ``ComposedScreen`` and ``ResolutionLoop``, as the sections
 "Composed screen" and "Resolution loop" state, and
-``HazusEQStructureTypeInferer`` draws the structure type of each building the
-loop admits. ``HazusEQHeightClassInferer`` gives every building that holds a
-structure type, drawn or its own, its height class. A building one of these
-components refuses is excluded from that world. The types are drawn from the
-completed West Coast tables, so the compiler takes states of that region only.
-In ``CARVE_OUT_STATE`` (California) under ``CARVE_OUT_METHOD`` (5.1), a drawn
-W1 building whose derived level is Pre-Code is raised to Moderate-Code, as
-Table C-10 of the Hazus manual assumes.
+``HazusEQStructureTypeInferer`` draws a structure type for each building the
+loop admits. Last, ``HazusEQHeightClassInferer`` gives a height class to each
+building that holds a structure type, drawn in this step or its own, and no
+height class. A building without a construction year therefore takes part in
+step 6 only through the pair re-draw and, where it holds its own structure
+type, the height class. Step 7 then takes up such a building if it is not
+excluded: it gives the building a year, and then a design level, a structure
+type and a height class as step 6 does. A building one of these components
+refuses is excluded from that world. The types are drawn from the completed
+West Coast tables, so the compiler takes states of that region only. In
+``CARVE_OUT_STATE`` (California) under ``CARVE_OUT_METHOD`` (5.1), a drawn W1
+building whose derived level is Pre-Code is raised to Moderate-Code, as Table
+C-10 of the Hazus manual assumes.
 
-Step 7 gives a year, in each world, to each building without one whose
-occupancy class is not among the residential occupancy classes or that has
-none, from that world's realization of the frozen view ``STAGE_STEP6``.
-``ResidentialNeighborYearSampler`` copies to it the year of a nearby
-residential building of that world, as
+Step 7 gives a construction year, in each world, to each building without a
+year whose occupancy class is missing or is not one of the residential
+occupancy classes. It reads that world's realization of the frozen view
+``STAGE_STEP6``. ``ResidentialNeighborYearSampler`` copies to each such
+building the year of a nearby residential building of that world, as
 ``brails/imputers/residential_neighbor_year_sampler/README.rst`` states. The
 design level, structure type and height class of the building then follow as a
 residential building's do. A building the sampler finds no donor for, or one
@@ -547,7 +577,7 @@ computed from the footprint, as ``brails/imputers/replacement_cost/README.rst``
 states. A rate divides a value, NSI's, the join's sum of NSI's or a local one,
 by ``NSIGrossArea``, NSI's ``sqft``, which the compiler gives the imputer in
 place of ``GrossArea``. A local value therefore gives a rate only on a building
-whose NSI record gives a ``sqft``, and a local ``GrossArea`` enters neither a
+whose NSI records give a ``sqft``, and a local ``GrossArea`` enters neither a
 rate nor the area a rate multiplies. A building the imputer leaves without a
 value is excluded from that world as ``missing_driver``. The step keeps a local
 value as it is. Where that value gives a rate, the rate also values each
@@ -632,9 +662,12 @@ values, one per world written. Which buildings and properties the file holds is
 stated on ``CompilationResult.write``. The properties of ``DEFAULT_PROPERTIES``
 are those a Hazus earthquake assessment reads. The report lists each excluded
 building with its reason in each world, whether or not the file holds it. A
-building's ``ReplacementCost`` over its ``GrossArea`` is the rate step 8 gave
-it, except for a kept local value, whose lent rate divides by NSI's ``sqft``,
-as step 8 states.
+building's ``ReplacementCost`` divided by its ``GrossArea`` is the rate per
+square foot that step 8 gave it, except for a building that keeps a local
+``ReplacementCost``. Step 8 computes the rate of such a building as the local
+value divided by ``NSIGrossArea``, the ``sqft`` of the building's NSI records
+(their sum where it has several), not by its ``GrossArea``, and gives that rate
+to the buildings that take their rate from it.
 
 The imputer's settings
 ~~~~~~~~~~~~~~~~~~~~~~
