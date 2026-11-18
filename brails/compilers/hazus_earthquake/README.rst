@@ -196,25 +196,22 @@ occupancy class, the story count and the building type. The stage names
 are ``STAGE_DESIGN_LEVEL`` and ``STAGE_STRUCTURE_TYPE``, constants in
 ``resolution_loop.py`` beside this page. The screen reads an inventory of
 one possible world, such as the realization that ``get_world_realization``
-returns. Both inferers refuse as unsupported a feature that holds one value
-per world. Given an inventory of several worlds, the screen therefore
-refuses each asset with a feature that the chain reads and whose value
-differs between worlds. This section states how the screen runs and how
-the category of a refused asset is settled.
+returns, and ``screen_inventory`` raises ``ValueError`` for an inventory of
+any other number of worlds.
 
 The procedure
 ~~~~~~~~~~~~~
 
-``screen_inventory`` first passes the inventory to the design level
-inferer's ``check``. An asset the design level inferer refuses keeps that
-refusal and is not screened further. Each other asset is copied into a new
-inventory under its own id. Every copy stands at ``SCREEN_COORDINATES``,
-since neither inferer reads a location. Where a copy holds a construction
-year and no design level, the design level inferer's ``draw`` writes on the
-copy the level that the year implies. The structure type inferer's
-``check`` then runs over the copies, and an asset it refuses takes that
-refusal. The screen writes on the copies only, so the inventory it is given
-does not change. Each inferer's ``check`` runs once per call. ``screen``
+After checking that the inventory holds one world, ``screen_inventory`` passes
+it to the design level inferer's ``check``. An asset the design level inferer
+refuses keeps that refusal and is not screened further. Each other asset is
+copied into a new inventory under its own id. Every copy stands at
+``SCREEN_COORDINATES``, since neither inferer reads a location. Where a copy
+holds a construction year and no design level, the design level inferer's
+``draw`` writes on the copy the level that the year implies. The structure type
+inferer's ``check`` then runs over the copies, and an asset it refuses takes
+that refusal. The screen writes on the copies only, so the inventory it is
+given does not change. Each inferer's ``check`` runs once per call. ``screen``
 runs the same procedure on an inventory holding the one asset under the id
 ``SCREEN_ASSET_ID``.
 
@@ -232,8 +229,9 @@ The exclusion category
 A refused asset that the caller excludes is filed under one of the categories
 in ``EXCLUSION_CATEGORIES`` of ``hazus_eq_inventory_compiler.py``. The section
 "Exclusion categories" of ``brails/compilers/README.rst`` defines each one. A
-refusal with the diagnosis ``unsupported`` is filed as ``unsupported``, and one
-with the diagnosis ``invalid`` as ``missing_input``.
+refusal with the diagnosis ``unsupported``, which an inferer gives for a
+feature holding a list of values, is filed as ``unsupported``, and one with
+the diagnosis ``invalid`` as ``missing_input``.
 An infeasible refusal is ``conflict`` where the caller acted on a feature the
 refusal named and the asset was refused again. The resolution loop below is
 such a caller, but with the structure type inferer in BRAILS it never reaches
@@ -260,16 +258,19 @@ refused asset: it withholds the general building type, ``BuildingType``,
 where NSI holds it. The source it acts on and the stage it records under
 are ``WITHHELD_SOURCE`` and ``STAGE_RESOLUTION``, constants in
 ``resolution_loop.py``. The loop reads the realization of one world, as the
-composed screen does, and records its actions and exclusions under the
+composed screen does, and ``resolve`` raises ``ValueError`` for an inventory
+of any other number of worlds. It records its actions and exclusions under the
 world of the screen's structure type inferer. A caller with several worlds
 therefore builds a screen and a loop for each world, as the compiler below
-does. This section states how the loop runs and what it records.
+does.
 
 The procedure
 ~~~~~~~~~~~~~
 
-``resolve`` first checks ``building_type_sources`` for every asset, then
-screens the inventory once, through ``screen_inventory``. An asset the
+``resolve`` first checks that the inventory holds one world and that
+``building_type_sources`` gives a source for each asset that holds a building
+type and for no other, then screens the inventory once, through
+``screen_inventory``. An asset the
 screen passes is admitted as it is, and an unsupported asset is excluded
 without action. Where another refusal names ``BuildingType`` among its
 candidates and ``WITHHELD_SOURCE`` holds the type, the report records the

@@ -178,6 +178,29 @@ def _one_asset_inventory(
     )
 
 
+def _require_one_world(inventory: AssetInventory, reader: str) -> None:
+    """
+    Refuse an inventory that does not hold exactly one possible world.
+
+    Args:
+        inventory (AssetInventory):
+            The inventory a component of this module is given.
+        reader (str):
+            The component that reads it, as the message names it, such as
+            ``'composed screen'``.
+
+    Raises:
+        ValueError:
+            If the inventory holds a number of possible worlds other than one.
+    """
+    if inventory.n_pw != 1:
+        msg = (
+            f'The inventory holds {inventory.n_pw} possible worlds. The '
+            f'{reader} reads one world at a time.'
+        )
+        raise ValueError(msg)
+
+
 def _add_design_levels(
     inferer: HazusEQDesignLevelInferer, inventory: AssetInventory
 ) -> None:
@@ -265,10 +288,10 @@ class ComposedScreen:
     asset, and the verdict is the first refusal, or a pass. The screen never
     changes the features it is given, since it writes design levels on
     copies of the assets. It samples no construction year, so an asset
-    without one is refused at the design level stage. The screen reads an
-    inventory of one possible world, and both inferers refuse as unsupported
-    a feature that holds one value per world. The section "Composed screen"
-    of the README beside this module states the procedure.
+    without one is refused at the design level stage. It reads an inventory
+    of one possible world and raises ``ValueError`` for an inventory of
+    several. The section "Composed screen" of the README beside this module
+    states the procedure.
     """
 
     def __init__(
@@ -339,13 +362,20 @@ class ComposedScreen:
 
         Args:
             inventory (AssetInventory):
-                The assets to screen. Read and not written.
+                The assets to screen, an inventory of one possible world.
+                Read and not written.
 
         Returns:
             dict:
                 Asset id to its :class:`ScreenVerdict`, in the order of
                 the inventory's ids.
+
+        Raises:
+            ValueError:
+                If the inventory holds a number of possible worlds other
+                than one.
         """
+        _require_one_world(inventory, 'composed screen')
         first = self.design_level_inferer.check(inventory)
         verdicts = {}
         # Copies of the features of the assets the design level check passes.
@@ -408,14 +438,15 @@ class ResolutionLoop:
     """
     Withhold the NSI building type of a refused asset and screen it again.
 
-    The loop screens one world's merged inventory through
+    The loop screens a merged inventory through
     :meth:`ComposedScreen.screen_inventory`. Where a refusal names the
     building type and :data:`WITHHELD_SOURCE` holds it, the type is
     withheld and the asset screened again, the loop's one action. An
     unsupported asset is excluded without action. Every other refused
     asset, and one still refused without its type, is excluded in the
-    world of the screen's structure type inferer. The loop
-    draws nothing and does not change the inventory it reads. The section
+    world of the screen's structure type inferer. It reads an inventory of
+    one possible world and raises ``ValueError`` for an inventory of
+    several. It draws nothing and does not change the inventory it reads. The section
     "Resolution loop" of the README beside this module states what is
     recorded and how an exclusion is filed.
     """
@@ -443,14 +474,14 @@ class ResolutionLoop:
         """
         Admit or exclude each asset of one world's inventory.
 
-        ``building_type_sources`` is checked for every asset before the
-        first is screened, so an input the loop refuses leaves the report
-        as it was.
+        The number of worlds and ``building_type_sources`` are checked
+        before the first asset is screened, so an input the loop refuses
+        leaves the report as it was.
 
         Args:
             inventory (AssetInventory):
-                The world's merged inventory of scalar values. Read and not
-                written.
+                The merged inventory of one possible world, its values
+                scalars. Read and not written.
             report (CompilationReport):
                 Where every action and exclusion is recorded.
             building_type_sources (Mapping[str | int, str]):
@@ -466,10 +497,12 @@ class ResolutionLoop:
 
         Raises:
             ValueError:
-                If ``building_type_sources`` lacks an asset that holds a
+                If the inventory holds a number of possible worlds other
+                than one, or if ``building_type_sources`` lacks an asset that holds a
                 building type, gives one for an asset that holds none, or
                 gives a label that is not a source.
         """
+        _require_one_world(inventory, 'resolution loop')
         key = self.screen.structure_type_inferer.building_type_key
         world = self.screen.structure_type_inferer.world
         for asset_id in inventory.get_asset_ids():

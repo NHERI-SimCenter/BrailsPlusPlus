@@ -350,6 +350,24 @@ def test_an_inventory_screened_at_once_gets_each_asset_its_own_verdict(
     assert inventory.get_asset_features('passes')[1] == STORE
 
 
+# A store in an inventory of two possible worlds: with one year for both,
+# and with one year per world.
+TWO_WORLD_STORES = pytest.mark.parametrize(
+    'year', [1960, [1960, 1970]], ids=('one_value', 'one_per_world')
+)
+
+
+@TWO_WORLD_STORES
+def test_the_screen_refuses_an_inventory_of_several_worlds(
+    build_inventory: Callable[..., AssetInventory], year: int | list[int]
+) -> None:
+    """The screen reads one world, whatever values the inventory holds."""
+    inventory = build_inventory({'a': {**STORE, YEAR_BUILT_KEY: year}}, n_pw=2)
+
+    with pytest.raises(ValueError, match='composed screen reads one world'):
+        _screen().screen_inventory(inventory)
+
+
 @pytest.mark.parametrize('key', ['year_built_key', 'design_level_key'])
 def test_inferers_that_name_a_driver_differently_are_refused(key: str) -> None:
     """The second stage must read the year and the level the first one reads."""
@@ -674,6 +692,42 @@ def test_a_refused_input_leaves_the_report_as_it_was() -> None:
 
     assert report.records.empty
     assert report.exclusions.empty
+
+
+@TWO_WORLD_STORES
+def test_the_loop_refuses_an_inventory_of_several_worlds(
+    build_inventory: Callable[..., AssetInventory], year: int | list[int]
+) -> None:
+    """The loop screens nothing and records nothing for several worlds."""
+    inventory = build_inventory({'a': {**STORE, YEAR_BUILT_KEY: year}}, n_pw=2)
+    design_level = _Stage((DIAGNOSIS_OK, '', ()))
+    report = CompilationReport(
+        TYPE_SEED, stages=REPORT_STAGES, exclusion_categories=EXCLUSION_CATEGORIES
+    )
+
+    with pytest.raises(ValueError, match='resolution loop reads one world'):
+        ResolutionLoop(_screen(design_level_inferer=design_level)).resolve(
+            inventory, report, building_type_sources={}
+        )
+
+    assert design_level.asked == []
+    assert report.records.empty
+    assert report.exclusions.empty
+
+
+def test_the_loop_checks_the_worlds_first(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """Given several worlds, the loop refuses them before it reads building_type_sources."""
+    inventory = build_inventory({'a': WOOD_TOWER}, n_pw=2)
+    report = CompilationReport(
+        TYPE_SEED, stages=REPORT_STAGES, exclusion_categories=EXCLUSION_CATEGORIES
+    )
+
+    with pytest.raises(ValueError, match='resolution loop reads one world'):
+        ResolutionLoop(_screen()).resolve(
+            inventory, report, building_type_sources={}
+        )
 
 
 def test_the_counts_agree_with_the_report() -> None:
