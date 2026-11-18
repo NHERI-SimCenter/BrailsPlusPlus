@@ -151,42 +151,47 @@ def compose_source_parts(  # noqa: C901
     dropped: str | None = None,
 ) -> AssetInventory:
     """
-    Compose one source of one world from frozen stages.
+    Build the inventory of one source in one world from frozen stages.
 
-    The source is the union of ``parts`` in ``world``, less the assets of
-    the ``dropped`` record and the values a ``withheld`` record withholds
-    from ``label``. Every stage is read from ``freeze`` by name. At most one
-    part may hold a value for a feature of an asset. An asset takes the
-    coordinates of the first part that holds it, and a feature no part
-    holds a value for keeps the first part's missing value. The result may
-    share records and shares values with the frozen stages, so a caller
-    must not change it:
-    :meth:`~brails.utils.stage_freeze.StageFreeze.manifest` reports a
-    frozen stage changed that way. The section "Composition and assembly"
-    of the README beside this module states the procedure.
+    The result holds every asset that one of ``parts`` holds, and each of
+    its features takes the value of the one part that holds a value for it
+    in ``world``. A part holds no value for a feature where its value is
+    one that ``AssetInventory.merge`` counts as missing, such as ``None``,
+    NaN, the empty string or the missing marker. Two parts that
+    hold a value for the same feature of one asset raise ``ValueError``.
+    The result shares assets and values with the frozen stages, so a caller
+    must not change it. The section "Composition and assembly" of the
+    README beside this module states the procedure and what the optional
+    records do.
 
     Args:
         freeze (StageFreeze):
-            The freeze holding the stages.
+            Holds the frozen stages that the other arguments name. Every
+            stage is read from it by its name.
         parts (Sequence[str]):
-            Names of the stages whose values the source unites, each once.
+            The names of the stages that hold the source's values, each
+            named once. Their order matters: an asset takes the coordinates
+            of the first part that holds it.
         world (int):
-            The world composed, from 0.
+            The world to compose, numbered from 0. A stage that holds
+            several worlds is read through its values in this world.
         withheld (Sequence[str], optional):
-            Names of records of withheld values. A record holds, per asset,
-            one feature per withheld value, whose value is the label of the
-            source the value is withheld from. Defaults to no records.
+            The names of records of withheld values, which remove values of
+            this source from the result. Defaults to an empty sequence,
+            which withholds nothing.
         label (str):
-            The label of the source composed, which a withheld record
-            names.
+            The label of the source being composed, such as ``'imputed'``.
+            It is used only to find, in the ``withheld`` records, the values
+            withheld from this source.
         dropped (str, optional):
-            Name of a record holding the assets to leave out. Defaults to
-            ``None``, no record.
+            The name of a record of dropped footprints, whose assets the
+            result leaves out. Defaults to ``None``, which leaves out no
+            asset.
 
     Returns:
         AssetInventory:
-            The source in ``world``, with one possible world. It declares
-            the vector features of every part.
+            The inventory of the source in ``world``, holding one possible
+            world. It declares every vector feature of every part.
 
     Raises:
         TypeError:
