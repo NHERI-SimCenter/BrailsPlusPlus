@@ -87,14 +87,19 @@ for local, ``F`` for footprint, ``N`` for NSI, ``R`` for derived, ``I`` for
 imputed and ``D`` for drawn. Where no source holds a value, the character is
 ``SOURCE_CODE_NONE``, ``-``.
 
-A merge records which source holds a value, never the value, so the string it
-writes is the same in every world. A later step that writes a code per world
-can leave one string per world: ``ReplacementCostImputer.impute`` writes the
-code of the value it gives, so a building valued in one world and not in
-another holds a list of strings, one per world. A merge refuses a source that
-already carries a source string, so the string describes one merge.
-``SOURCE_CODES``, ``SOURCE_CODE_NONE`` and ``HAZUS_EQ_SOURCE_FEATURES`` are
-defined in ``brails/types/asset_inventory.py``, and ``SOURCE_STRING_KEY`` in
+A merge records which source holds a value, never the value, and writes one
+string per asset. The compiler merges each world separately and assembles the
+merges into one inventory with ``WorldAssembler``, for its views and its
+output. A building whose sources differ between worlds then holds a list of
+strings, one per world. ``ReplacementCostImputer.impute`` writes the code of
+the value it gives in each world, so a building valued in one world and not in
+another also holds a list. ``read_source_string`` in
+``brails/types/asset_inventory.py`` reads the string of one world and refuses
+such a list, so a step reads a building's codes from the realization of one
+world. A merge refuses a source that already carries a source string, so the
+string describes one merge. ``SOURCE_CODES``, ``SOURCE_CODE_NONE`` and
+``HAZUS_EQ_SOURCE_FEATURES`` are defined in
+``brails/types/asset_inventory.py``, and ``SOURCE_STRING_KEY`` in
 ``brails/constants.py``. A later step reads a value's code to decide what it
 may change, as the pair re-draw below does.
 

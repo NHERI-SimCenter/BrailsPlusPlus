@@ -434,13 +434,25 @@ class TestSourceString:
                 assert string == asset.features[SOURCE_STRING_KEY]
 
     @pytest.mark.parametrize(
-        'string', [None, 5, 'N-NL---', 'N-NL---NN', 'N-NL---X', 'N-NL---n']
+        'string',
+        [None, 5, 'N-NL---', 'N-NL---NN', 'N-NL---X', 'N-NL---n', list('N-NL---N')],
     )
     def test_the_reader_refuses_a_malformed_string(self, string: object) -> None:
-        """A missing value, a wrong length or an unknown code raises."""
+        """A missing value, a value that is not a string, a wrong length or an unknown code raises."""
         features = {} if string is None else {SOURCE_STRING_KEY: string}
         with pytest.raises(ValueError, match="'g1' carries no source string"):
             read_source_string('g1', features)
+
+    def test_the_reader_takes_one_world(self, build_inventory: Build) -> None:
+        """A per-world list of strings is refused, and each world's realization gives that world's string."""
+        strings = ['NN-D----', 'NN-----I']
+        inventory = build_inventory({'g1': {SOURCE_STRING_KEY: strings}}, n_pw=2)
+        with pytest.raises(ValueError, match="'g1' carries no source string"):
+            read_source_string('g1', inventory.inventory['g1'].features)
+        for world, string in enumerate(strings):
+            realization = inventory.get_world_realization(world)
+            features = realization.inventory['g1'].features
+            assert read_source_string('g1', features) == string
 
 
 class TestWorldInvariance:

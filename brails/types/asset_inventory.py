@@ -178,6 +178,13 @@ def read_source_string(
     one of :data:`SOURCE_STRING_CODES`, as :meth:`AssetInventory.merge`
     writes it.
 
+    The function reads the source string of one world. An asset of a
+    realization that :meth:`AssetInventory.get_world_realization` returns
+    holds one string, as does an asset of an inventory of several worlds
+    whose strings agree. Where the worlds' strings differ, the inventory
+    holds a list of one string per world, and the function refuses it. To
+    read an asset's codes in one world, read that world's realization.
+
     Args:
         asset_id (Hashable):
             The asset, named in the error message.
@@ -197,9 +204,9 @@ def read_source_string(
 
     Raises:
         ValueError:
-            If the value is missing or not a string, its length differs
-            from the number of source features, or it holds a character
-            outside :data:`SOURCE_STRING_CODES`.
+            If the value is not a string (a per-world list included) or is
+            missing, its length differs from the number of source features,
+            or it holds a character outside :data:`SOURCE_STRING_CODES`.
     """
     codes = features.get(source_string_key)
     if (
