@@ -66,6 +66,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **Hazus earthquake inventory compiler, step 4.** It writes story counts from footprint heights, allocates census housing units and imputes missing occupancy classes, unit counts and story counts.
 - **Hazus earthquake inventory compiler, steps 5 and 6.** It draws years and structure types per world, derives design levels and height classes, writes each building's type letter from its structure type unless a local inventory gives one, and checks each realization against the Hazus input schema.
 - **Hazus earthquake inventory compiler, steps 7 and 8.** It dates non-residential buildings from residential neighbors and values every building as a rate times its gross area computed from the footprint, which the file writes as `GrossArea`. A building left without a value is excluded, and `write` refuses a file in which a compiled building lacks a default property. `footprint_gross_area` of `brails/imputers/replacement_cost/replacement_cost_imputer.py` is public.
+- The Hazus earthquake inventory compiler merges stacked Overture footprints before assigning block groups when given `merge_stacked=True`.
 
 ### Changed
 - **Python 3.9 is no longer supported.** BRAILS++ requires Python 3.10, 3.11 or 3.12, the versions the tests run on.

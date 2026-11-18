@@ -60,6 +60,11 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 import pandas as pd
 
 from brails.aggregators.points_to_polygons.nsi_footprint_join import NSIFootprintJoin
+from brails.aggregators.stacked_footprints.stacked_footprints import (
+    RULE_COPY,
+    RULE_STACKED,
+    StackedFootprintMerge,
+)
 from brails.compilers.compilation_report import CompilationReport
 from brails.compilers.pair_redraw import PairRedraw
 from brails.compilers.resolution_loop import ComposedScreen, ResolutionLoop
@@ -318,7 +323,8 @@ class CompilerInputs(NamedTuple):
             asset ids, with one possible world. Each holds
             ``footprint_provider``, for an Overture footprint ``sources``,
             and ``type`` where the file is written with ``integer_ids``. The
-            ids are taken as given.
+            ids are taken as given, unless the compiler merges stacked
+            footprints, which re-keys them.
         nsi_points (AssetInventory):
             The NSI points keyed by ``fd_id``, as
             :class:`~brails.scrapers.NSIFileReader` reads them.
@@ -349,7 +355,8 @@ class CompilerInputs(NamedTuple):
             Values known locally, keyed by asset ids of ``footprints``,
             with one possible world. They take precedence over every other
             source and are never changed. They may hold no feature of
-            :data:`RESERVED_LOCAL_FEATURES`.
+            :data:`RESERVED_LOCAL_FEATURES`. Not accepted when the compiler
+            merges stacked footprints.
         study_area (str):
             A label of the study area for the report, such as a FIPS code.
         height_unit (str):
@@ -820,7 +827,7 @@ class HazusEQInventoryCompiler:
     and the options hold the mappings as resolved.
     """
 
-    def __init__(
+    def __init__(  # noqa: C901
         self,
         *,
         seed: int | None = None,
@@ -833,6 +840,7 @@ class HazusEQInventoryCompiler:
         imputer_options: Mapping[str, object] | None = None,
         budget_options: Mapping[str, object] | None = None,
         sampler_options: Mapping[str, object] | None = None,
+        merge_stacked: bool = False,
     ) -> None:
         """
         Configure the compiler and check what can be checked before a run.
@@ -874,12 +882,19 @@ class HazusEQInventoryCompiler:
             sampler_options (Mapping[str, object], optional):
                 Keyword arguments of :class:`ACSYearBuiltSampler` other than
                 its tables, seed and world, which the compiler passes.
+            merge_stacked (bool, optional):
+                Whether step 1 first merges the stacked footprints of one
+                building with :class:`StackedFootprintMerge`, in the
+                footprints' height unit, which re-keys them by geohash. The
+                footprints must then all be Overture footprints with an
+                ``overture_id``, and no local inventory is accepted.
 
         Raises:
             TypeError:
-                If ``seed`` or ``n_worlds`` is not an integer, an options
-                argument is not a mapping, or an options mapping names an
-                argument its class does not take or that the compiler sets.
+                If ``seed`` or ``n_worlds`` is not an integer,
+                ``merge_stacked`` is not a boolean, an options argument is
+                not a mapping, or an options mapping names an argument its
+                class does not take or that the compiler sets.
             ValueError:
                 If ``n_worlds`` is below 1; if
                 :class:`HazusEQStructureTypeInferer` refuses the state with
@@ -904,6 +919,10 @@ class HazusEQInventoryCompiler:
         if self.n_worlds < 1:
             msg = f'n_worlds must be at least 1, not {self.n_worlds}.'
             raise ValueError(msg)
+        if not isinstance(merge_stacked, bool):
+            msg = f'merge_stacked must be a boolean, not {merge_stacked!r}.'
+            raise TypeError(msg)
+        self.merge_stacked = merge_stacked
 
         try:
             HazusEQStructureTypeInferer(state, seed=self.seed, complete_tables=True)
@@ -988,9 +1007,10 @@ class HazusEQInventoryCompiler:
                 If ``worlds`` is empty or repeats a world or holds a
                 negative one; if the local inventory holds an asset that the
                 footprints lack, a feature of :data:`RESERVED_LOCAL_FEATURES`
-                or more than one possible world; or as the
-                components raise, among them a footprint outside every block
-                group.
+                or more than one possible world, or is given
+                with ``merge_stacked``; or as the components raise, among
+                them a footprint outside every block group and, with
+                ``merge_stacked``, a footprint that is not Overture's.
             RuntimeError:
                 If a frozen stage changed during the run.
         """
@@ -1014,6 +1034,12 @@ class HazusEQInventoryCompiler:
             msg = f'Footprint asset ids must be strings, not {not_strings[:10]!r}.'
             raise TypeError(msg)
         if inputs.local is not None:
+            if self.merge_stacked:
+                msg = (
+                    'A local inventory cannot be given with merge_stacked: its '
+                    'ids are those of the footprints, which the merge re-keys.'
+                )
+                raise ValueError(msg)
             stray = sorted(
                 set(inputs.local.inventory) - set(inputs.footprints.inventory),
                 key=str,
@@ -1063,6 +1089,7 @@ class HazusEQInventoryCompiler:
             'imputer_options': dict(self.imputer_options),
             'budget_options': dict(self.budget_options),
             'sampler_options': dict(self.sampler_options),
+            'merge_stacked': self.merge_stacked,
         }
         report = CompilationReport(self.seed, settings=settings)
         report.set_world_count(n_computed)
@@ -1071,7 +1098,7 @@ class HazusEQInventoryCompiler:
         logs: dict[str, pd.DataFrame] = {}
 
         started = time.perf_counter()
-        centroids = self._footprints(inputs, sources, logs)
+        centroids = self._footprints(inputs, sources, logs, report)
         report.set_timing(STAGE_FOOTPRINTS, time.perf_counter() - started)
 
         started = time.perf_counter()
@@ -1119,9 +1146,13 @@ class HazusEQInventoryCompiler:
         inputs: CompilerInputs,
         sources: _WorldSources,
         logs: dict[str, pd.DataFrame],
+        report: CompilationReport,
     ) -> dict[str, list[list[float]]]:
         """
         Run step 1: block groups and footprint features, frozen as the spine.
+
+        With :attr:`merge_stacked`, the stacked footprints are merged first,
+        and the rest of the step reads the merged set.
 
         Args:
             inputs (CompilerInputs):
@@ -1131,7 +1162,11 @@ class HazusEQInventoryCompiler:
                 are added as :data:`STAGE_FOOTPRINTS` and
                 :data:`STAGE_LOCAL`.
             logs (dict[str, pandas.DataFrame]):
-                The logs, which receive ``footprint_ties``.
+                The logs, which receive ``footprint_ties`` and, with
+                :attr:`merge_stacked`, the merge's parts table as
+                ``stacked_parts`` and its id log as ``stacked_asset_ids``.
+            report (CompilationReport):
+                The report, whose notices count the merges.
 
         Returns:
             dict[str, list[list[float]]]:
@@ -1142,10 +1177,32 @@ class HazusEQInventoryCompiler:
         Raises:
             ValueError:
                 If a footprint lies outside every block group or encloses no
-                area.
+                area, or as :meth:`StackedFootprintMerge.merge` raises.
         """
+        footprints = inputs.footprints
+        if self.merge_stacked:
+            merge = StackedFootprintMerge(length_unit=inputs.height_unit)
+            merged = merge.merge(footprints)
+            footprints = merged.inventory
+            logs['stacked_parts'] = merged.parts
+            # The keys of an assign_asset_ids log entry, so that the log
+            # keeps its columns when nothing collides.
+            logs['stacked_asset_ids'] = pd.DataFrame(
+                merged.id_log,
+                columns=['position', 'geohash', 'area_m2', 'rank', 'id', 'reason'],
+            )
+            # A copy set's keeper is a head too, so the rule tells them apart.
+            rule = merged.parts['rule']
+            head = merged.parts['is_head']
+            report.note(
+                'Stacked footprints: '
+                f'{int(((rule == RULE_STACKED) & ~head).sum())} footprint(s) '
+                f'merged into {int(((rule == RULE_STACKED) & head).sum())} '
+                f'asset(s); {int(((rule == RULE_COPY) & ~head).sum())} '
+                'duplicate drawing(s) dropped.'
+            )
         spine, ties = CensusTractScraper().get_census_geographies(
-            inputs.footprints,
+            footprints,
             levels=(LEVEL_BLOCK_GROUP,),
             polygons=inputs.block_groups,
         )

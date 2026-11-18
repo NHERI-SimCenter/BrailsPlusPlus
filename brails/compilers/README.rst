@@ -457,15 +457,30 @@ file it writes and the settings it gives its components.
 The run
 ~~~~~~~
 
-Step 1 takes the footprints as given, keyed by the caller's asset ids. Each
-receives its census block group from the block-group polygons, its plan area in
-square feet as ``PlanArea`` and, if it is an Overture footprint, the release
-and the datasets of its sources, which with the caller's ``footprint_provider``
-make up ``FOOTPRINT_PROVENANCE_FEATURES``. Steps 2 and 3 join the NSI points to
-the footprints with ``NSIFootprintJoin`` and derive their unit counts and
-occupancy classes: the join's observed values form the NSI source, and the
-values it derives, such as an occupancy class set by the count of units, the
-derived source.
+Step 1 takes the footprints as given, keyed by the caller's asset ids, unless
+``merge_stacked`` is set. With ``merge_stacked=True``,
+``StackedFootprintMerge`` first merges the stacked Overture footprints of
+one building, as the section "The method" of
+``brails/aggregators/stacked_footprints/README.rst`` states, and every later
+step reads the merged set under its geohash keys. A merged asset takes the
+height of its tallest part over the union of the parts, as that section
+states. Where its story count comes from that height, step 8 values a podium
+under a tower as the tower's story count times the merged plan area, and
+its ``GrossArea`` is that product. The
+merge's parts table and id log are written as the logs ``stacked_parts`` and
+``stacked_asset_ids``, and a notice in the report counts the merges. The
+option is off by default, since the merge takes Overture footprints only.
+With it, the compiler refuses a local inventory, whose ids are those of the
+footprints before the merge.
+
+Each footprint receives its census block group from the block-group polygons,
+its plan area in square feet as ``PlanArea`` and, if it is an Overture
+footprint, the release and the datasets of its sources, which with the caller's
+``footprint_provider`` make up ``FOOTPRINT_PROVENANCE_FEATURES``. Steps 2 and 3
+join the NSI points to the footprints with ``NSIFootprintJoin`` and derive
+their unit counts and occupancy classes: the join's observed values form the
+NSI source, and the values it derives, such as an occupancy class set by the
+count of units, the derived source.
 
 A local inventory, which takes precedence over every other source, may hold no
 feature of ``RESERVED_LOCAL_FEATURES`` (``BLOCKGROUP_GEOID`` and

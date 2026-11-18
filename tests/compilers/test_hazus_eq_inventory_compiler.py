@@ -48,6 +48,9 @@ import pandas as pd
 import pytest
 
 import brails.compilers
+from brails.aggregators.stacked_footprints.stacked_footprints import (
+    StackedFootprintMerge,
+)
 from brails.compilers import hazus_eq_inventory_compiler as hc
 from brails.compilers.hazus_eq_inventory_compiler import (
     ALL_PROPERTIES,
@@ -94,6 +97,8 @@ from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
     get_hazus_height_classes_by_type,
 )
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
+    HEIGHT_KEY,
+    OVERTURE_ID_KEY,
     OVERTURE_PROVIDER,
 )
 from brails.types.asset_inventory import (
@@ -303,6 +308,7 @@ class TestConstructor:
                 TypeError,
                 'block_group_key',
             ),
+            ({'merge_stacked': 1}, TypeError, 'merge_stacked'),
         ],
     )
     def test_refusals(self, arguments: dict, error: type, match: str | None) -> None:
@@ -363,6 +369,10 @@ class TestCompileArguments:
         with pytest.raises(ValueError, match='one possible world'):
             HazusEQInventoryCompiler(seed=SEED).compile(
                 study_area._replace(local=local)
+            )
+        with pytest.raises(ValueError, match='merge_stacked'):
+            HazusEQInventoryCompiler(seed=SEED, merge_stacked=True).compile(
+                study_area
             )
 
     @pytest.mark.parametrize('key', hc.RESERVED_LOCAL_FEATURES)
@@ -425,6 +435,73 @@ class TestFootprintsAndJoin:
                 assert values[FOOTPRINT_DATASETS_KEY]
         held = result.inventory.inventory['h06'].features
         assert held[FOOTPRINT_DATASETS_KEY] == 'Microsoft ML Buildings;OpenStreetMap'
+
+    @pytest.mark.parametrize(('height_unit', 'merged'), [('ft', 1), ('m', 2)])
+    def test_stacked_footprints_merge_into_the_spine(
+        self, study_area: object, height_unit: str, merged: int
+    ) -> None:
+        """With merge_stacked the spine holds the merged set, under its keys."""
+        footprints = build_inputs().footprints
+        for asset_id, asset in footprints.inventory.items():
+            asset.features.update(
+                {
+                    FOOTPRINT_PROVIDER_KEY: OVERTURE_PROVIDER,
+                    OVERTURE_ID_KEY: asset_id,
+                }
+            )
+        # A tower on p01, half a meter of it outside, 68 ft taller; a
+        # footprint in c04 5 ft taller, which merges only if read in meters;
+        # and a second drawing of c01, half a meter east, which is dropped.
+        x, y, side, height = FOOTPRINTS['p01'][:4]
+        added = {
+            't01': (square(x + side - 9.5, y, 10), height + 68.0),
+            'k01': (square(162, 142, 5), FOOTPRINTS['c04'][3] + 5.0),
+            'c01b': (square(50.5, 100, 20), FOOTPRINTS['c01'][3]),
+        }
+        for asset_id, (ring, part_height) in added.items():
+            features = {
+                'type': 'building',
+                FOOTPRINT_PROVIDER_KEY: OVERTURE_PROVIDER,
+                OVERTURE_ID_KEY: asset_id,
+                HEIGHT_KEY: part_height,
+            }
+            footprints.add_asset(asset_id, Asset(asset_id, ring, features))
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS, merge_stacked=True
+        ).compile(
+            study_area._replace(
+                footprints=footprints, local=None, height_unit=height_unit
+            )
+        )
+
+        spine = result.freeze.read('footprints').inventory
+        merge = StackedFootprintMerge(length_unit=height_unit)
+        assert set(spine) == set(merge.merge(footprints).inventory.inventory)
+        assert len(spine) == len(FOOTPRINTS) + 2 - merged
+        (head,) = [a for a in spine.values() if a.features[OVERTURE_ID_KEY] == 'p01']
+        assert math.isclose(
+            head.features[PLAN_AREA_KEY],
+            (side**2 + 5.0) * SQUARE_FEET_PER_SQUARE_METER,
+            rel_tol=1e-3,
+        )
+        parts = sorted(result.logs['stacked_parts'][OVERTURE_ID_KEY])
+        stacked = ['c04', 'k01', 'p01', 't01'] if merged == 2 else ['p01', 't01']
+        assert parts == sorted(['c01', 'c01b', *stacked])
+        assert list(result.logs['stacked_asset_ids'].columns) == [
+            'position',
+            'geohash',
+            'area_m2',
+            'rank',
+            'id',
+            'reason',
+        ]
+        summary = result.report.summary()
+        assert summary['settings']['merge_stacked'] is True
+        notice = (
+            f'Stacked footprints: {merged} footprint(s) merged into {merged} '
+            'asset(s); 1 duplicate drawing(s) dropped.'
+        )
+        assert notice in summary['notices']
 
     def test_join_parts(self, compiled: object) -> None:
         """The spine holds every footprint, and the other parts centroids."""
