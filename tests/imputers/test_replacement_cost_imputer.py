@@ -44,6 +44,7 @@ import pandas as pd
 import pytest
 
 from brails.constants import (
+    AREA_FROM_FEATURE,
     AREA_FROM_GROSS_AREA,
     AREA_FROM_PLAN_AREA,
     AREA_FROM_STORIES,
@@ -223,6 +224,9 @@ def run(
     buildings: AssetInventory,
     donors: AssetInventory,
     world: int | None = None,
+    *,
+    target_area_key: str | None = None,
+    areas: AssetInventory | None = None,
     **options: Any,
 ) -> ReplacementCostResult:
     """
@@ -238,6 +242,12 @@ def run(
             The donor stage.
         world (int, optional):
             The world. Defaults to every world.
+        target_area_key (str, optional):
+            The feature holding the gross areas. Defaults to ``None``, the
+            areas computed from the footprints.
+        areas (AssetInventory, optional):
+            A stage holding that feature, frozen as the area stage.
+            Defaults to ``None``, which reads it from ``buildings``.
         **options (Any):
             Overrides of the constructor arguments.
 
@@ -248,8 +258,15 @@ def run(
     freeze = StageFreeze()
     freeze.freeze('stage', buildings)
     freeze.freeze('donors', donors)
+    if areas is not None:
+        freeze.freeze('areas', areas)
     result = ReplacementCostImputer(**{'seed': SEED, **options}).impute_stage(
-        freeze, 'stage', 'donors', world=world
+        freeze,
+        'stage',
+        'donors',
+        world=world,
+        target_area_key=target_area_key,
+        area_stage=None if areas is None else 'areas',
     )
     for row in result.log.itertuples():
         held = result.costs.inventory.get(row.asset_id)
@@ -677,6 +694,195 @@ class TestFootprintGrossArea:
         row = logged(result, 'n')
         assert row['outcome'] == OUTCOME_NO_AREA
         assert value_of(result, 'n') is None
+
+
+class TestTargetAreaKey:
+    """A feature the caller names holds the gross area the rate multiplies."""
+
+    def test_feature_multiplies_every_rate(self) -> None:
+        """Own, donor and neighbor rates multiply the feature; a local value stays."""
+        buildings = inventory(
+            {
+                'n': nsi_building(10.0, 100.0, 1.0, Area=7.0),
+                't': target(0.0, Area=3.0),
+                'u': target(30.0, Area=2.0),
+                'loc': nsi_building(
+                    60.0, 123.0, 1.0, Area=5.0, SourceString=source('N', 'L')
+                ),
+            }
+        )
+        result = run(
+            buildings, donor_stage(buildings, {'t': 'n'}), target_area_key='Area'
+        )
+        for asset_id, outcome, area in (
+            ('n', OUTCOME_OWN_RATE, 7.0),
+            ('t', OUTCOME_IMPUTATION_DONOR, 3.0),
+            ('u', OUTCOME_FEWER_THAN_K, 2.0),
+        ):
+            row = logged(result, asset_id)
+            assert row['outcome'] == outcome
+            assert row['area_source'] == AREA_FROM_FEATURE
+            assert row['footprint_gross_area_sqft'] == area
+            assert value_of(result, asset_id) == pytest.approx(row['rate'] * area)
+        assert logged(result, 'u')['outcome'] in OUTCOME_VALUE_CODES
+        assert not pd.isna(logged(result, 'u')['donor_id'])
+        assert value_of(result, 't') == pytest.approx(300.0)
+        assert logged(result, 'loc')['outcome'] == OUTCOME_LOCAL_VALUE
+        assert value_of(result, 'loc') == 123.0
+
+    def test_footprint_not_read(self) -> None:
+        """A building with its own rate whose coordinates enclose no area is valued by the feature."""
+        lon, lat = square(0.0, 0.0)[0]
+        buildings = AssetInventory()
+        buildings.add_asset(
+            'n',
+            Asset(
+                'n',
+                [[lon, lat]],
+                {
+                    'OccupancyClass': 'COM1',
+                    'ReplacementCost': 100.0,
+                    'GrossArea': 1.0,
+                    'Area': 5.0,
+                    'SourceString': source('N', 'N'),
+                },
+            ),
+        )
+        result = run(buildings, donor_stage(buildings, {}), target_area_key='Area')
+        assert logged(result, 'n')['outcome'] == OUTCOME_OWN_RATE
+        assert value_of(result, 'n') == pytest.approx(500.0)
+
+    def test_a_point_draws_no_neighbor(self) -> None:
+        """A building to value by a neighbor whose coordinates enclose no area gets none."""
+        lon, lat = square(30.0, 0.0)[0]
+        buildings = inventory({'n': nsi_building(10.0, 100.0, 1.0, Area=7.0)})
+        buildings.add_asset(
+            'p',
+            Asset(
+                'p',
+                [[lon, lat]],
+                {
+                    'OccupancyClass': 'COM1',
+                    'Area': 5.0,
+                    'SourceString': source('N', '-'),
+                },
+            ),
+        )
+        result = run(buildings, donor_stage(buildings, {}), target_area_key='Area')
+        row = logged(result, 'p')
+        assert row['outcome'] == OUTCOME_NO_AREA
+        assert pd.isna(row['area_source'])
+        assert pd.isna(row['footprint_gross_area_sqft'])
+        assert value_of(result, 'p') is None
+
+    @pytest.mark.parametrize(
+        'area', [None, 0, -1.0, math.nan, math.inf, True, 'two', 'absent']
+    )
+    def test_no_area_without_a_positive_number(self, area: Any) -> None:
+        """A target without a finite number above zero in the feature gets none."""
+        features = {} if area == 'absent' else {'Area': area}
+        buildings = inventory(
+            {
+                'd': nsi_building(10.0, 100.0, 1.0, Area=1.0),
+                't': target(0.0, **features),
+            }
+        )
+        result = run(
+            buildings, donor_stage(buildings, {'t': 'd'}), target_area_key='Area'
+        )
+        row = logged(result, 't')
+        assert row['outcome'] == OUTCOME_NO_AREA
+        assert pd.isna(row['area_source'])
+        assert pd.isna(row['footprint_gross_area_sqft'])
+        assert value_of(result, 't') is None
+
+    def test_area_stage_by_world(self) -> None:
+        """The area stage's realization of each world gives that world's area."""
+        buildings = inventory(
+            {
+                'n': nsi_building(10.0, 100.0, 1.0),
+                't': target(0.0, Area=99.0),
+                'm': target(30.0, Area=99.0),
+            }
+        )
+        areas = AssetInventory()
+        for asset_id, area in (('n', 4.0), ('t', [1.0, 2.0, 3.0])):
+            coordinates = buildings.inventory[asset_id].coordinates
+            areas.add_asset(asset_id, Asset(asset_id, coordinates, {'Area': area}))
+        areas.n_pw = 3
+        donors = donor_stage(buildings, {'t': 'n', 'm': 'n'})
+        whole = run(buildings, donors, target_area_key='Area', areas=areas)
+        assert whole.costs.n_pw == 3
+        assert value_of(whole, 't') == pytest.approx([100.0, 200.0, 300.0])
+        assert value_of(whole, 'n') == pytest.approx(400.0)
+        assert column(whole, 'm', 'outcome') == [OUTCOME_NO_AREA] * 3
+        one = run(buildings, donors, 1, target_area_key='Area', areas=areas)
+        assert value_of(one, 't') == pytest.approx(200.0)
+
+    def test_none_computes_from_the_footprint(self) -> None:
+        """An explicit None is the default: the area is computed from the footprint."""
+        buildings = inventory(
+            {
+                'd': nsi_building(10.0, 100.0, 1.0, Area=1.0),
+                't': target(0.0, Area=2.0),
+            }
+        )
+        donors = donor_stage(buildings, {'t': 'd'})
+        default = run(buildings, donors)
+        named = run(buildings, donors, target_area_key=None)
+        pd.testing.assert_frame_equal(default.log, named.log)
+        assert value_of(named, 't') == value_of(default, 't')
+        assert logged(named, 't')['area_source'] == AREA_FROM_STORIES
+
+    def test_impute_reads_the_feature(self) -> None:
+        """The library entry point multiplies the rate by the named feature."""
+        plain = inventory(
+            {
+                'c': nsi_building(500.0, 40.0, 1.0, Area=2.0),
+                't': target(0.0, Area=3.0),
+            }
+        )
+        output = ReplacementCostImputer(seed=SEED).impute(
+            plain, target_area_key='Area'
+        )
+        assert output.inventory['c'].features['ReplacementCost'] == pytest.approx(
+            80.0
+        )
+        assert output.inventory['t'].features['ReplacementCost'] == pytest.approx(
+            120.0
+        )
+
+    def test_area_stage_refused(self) -> None:
+        """An area stage named without target_area_key, not frozen, holding assets the stage lacks, or holding another number of worlds raises."""
+        buildings = inventory(
+            {'d': nsi_building(10.0, 100.0, 1.0), 't': target(0.0)}
+        )
+        buildings.n_pw = 3
+        freeze = StageFreeze()
+        freeze.freeze('stage', buildings)
+        freeze.freeze('donors', donor_stage(buildings, {'t': 'd'}))
+        imputer = ReplacementCostImputer(seed=SEED)
+        with pytest.raises(ValueError, match='without the target_area_key'):
+            imputer.impute_stage(freeze, 'stage', 'donors', area_stage='stage')
+        with pytest.raises(LookupError):
+            imputer.impute_stage(
+                freeze, 'stage', 'donors', target_area_key='Area', area_stage='gone'
+            )
+        stray = AssetInventory()
+        stray.add_asset('x', Asset('x', square(0.0, 0.0), {'Area': 1.0}))
+        freeze.freeze('stray', stray)
+        with pytest.raises(ValueError, match='area stage holds assets the stage'):
+            imputer.impute_stage(
+                freeze, 'stage', 'donors', target_area_key='Area', area_stage='stray'
+            )
+        two = AssetInventory()
+        two.add_asset('t', Asset('t', square(0.0, 0.0), {'Area': [1.0, 2.0]}))
+        two.n_pw = 2
+        freeze.freeze('two', two)
+        with pytest.raises(ValueError, match='the area stage 2. Each must hold 1'):
+            imputer.impute_stage(
+                freeze, 'stage', 'donors', target_area_key='Area', area_stage='two'
+            )
 
 
 class TestUnitBudgetGrossArea:

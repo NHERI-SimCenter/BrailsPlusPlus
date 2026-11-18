@@ -145,7 +145,9 @@ STORIES_FROM_HEIGHT_KEY = 'StoriesFromHeight'
 
 # Where a building's gross area comes from, as the unit budget and the
 # replacement cost imputer log it: its GROSS_AREA_KEY, its plan area times
-# its STORIES_KEY, or its plan area as one story.
+# its STORIES_KEY, its plan area as one story, or the feature a caller of the
+# imputer names as holding it.
 AREA_FROM_GROSS_AREA = 'gross_area'
 AREA_FROM_STORIES = 'stories'
 AREA_FROM_PLAN_AREA = 'plan_area'
+AREA_FROM_FEATURE = 'feature'

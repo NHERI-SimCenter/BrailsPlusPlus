@@ -43,7 +43,13 @@ footprints, computes the same gross area for a footprint without a
 ``GrossArea``, and the two labels are the budget's too, in
 ``brails/constants.py``. The budget uses a stated ``GrossArea`` where there is
 one. A computed value is a float, not rounded, in the units of the
-``ReplacementCost`` its rate came from.
+``ReplacementCost`` its rate came from. Given ``target_area_key``, the imputer
+multiplies the rate by the gross area that feature holds, read from the frozen
+stage ``area_stage`` where ``impute_stage`` is given one, and logs it as
+``AREA_FROM_FEATURE``. A building without a finite number above zero in that
+feature gets no value, unless it keeps a local value. The same-class neighbor
+draw still locates a building by its footprint, so a building that would take
+a neighbor's rate and whose footprint encloses no area gets no value either.
 
 ``AssetInventory.merge`` records the source of each building's
 ``ReplacementCost`` in its source string, the feature ``SourceString``, as one

@@ -53,6 +53,7 @@ import numpy as np
 import pandas as pd
 
 from brails.constants import (
+    AREA_FROM_FEATURE,
     AREA_FROM_PLAN_AREA,
     AREA_FROM_STORIES,
     BLOCK_GROUP_KEY,
@@ -154,9 +155,9 @@ _RATE_KEY = 'ReplacementCostRate'
 # donor or neighbor whose rate a building took, and is missing otherwise (test
 # with pandas.isna). rate is the rate the value is computed from, and on the row
 # of a kept local value the building's own rate, where it has one.
-# footprint_gross_area_sqft is the gross area computed from the footprint that
-# the rate multiplies, never the GrossArea feature, and area_source says how it
-# was computed.
+# footprint_gross_area_sqft is the gross area the rate multiplies, computed from
+# the footprint unless the caller names a feature that holds it, and
+# area_source says where it came from.
 LOG_COLUMNS = (
     'asset_id',
     'world',
@@ -197,7 +198,10 @@ class ReplacementCostImputer(Imputation):
 
     In each world, a building's gross area is computed from its footprint:
     its plan area times its ``stories_key``, or its plan area alone without
-    a positive story count. It is never its ``gross_area_key``. Its rate is
+    a positive story count. It is not read from ``gross_area_key``. A caller
+    holding the gross areas can name the feature that holds them as
+    ``target_area_key`` of :meth:`impute` and :meth:`impute_stage`. Its rate
+    is
     the first that exists of three: its own, ``value_key`` over
     ``gross_area_key`` where the value's source code is among
     :data:`RATE_VALUE_CODES` and both are numbers above zero; that of the
@@ -325,7 +329,9 @@ class ReplacementCostImputer(Imputation):
             seed=self.seed,
         )
 
-    def impute(self, input_inventory: AssetInventory) -> AssetInventory:
+    def impute(
+        self, input_inventory: AssetInventory, *, target_area_key: str | None = None
+    ) -> AssetInventory:
         """
         Value an inventory's buildings, without a donor stage.
 
@@ -338,6 +344,11 @@ class ReplacementCostImputer(Imputation):
         Args:
             input_inventory (AssetInventory):
                 The inventory. It is not modified.
+            target_area_key (str, optional):
+                The feature of the inventory that holds each building's
+                gross area in square feet, which the rate then multiplies,
+                as :meth:`impute_stage` describes. Defaults to ``None``, the
+                gross area computed from the footprint.
 
         Returns:
             AssetInventory:
@@ -360,7 +371,9 @@ class ReplacementCostImputer(Imputation):
                 n_worlds=input_inventory.n_pw,
             ),
         )
-        result = self.impute_stage(freeze, 'inventory', DONOR_STAGE)
+        result = self.impute_stage(
+            freeze, 'inventory', DONOR_STAGE, target_area_key=target_area_key
+        )
         outcomes = dict(
             zip(
                 zip(result.log['asset_id'], result.log['world']),
@@ -398,26 +411,40 @@ class ReplacementCostImputer(Imputation):
             asset.features[self.source_string_key] = collapse_realizations(rewritten)
         return output
 
-    def impute_stage(
+    def impute_stage(  # noqa: C901
         self,
         freeze: StageFreeze,
         stage: str,
         donor_stage: str,
         *,
         world: int | None = None,
+        target_area_key: str | None = None,
+        area_stage: str | None = None,
     ) -> ReplacementCostResult:
         """
         Value the buildings of a frozen stage.
 
-        Neither frozen stage is changed. With ``world=None`` every world is
-        computed, the number of worlds being the larger of the two stages'.
+        No frozen stage is changed. With ``world=None`` every world is
+        computed, the number of worlds being the largest of the stages'.
         With a ``world``, that world's realization of each stage is read,
         or world 0 of a stage holding one world, and the neighbor draw
         draws with that world's index.
 
+        With a ``target_area_key``, a building's gross area is read from
+        that feature, of ``area_stage`` where one is named and otherwise of
+        ``stage``, and logged as
+        :data:`~brails.constants.AREA_FROM_FEATURE`. The footprint is then
+        not read for the area, and a building without a finite number above
+        zero there gets no value, logged as
+        :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_NO_AREA`.
+        The same-class neighbor draw still locates a building by its
+        footprint, so a building that takes a neighbor's rate and whose
+        coordinates enclose no area also gets no value, logged as
+        ``no_area`` without an area or an area source.
+
         Args:
             freeze (StageFreeze):
-                The freeze holding both stages.
+                The freeze holding the stages.
             stage (str):
                 The frozen stage holding the buildings, their occupancy
                 classes, stories, geometry, values and source strings.
@@ -428,6 +455,14 @@ class ReplacementCostImputer(Imputation):
                 the observed-donor imputer's run on these buildings.
             world (int, optional):
                 The one world to compute. Defaults to ``None``, every world.
+            target_area_key (str, optional):
+                The feature that holds each building's gross area in square
+                feet, which the rate then multiplies. Defaults to ``None``,
+                the gross area computed from the footprint.
+            area_stage (str, optional):
+                The frozen stage that holds ``target_area_key``, for a
+                ``stage`` frozen before the areas were computed. Defaults to
+                ``None``, which reads the feature from ``stage``.
 
         Returns:
             ReplacementCostResult:
@@ -439,13 +474,14 @@ class ReplacementCostImputer(Imputation):
             TypeError:
                 If ``donor_stage`` is ``None``.
             LookupError:
-                If either stage is not frozen.
+                If a named stage is not frozen.
             ValueError:
-                If a stage holds a number of worlds other than 1 and the
-                other's, the donor stage holds an asset the stage lacks or
-                names a donor the stage lacks, ``world`` is not a world of
-                the stages, a building holding a value carries no source
-                string that
+                If ``area_stage`` is named without a ``target_area_key``, a
+                stage holds a number of worlds other than 1 and the largest,
+                the donor stage or the area stage holds an asset the stage
+                lacks, the donor stage names a donor the stage lacks,
+                ``world`` is not a world of the stages, a building holding a
+                value carries no source string that
                 :func:`~brails.types.asset_inventory.read_source_string`
                 reads, or a building's
                 coordinates cannot be read.
@@ -457,21 +493,34 @@ class ReplacementCostImputer(Imputation):
                 'take the rate of its donor.'
             )
             raise TypeError(msg)
-        buildings = freeze.read(stage)
-        donors = freeze.read(donor_stage)
-        stray = sorted(
-            repr(asset_id)
-            for asset_id in donors.inventory
-            if asset_id not in buildings.inventory
-        )
-        if stray:
-            msg = f'The donor stage holds assets the stage lacks: {stray}.'
-            raise ValueError(msg)
-        n_worlds = max(buildings.n_pw, donors.n_pw)
-        if {buildings.n_pw, donors.n_pw} - {1, n_worlds}:
+        if area_stage is not None and target_area_key is None:
             msg = (
-                f'The stage holds {buildings.n_pw} possible worlds and the '
-                f'donor stage {donors.n_pw}.'
+                f'area_stage {area_stage!r} is named without the '
+                'target_area_key feature to read from it.'
+            )
+            raise ValueError(msg)
+        buildings = freeze.read(stage)
+        # The other stages, keyed by the name the error messages give them.
+        others = {'donor stage': freeze.read(donor_stage)}
+        if area_stage is not None:
+            others['area stage'] = freeze.read(area_stage)
+        donors, areas = others['donor stage'], others.get('area stage')
+        for name, held in others.items():
+            stray = sorted(
+                repr(asset_id)
+                for asset_id in held.inventory
+                if asset_id not in buildings.inventory
+            )
+            if stray:
+                msg = f'The {name} holds assets the stage lacks: {stray}.'
+                raise ValueError(msg)
+        counts = {name: held.n_pw for name, held in others.items()}
+        n_worlds = max(buildings.n_pw, *counts.values())
+        if {buildings.n_pw, *counts.values()} - {1, n_worlds}:
+            msg = (
+                f'The stage holds {buildings.n_pw} possible worlds, '
+                + ', '.join(f'the {name} {count}' for name, count in counts.items())
+                + '. Each must hold 1 or the largest number.'
             )
             raise ValueError(msg)
         if world is not None and (
@@ -491,6 +540,10 @@ class ReplacementCostImputer(Imputation):
                 buildings.get_world_realization(w if buildings.n_pw > 1 else 0),
                 donors.get_world_realization(w if donors.n_pw > 1 else 0),
                 w,
+                target_area_key,
+                None
+                if areas is None
+                else areas.get_world_realization(w if areas.n_pw > 1 else 0),
             )
             for asset_id, value in world_values.items():
                 values.setdefault(asset_id, {})[position] = value
@@ -513,7 +566,12 @@ class ReplacementCostImputer(Imputation):
         )
 
     def _impute_world(  # noqa: C901
-        self, buildings: AssetInventory, donors: AssetInventory, world: int
+        self,
+        buildings: AssetInventory,
+        donors: AssetInventory,
+        world: int,
+        target_area_key: str | None,
+        areas: AssetInventory | None,
     ) -> tuple[dict[Hashable, Any], list[dict[str, Any]]]:
         """
         Value the buildings of one world.
@@ -525,6 +583,12 @@ class ReplacementCostImputer(Imputation):
                 The donor stage's realization of the world.
             world (int):
                 The world, as logged.
+            target_area_key (str | None):
+                The feature holding each building's gross area, or ``None``
+                to compute the area from the footprint.
+            areas (AssetInventory | None):
+                The area stage's realization of the world, or ``None`` to
+                read ``target_area_key`` from ``buildings``.
 
         Returns:
             tuple[dict[Hashable, Any], list[dict[str, Any]]]:
@@ -576,9 +640,19 @@ class ReplacementCostImputer(Imputation):
                 )
                 values[asset_id] = stated
                 continue
-            area, row['area_source'] = footprint_gross_area(
-                asset_id, asset, stories_key=self.stories_key
-            )
+            if target_area_key is None:
+                area, row['area_source'] = footprint_gross_area(
+                    asset_id, asset, stories_key=self.stories_key
+                )
+            else:
+                holder = asset if areas is None else areas.inventory.get(asset_id)
+                area = (
+                    None
+                    if holder is None
+                    else _positive(holder.features.get(target_area_key))
+                )
+                if area is not None:
+                    row['area_source'] = AREA_FROM_FEATURE
             if area is None:
                 row['outcome'] = OUTCOME_NO_AREA
                 continue
@@ -696,6 +770,9 @@ class ReplacementCostImputer(Imputation):
                     donor_id=draw.donor_id,
                     distance_m=draw.distance_m,
                 )
+                # A building the draw cannot locate has no area either.
+                if draw.outcome == OUTCOME_NO_AREA:
+                    row.update(area_source=None, footprint_gross_area_sqft=math.nan)
                 if draw.donor_id is not None:
                     row['rate'] = dict(draw.values)[_RATE_KEY]
                     drawn[asset_id] = row['rate']
