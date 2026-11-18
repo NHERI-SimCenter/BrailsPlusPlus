@@ -66,8 +66,11 @@ from brails.aggregators.stacked_footprints.stacked_footprints import (
     StackedFootprintMerge,
 )
 from brails.compilers.compilation_report import CompilationReport
-from brails.compilers.pair_redraw import PairRedraw
-from brails.compilers.resolution_loop import ComposedScreen, ResolutionLoop
+from brails.compilers.hazus_earthquake.pair_redraw import PairRedraw
+from brails.compilers.hazus_earthquake.resolution_loop import (
+    ComposedScreen,
+    ResolutionLoop,
+)
 from brails.compilers.world_assembly import WorldAssembler, compose_source
 from brails.constants import (
     BLOCK_GROUP_KEY,

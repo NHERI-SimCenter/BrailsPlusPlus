@@ -44,7 +44,7 @@ from brails.compilers.compilation_report import (
     EXCLUSION_CATEGORIES,
     CompilationReport,
 )
-from brails.compilers.resolution_loop import (
+from brails.compilers.hazus_earthquake.resolution_loop import (
     SCREEN_ASSET_ID,
     STAGE_DESIGN_LEVEL,
     STAGE_RESOLUTION,

@@ -108,6 +108,7 @@ brails = [
     "imputers/replacement_cost/README.rst",
     "inferers/hazus_inferer_earthquake/README.rst",
     "compilers/README.rst",
+    "compilers/hazus_earthquake/README.rst",
     "scrapers/overture_maps_scraper/README.rst",
     "scrapers/nsi_parser/README.rst"
     

@@ -644,7 +644,8 @@ def _action(
         msg = (
             f'Asset {asset_id!r} has an implausible pair with class code '
             f'{occupancy_code!r} and story count code {stories_code!r}, which '
-            'the action table in brails/compilers/README.rst does not cover.'
+            'the action table in brails/compilers/hazus_earthquake/README.rst '
+            'does not cover.'
         )
         raise ValueError(msg)
     if _IMPUTED_CODE in (occupancy_code, stories_code):

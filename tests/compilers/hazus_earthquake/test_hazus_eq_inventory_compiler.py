@@ -51,8 +51,8 @@ import brails.compilers
 from brails.aggregators.stacked_footprints.stacked_footprints import (
     StackedFootprintMerge,
 )
-from brails.compilers import hazus_eq_inventory_compiler as hc
-from brails.compilers.hazus_eq_inventory_compiler import (
+from brails.compilers.hazus_earthquake import hazus_eq_inventory_compiler as hc
+from brails.compilers.hazus_earthquake.hazus_eq_inventory_compiler import (
     ALL_PROPERTIES,
     DEFAULT_IMPUTER_OPTIONS,
     DEFAULT_PROPERTIES,
@@ -110,7 +110,7 @@ from brails.utils import Importer
 from brails.utils.unit_converter import UNIT_TO_METER
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from brails.validators.schema_validator import SchemaValidator
-from tests.compilers.compiler_fixtures import (
+from tests.compilers.hazus_earthquake.compiler_fixtures import (
     FOOTPRINTS,
     LOCAL,
     METRIC_CRS,

@@ -34,9 +34,12 @@
 """Compilers build an inventory out of the sources a method needs."""
 
 from .compilation_report import CompilationReport
-from .hazus_eq_inventory_compiler import CompilerInputs, HazusEQInventoryCompiler
-from .pair_redraw import PairRedraw
-from .resolution_loop import ComposedScreen, ResolutionLoop
+from .hazus_earthquake.hazus_eq_inventory_compiler import (
+    CompilerInputs,
+    HazusEQInventoryCompiler,
+)
+from .hazus_earthquake.pair_redraw import PairRedraw
+from .hazus_earthquake.resolution_loop import ComposedScreen, ResolutionLoop
 from .world_assembly import WorldAssembler
 
 __all__ = [

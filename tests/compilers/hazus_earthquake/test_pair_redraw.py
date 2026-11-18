@@ -43,7 +43,7 @@ from unittest.mock import Mock
 import pytest
 
 import brails.compilers
-from brails.compilers.pair_redraw import (
+from brails.compilers.hazus_earthquake.pair_redraw import (
     ACTION_LOG_IMPUTED,
     ACTION_LOG_LOCAL,
     ACTION_REDRAW_OCCUPANCY,

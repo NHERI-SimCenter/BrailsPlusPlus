@@ -54,7 +54,9 @@ import pandas as pd
 import shapely
 from pyproj import Transformer
 
-from brails.compilers.hazus_eq_inventory_compiler import CompilerInputs
+from brails.compilers.hazus_earthquake.hazus_eq_inventory_compiler import (
+    CompilerInputs,
+)
 from brails.constants import (
     BUILDING_TYPE_KEY,
     FOOTPRINT_PROVIDER_KEY,
