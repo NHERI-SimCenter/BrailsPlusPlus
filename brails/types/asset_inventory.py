@@ -3332,10 +3332,12 @@ class AssetInventory:
 
         Values are compared with ``==``. Two float NaN are equal, arrays are
         compared with ``numpy.array_equal``, and values ``==`` cannot compare
-        are unequal. A realization may hold a list only as the value of a
-        vector feature, since the inventory holds one value per world as a
-        list. Realizations without assets leave the inventory without assets
-        and at one world.
+        are unequal. Since the inventory holds one value per world as a list, a
+        realization may hold a list only as the value of one of the world's
+        vector features, and there not a list whose first item is a list.
+        World 0's vector features are those its realization declares, and a
+        later world's are the inventory's and its realization's. Realizations
+        without assets leave the inventory without assets and at one world.
 
         Args:
             realization (AssetInventory):
@@ -3345,13 +3347,14 @@ class AssetInventory:
             TypeError:
                 If ``realization`` is not an :class:`AssetInventory`.
             ValueError:
-                If the realization has more than one possible world or holds
-                a list as the value of a feature that is not a vector
-                feature; if its asset ids or coordinates differ from those
-                of world 0; or if a vector feature, of the inventory or of
-                the realization, whose world 0 value is not a list takes a
-                different value in the realization or is already held as one
-                value per world. The message names up to
+                If the realization has more than one possible world; if it
+                holds a list as the value of a feature that is not one of the
+                world's vector features, or a list whose first item is a list
+                as the value of one that is; if its asset ids or coordinates
+                differ from those of world 0; or if a vector feature, of the
+                inventory or of the realization, whose world 0 value is not a
+                list takes a different value in the realization or is already
+                held as one value per world. The message names up to
                 :data:`MAX_REPORTED_WORLD_PROBLEMS` assets. A refused
                 realization changes nothing.
         """
@@ -3367,12 +3370,15 @@ class AssetInventory:
         vector = list(
             dict.fromkeys([*self.vector_features, *realization.vector_features])
         )
+        # World 0 keeps the realization's vector features alone, so its lists
+        # are checked against those.
+        checked = vector if self.inventory else list(realization.vector_features)
         listing = sorted(
             (
                 (asset_id, key)
                 for asset_id, asset in realization.inventory.items()
                 for key, value in asset.features.items()
-                if is_probabilistic_feature(key, value, vector)
+                if is_probabilistic_feature(key, value, checked)
             ),
             key=lambda pair: (_merge_id_order(pair[0]), pair[1]),
         )
@@ -3382,7 +3388,8 @@ class AssetInventory:
             ]
             msg = (
                 f'A realization holds a list as the value of {len(listing)} '
-                'feature(s) that are not vector features: '
+                'feature(s) that are not vector features, or a list of lists '
+                'as the value of a vector feature: '
                 f'{_report_first_problems(listing, "; ")}.'
             )
             raise ValueError(msg)

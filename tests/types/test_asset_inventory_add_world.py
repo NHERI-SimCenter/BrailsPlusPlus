@@ -280,3 +280,23 @@ def test_ids_of_mixed_types_are_ordered_as_strings() -> None:
     assembled = AssetInventory()
     assembled.add_world(realization)
     assert list(assembled.inventory) == [10, 2, '2', 'b']
+
+
+def test_world_0_refuses_a_list_its_realization_does_not_declare() -> None:
+    """World 0 refuses a list in a feature its realization does not declare."""
+    assembled = AssetInventory()
+    realization = inventory({'a': {'HousingUnits': [1, 2]}}, vector_features=[])
+    with pytest.raises(ValueError, match="asset 'a', feature 'HousingUnits'"):
+        assembled.add_world(realization)
+    assert not assembled.inventory
+    assert assembled.vector_features == ['HousingUnits']
+
+
+def test_a_list_of_lists_in_a_vector_feature_is_refused() -> None:
+    """A list of lists under a vector feature is refused with a message naming it."""
+    with pytest.raises(
+        ValueError, match="or a list of lists.*asset 'a', feature 'Pairs'"
+    ):
+        AssetInventory().add_world(
+            inventory({'a': {'Pairs': [[1, 2], [3, 4]]}}, vector_features=['Pairs'])
+        )
