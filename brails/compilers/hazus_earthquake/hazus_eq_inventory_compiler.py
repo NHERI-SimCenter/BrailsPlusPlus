@@ -115,7 +115,6 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     imputation_donors_from_log,
 )
 from brails.imputers.replacement_cost.replacement_cost_imputer import (
-    DONOR_STAGE,
     OUTCOME_VALUE_CODES,
     ReplacementCostImputer,
     footprint_gross_area,
@@ -243,6 +242,7 @@ STAGE_S04_DROPPED = 's04_dropped'
 STAGE_S04_WITHHELD = 's04_withheld'
 STAGE_S05_IMPUTATION = 's05_imputation'
 STAGE_S05_VIEW = 's05_view'
+STAGE_S05_DONORS = 's05_donors'
 STAGE_S06_RESIDENTIAL_YEAR = 's06_residential_year'
 STAGE_S07_WITHHELD = 's07_withheld'
 STAGE_S07_PAIR_REDRAW = 's07_pair_redraw'
@@ -1264,7 +1264,7 @@ class HazusEQInventoryCompiler:
         del merged, allocation
         self._freeze_view(STAGE_S05_VIEW, sources, report, n_computed)
         sources.freeze.freeze(
-            DONOR_STAGE,
+            STAGE_S05_DONORS,
             imputation_donors_from_log(
                 imputation.log, imputation.targets, n_worlds=n_computed
             ),
@@ -2496,7 +2496,8 @@ class HazusEQInventoryCompiler:
 
         s09 draws a year built for each building without one, and s10 gives
         those buildings their design levels, structure types and height
-        classes.
+        classes. Each step is timed in each world, and the freeze of its
+        parts once, under its own label.
 
         The section "The run" of the README beside this module states the
         procedure.
@@ -2587,6 +2588,20 @@ class HazusEQInventoryCompiler:
                     {YEAR_BUILT_KEY: int(year)},
                     'imputed',
                 )
+            assembled[STAGE_S09_NONRESIDENTIAL_YEAR].add_world(
+                _build_inventory(
+                    kept,
+                    centroids,
+                    new[STAGE_S09_NONRESIDENTIAL_YEAR],
+                    vector_features=(),
+                )
+            )
+            report.set_timing(
+                STAGE_S09_NONRESIDENTIAL_YEAR,
+                time.perf_counter() - started,
+                world=world,
+            )
+            started = time.perf_counter()
             resolutions.append(
                 {
                     'world': world,
@@ -2603,26 +2618,38 @@ class HazusEQInventoryCompiler:
                     ),
                 }
             )
-            for stage in stages:
+            for stage in stages[1:]:
                 assembled[stage].add_world(
                     _build_inventory(kept, centroids, new[stage], vector_features=())
                 )
             del frozen, merged_world
             report.set_timing(
-                's09_nonresidential_year', time.perf_counter() - started, world=world
+                STAGE_S10_NONRESIDENTIAL_STRUCTURE,
+                time.perf_counter() - started,
+                world=world,
             )
 
         logs['neighbor_year'] = pd.concat(picks, ignore_index=True)
         logs['nonresidential_resolution'] = pd.DataFrame(resolutions)
         started = time.perf_counter()
-        for label, stage in (
-            ('imputed', STAGE_S09_NONRESIDENTIAL_YEAR),
-            ('drawn', STAGE_S10_NONRESIDENTIAL_STRUCTURE),
-            ('derived', STAGE_S10_DERIVED),
-        ):
-            sources.add_part(label, stage, assembled[stage])
+        sources.add_part(
+            'imputed',
+            STAGE_S09_NONRESIDENTIAL_YEAR,
+            assembled[STAGE_S09_NONRESIDENTIAL_YEAR],
+        )
         report.set_timing(
-            's09_nonresidential_year_freeze', time.perf_counter() - started
+            f'{STAGE_S09_NONRESIDENTIAL_YEAR}_freeze', time.perf_counter() - started
+        )
+        started = time.perf_counter()
+        sources.add_part(
+            'drawn',
+            STAGE_S10_NONRESIDENTIAL_STRUCTURE,
+            assembled[STAGE_S10_NONRESIDENTIAL_STRUCTURE],
+        )
+        sources.add_part('derived', STAGE_S10_DERIVED, assembled[STAGE_S10_DERIVED])
+        report.set_timing(
+            f'{STAGE_S10_NONRESIDENTIAL_STRUCTURE}_freeze',
+            time.perf_counter() - started,
         )
 
     def _freeze_view(
@@ -2920,7 +2947,7 @@ class HazusEQInventoryCompiler:
         result = valuer.impute_stage(
             sources.freeze,
             STAGE_S08_VIEW,
-            DONOR_STAGE,
+            STAGE_S05_DONORS,
             world=world,
             target_area_key=GROSS_AREA_KEY,
             areas=areas,

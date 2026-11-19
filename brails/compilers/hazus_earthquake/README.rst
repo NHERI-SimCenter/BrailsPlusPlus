@@ -165,13 +165,9 @@ section "Frozen stages" below lists the stages.
 
 The names of most of the stages a step freezes, of the report stages it files
 rows under, and of its timings in the report's summary begin with the step's
-label. The exceptions are these. The run freezes the two views and the donor
-stage ``DONOR_STAGE`` between steps, under names of their own. Three of the
-six records frozen right after ``s10`` are named after ``s12``, and the other
-three after ``s13`` and ``s14``, because the values of those steps replace
-what the records withhold.
-``s10`` runs inside the loop of ``s09`` over the worlds, and its time is
-counted in the timing of ``s09``.
+label. The exception is the six records frozen right after ``s10``: three are
+named after ``s12`` and the other three after ``s13`` and ``s14``, because the
+values of those steps replace what the records withhold.
 
 From ``s06`` on, a step that cannot complete a building in a world, or finds
 it inconsistent, excludes it from that world. Steps ``s08``, ``s09``, ``s10``
@@ -334,7 +330,7 @@ The values are frozen as ``s05_imputation``, a part of the ``imputed`` source,
 and the imputer's draws are the log ``imputer``. The step excludes no building.
 
 The run then freezes the view ``s05_view``. From the imputer's log it freezes
-the computed stage ``DONOR_STAGE``: the donor whose values each target kept in
+the computed stage ``s05_donors``: the donor whose values each target kept in
 each world, which ``s13_replacement_cost`` reads.
 
 ``s06_residential_year``
@@ -470,7 +466,8 @@ category as in ``s08``. The structure types are frozen as
 ``s10_nonresidential_structure``, a part of the ``drawn`` source, and the
 design levels, height classes and carve-out levels as ``s10_derived``, a
 part of the ``derived`` source. The loop's counts per world are the log
-``nonresidential_resolution``.
+``nonresidential_resolution``. The step runs inside the loop of ``s09`` over
+the worlds, and the report times it in each world under its own label.
 
 ``s11_schema_check``
 ~~~~~~~~~~~~~~~~~~~~
@@ -530,7 +527,7 @@ excludes no building.
 The step gives every building of ``s08_view`` its replacement cost in the
 world, excluded buildings included. ``ReplacementCostImputer`` takes the
 ``k``, ``cap_m`` and distance weights of the imputer of ``s05``. It reads the
-world's realization of ``s08_view`` and the donors of ``DONOR_STAGE``. It
+world's realization of ``s08_view`` and the donors of ``s05_donors``. It
 computes each building's replacement cost as a rate per square foot times
 its gross area of ``s12_gross_area`` in the world, as
 ``brails/imputers/replacement_cost/README.rst`` states. A building takes its
@@ -618,9 +615,8 @@ The run freezes each stage once, under its name, in the order of the
 subsections above, except the six records of withheld values, which it
 freezes before ``s11``, and the computed stages of ``s12`` to ``s14``, which
 it freezes with ``s15_output``. The names are the module's ``STAGE_``
-constants and the replacement cost imputer's ``DONOR_STAGE``. The stages fall
-into the four kinds that the section "Stages and freezing" of
-``brails/compilers/README.rst`` defines:
+constants. The stages fall into the four kinds that the section "Stages and
+freezing" of ``brails/compilers/README.rst`` defines:
 
 - Parts, each holding the values one step adds to one source:
   ``s01_footprints`` (``footprint``), ``s01_local`` (``local``),
@@ -634,15 +630,15 @@ into the four kinds that the section "Stages and freezing" of
   six frozen right after ``s10``.
 - Views: ``s05_view``, ``s08_view`` and ``s15_output``, the compiled
   inventory.
-- Computed stages, whose values no merge takes: ``DONOR_STAGE``, the donors
+- Computed stages, whose values no merge takes: ``s05_donors``, the donors
   named from the log of ``s05``, which ``s13`` reads; and ``s12_gross_area``,
   ``s13_replacement_cost`` and ``s14_building_type``, the gross areas,
   replacement costs and letters that ``s12`` to ``s14`` give, which the run
   freezes after ``s15`` and which no step reads.
 
 Every part other than the footprints, and every record and computed stage other
-than ``DONOR_STAGE``, holds each footprint's centroid as its coordinates. The
-footprints, the views and ``DONOR_STAGE`` hold the footprint polygons. The run
+than ``s05_donors``, holds each footprint's centroid as its coordinates. The
+footprints, the views and ``s05_donors`` hold the footprint polygons. The run
 ends with the manifest, which checks that no frozen stage changed after it was
 frozen.
 

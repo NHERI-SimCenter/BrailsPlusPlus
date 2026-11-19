@@ -39,6 +39,7 @@ import contextlib
 import functools
 import json
 import math
+import time
 from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
@@ -93,7 +94,6 @@ from brails.imputers.observed_donor_imputer.donor_records import (
     OUTCOME_NO_DONOR,
 )
 from brails.imputers.replacement_cost.replacement_cost_imputer import (
-    DONOR_STAGE,
     OUTCOME_IMPUTATION_DONOR,
     OUTCOME_LOCAL_VALUE,
     OUTCOME_OWN_RATE,
@@ -158,7 +158,7 @@ FREEZE_ORDER = (
     's04_unit_budget',
     's05_imputation',
     's05_view',
-    'imputation_donors',
+    's05_donors',
     's06_residential_year',
     's07_withheld',
     's07_pair_redraw',
@@ -191,6 +191,8 @@ TIMED_ONCE = (
     's06_residential_year_freeze',
     's07_pair_redraw_freeze',
     's08_view_freeze',
+    's09_nonresidential_year_freeze',
+    's10_nonresidential_structure_freeze',
     's12_gross_area_freeze',
     's13_replacement_cost_freeze',
     's14_building_type_freeze',
@@ -204,6 +206,7 @@ TIMED_PER_WORLD = (
     's08_structure',
     's08_view_merge',
     's09_nonresidential_year',
+    's10_nonresidential_structure',
     's15_output_merge',
     's11_schema_check',
     's12_gross_area',
@@ -1075,6 +1078,76 @@ class TestRandomness:
 
 class TestReport:
     """The report times the run and records its settings."""
+
+    def test_s09_and_s10_are_timed_apart(self, study_area: object) -> None:
+        """In a world, s09's time and s10's are each counted under its own key."""
+        pause = 0.2
+        structure = hc.HazusEQInventoryCompiler._assign_structure
+        draw = hc.ResidentialNeighborYearSampler.draw_details
+
+        def slow_structure(
+            compiler: object, *args: object, **kwargs: object
+        ) -> object:
+            """
+            Run the structure operations, pausing first when s10 runs them.
+
+            Args:
+                compiler (object):
+                    The compiler whose method is wrapped.
+                *args (object):
+                    The method's arguments.
+                **kwargs (object):
+                    The method's keyword arguments, ``step`` among them.
+
+            Returns:
+                object:
+                    What the method returns.
+            """
+            if kwargs.get('step') == 's10':
+                time.sleep(pause)
+            return structure(compiler, *args, **kwargs)
+
+        def slow_draw(sampler: object, *args: object) -> object:
+            """
+            Draw s09's years after a pause.
+
+            Args:
+                sampler (object):
+                    The sampler whose method is wrapped.
+                *args (object):
+                    The method's arguments.
+
+            Returns:
+                object:
+                    What the method returns.
+            """
+            time.sleep(pause)
+            return draw(sampler, *args)
+
+        with (
+            mock.patch.object(
+                hc.HazusEQInventoryCompiler,
+                '_assign_structure',
+                autospec=True,
+                side_effect=slow_structure,
+            ),
+            mock.patch.object(
+                hc.ResidentialNeighborYearSampler,
+                'draw_details',
+                autospec=True,
+                side_effect=slow_draw,
+            ),
+        ):
+            result = HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            ).compile(study_area)
+        seconds = {
+            entry['stage']: entry['seconds']
+            for entry in result.report.summary()['timings']
+            if entry['world'] == 0
+        }
+        for key in ('s09_nonresidential_year', 's10_nonresidential_structure'):
+            assert pause <= seconds[key] < 2 * pause, key
 
     def test_timings_and_settings(self, compiled: object) -> None:
         """The summary holds seconds per stage, per world and of the manifest."""
@@ -1959,7 +2032,7 @@ class TestYearAndValueOfTheRest:
                 (c.kwargs['k'], c.kwargs['cap_m']) for c in spy.call_args_list
             } == {(DEFAULT_IMPUTER_OPTIONS['k'], 1500.0)}
         assert {c.args[2:4] for c in impute.call_args_list} == {
-            ('s08_view', 'imputation_donors')
+            ('s08_view', 's05_donors')
         }
         options = imputer.call_args.kwargs
         assert (
@@ -2032,7 +2105,7 @@ class TestYearAndValueOfTheRest:
         result = compiled(n_worlds=3)
         value = HAZUS_EQ_SOURCE_FEATURES.index(REPLACEMENT_COST_KEY)
         log = result.logs['value']
-        donors = result.freeze.read('imputation_donors')
+        donors = result.freeze.read('s05_donors')
         seen = set()
         for row in log.itertuples():
             features = features_in(result.inventory, row.world)[row.asset_id]
@@ -2291,7 +2364,7 @@ class TestLastSteps:
             seed=SEED,
             **dict(DEFAULT_IMPUTER_OPTIONS),
             gross_area_key=NSI_GROSS_AREA_KEY,
-        ).impute_stage(result.freeze, hc.STAGE_S08_VIEW, DONOR_STAGE)
+        ).impute_stage(result.freeze, hc.STAGE_S08_VIEW, hc.STAGE_S05_DONORS)
         columns = [c for c in log.columns if c != 'area_source']
         pd.testing.assert_frame_equal(log[columns], from_footprints.log[columns])
         has_area = log['footprint_gross_area_sqft'].notna()
