@@ -54,6 +54,7 @@ from brails.imputers.residential_neighbor_year_sampler.residential_neighbor_year
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INFEASIBLE,
     DIAGNOSIS_INVALID,
+    DIAGNOSIS_NO_DONOR,
     DIAGNOSIS_OK,
     DIAGNOSIS_UNSUPPORTED,
 )
@@ -457,7 +458,9 @@ def test_one_asset_calls_match_the_full_inventory() -> None:
 
 
 # The block group is read only for an asset with no donor within the cap, and
-# coordinates without area, or two failures at once, name nothing.
+# coordinates without area, or two failures at once, name nothing. A missing
+# donor gives no_donor alone, and beside a residential class the class's
+# infeasible.
 @pytest.mark.parametrize(
     ('record', 'diagnosis', 'resolvable_by'),
     [
@@ -486,7 +489,7 @@ def test_one_asset_calls_match_the_full_inventory() -> None:
         ),
         (
             asset(30000.0, 0.0, OccupancyClass='COM1', BLOCKGROUP_GEOID=BG_C),
-            DIAGNOSIS_INFEASIBLE,
+            DIAGNOSIS_NO_DONOR,
             (BLOCK_GROUP_KEY,),
         ),
         (
@@ -554,7 +557,7 @@ def test_a_non_residential_year_makes_no_donor() -> None:
         {'t': asset(0.0, 0.0, OccupancyClass='COM1', BLOCKGROUP_GEOID=BG_C)}
     )
     verdicts = _sampler(_frozen(records)[0]).check(targets)
-    assert verdicts.loc['t', 'diagnosis'] == DIAGNOSIS_INFEASIBLE
+    assert verdicts.loc['t', 'diagnosis'] == DIAGNOSIS_NO_DONOR
     assert verdicts.loc['t', 'resolvable_by'] == (BLOCK_GROUP_KEY,)
 
 

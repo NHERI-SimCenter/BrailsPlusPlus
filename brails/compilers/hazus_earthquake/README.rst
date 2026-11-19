@@ -451,7 +451,9 @@ as ``s09_nonresidential_year``, a part of the ``imputed`` source.
 The sampler refuses a building that has no occupancy class, or that has no
 residential building with a year within ``cap_m`` or in its block group.
 Such a building is excluded from the world under
-``s09_nonresidential_year``, as ``missing_input`` in either case.
+``s09_nonresidential_year``: as ``missing_input`` where it has no occupancy
+class, and as ``no_plausible_value``, with the sampler's diagnosis
+``no_donor``, where it has no such neighbor.
 
 ``s10_nonresidential_structure``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -544,7 +546,8 @@ The step keeps a local ``ReplacementCost`` as it is. Where a local
 takes its rate from the local building.
 
 A building not yet excluded for which the imputer finds no donor is excluded
-from the world under ``s13_replacement_cost``, as ``no_plausible_value``. A
+from the world under ``s13_replacement_cost``, as ``no_plausible_value``, with
+the diagnosis ``no_donor``. A
 building not yet excluded has an occupancy class, which the schema requires,
 and a footprint that encloses an area, so the step files no other outcome. A
 building that the step left without a replacement cost for another reason

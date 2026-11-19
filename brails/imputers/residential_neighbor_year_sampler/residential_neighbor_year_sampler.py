@@ -60,6 +60,7 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INFEASIBLE,
     DIAGNOSIS_INVALID,
+    DIAGNOSIS_NO_DONOR,
     DIAGNOSIS_OK,
     DIAGNOSIS_UNSUPPORTED,
     diagnosis_frame,
@@ -329,8 +330,9 @@ class ResidentialNeighborYearSampler(InferenceEngine):
                 value per world is unsupported. An absent occupancy,
                 coordinates that enclose no area, or, for an asset with no
                 donor within ``cap_m``, an absent block group, is invalid.
-                A residential class, or a block group without a donor for
-                an asset with none within ``cap_m``, is infeasible.
+                A residential class is infeasible. A block group without a
+                donor, for an asset with none within ``cap_m`` and no other
+                failure, gives ``no_donor``.
                 ``resolvable_by`` names the failing feature where it is the
                 only failure, and nothing where several fail or the
                 coordinates do.
@@ -371,7 +373,8 @@ class ResidentialNeighborYearSampler(InferenceEngine):
         Returns:
             tuple[str, str, tuple[str, ...]]:
                 The diagnosis, the detail, and the features that would
-                each, alone, admit the asset.
+                each, alone, admit the asset. A failure of another kind
+                beside the missing donor takes its diagnosis.
         """
         for key in (self.occupancy_key, BLOCK_GROUP_KEY):
             if is_probabilistic_feature(key, features.get(key), vector_features):
@@ -381,9 +384,11 @@ class ResidentialNeighborYearSampler(InferenceEngine):
                     'one world at a time',
                     (),
                 )
-        # (feature or None, message) per failure
+        # (feature or None, message) per failure: invalid, infeasible, and
+        # no donor in the cap or the block group.
         invalid: list[tuple[str | None, str]] = []
         uncovered: list[tuple[str | None, str]] = []
+        without_donor: list[tuple[str | None, str]] = []
         occupancy = features.get(self.occupancy_key)
         if not isinstance(occupancy, str):
             invalid.append(
@@ -416,7 +421,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
                         )
                     )
                 elif site.block_group not in pool.block_group_donors:
-                    uncovered.append(
+                    without_donor.append(
                         (
                             BLOCK_GROUP_KEY,
                             'no residential asset with a year within '
@@ -424,7 +429,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
                             f'{site.block_group}',
                         )
                     )
-        failing = invalid + uncovered
+        failing = invalid + uncovered + without_donor
         if not failing:
             return DIAGNOSIS_OK, '', ()
         details = '; '.join(message for _, message in failing)
@@ -435,7 +440,9 @@ class ResidentialNeighborYearSampler(InferenceEngine):
         )
         if invalid:
             return DIAGNOSIS_INVALID, details, resolvable
-        return DIAGNOSIS_INFEASIBLE, details, resolvable
+        if uncovered:
+            return DIAGNOSIS_INFEASIBLE, details, resolvable
+        return DIAGNOSIS_NO_DONOR, details, resolvable
 
     # -----------------------------------------------------------------
     # Draw

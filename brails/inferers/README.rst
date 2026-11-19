@@ -46,7 +46,7 @@ The diagnosis frame
 ``inference_diagnosis.py`` holds the verdicts shared by the inferers of
 every hazard, the columns and the helpers ``diagnosis_frame``, which builds
 a frame from per-asset verdicts, and ``preview_failures``, which formats the
-failing assets for an error message. The column ``diagnosis`` holds one of four
+failing assets for an error message. The column ``diagnosis`` holds one of five
 verdicts:
 
 - ``DIAGNOSIS_OK``, ``'OK'``: the inferer can process the asset.
@@ -59,6 +59,11 @@ verdicts:
 - ``DIAGNOSIS_INFEASIBLE``, ``'infeasible'``: every driver is usable and
   the inferer still has nothing to produce. The caller relaxes one of the
   features in ``resolvable_by``.
+- ``DIAGNOSIS_NO_DONOR``, ``'no_donor'``: every driver is usable and no asset
+  could serve as the donor of the value. The caller widens the search for
+  donors or relaxes one of the features in ``resolvable_by``. No inferer
+  returns it. ``ResidentialNeighborYearSampler``, an imputer that follows the
+  same check contract, does.
 
 ``detail`` says what happened in words. ``resolvable_by`` names the
 features that would each, alone, let the inferer produce a value. An

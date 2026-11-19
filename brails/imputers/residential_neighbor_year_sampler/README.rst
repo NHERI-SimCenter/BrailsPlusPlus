@@ -66,7 +66,8 @@ A building with no donor within the cap draws one donor of its block
 group, read from ``BLOCK_GROUP_KEY``, with equal weights. The fallback
 keeps the copied year of such a building inside its block group; in a
 block group that covers a large area the donor may lie beyond the cap.
-``check`` refuses a building with a donor in neither place and says why.
+``check`` refuses a building with a donor in neither place, with the
+diagnosis ``no_donor``, and says why.
 
 The donor's year is copied. Both the pick among the nearest donors and the
 block-group pick are the draw of ``ObservedDonorImputer``, run with the

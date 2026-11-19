@@ -154,6 +154,7 @@ from brails.inferers.hazus_inferer_earthquake.hazus_table_completion import (
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INFEASIBLE,
     DIAGNOSIS_INVALID,
+    DIAGNOSIS_NO_DONOR,
     DIAGNOSIS_OK,
     DIAGNOSIS_UNSUPPORTED,
 )
@@ -342,12 +343,14 @@ CARVE_OUT_METHOD = '5.1'
 # The exclusion category of each diagnosis by which a year sampler, the
 # design level inferer or the height class inferer refuses an asset. An asset
 # ACSYearBuiltSampler finds infeasible lies in a block group the census tables
-# do not cover, and one ResidentialNeighborYearSampler finds infeasible has no
-# residential neighbor with a construction year.
+# do not cover. ResidentialNeighborYearSampler gives no_donor to an asset that
+# has no residential neighbor with a construction year, which is filed, as
+# s13's building without a donor is, as having no plausible value.
 _DIAGNOSIS_CATEGORY = {
     DIAGNOSIS_INVALID: MISSING_INPUT_CATEGORY,
     DIAGNOSIS_UNSUPPORTED: UNSUPPORTED_CATEGORY,
     DIAGNOSIS_INFEASIBLE: MISSING_INPUT_CATEGORY,
+    DIAGNOSIS_NO_DONOR: NO_PLAUSIBLE_VALUE_CATEGORY,
 }
 
 # The feature of the stage of s13's values holding the source label of each
@@ -3034,13 +3037,15 @@ class HazusEQInventoryCompiler:
                 # first, and every footprint encloses an area, so no other
                 # outcome without a value is expected here. One that occurs
                 # is filed as a missing input rather than passed over.
+                no_donor = outcome == OUTCOME_NO_DONOR
                 report.record_exclusion(
                     asset_id,
                     world=world,
                     stage='s13_replacement_cost',
                     category=NO_PLAUSIBLE_VALUE_CATEGORY
-                    if outcome == OUTCOME_NO_DONOR
+                    if no_donor
                     else MISSING_INPUT_CATEGORY,
+                    diagnosis=DIAGNOSIS_NO_DONOR if no_donor else '',
                     detail=f'the value step gives no {REPLACEMENT_COST_KEY}: '
                     f'{outcome}',
                 )

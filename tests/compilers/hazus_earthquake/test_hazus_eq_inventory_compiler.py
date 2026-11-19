@@ -2204,6 +2204,26 @@ class TestYearAndValueOfTheRest:
         assert set(rows['category']) == {'missing_input'}
         assert OCCUPANCY_KEY not in features_in(result.inventory, 0)['f01']
 
+    def test_no_residential_neighbor(self, study_area: object) -> None:
+        """A building with no residential neighbor that has a year has no donor."""
+        # f01, beyond the cap of every donor, as a local COM1.
+        local = build_inputs().local
+        x, y, side = FOOTPRINTS['f01'][:3]
+        local.add_asset(
+            'f01', Asset('f01', square(x, y, side), {OCCUPANCY_KEY: 'COM1'})
+        )
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+        ).compile(study_area._replace(local=local))
+        rows = result.report.exclusions
+        rows = rows[rows['asset_id'] == 'f01']
+        assert list(zip(rows['world'], rows['stage'])) == [
+            (world, 's09_nonresidential_year') for world in range(2)
+        ]
+        assert set(rows['category']) == {'no_plausible_value'}
+        assert set(rows['diagnosis']) == {'no_donor'}
+        assert all('no residential asset with a year' in d for d in rows['detail'])
+
     def test_values(self, compiled: object) -> None:
         """Each value is its log's rate times gross area, coded by its outcome."""
         result = compiled(n_worlds=3)
@@ -2348,6 +2368,8 @@ class TestYearAndValueOfTheRest:
         ]
         assert list(valued['category']) == expected
         assert 'no_plausible_value' in expected
+        no_donor = valued['category'] == 'no_plausible_value'
+        assert set(valued.loc[no_donor, 'diagnosis']) == {'no_donor'}
 
     def test_schema_check_takes_no_value(self, compiled: object) -> None:
         """A building the schema refuses takes no value, NSI's included."""

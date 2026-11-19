@@ -36,7 +36,10 @@
 Report what an inferer can and cannot do with an asset.
 
 The verdicts, columns and helpers here are the parts of the per-asset
-diagnosis vocabulary of inferers that no peril owns.
+diagnosis vocabulary of inferers that no peril owns. The module holds only
+the verdicts a check returns, ``no_donor`` among them, which an imputer's
+check gives where no donor serves. A label that a compiler gives an
+exclusion that no check refused belongs beside the compiler's categories.
 
 .. autosummary::
 
@@ -74,12 +77,17 @@ DIAGNOSIS_UNSUPPORTED = 'unsupported'
 # caller relaxes one of the features in ``resolvable_by``.
 DIAGNOSIS_INFEASIBLE = 'infeasible'
 
-# The columns of a diagnosis frame. ``diagnosis`` is one of the four
-# verdicts above, ``detail`` says what happened in words, and
-# ``resolvable_by`` names the features that would each, alone, let the
-# inferer produce a value. An unsupported asset names none. An invalid
-# asset names the driver a caller could supply or redraw, where the
-# inferer reads one driver and can say which.
+# Every driver is usable and no asset could serve as the donor of the value.
+# The caller widens the search for donors, or relaxes one of the features in
+# ``resolvable_by``.
+DIAGNOSIS_NO_DONOR = 'no_donor'
+
+# The columns of a diagnosis frame. ``diagnosis`` is one of the five verdicts
+# above, the only values a check returns, ``detail`` says what happened in
+# words, and ``resolvable_by`` names the features that would each, alone, let
+# the inferer produce a value. An unsupported asset names none. An invalid
+# asset names the driver a caller could supply or redraw, where the inferer
+# reads one driver and can say which.
 DIAGNOSIS_COLUMNS = ('diagnosis', 'detail', 'resolvable_by')
 
 

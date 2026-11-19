@@ -364,15 +364,14 @@ on the step. Each category below has a general definition, followed by
 examples from the Hazus earthquake compiler.
 
 ``missing_input``
-    A value the step reads is absent, or holds a value the step cannot use,
-    and no earlier step supplied a usable one. Examples: a residential
-    building without a usable unit count, or in a block group the census
-    tables of the year sampler do not cover; a building whose construction
-    year is copied from residential neighbors and that has no occupancy
-    class, or no residential neighbor with a year; a construction year that
-    is not a number; a local structure type that is not a Hazus structure
-    type, on a building without a height class; and a local building type
-    letter that names no Hazus general building type.
+    A value the step reads is absent, or holds a value the step cannot use, and
+    no earlier step supplied a usable one. Examples: a residential building
+    without a usable unit count, or in a block group the census tables of the
+    year sampler do not cover; a building whose construction year is copied
+    from residential neighbors and that has no occupancy class; a construction
+    year that is not a number; a local structure type that is not a Hazus
+    structure type, on a building without a height class; and a local building
+    type letter that names no Hazus general building type.
 
 ``unsupported``
     A value the step reads is present in a form the step does not handle.
@@ -385,8 +384,11 @@ examples from the Hazus earthquake compiler.
     The step's model has no value for the building's combination of inputs,
     whatever else the building holds. Examples: a building whose occupancy
     class, story band and, in the West Coast tables, era select no
-    distribution in the structure type table, and a building for which the
-    replacement cost imputer finds no donor.
+    distribution in the structure type table; a building for which the
+    replacement cost imputer finds no donor; and a building whose
+    construction year is copied from residential neighbors and that has no
+    residential neighbor with a year. The last two carry the diagnosis
+    ``no_donor``.
 
 ``conflict``
     The model has values for the building's combination of inputs, and other

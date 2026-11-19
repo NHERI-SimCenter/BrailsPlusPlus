@@ -126,7 +126,7 @@ class _Verdict(NamedTuple):
 
     Attributes:
         diagnosis (str):
-            One of the four verdicts of the shared vocabulary.
+            One of the verdicts of the shared vocabulary.
         detail (str):
             What happened, in words.
         resolvable_by (tuple):
