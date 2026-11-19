@@ -48,7 +48,6 @@ from __future__ import annotations
 
 import json
 import os
-import unicodedata
 from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -65,6 +64,7 @@ from brails.types.asset_inventory import (
 )
 from brails.types.region_boundary import RegionBoundary
 from brails.utils.asset_id import LATITUDE_RANGE, LONGITUDE_RANGE
+from brails.utils.console import print_ascii_fallback
 from brails.utils.geo_tools import GeoTools
 
 if TYPE_CHECKING:
@@ -590,20 +590,8 @@ def filter_to_region(  # noqa: C901
     noun = 'asset' if total == 1 else 'assets'
     messages.append(f'Kept {len(result.inventory)} of {total} {noun} inside {name}.')
     for message in messages:
-        _print(message)
+        print_ascii_fallback(message)
     return result
-
-
-def _print(message: str) -> None:
-    """Print a line, without accents where the console cannot encode them."""
-    try:
-        print(message)
-    except UnicodeEncodeError:
-        print(
-            unicodedata.normalize('NFKD', message)
-            .encode('ascii', 'ignore')
-            .decode('ascii')
-        )
 
 
 def _stream_features(  # noqa: C901
@@ -754,7 +742,7 @@ def _stream_features(  # noqa: C901
                             else None
                         )
                         if name in NAD83_CRS_NAMES:
-                            _print(
+                            print_ascii_fallback(
                                 f'{path} gives its coordinates in NAD83 '
                                 f'({name}). They are used as they are, as '
                                 'WGS84 longitudes and latitudes, from which '

@@ -180,6 +180,7 @@ include = [
     "tests/utils/test_asset_id.py",
     "brails/utils/region_filter.py",
     "tests/utils/test_region_filter.py",
+    "brails/utils/console.py",
     "brails/utils/http_session.py",
     "tests/utils/test_http_session.py",
     "brails/utils/tiger_files.py",
