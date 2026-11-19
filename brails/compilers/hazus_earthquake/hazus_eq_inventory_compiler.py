@@ -253,13 +253,13 @@ STAGE_S08_VIEW = 's08_view'
 STAGE_S09_NONRESIDENTIAL_YEAR = 's09_nonresidential_year'
 STAGE_S10_NONRESIDENTIAL_STRUCTURE = 's10_nonresidential_structure'
 STAGE_S10_DERIVED = 's10_derived'
-STAGE_S11_GROSS_AREA = 's11_gross_area'
-STAGE_S11_WITHHELD_LOCAL = 's11_withheld_local'
-STAGE_S11_WITHHELD_JOIN = 's11_withheld_join'
-STAGE_S11_WITHHELD_FOOTPRINT = 's11_withheld_footprint'
+STAGE_S12_WITHHELD_LOCAL = 's12_withheld_local'
+STAGE_S12_WITHHELD_JOIN = 's12_withheld_join'
+STAGE_S12_WITHHELD_FOOTPRINT = 's12_withheld_footprint'
 STAGE_S13_WITHHELD = 's13_withheld'
 STAGE_S14_WITHHELD = 's14_withheld'
 STAGE_S14_WITHHELD_FOOTPRINT = 's14_withheld_footprint'
+STAGE_S12_GROSS_AREA = 's12_gross_area'
 STAGE_S13_REPLACEMENT_COST = 's13_replacement_cost'
 STAGE_S14_BUILDING_TYPE = 's14_building_type'
 STAGE_S15_OUTPUT = 's15_output'
@@ -284,7 +284,7 @@ REPORT_STAGES = (
     's10_structure_type',
     's10_height_class',
     's10_carve_out',
-    's12_schema_check',
+    's11_schema_check',
     's13_replacement_cost',
     's14_building_type',
 )
@@ -1286,24 +1286,22 @@ class HazusEQInventoryCompiler:
             sources, logs, centroids, report, n_computed, imputer
         )
 
-        started = time.perf_counter()
-        self._compute_gross_areas(sources, logs, centroids, n_computed)
-        report.set_timing(STAGE_S11_GROSS_AREA, time.perf_counter() - started)
         self._withhold_replaced_values(sources, centroids)
 
-        # Steps s12 to s15 run world by world on the world's merged inventory,
+        # Steps s11 to s15 run world by world on the world's merged inventory,
         # which s15 completes, and each world's results are added to those of
         # the earlier worlds.
         excluded_in = {
             world: set(ids)
             for world, ids in report.exclusions.groupby('world')['asset_id']
         }
-        costs, letters, inventory = (
+        areas, costs, letters, inventory = (
+            AssetInventory(),
             AssetInventory(),
             AssetInventory(),
             AssetInventory(),
         )
-        violations, value_logs, lacking = [], [], []
+        violations, area_rows, value_logs, lacking = [], [], [], []
         for world in range(n_computed):
             started = time.perf_counter()
             merged = sources.merge_world(world)
@@ -1314,8 +1312,11 @@ class HazusEQInventoryCompiler:
             )
             excluded = set(excluded_in.get(world, ()))
             violations.append(self._check_schema(world, merged, excluded, report))
+            world_areas = self._compute_gross_areas(
+                world, sources, centroids, area_rows, report
+            )
             world_costs, value_log = self._impute_replacement_costs(
-                world, sources, centroids, imputer, excluded, report
+                world, sources, centroids, imputer, excluded, world_areas, report
             )
             world_letters = self._derive_building_types(
                 world, merged, sources, centroids, excluded, report
@@ -1325,19 +1326,20 @@ class HazusEQInventoryCompiler:
                     world,
                     merged,
                     excluded,
+                    world_areas,
                     world_costs,
                     world_letters,
-                    sources,
                     report,
                 )
             )
+            areas.add_world(world_areas)
             costs.add_world(world_costs)
             letters.add_world(world_letters)
             inventory.add_world(merged)
             value_logs.append(value_log)
             del merged
 
-        # s12: the schema's violations and the count of each world's refusals.
+        # s11: the schema's violations and the count of each world's refusals.
         logs['schema_check'] = pd.concat(violations, ignore_index=True)
         report.set_schema_check(
             {
@@ -1348,6 +1350,10 @@ class HazusEQInventoryCompiler:
                 },
             }
         )
+        # s12: the source of each area, in every world.
+        logs['gross_area'] = pd.DataFrame(
+            area_rows, columns=['asset_id', 'world', 'area_source']
+        ).astype({'asset_id': object, 'area_source': 'category'})
         # s13: the value imputer's log of every world.
         logs['value'] = pd.concat(value_logs, ignore_index=True)
         # s15: the default properties compiled buildings lack.
@@ -1360,8 +1366,9 @@ class HazusEQInventoryCompiler:
                 f'buildings are missing; the log {MISSING_DEFAULTS_LOG} names '
                 'them, and write refuses the file.'
             )
-        # The stages of s13, s14 and s15, over the worlds.
+        # The stages of s12 to s15, over the worlds.
         for stage, assembled in (
+            (STAGE_S12_GROSS_AREA, areas),
             (STAGE_S13_REPLACEMENT_COST, costs),
             (STAGE_S14_BUILDING_TYPE, letters),
             (STAGE_S15_OUTPUT, inventory),
@@ -1478,7 +1485,7 @@ class HazusEQInventoryCompiler:
             for asset_id, asset in local.inventory.items():
                 asset.coordinates = centroids[asset_id]
                 # The local GrossArea also under a name of its own, which the
-                # output keeps where the GrossArea of s11 takes its place.
+                # output keeps where the GrossArea of s12 takes its place.
                 if not is_missing_value(asset.features.get(GROSS_AREA_KEY)):
                     asset.features[LOCAL_GROSS_AREA_KEY] = asset.features[
                         GROSS_AREA_KEY
@@ -2655,78 +2662,82 @@ class HazusEQInventoryCompiler:
 
     def _compute_gross_areas(
         self,
+        world: int,
         sources: _WorldSources,
-        logs: dict[str, pd.DataFrame],
         centroids: Mapping[str, list[list[float]]],
-        n_computed: int,
-    ) -> None:
+        rows: list[tuple[str, int, str | None]],
+        report: CompilationReport,
+    ) -> AssetInventory:
         """
-        Run s11 in every world: the gross area of every building.
+        Run s12 in one world: the gross area of every building.
 
-        The area is computed from the footprint in the view
-        :data:`STAGE_S08_VIEW`, whose story counts are final, for every building
-        of the view, excluded ones included. The section "The run" of the
-        README beside this module states the procedure.
+        The area is computed from the footprint in the world's realization of
+        the view :data:`STAGE_S08_VIEW`, whose story counts are final, for
+        every building of the view, excluded ones included, so that a
+        building the schema check excludes keeps its row in the log
+        ``gross_area``. The section "The run" of the README beside this
+        module states the procedure.
 
         Args:
+            world (int):
+                The index of the world whose areas are computed.
             sources (_WorldSources):
-                The sources, in whose freeze the areas are frozen as
-                :data:`STAGE_S11_GROSS_AREA`, a stage that s13 and s15 read
-                and no merge takes.
-            logs (dict[str, pandas.DataFrame]):
-                The logs, which receive ``gross_area``: per building and
-                world, the ``area_source`` that ``footprint_gross_area``
-                gives.
+                The sources, whose freeze holds the view.
             centroids (Mapping[str, list[list[float]]]):
                 Each footprint's centroid, which the assets built here take as
                 their coordinates.
-            n_computed (int):
-                The number of worlds computed.
+            rows (list[tuple[str, int, str | None]]):
+                The rows of the log ``gross_area``, to which the step adds the
+                (asset id, world, ``area_source``) that
+                ``footprint_gross_area`` gives each building in the world.
+            report (CompilationReport):
+                The report, which receives the step's time in the world.
+
+        Returns:
+            AssetInventory:
+                One asset per building of the view, holding its gross area
+                in the world where the footprint gives one. The run freezes
+                the areas of every world as :data:`STAGE_S12_GROSS_AREA`,
+                which no merge takes.
 
         Raises:
             ValueError:
                 As :func:`footprint_gross_area` raises, for a building
                 without a readable footprint.
         """
+        started = time.perf_counter()
         view = sources.freeze.read(STAGE_S08_VIEW)
-        kept = list(view.inventory)
-        areas = AssetInventory()
-        rows = []
-        for world in range(n_computed):
-            realization = view.get_world_realization(world)
-            values = {}
-            for asset_id, asset in realization.inventory.items():
-                area, area_source = footprint_gross_area(asset_id, asset)
-                rows.append((asset_id, world, area_source))
-                if area is not None:
-                    values[asset_id] = {GROSS_AREA_KEY: area}
-            areas.add_world(
-                _build_inventory(kept, centroids, values, vector_features=())
-            )
-            del realization
-        logs['gross_area'] = pd.DataFrame(
-            rows, columns=['asset_id', 'world', 'area_source']
-        ).astype({'asset_id': object, 'area_source': 'category'})
-        sources.freeze.freeze(STAGE_S11_GROSS_AREA, areas)
+        values = {}
+        for asset_id, asset in view.get_world_realization(world).inventory.items():
+            area, area_source = footprint_gross_area(asset_id, asset)
+            rows.append((asset_id, world, area_source))
+            if area is not None:
+                values[asset_id] = {GROSS_AREA_KEY: area}
+        report.set_timing(
+            STAGE_S12_GROSS_AREA, time.perf_counter() - started, world=world
+        )
+        return _build_inventory(
+            list(view.inventory), centroids, values, vector_features=()
+        )
 
     def _withhold_replaced_values(  # noqa: C901
         self, sources: _WorldSources, centroids: Mapping[str, list[list[float]]]
     ) -> None:
         """
-        Withhold from every later merge the values that s11, s13 and s14 replace.
+        Withhold from every later merge the values that s12, s13 and s14 replace.
 
         Each record is named by the step whose value takes the place of the
         values it withholds, and each names, per building, the source a value
-        is withheld from: :data:`STAGE_S11_WITHHELD_LOCAL` the local
-        ``GrossArea``, :data:`STAGE_S11_WITHHELD_JOIN` NSI's ``GrossArea``,
-        :data:`STAGE_S11_WITHHELD_FOOTPRINT` a ``GrossArea`` the footprints
+        is withheld from: :data:`STAGE_S12_WITHHELD_LOCAL` the local
+        ``GrossArea``, :data:`STAGE_S12_WITHHELD_JOIN` NSI's ``GrossArea``,
+        :data:`STAGE_S12_WITHHELD_FOOTPRINT` a ``GrossArea`` the footprints
         carry, :data:`STAGE_S13_WITHHELD` the join's ``ReplacementCost`` where
         no local value outranks it, :data:`STAGE_S14_WITHHELD` NSI's
         ``BuildingType`` and :data:`STAGE_S14_WITHHELD_FOOTPRINT` a
         ``BuildingType`` the footprints carry. One building's ``GrossArea``
         of two sources needs two records, since a record withholds a feature
         from one source. The run calls this after the view
-        :data:`STAGE_S08_VIEW` is frozen and before the first merge of s12, so
+        :data:`STAGE_S08_VIEW` is frozen and before the first merge of s11, so
         that the unit budget, the structure type draw and the rates of s13
         read these values.
 
@@ -2748,13 +2759,13 @@ class HazusEQInventoryCompiler:
             if not is_missing_value(features.get(REPLACEMENT_COST_KEY))
         }
         records: dict[str, dict[str, dict[str, str]]] = {
-            STAGE_S11_WITHHELD_LOCAL: {
+            STAGE_S12_WITHHELD_LOCAL: {
                 asset_id: {GROSS_AREA_KEY: 'local'}
                 for asset_id, features in local
                 if not is_missing_value(features.get(GROSS_AREA_KEY))
             },
-            STAGE_S11_WITHHELD_JOIN: {},
-            STAGE_S11_WITHHELD_FOOTPRINT: {},
+            STAGE_S12_WITHHELD_JOIN: {},
+            STAGE_S12_WITHHELD_FOOTPRINT: {},
             STAGE_S13_WITHHELD: {},
             STAGE_S14_WITHHELD: {},
             STAGE_S14_WITHHELD_FOOTPRINT: {},
@@ -2764,7 +2775,7 @@ class HazusEQInventoryCompiler:
         for stage in sources.parts[SPINE_LABEL]:
             for asset_id, asset in sources.freeze.read(stage).inventory.items():
                 for key, record in (
-                    (GROSS_AREA_KEY, STAGE_S11_WITHHELD_FOOTPRINT),
+                    (GROSS_AREA_KEY, STAGE_S12_WITHHELD_FOOTPRINT),
                     (BUILDING_TYPE_KEY, STAGE_S14_WITHHELD_FOOTPRINT),
                 ):
                     if not is_missing_value(asset.features.get(key)):
@@ -2776,7 +2787,7 @@ class HazusEQInventoryCompiler:
             for asset_id, asset in sources.freeze.read(stage).inventory.items():
                 features = asset.features
                 if not is_missing_value(features.get(GROSS_AREA_KEY)):
-                    records[STAGE_S11_WITHHELD_JOIN][asset_id] = {
+                    records[STAGE_S12_WITHHELD_JOIN][asset_id] = {
                         GROSS_AREA_KEY: label
                     }
                 if asset_id in kept and not is_missing_value(
@@ -2804,10 +2815,10 @@ class HazusEQInventoryCompiler:
         report: CompilationReport,
     ) -> pd.DataFrame:
         """
-        Run s12 in a world: check buildings not excluded against the schema.
+        Run s11 in a world: check buildings not excluded against the schema.
 
-        The schema reads none of ``ReplacementCost``, ``GrossArea`` and
-        ``BuildingType``, which s15 writes after the check.
+        The schema reads none of ``GrossArea``, ``ReplacementCost`` and
+        ``BuildingType``, which s12 to s14 give after the check.
 
         Args:
             world (int):
@@ -2836,13 +2847,13 @@ class HazusEQInventoryCompiler:
             report.record_exclusion(
                 asset_id,
                 world=world,
-                stage='s12_schema_check',
+                stage='s11_schema_check',
                 category=FAILS_SCHEMA_CATEGORY,
                 detail='; '.join(messages),
             )
             excluded.add(asset_id)
         report.set_timing(
-            's12_schema_check', time.perf_counter() - started, world=world
+            's11_schema_check', time.perf_counter() - started, world=world
         )
         return verdict.to_dataframe().drop(columns='world_index').assign(world=world)
 
@@ -2853,22 +2864,21 @@ class HazusEQInventoryCompiler:
         centroids: Mapping[str, list[list[float]]],
         imputer: ObservedDonorImputer,
         excluded: set[str],
+        areas: AssetInventory,
         report: CompilationReport,
     ) -> tuple[AssetInventory, pd.DataFrame]:
         """
         Run s13 in one world: the value of every building.
 
         Every building of the view :data:`STAGE_S08_VIEW` is valued, excluded
-        ones included, at the gross area of :data:`STAGE_S11_GROSS_AREA`.
-        The section "The run" of the README beside this module states the
-        procedure.
+        ones included, at its gross area of s12 in the world. The section
+        "The run" of the README beside this module states the procedure.
 
         Args:
             world (int):
                 The index of the world valued.
             sources (_WorldSources):
-                The sources, whose freeze holds the view, the donor stage and
-                the areas.
+                The sources, whose freeze holds the view and the donor stage.
             centroids (Mapping[str, list[list[float]]]):
                 Each footprint's centroid, which the assets built here take as
                 their coordinates.
@@ -2878,6 +2888,8 @@ class HazusEQInventoryCompiler:
             excluded (set[str]):
                 The buildings excluded from the world, to which those left
                 without a value are added.
+            areas (AssetInventory):
+                The gross areas of s12 in the world.
             report (CompilationReport):
                 The report, which receives an exclusion for each building
                 left without a value that is not yet excluded, and the step's
@@ -2911,7 +2923,7 @@ class HazusEQInventoryCompiler:
             DONOR_STAGE,
             world=world,
             target_area_key=GROSS_AREA_KEY,
-            area_stage=STAGE_S11_GROSS_AREA,
+            areas=areas,
         )
         values: dict[str, dict[str, Any]] = {}
         for asset_id, outcome in zip(result.log['asset_id'], result.log['outcome']):
@@ -3034,17 +3046,17 @@ class HazusEQInventoryCompiler:
         world: int,
         merged: AssetInventory,
         excluded: set[str],
+        areas: AssetInventory,
         costs: AssetInventory,
         letters: AssetInventory,
-        sources: _WorldSources,
         report: CompilationReport,
     ) -> list[tuple[str, int, str]]:
         """
-        Run s15 in one world: write Excluded and the results of s11, s13 and s14.
+        Run s15 in one world: write Excluded and the results of s12 to s14.
 
         Every building receives ``Excluded`` and the letter of s14. A
         building not excluded from the world also receives its value of s13,
-        coded by its source label, and its gross area of s11 as
+        coded by its source label, and its gross area of s12 as
         ``GrossArea``, and is checked for the properties of
         :data:`DEFAULT_PROPERTIES` that apply to it.
 
@@ -3055,12 +3067,12 @@ class HazusEQInventoryCompiler:
                 The world's merged inventory, changed in place.
             excluded (set[str]):
                 The buildings excluded from the world.
+            areas (AssetInventory):
+                The gross areas of s12 in the world.
             costs (AssetInventory):
                 The values of s13 in the world.
             letters (AssetInventory):
                 The letters of s14 in the world.
-            sources (_WorldSources):
-                The sources, whose freeze holds :data:`STAGE_S11_GROSS_AREA`.
             report (CompilationReport):
                 The report, which receives the step's time in the world.
 
@@ -3076,11 +3088,6 @@ class HazusEQInventoryCompiler:
                 reads.
         """
         started = time.perf_counter()
-        areas = (
-            sources.freeze.read(STAGE_S11_GROSS_AREA)
-            .get_world_realization(world)
-            .inventory
-        )
         lacking = []
         for asset_id, asset in merged.inventory.items():
             features = asset.features
@@ -3096,7 +3103,7 @@ class HazusEQInventoryCompiler:
                     {REPLACEMENT_COST_KEY: value[REPLACEMENT_COST_KEY]},
                     value[_VALUE_SOURCE_KEY],
                 )
-            area = areas[asset_id].features.get(GROSS_AREA_KEY)
+            area = areas.inventory[asset_id].features.get(GROSS_AREA_KEY)
             if area is not None:
                 features[GROSS_AREA_KEY] = area
             lacking.extend(

@@ -35,6 +35,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import json
 import math
@@ -168,13 +169,13 @@ FREEZE_ORDER = (
     's09_nonresidential_year',
     's10_nonresidential_structure',
     's10_derived',
-    's11_gross_area',
-    's11_withheld_local',
-    's11_withheld_join',
-    's11_withheld_footprint',
+    's12_withheld_local',
+    's12_withheld_join',
+    's12_withheld_footprint',
     's13_withheld',
     's14_withheld',
     's14_withheld_footprint',
+    's12_gross_area',
     's13_replacement_cost',
     's14_building_type',
     's15_output',
@@ -190,7 +191,7 @@ TIMED_ONCE = (
     's06_residential_year_freeze',
     's07_pair_redraw_freeze',
     's08_view_freeze',
-    's11_gross_area',
+    's12_gross_area_freeze',
     's13_replacement_cost_freeze',
     's14_building_type_freeze',
     's15_output_freeze',
@@ -204,7 +205,8 @@ TIMED_PER_WORLD = (
     's08_view_merge',
     's09_nonresidential_year',
     's15_output_merge',
-    's12_schema_check',
+    's11_schema_check',
+    's12_gross_area',
     's13_replacement_cost',
     's14_building_type',
     's15_output',
@@ -628,7 +630,7 @@ class TestOutput:
     """The last steps' output and what `write` makes of it."""
 
     def test_output_holds_the_excluded_values(self, study_area: object) -> None:
-        """An exclusion recorded before s12 sets Excluded in its world."""
+        """An exclusion recorded before s11 sets Excluded in its world."""
         real = hc.CompilationReport.set_world_count
 
         def counted(report: CompilationReport, count: int) -> None:
@@ -875,7 +877,7 @@ class TestWrittenFile:
             Args:
                 inventory (AssetInventory):
                     The buildings checked, which share their asset objects
-                    with the merged inventory s12 to s15 work on.
+                    with the merged inventory s11 to s15 work on.
 
             Returns:
                 object:
@@ -919,7 +921,7 @@ class TestWrittenFile:
             Args:
                 inventory (AssetInventory):
                     The buildings checked, which share their asset objects
-                    with the merged inventory s12 to s15 work on.
+                    with the merged inventory s11 to s15 work on.
 
             Returns:
                 object:
@@ -2140,7 +2142,7 @@ class TestYearAndValueOfTheRest:
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'f01']
         assert list(zip(rows['stage'], rows['category'])) == [
-            ('s12_schema_check', 'fails_schema')
+            ('s11_schema_check', 'fails_schema')
         ]
         assert OCCUPANCY_KEY in rows['detail'].iloc[0]
         log = result.logs['value']
@@ -2222,15 +2224,50 @@ class TestStructureStages:
 
 
 class TestLastSteps:
-    """The gross area, the schema check, the value, the letter and the output."""
+    """The schema check, the gross area, the value, the letter and the output."""
+
+    def test_order_in_each_world(self, study_area: object) -> None:
+        """In each world the schema check runs first, then s12, s13 and s14."""
+        methods = (
+            '_check_schema',
+            '_compute_gross_areas',
+            '_impute_replacement_costs',
+            '_derive_building_types',
+        )
+        manager = mock.Mock()
+        with contextlib.ExitStack() as stack:
+            for name in methods:
+                real = getattr(hc.HazusEQInventoryCompiler, name)
+                manager.attach_mock(
+                    stack.enter_context(
+                        mock.patch.object(
+                            hc.HazusEQInventoryCompiler,
+                            name,
+                            autospec=True,
+                            side_effect=real,
+                        )
+                    ),
+                    name,
+                )
+            HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+            ).compile(study_area)
+        # Each call's arguments are the compiler, then the world.
+        assert [(args[1], name) for name, args, _ in manager.mock_calls] == [
+            (world, name) for world in range(2) for name in methods
+        ]
 
     def test_gross_area(self, compiled: object) -> None:
-        """The area of s11 is the footprint's in each world, and the output's GrossArea."""
+        """The area of s12 is the footprint's in each world and the output's."""
         result = compiled(n_worlds=3)
         view = result.freeze.read(hc.STAGE_S08_VIEW)
-        areas = result.freeze.read(hc.STAGE_S11_GROSS_AREA)
+        areas = result.freeze.read(hc.STAGE_S12_GROSS_AREA)
         log = result.logs['gross_area'].set_index(['asset_id', 'world'])
         assert len(log) == 3 * len(view.inventory)
+        # A building the schema check excludes in a world keeps its row.
+        refused = result.report.exclusions.query("stage == 's11_schema_check'")
+        assert len(refused)
+        assert all(key in log.index for key in zip(refused.asset_id, refused.world))
         for world in range(3):
             realization = view.get_world_realization(world)
             stage = features_in(areas, world)
@@ -2247,7 +2284,7 @@ class TestLastSteps:
         )
 
     def test_value_inputs(self, compiled: object) -> None:
-        """Step s13 reads the view ``STAGE_S08_VIEW`` and the donor stage, with the gross areas of s11."""
+        """Step s13 reads ``STAGE_S08_VIEW``, the donors and the areas of s12."""
         result = compiled(n_worlds=3)
         log = result.logs['value']
         from_footprints = ReplacementCostImputer(
@@ -2322,7 +2359,7 @@ class TestLastSteps:
         rows = rows[rows['asset_id'] == 'u10']
         assert sorted(rows['world']) == [0, 1, 2]
         assert set(zip(rows['stage'], rows['category'])) == {
-            ('s12_schema_check', 'fails_schema')
+            ('s11_schema_check', 'fails_schema')
         }
         schema_check = result.report.summary()['schema_check']['excluded_by_world']
         assert {int(w): n for w, n in schema_check.items()} == {0: 3, 1: 3, 2: 3}
@@ -2344,10 +2381,10 @@ class TestLastSteps:
         assert {
             asset_id: asset.features
             for asset_id, asset in read(
-                hc.STAGE_S11_WITHHELD_LOCAL
+                hc.STAGE_S12_WITHHELD_LOCAL
             ).inventory.items()
         } == {'l01': {GROSS_AREA_KEY: 'local'}}
-        joined = read(hc.STAGE_S11_WITHHELD_JOIN).inventory
+        joined = read(hc.STAGE_S12_WITHHELD_JOIN).inventory
         holders = {
             asset_id
             for stage in (hc.STAGE_S02_NSI_JOIN, hc.STAGE_S02_DERIVED)
@@ -2368,7 +2405,7 @@ class TestLastSteps:
         self,
         carried: bool,  # noqa: FBT001
     ) -> None:
-        """The merged inventory s12 to s15 work on holds no gross area, building type or replacement cost that s11, s13 and s14 replace."""
+        """The world's merged inventory holds no value that s12 to s14 replace."""
         inputs = build_inputs()
         if carried:
             # Footprints that carry an area and a letter of their own.
@@ -2445,7 +2482,7 @@ class TestLastSteps:
     def test_the_value_guard_files_a_building_without_a_class(
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A building s12 lets through without an occupancy class is filed as missing_input."""
+        """A building without a class that s11 lets through is missing_input."""
         local = build_inputs().local
         x, y, side = FOOTPRINTS['f01'][:3]
         local.add_asset(

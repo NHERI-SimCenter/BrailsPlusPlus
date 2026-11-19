@@ -134,8 +134,8 @@ Step                                What it gives the buildings
 ``s09_nonresidential_year``         construction years of the other
                                     buildings
 ``s10_nonresidential_structure``    what ``s08`` gives, for those buildings
-``s11_gross_area``                  gross area
-``s12_schema_check``                the check against the Hazus input schema
+``s11_schema_check``                the check against the Hazus input schema
+``s12_gross_area``                  gross area
 ``s13_replacement_cost``            replacement cost
 ``s14_building_type``               general building type
 ``s15_output``                      the compiled inventory
@@ -150,9 +150,9 @@ implausible pairs of occupancy class and story count. ``s08`` gives a design
 level and a structure type to every building that holds a year by then, and a
 height class to every building with a structure type. ``s09`` and ``s10`` do
 the same for the other buildings, whose years are copied from residential
-neighbors. The last five steps compute the gross area, check each building
-against the input schema of the assessment, give it its replacement cost and
-its general building type, and assemble the output.
+neighbors. The last five steps check each building against the input schema
+of the assessment, compute its gross area, give it its replacement cost and its
+general building type, and assemble the output.
 
 Each step adds its values to the run as frozen stages, and the steps after it
 read them from there. Many steps read each world's merged inventory: the
@@ -167,14 +167,15 @@ The names of most of the stages a step freezes, of the report stages it files
 rows under, and of its timings in the report's summary begin with the step's
 label. The exceptions are these. The run freezes the two views and the donor
 stage ``DONOR_STAGE`` between steps, under names of their own. Three of the
-six records frozen right after ``s11`` are named after ``s13`` and ``s14``,
-because the values of those steps replace what the records withhold.
+six records frozen right after ``s10`` are named after ``s12``, and the other
+three after ``s13`` and ``s14``, because the values of those steps replace
+what the records withhold.
 ``s10`` runs inside the loop of ``s09`` over the worlds, and its time is
 counted in the timing of ``s09``.
 
 From ``s06`` on, a step that cannot complete a building in a world, or finds
 it inconsistent, excludes it from that world. Steps ``s08``, ``s09``, ``s10``
-and ``s12`` then skip the building in that world. The other steps compute
+and ``s11`` then skip the building in that world. The other steps compute
 their values for it as for any building, and ``s15`` leaves the computed
 gross area and replacement cost out of its output. Earlier, ``s04`` drops
 footprints from every world: a small footprint that becomes no dwelling, as
@@ -209,7 +210,7 @@ outline. Where a local inventory is given, the step freezes it as
 ``s01_local``, the one part of the source labeled ``local``. A local asset
 in it takes its footprint's centroid as its coordinates, and a ``GrossArea``
 it holds is copied to ``LocalGrossArea``, which the output keeps (see
-``s11_gross_area``). The step files no row in the report.
+``s12_gross_area``). The step files no row in the report.
 
 With ``merge_stacked``, which is off by default, ``StackedFootprintMerge``
 first merges the stacked Overture footprints of one building, such as a podium
@@ -471,54 +472,57 @@ design levels, height classes and carve-out levels as ``s10_derived``, a
 part of the ``derived`` source. The loop's counts per world are the log
 ``nonresidential_resolution``.
 
-``s11_gross_area``
-~~~~~~~~~~~~~~~~~~
+``s11_schema_check``
+~~~~~~~~~~~~~~~~~~~~
 
-The step computes the gross area of every building of ``s08_view``, excluded
-buildings included, in each world. ``footprint_gross_area`` of the
-replacement cost imputer's module gives the plan area of the footprint's
-outline times the story count in that world, or the plan area alone where the
-building has no positive story count. The area therefore differs between
-worlds where the story count does. The areas are frozen, over the worlds, as
-the computed stage ``s11_gross_area``, which ``s13`` and ``s15`` read. The
-log ``gross_area`` names for each building and world whether its area came
-from the story count (``stories``) or from the plan area alone
-(``plan_area``). The step excludes no building.
+Steps ``s11`` to ``s15`` run world by world on one merged inventory of the
+world's sources, which ``s15`` completes. Before the first of these merged
+inventories, right after ``s10``, the run freezes six records of withheld
+values. Each removes from every later merged inventory a value that a later
+step replaces, and each is named by the step whose value takes its place:
 
-Right after ``s11``, the run freezes six records of withheld values. Each
-removes from every later merged inventory a value that a later step replaces,
-and each is named by the step whose value takes its place:
-
-- ``s11_withheld_local``: a local ``GrossArea``;
-- ``s11_withheld_join``: the ``GrossArea`` of the NSI join, one record's
+- ``s12_withheld_local``: a local ``GrossArea``;
+- ``s12_withheld_join``: the ``GrossArea`` of the NSI join, one record's
   ``sqft`` or the sum of several;
-- ``s11_withheld_footprint``: a ``GrossArea`` the footprints carry;
+- ``s12_withheld_footprint``: a ``GrossArea`` the footprints carry;
 - ``s13_withheld``: the join's ``ReplacementCost`` of each building without a
   local one;
 - ``s14_withheld``: NSI's ``BuildingType``;
 - ``s14_withheld_footprint``: a ``BuildingType`` the footprints carry.
 
-Every step before ``s12`` merged its sources before these records existed.
+Every step before ``s11`` merged its sources before these records existed.
 The unit budget and the structure type draw therefore read these values, and
 so does ``s13_replacement_cost`` when it computes its rates, since it reads
 ``s08_view``. The local and NSI gross areas stay in every merged inventory
 as ``LocalGrossArea`` and ``NSIGrossArea``.
 
-``s12_schema_check``
-~~~~~~~~~~~~~~~~~~~~
+``s11`` checks every building not yet excluded from the world against the
+Hazus input schema of the damage and loss model library, ``DLML_DATASET``.
+The schema states the features the assessment reads and the values it
+accepts, such as the design levels it accepts for each structure type. A
+building the schema refuses is excluded from the world under
+``s11_schema_check``, as ``fails_schema``, with the schema's messages as the
+detail. The messages are the log ``schema_check``, and the report's summary
+holds the dataset and the number of buildings refused in each world. The
+schema reads none of ``GrossArea``, ``ReplacementCost`` and ``BuildingType``,
+which the next steps give, so the check does not depend on them.
 
-Steps ``s12`` to ``s15`` run world by world on one merged inventory of the
-world's sources, which ``s15`` completes. ``s12`` checks every building not
-yet excluded from the world against the Hazus input schema of the damage and
-loss model library, ``DLML_DATASET``. The schema states the features the
-assessment reads and the values it accepts, such as the design levels it
-accepts for each structure type. A building the schema refuses is excluded
-from the world under ``s12_schema_check``, as ``fails_schema``, with the
-schema's messages as the detail. The messages are the log
-``schema_check``, and the report's summary holds the dataset and the number
-of buildings refused in each world. The schema reads none of
-``ReplacementCost``, ``GrossArea`` and ``BuildingType``, which the next steps
-give, so the check does not depend on them.
+``s12_gross_area``
+~~~~~~~~~~~~~~~~~~
+
+The step computes, in each world after the check, the gross area of every
+building of ``s08_view``, excluded buildings included, from the world's
+realization of ``s08_view``. ``footprint_gross_area`` of the replacement cost
+imputer's module gives the plan area of the footprint's outline times the
+story count in that world, or the plan area alone where the building has no
+positive story count. The area therefore differs between worlds where the
+story count does. ``s13`` and ``s15`` read each world's areas as the step
+gives them, and the areas of every world are frozen as the computed stage
+``s12_gross_area`` after the last world (see ``s15_output``). The log
+``gross_area`` names for each building and world whether its area came from
+the story count (``stories``) or from the plan area alone (``plan_area``). A
+building that ``s11`` excludes from a world keeps its row there. The step
+excludes no building.
 
 ``s13_replacement_cost``
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -528,7 +532,7 @@ world, excluded buildings included. ``ReplacementCostImputer`` takes the
 ``k``, ``cap_m`` and distance weights of the imputer of ``s05``. It reads the
 world's realization of ``s08_view`` and the donors of ``DONOR_STAGE``. It
 computes each building's replacement cost as a rate per square foot times
-its gross area of ``s11_gross_area``, as
+its gross area of ``s12_gross_area`` in the world, as
 ``brails/imputers/replacement_cost/README.rst`` states. A building takes its
 own rate where it has one. Otherwise it takes the rate of the donor whose
 values ``s05`` copied to it, or of a nearby building of the same occupancy
@@ -583,7 +587,7 @@ replacement cost of ``s13_replacement_cost``, with its source code in the
 source string. By ``OUTCOME_VALUE_CODES``, the code is ``R`` for a
 replacement cost from the building's own rate and ``I`` for one from another
 building's rate. Each building not excluded, one with a local
-``ReplacementCost`` included, receives its area of ``s11_gross_area`` as
+``ReplacementCost`` included, receives its area of ``s12_gross_area`` as
 ``GrossArea``.
 
 A building excluded from the world receives no computed replacement cost and
@@ -602,18 +606,21 @@ the run. The log ``MISSING_DEFAULTS_LOG`` names each such building, world and
 property, a notice in the report counts them, and ``write`` refuses to write
 the GeoJSON. The worlds are added one by one, with
 ``AssetInventory.add_world``, to the compiled inventory, which is frozen as
-the view ``s15_output``. The computed stages ``s13_replacement_cost`` and
-``s14_building_type`` are frozen at the same time, from the values ``s13``
-and ``s14`` gave in every world. No step reads them.
+the view ``s15_output``. The computed stages ``s12_gross_area``,
+``s13_replacement_cost`` and ``s14_building_type`` are frozen at the same
+time, from the values ``s12`` to ``s14`` gave in every world. No step reads
+them.
 
 Frozen stages
 -------------
 
 The run freezes each stage once, under its name, in the order of the
-subsections above. The names are the module's ``STAGE_`` constants and the
-replacement cost imputer's ``DONOR_STAGE``. The stages fall into the four
-kinds that the section "Stages and freezing" of ``brails/compilers/README.rst``
-defines:
+subsections above, except the six records of withheld values, which it
+freezes before ``s11``, and the computed stages of ``s12`` to ``s14``, which
+it freezes with ``s15_output``. The names are the module's ``STAGE_``
+constants and the replacement cost imputer's ``DONOR_STAGE``. The stages fall
+into the four kinds that the section "Stages and freezing" of
+``brails/compilers/README.rst`` defines:
 
 - Parts, each holding the values one step adds to one source:
   ``s01_footprints`` (``footprint``), ``s01_local`` (``local``),
@@ -624,14 +631,14 @@ defines:
   ``s08_structure`` and ``s10_nonresidential_structure`` (``drawn``).
 - Records: ``s04_dropped``, the dropped footprints, and the records of
   withheld values ``s03_withheld``, ``s04_withheld``, ``s07_withheld`` and the
-  six frozen right after ``s11_gross_area``.
+  six frozen right after ``s10``.
 - Views: ``s05_view``, ``s08_view`` and ``s15_output``, the compiled
   inventory.
 - Computed stages, whose values no merge takes: ``DONOR_STAGE``, the donors
-  named from the log of ``s05``, which ``s13`` reads; ``s11_gross_area``, the
-  gross areas, which ``s13`` and ``s15`` read; and ``s13_replacement_cost`` and
-  ``s14_building_type``, the replacement costs and letters that ``s13`` and
-  ``s14`` give, which the run freezes after ``s15`` and which no step reads.
+  named from the log of ``s05``, which ``s13`` reads; and ``s12_gross_area``,
+  ``s13_replacement_cost`` and ``s14_building_type``, the gross areas,
+  replacement costs and letters that ``s12`` to ``s14`` give, which the run
+  freezes after ``s15`` and which no step reads.
 
 Every part other than the footprints, and every record and computed stage other
 than ``DONOR_STAGE``, holds each footprint's centroid as its coordinates. The
@@ -680,9 +687,9 @@ order of ``PRECEDENCE``: local values first, then the footprints, NSI, the
 derived values (the NSI join's sums and the values later steps compute from a
 building's other features), the imputed values and the drawn values. A local
 value therefore stays in every merged inventory, and no step replaces one
-with a value of its own. There are two exceptions. From ``s12`` on, the
+with a value of its own. There are two exceptions. From ``s11`` on, the
 merged inventory leaves a local ``GrossArea`` out, the output's
-``GrossArea`` is the area of ``s11``, and the local one is kept as
+``GrossArea`` is the area of ``s12``, and the local one is kept as
 ``LocalGrossArea``. And ``s15`` writes ``Excluded`` for every building in
 every world, over a local one.
 
@@ -708,7 +715,7 @@ These limits hold:
   ``W1X``, is never drawn, so no draw refuses it. Where the building holds no
   height class, the height class operation of ``s08`` excludes it as
   ``missing_input``, with a construction year or without. Where the building
-  also holds a local ``HeightClass``, ``s12_schema_check`` excludes it as
+  also holds a local ``HeightClass``, ``s11_schema_check`` excludes it as
   ``fails_schema``. Either way, it is excluded in each world from which no
   earlier step excluded it.
 - A local ``BuildingType`` that is not the letter of the building's structure
@@ -718,7 +725,7 @@ These limits hold:
 - The compiler refuses a local inventory when it is built with
   ``merge_stacked``: the local ids are those of the footprints, which the
   stacked-footprint merge changes.
-- A local ``PlanArea`` is written as the output's ``PlanArea``, while ``s11``
+- A local ``PlanArea`` is written as the output's ``PlanArea``, while ``s12``
   computes the gross area from the footprint's outline. A local ``Excluded``
   is overwritten by ``s15``. A local ``SourceString`` stops the run at the
   first merged inventory with ``ValueError``.
