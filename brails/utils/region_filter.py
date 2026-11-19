@@ -42,6 +42,7 @@ The module is imported by its full path,
 
       filter_to_region
       reference_point
+      resolve_region
 """
 
 from __future__ import annotations
@@ -62,6 +63,7 @@ from brails.types.asset_inventory import (
     check_n_worlds,
     is_probabilistic_feature,
 )
+from brails.types.census_boundary import CensusBoundary
 from brails.types.region_boundary import RegionBoundary
 from brails.utils.asset_id import LATITUDE_RANGE, LONGITUDE_RANGE
 from brails.utils.console import print_ascii_fallback
@@ -148,6 +150,8 @@ def filter_to_region(  # noqa: C901
     | list[AssetInventory | str | os.PathLike[str]]
     | tuple[AssetInventory | str | os.PathLike[str], ...],
     region: str | RegionBoundary | Polygon | MultiPolygon,
+    *,
+    source: str | None = None,
 ) -> AssetInventory:
     """
     Return the assets of an inventory whose reference point lies inside a region.
@@ -158,11 +162,13 @@ def filter_to_region(  # noqa: C901
     share belongs to neither, and no asset belongs to both. An asset whose
     outline crosses the boundary is kept or left out whole, by its point.
 
-    A boundary looked up by name is built by :class:`RegionBoundary` from the
-    outer members of the place's OpenStreetMap relation only, so it has no
-    holes, and the assets of an enclave inside the place are kept. Where holes
-    matter, pass the boundary as a Shapely polygon, whose
-    holes the filter keeps.
+    A place name is looked up among the census places and counties of its
+    state by :class:`~brails.types.census_boundary.CensusBoundary`, whose
+    boundary keeps its holes, so the assets of an enclave, such as Piedmont
+    inside Oakland, are left out. With ``source='osm'`` the name is looked up
+    in OpenStreetMap by :class:`RegionBoundary`, which builds the boundary
+    from the outer members of the place's relation only, so it has no holes
+    and the assets of an enclave are kept. A Shapely polygon keeps its holes.
 
     The kept assets are deep copies, so a change to the returned inventory
     leaves the source as it was.
@@ -243,11 +249,19 @@ def filter_to_region(  # noqa: C901
             The inventory, the path of a GeoJSON FeatureCollection in
             longitude and latitude (WGS84), or a list or tuple of them.
         region (str | RegionBoundary | Polygon | MultiPolygon):
-            A place name, looked up once with :class:`RegionBoundary`, which
-            prints the name it found; a :class:`RegionBoundary`, whose
-            boundary is fetched; or a Shapely polygon or multipolygon in
-            longitude and latitude (WGS84), taken as given and repaired with
+            A place name with its state, as in ``'Berkeley, CA'``, looked up
+            once as ``source`` selects, and the lookup prints the name it
+            found; a :class:`RegionBoundary` of any kind, whose boundary is
+            fetched; or a Shapely polygon or multipolygon in longitude and
+            latitude (WGS84), taken as given and repaired with
             :func:`shapely.make_valid` if invalid.
+        source (str, optional):
+            Where a place name is looked up: ``'census'`` among the
+            TIGER/Line places and counties with
+            :class:`~brails.types.census_boundary.CensusBoundary`, or
+            ``'osm'`` in OpenStreetMap with :class:`RegionBoundary`. Given
+            only with a place name. Defaults to ``None``, which is
+            ``'census'``.
 
     Returns:
         AssetInventory:
@@ -274,7 +288,8 @@ def filter_to_region(  # noqa: C901
             same ``id``, with an empty list, or with lists of different
             lengths or of a length other than its ``n_worlds``. Also if an
             asset of an inventory has no coordinates or its coordinates form
-            no geometry (:func:`reference_point`).
+            no geometry (:func:`reference_point`). Also as :func:`resolve_region`
+            raises, for ``source`` and the place name.
 
     Examples:
         >>> from shapely.geometry import box
@@ -332,8 +347,7 @@ def filter_to_region(  # noqa: C901
                 )
             raise TypeError(msg)
 
-    if isinstance(region, str):
-        region = RegionBoundary({'type': 'locationName', 'data': region})
+    region = resolve_region(region, source)
     if isinstance(region, RegionBoundary):
         boundary, name, _ = region.get_boundary()
     elif isinstance(region, (Polygon, MultiPolygon)):
@@ -595,6 +609,48 @@ def filter_to_region(  # noqa: C901
     for message in messages:
         print_ascii_fallback(message)
     return result
+
+
+def resolve_region(
+    region: str | RegionBoundary | Polygon | MultiPolygon, source: str | None = None
+) -> RegionBoundary | Polygon | MultiPolygon:
+    """
+    Return a census or OpenStreetMap region for a place name, and others as given.
+
+    Args:
+        region (str | RegionBoundary | Polygon | MultiPolygon):
+            A place name with its state, or a region, which is returned as it is
+            for the caller to check, a value of another type included.
+        source (str | None, optional):
+            Where a place name is looked up: ``None`` or ``'census'`` for
+            :class:`~brails.types.census_boundary.CensusBoundary`, ``'osm'`` for
+            :class:`RegionBoundary` of the name. Defaults to ``None``.
+
+    Returns:
+        RegionBoundary | Polygon | MultiPolygon:
+            The :class:`~brails.types.census_boundary.CensusBoundary` or the
+            :class:`RegionBoundary` of a place name, and ``region`` itself
+            otherwise.
+
+    Raises:
+        ValueError:
+            If ``source`` is another value, or is given with a region that is not
+            a place name, or if ``CensusBoundary`` refuses the name.
+    """
+    if source not in (None, 'census', 'osm'):
+        msg = f"source must be 'census' or 'osm', not {source!r}."
+        raise ValueError(msg)
+    if not isinstance(region, str):
+        if source is not None:
+            msg = (
+                f'source={source!r} applies to a place name, and the region is a '
+                f'{type(region).__name__}. Pass the region without source.'
+            )
+            raise ValueError(msg)
+        return region
+    if source == 'osm':
+        return RegionBoundary({'type': 'locationName', 'data': region})
+    return CensusBoundary(region)
 
 
 def _stream_features(  # noqa: C901

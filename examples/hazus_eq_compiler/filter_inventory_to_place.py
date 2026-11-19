@@ -14,10 +14,15 @@ inventory:
 
     python filter_inventory_to_place.py a.geojson b.geojson "Place, CA" out.geojson
 
-A building is kept when the centroid of its footprint lies inside the place's
-boundary. A boundary looked up by name has no holes, so the buildings of an
-enclave inside the place are kept. Where holes matter, pass the boundary to
-``filter_to_region`` as a Shapely polygon instead of the name.
+The place is a city, town or census-designated place, or a county, as the Census
+Bureau's TIGER/Line files name it, written with its state, as in "Berkeley, CA" or
+"Alameda County, CA". The script downloads the state's place file and, for a name
+that ends in a word such as County or Island, the national county file. A
+building is kept when the centroid of its footprint lies inside the place's
+boundary. The boundary keeps its holes, so the buildings of an enclave, such as
+Piedmont inside Oakland, are left out. For a place the census does not name, call
+``filter_to_region(..., source='osm')`` from Python, which looks the name up in
+OpenStreetMap.
 
 For the integer-id form that R2D reads, write the result with
 ``write_to_geojson(..., integer_ids=True, asset_type='building')``. Close the
@@ -36,7 +41,11 @@ if __name__ == '__main__':
     parser.add_argument(
         'county_files', nargs='+', help='one or more GeoJSON inventories to filter'
     )
-    parser.add_argument('place', help='the place name, such as "Berkeley, CA"')
+    parser.add_argument(
+        'place',
+        help='the place or county with its state, such as "Berkeley, CA" or '
+        '"Alameda County, CA"',
+    )
     parser.add_argument('output_file', help='the GeoJSON file to write')
     args = parser.parse_args()
 

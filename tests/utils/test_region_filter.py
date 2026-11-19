@@ -52,6 +52,7 @@ from brails.scrapers.us_census_scrapers.census_tract_scraper import (
     CensusTractScraper,
 )
 from brails.types.asset_inventory import Asset, AssetInventory
+from brails.types.census_boundary import CensusBoundary
 from brails.types.housing_unit_inventory import HousingUnitInventory
 from brails.types.region_boundary import RegionBoundary
 from brails.utils import region_filter
@@ -824,7 +825,7 @@ class TestRegion:
             return REGION, 'Testville', 1
 
         monkeypatch.setattr(RegionBoundary, 'get_boundary', get_boundary)
-        result = filter_to_region(three_worlds(), 'Testville, CA')
+        result = filter_to_region(three_worlds(), 'Testville, CA', source='osm')
         assert calls == [('locationName', 'Testville, CA')]
         assert sorted(result.inventory) == ['in_a', 'in_b']
         assert capsys.readouterr().out == 'Kept 2 of 3 assets inside Testville.\n'
@@ -900,7 +901,9 @@ class TestRegion:
             RegionBoundary, 'get_boundary', lambda *_args: calls.append(1)
         )
         with pytest.raises(FileNotFoundError, match='is not a file'):
-            filter_to_region(tmp_path / 'missing.geojson', 'Testville, CA')
+            filter_to_region(
+                tmp_path / 'missing.geojson', 'Testville, CA', source='osm'
+            )
         assert calls == []
 
     def test_one_asset_in_the_singular(
@@ -924,7 +927,7 @@ class TestRegion:
         raw = io.BytesIO()
         console = io.TextIOWrapper(raw, encoding='ascii')
         monkeypatch.setattr(sys, 'stdout', console)
-        filter_to_region(three_worlds(), 'Cañada, CA')
+        filter_to_region(three_worlds(), 'Cañada, CA', source='osm')
         console.flush()
         assert raw.getvalue() == b'Kept 2 of 3 assets inside Canada.\n'
 
@@ -1029,7 +1032,7 @@ class TestSources:
             return REGION, 'Testville', 1
 
         monkeypatch.setattr(RegionBoundary, 'get_boundary', get_boundary)
-        filter_to_region(list(two_counties(tmp_path)), 'Testville, CA')
+        filter_to_region(list(two_counties(tmp_path)), 'Testville, CA', source='osm')
         assert calls == ['Testville, CA']
 
     def test_empty_list_refused(self) -> None:
@@ -1084,7 +1087,9 @@ class TestSources:
         )
         west_path, _ = two_counties(tmp_path)
         with pytest.raises(FileNotFoundError, match='missing.geojson is not a file'):
-            filter_to_region([west_path, tmp_path / 'missing.geojson'], 'Testville')
+            filter_to_region(
+                [west_path, tmp_path / 'missing.geojson'], 'Testville', source='osm'
+            )
         assert calls == []
 
     def test_different_worlds_refused(self, tmp_path: Path) -> None:
@@ -1212,3 +1217,109 @@ class TestStatedWorlds:
         document['n_worlds'] = 0
         with pytest.raises(ValueError, match='gives n_worlds as 0'):
             filter_to_region(write(tmp_path / 'zero.geojson', document), REGION)
+
+
+class TestSource:
+    """A place name is looked up in census boundaries unless source is 'osm'."""
+
+    @pytest.fixture
+    def lookups(self, monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str]]:
+        """
+        Replace both lookups by stand-ins that record their calls.
+
+        Args:
+            monkeypatch (pytest.MonkeyPatch):
+                Replaces ``get_boundary`` of both classes.
+
+        Returns:
+            list[tuple[str, str]]:
+                The class and the text of each lookup, in order.
+        """
+        calls: list[tuple[str, str]] = []
+
+        def census(
+            self: CensusBoundary, *_args: object, **_kwargs: object
+        ) -> tuple[Polygon, str, str]:
+            calls.append(('census', self.place))
+            return REGION, 'Testville city, California', '0600001'
+
+        def osm(
+            self: RegionBoundary, *_args: object, **_kwargs: object
+        ) -> tuple[Polygon, str, int]:
+            calls.append(('osm', self.query_area))
+            return REGION, 'Testville', 1
+
+        monkeypatch.setattr(CensusBoundary, 'get_boundary', census)
+        monkeypatch.setattr(RegionBoundary, 'get_boundary', osm)
+        return calls
+
+    @pytest.mark.parametrize('source', [None, 'census'])
+    def test_name_goes_to_the_census(
+        self,
+        lookups: list,
+        capsys: pytest.CaptureFixture[str],
+        source: str | None,
+    ) -> None:
+        """A name goes once to the census lookup, and the name found is printed."""
+        result = filter_to_region(three_worlds(), 'Testville, CA', source=source)
+        assert lookups == [('census', 'Testville, CA')]
+        assert sorted(result.inventory) == ['in_a', 'in_b']
+        assert capsys.readouterr().out == (
+            'Kept 2 of 3 assets inside Testville city, California.\n'
+        )
+
+    def test_osm_only_with_osm(self, lookups: list) -> None:
+        """With source='osm' the name goes to RegionBoundary, not to the census."""
+        filter_to_region(three_worlds(), 'Testville, CA', source='osm')
+        assert lookups == [('osm', 'Testville, CA')]
+
+    def test_census_boundary_given(self, lookups: list) -> None:
+        """A CensusBoundary given as the region is asked for its boundary."""
+        filter_to_region(three_worlds(), CensusBoundary('Testville, CA'))
+        assert lookups == [('census', 'Testville, CA')]
+
+    def test_census_refusal_of_the_text_raised(self, lookups: list) -> None:
+        """A text the census lookup refuses is not sent to OpenStreetMap."""
+        with pytest.raises(ValueError, match="'Testville' names no state"):
+            filter_to_region(three_worlds(), 'Testville')
+        assert lookups == []
+
+    def test_census_refusal_of_the_match_raised(
+        self, lookups: list, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A name the census matches to nothing is not sent to OpenStreetMap."""
+
+        def no_match(*_args: object, **_kwargs: object) -> None:
+            lookups.append(('census', 'refused'))
+            msg = 'No census place or county in California is named ...'
+            raise ValueError(msg)
+
+        monkeypatch.setattr(CensusBoundary, 'get_boundary', no_match)
+        with pytest.raises(ValueError, match='No census place'):
+            filter_to_region(three_worlds(), 'Testville, CA')
+        assert lookups == [('census', 'refused')]
+
+    @pytest.mark.parametrize(
+        ('region', 'source', 'message'),
+        [
+            ('Testville, CA', 'nominatim', "source must be 'census' or 'osm'"),
+            (REGION, 'osm', "source='osm' applies to a place name, and the region"),
+            (
+                RegionBoundary(
+                    {
+                        'type': 'locationPolygon',
+                        'data': (-122.01, 37.99, -121.99, 38.01),
+                    }
+                ),
+                'census',
+                "source='census' applies to a place name",
+            ),
+        ],
+    )
+    def test_source_refused(
+        self, lookups: list, region: object, source: str, message: str
+    ) -> None:
+        """An unknown source, or a source beside a polygon or region, is refused."""
+        with pytest.raises(ValueError, match=message):
+            filter_to_region(three_worlds(), region, source=source)
+        assert lookups == []
