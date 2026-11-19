@@ -74,6 +74,12 @@ Create Regional-Scale Inventories
      
       Generate comprehensive inventories of power networks.
 
+   .. grid-item-card:: Filter a County Inventory to a Place
+      :link: https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/hazus_eq_compiler/filter_inventory_to_place.py
+      :text-align: center
+
+      Keep the buildings of a county inventory, such as a county of the SimCenter San Francisco Bay Area testbed, that lie inside a city or another place given by its name. A boundary looked up by name has no holes, so the buildings of an enclave are kept.
+
 Data Scraping
 ^^^^^^^^^^^^^
 
