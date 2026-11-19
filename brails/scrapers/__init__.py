@@ -37,3 +37,4 @@ from .overture_maps_scraper.overture_maps_footprint_scraper import OvertureMapsF
 from .nsi_parser.nsi_parser import NSI_Parser
 from .nsi_parser.nsi_file_reader import NSIFileReader
 from .us_census_scrapers.census_tract_scraper import CensusTractScraper
+from .us_census_scrapers.acs_table_scraper import ACSTableScraper

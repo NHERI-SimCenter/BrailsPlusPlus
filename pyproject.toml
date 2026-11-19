@@ -151,6 +151,8 @@ include = [
     "tests/scrapers/test_census_tract_scraper.py",
     "brails/utils/census_api_key.py",
     "tests/utils/test_census_api_key.py",
+    "brails/scrapers/us_census_scrapers/acs_table_scraper.py",
+    "tests/scrapers/test_acs_table_scraper.py",
 
     "brails/scrapers/nsi_parser/nsi_conventions.py",
     "brails/scrapers/nsi_parser/nsi_file_reader.py",
