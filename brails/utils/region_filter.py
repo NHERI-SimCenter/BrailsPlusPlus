@@ -367,10 +367,10 @@ def filter_to_region(  # noqa: C901
     kept_from: dict[str, tuple[str, Hashable]] = {}
     messages = []
     total = 0
-    for source, label in zip(sources, labels):
+    for inventory_or_path, label in zip(sources, labels):
         kept: dict[Hashable, Asset] = {}
-        if isinstance(source, AssetInventory):
-            if source.housing_unit_inventory is not None:
+        if isinstance(inventory_or_path, AssetInventory):
+            if inventory_or_path.housing_unit_inventory is not None:
                 msg = (
                     f'{label[0].upper() + label[1:]} holds a housing-unit '
                     'inventory, which filter_to_region does not divide. Filter the '
@@ -378,20 +378,23 @@ def filter_to_region(  # noqa: C901
                     'first with remove_housing_unit_inventory().'
                 )
                 raise ValueError(msg)
-            asset_ids = list(source.inventory)
+            asset_ids = list(inventory_or_path.inventory)
             points = np.array(
-                [reference_point(source.inventory[a], a) for a in asset_ids],
+                [
+                    reference_point(inventory_or_path.inventory[a], a)
+                    for a in asset_ids
+                ],
                 dtype=float,
             ).reshape(-1, 2)
             inside = shapely.contains_xy(boundary, points[:, 0], points[:, 1])
             for asset_id, is_inside in zip(asset_ids, inside):
                 if is_inside:
-                    kept[asset_id] = deepcopy(source.inventory[asset_id])
+                    kept[asset_id] = deepcopy(inventory_or_path.inventory[asset_id])
             count = len(asset_ids)
-            worlds[label] = source.n_pw
-            vector_features[label] = list(source.vector_features)
+            worlds[label] = inventory_or_path.n_pw
+            vector_features[label] = list(inventory_or_path.vector_features)
         else:
-            path = source
+            path = inventory_or_path
             lengths: set[int] = set()
             count = 0
             # How many kept features were keyed by their unique_id.
