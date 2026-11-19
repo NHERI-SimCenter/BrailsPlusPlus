@@ -82,6 +82,16 @@ GEOGRAPHIC_CRS_NAMES = (
 )
 """Names a GeoJSON ``crs`` member may give for longitude and latitude in WGS84."""
 
+NAD83_CRS_NAMES = (
+    'urn:ogc:def:crs:EPSG::4269',
+    'EPSG:4269',
+    'urn:ogc:def:crs:OGC:1.3:CRS83',
+    'urn:ogc:def:crs:OGC::CRS83',
+    'OGC:CRS83',
+    'CRS83',
+)
+"""Names a GeoJSON ``crs`` member may give for longitude and latitude in NAD83."""
+
 _WHITESPACE = ' \t\n\r'
 
 # The characters that can continue a JSON number.
@@ -190,12 +200,13 @@ def filter_to_region(  # noqa: C901
     :func:`~brails.types.asset_inventory.is_probabilistic_feature` counts as
     holding worlds under the default ``vector_features``, and 1 without
     such lists. Of the file's other top-level members, ``type`` must be
-    ``FeatureCollection`` and ``crs``, if present, must name WGS84 longitude
-    and latitude, each checked when it is read. None of them is kept, and
-    ``write_to_geojson`` writes a ``generated``, ``brails_version`` and
-    ``crs`` of its own. Written back with ``write_to_geojson`` in the form the
-    file has, the kept features equal the source's features, for a file that
-    ``write_to_geojson`` wrote.
+    ``FeatureCollection`` and ``crs``, if present, must name WGS84 or NAD83
+    longitude and latitude, each checked when it is read. NAD83 coordinates
+    are used as they are, as WGS84 ones, and a line is printed to say so.
+    None of them is kept, and ``write_to_geojson`` writes a ``generated``,
+    ``brails_version`` and ``crs`` of its own. Written back with
+    ``write_to_geojson`` in the form the file has, the kept features equal
+    the source's features, for a file that ``write_to_geojson`` wrote.
 
     The integer-id form that R2D reads requires a ``type`` on every asset.
     ``write_to_geojson(..., integer_ids=True, asset_type='building')`` writes
@@ -247,7 +258,7 @@ def filter_to_region(  # noqa: C901
             If the region's bounds are not longitude and latitude, or a
             source inventory holds a housing-unit inventory. For a file, if
             it is not a GeoJSON FeatureCollection, names a ``crs`` other than
-            WGS84 longitude and latitude, holds a feature without an
+            WGS84 or NAD83 longitude and latitude, holds a feature without an
             ``id``, with an id that is not a string or a number, with
             properties that are not an object, or with a geometry or
             coordinates BRAILS cannot read, or holds kept features with the
@@ -551,16 +562,20 @@ def filter_to_region(  # noqa: C901
     noun = 'asset' if total == 1 else 'assets'
     messages.append(f'Kept {len(result.inventory)} of {total} {noun} inside {name}.')
     for message in messages:
-        # A few lines are printed, so the try in the loop costs nothing.
-        try:
-            print(message)
-        except UnicodeEncodeError:  # noqa: PERF203
-            print(
-                unicodedata.normalize('NFKD', message)
-                .encode('ascii', 'ignore')
-                .decode('ascii')
-            )
+        _print(message)
     return result
+
+
+def _print(message: str) -> None:
+    """Print a line, without accents where the console cannot encode them."""
+    try:
+        print(message)
+    except UnicodeEncodeError:
+        print(
+            unicodedata.normalize('NFKD', message)
+            .encode('ascii', 'ignore')
+            .decode('ascii')
+        )
 
 
 def _stream_features(path: Path) -> Iterator[dict[str, Any]]:  # noqa: C901
@@ -591,7 +606,7 @@ def _stream_features(path: Path) -> Iterator[dict[str, Any]]:  # noqa: C901
             comma or a member name that is not a string among it), has no
             ``features`` member or two, has a ``type`` other than
             ``FeatureCollection``, or has a ``crs`` other than one of
-            :data:`GEOGRAPHIC_CRS_NAMES`.
+            :data:`GEOGRAPHIC_CRS_NAMES` and :data:`NAD83_CRS_NAMES`.
     """
     decoder = json.JSONDecoder()
     buffer = ''
@@ -701,15 +716,26 @@ def _stream_features(path: Path) -> Iterator[dict[str, Any]]:  # noqa: C901
                             if isinstance(properties, dict)
                             else None
                         )
-                        if name not in GEOGRAPHIC_CRS_NAMES:
+                        if name in NAD83_CRS_NAMES:
+                            _print(
+                                f'{path} gives its coordinates in NAD83 '
+                                f'({name}). They are used as they are, as '
+                                'WGS84 longitudes and latitudes, from which '
+                                'they differ slightly.'
+                            )
+                        elif name not in GEOGRAPHIC_CRS_NAMES:
                             msg = (
                                 f'{path} gives the crs '
                                 f'{json.dumps(member)[:200]}. filter_to_region '
                                 'reads longitude and latitude in WGS84 '
-                                '(EPSG:4326) only. Write the file in EPSG:4326, '
-                                'as write_to_geojson does, or remove the crs '
-                                'member if its coordinates are already '
-                                'longitude and latitude.'
+                                '(EPSG:4326) or NAD83 (EPSG:4269) only, named '
+                                'as one of '
+                                + ', '.join(GEOGRAPHIC_CRS_NAMES + NAD83_CRS_NAMES)
+                                + '. Write the file in EPSG:4326, as '
+                                'write_to_geojson does, give its crs one of '
+                                'those names if it is one of those systems, '
+                                'or remove the crs member if its coordinates '
+                                'are already longitude and latitude.'
                             )
                             raise ValueError(msg)
                 if expect(',}') == '}':

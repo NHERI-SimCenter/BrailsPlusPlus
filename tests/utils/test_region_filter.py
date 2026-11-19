@@ -565,6 +565,64 @@ class TestFile:
         ):
             filter_to_region(path, REGION)
 
+    @pytest.mark.parametrize(
+        'name',
+        [
+            'urn:ogc:def:crs:EPSG::4269',
+            'EPSG:4269',
+            'urn:ogc:def:crs:OGC:1.3:CRS83',
+            'urn:ogc:def:crs:OGC::CRS83',
+            'OGC:CRS83',
+            'CRS83',
+        ],
+    )
+    def test_nad83_accepted_with_a_line(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], name: str
+    ) -> None:
+        """NAD83 coordinates are used as they are, and one line says so."""
+        feature = {
+            'type': 'Feature',
+            'id': 'a',
+            'properties': {},
+            'geometry': json.loads(POINT),
+        }
+        path = write(
+            tmp_path / 'nad83.geojson',
+            {
+                'type': 'FeatureCollection',
+                'crs': {'type': 'name', 'properties': {'name': name}},
+                'features': [feature],
+            },
+        )
+        result = filter_to_region(path, REGION)
+        assert result.inventory['a'].coordinates == [[-122.0, 38.0]]
+        lines = capsys.readouterr().out.splitlines()
+        assert lines == [
+            f'{path} gives its coordinates in NAD83 ({name}). They are used as '
+            'they are, as WGS84 longitudes and latitudes, from which they differ '
+            'slightly.',
+            'Kept 1 of 1 asset inside the region.',
+        ]
+
+    @pytest.mark.parametrize(
+        'name',
+        ['urn:ogc:def:crs:EPSG::26910', 'EPSG:3310', 'urn:ogc:def:crs:EPSG::3857'],
+    )
+    def test_projected_crs_still_refused(self, tmp_path: Path, name: str) -> None:
+        """A projected system, NAD83's UTM zone included, is refused."""
+        path = write(
+            tmp_path / 'projected.geojson',
+            {
+                'type': 'FeatureCollection',
+                'crs': {'type': 'name', 'properties': {'name': name}},
+                'features': [],
+            },
+        )
+        with pytest.raises(
+            ValueError, match=r'only, named as one of .*CRS84.*EPSG::4269'
+        ):
+            filter_to_region(path, REGION)
+
     def test_null_crs_is_no_crs(self, tmp_path: Path) -> None:
         """A crs of null, which the 2008 specification allowed, is accepted."""
         feature = {
@@ -693,9 +751,9 @@ class TestFile:
             ),
             (
                 '{"type": "FeatureCollection", "crs": {"type": "name", '
-                '"properties": {"name": "urn:ogc:def:crs:EPSG::4269"}}, '
+                '"properties": {"name": "urn:ogc:def:crs:EPSG::3310"}}, '
                 '"features": []}',
-                'EPSG::4269',
+                'EPSG::3310',
             ),
             (
                 '{"type": "FeatureCollection", "features": [{"type": "Feature", '
