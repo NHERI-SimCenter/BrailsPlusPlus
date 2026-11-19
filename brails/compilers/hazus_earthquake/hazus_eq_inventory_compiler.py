@@ -83,7 +83,7 @@ from brails.compilers.hazus_earthquake.resolution_loop import (
     ComposedScreen,
     ResolutionLoop,
 )
-from brails.compilers.world_assembly import (
+from brails.compilers.source_composition import (
     _build_inventory,
     _select_assets,
     compose_source_parts,

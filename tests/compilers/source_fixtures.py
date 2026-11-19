@@ -38,7 +38,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from brails.compilers.world_assembly import _build_inventory
+from brails.compilers.source_composition import _build_inventory
 from brails.types.asset_inventory import (
     HAZUS_EQ_SOURCE_FEATURES,
     SOURCE_CODE_NONE,

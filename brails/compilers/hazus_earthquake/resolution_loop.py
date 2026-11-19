@@ -54,7 +54,7 @@ from brails.compilers.compilation_report import (
     UNDETERMINED_CATEGORY,
     UNSUPPORTED_CATEGORY,
 )
-from brails.compilers.world_assembly import _build_inventory
+from brails.compilers.source_composition import _build_inventory
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INVALID,
     DIAGNOSIS_OK,

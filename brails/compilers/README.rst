@@ -188,7 +188,7 @@ Composition and assembly
 
 A compiler's steps freeze their values in parts, and a later step needs the
 inventory those parts make up in one world, or over every world. Two
-functions build it. ``compose_source_parts``, in ``world_assembly.py``
+functions build it. ``compose_source_parts``, in ``source_composition.py``
 beside this page, puts one source of one world together from its parts and
 from the records that act on it. The compiler then merges the sources of
 the world with ``AssetInventory.merge`` (see "The source string" above).
