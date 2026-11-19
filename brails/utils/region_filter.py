@@ -60,6 +60,7 @@ from shapely.geometry import MultiPolygon, Polygon
 from brails.types.asset_inventory import (
     Asset,
     AssetInventory,
+    check_n_worlds,
     is_probabilistic_feature,
 )
 from brails.types.region_boundary import RegionBoundary
@@ -170,8 +171,8 @@ def filter_to_region(  # noqa: C901
     with the source's ``n_pw`` and ``vector_features``. Pass a GeoJSON file by
     its path rather than as an inventory read with
     :meth:`AssetInventory.read_from_geojson`, which leaves ``n_pw`` at 1 for
-    a file of several worlds, adds ``type`` and turns digit-string ids into
-    integers.
+    a file of several worlds without ``n_worlds``, adds ``type`` and turns
+    digit-string ids into integers.
 
     Given the path of a GeoJSON FeatureCollection, such as a file
     :meth:`AssetInventory.write_to_geojson` wrote, it reads the file as
@@ -195,16 +196,19 @@ def filter_to_region(  # noqa: C901
     empty one, a repeated one, or kept features of both forms, cover the kept
     features.
 
-    ``n_pw`` is
-    the number of values of the kept assets' list-valued features, those that
+    ``n_pw`` is the file's ``n_worlds``, an integer of at least 1, which
+    every kept list-valued feature must hold as its number of values. Those
+    features are the ones
     :func:`~brails.types.asset_inventory.is_probabilistic_feature` counts as
-    holding worlds under the default ``vector_features``, and 1 without
-    such lists. Of the file's other top-level members, ``type`` must be
+    holding worlds under the default ``vector_features``. In a file without
+    the member, ``n_pw`` is the number of values of the kept lists, and 1
+    without them. Of the file's other top-level members, ``type`` must be
     ``FeatureCollection`` and ``crs``, if present, must name WGS84 or NAD83
-    longitude and latitude, each checked when it is read. NAD83 coordinates
-    are used as they are, as WGS84 ones, and a line is printed to say so.
-    None of them is kept, and ``write_to_geojson`` writes a ``generated``,
-    ``brails_version`` and ``crs`` of its own. Written back with
+    longitude and latitude. ``n_worlds``, ``type`` and ``crs`` are each
+    checked when read. NAD83 coordinates are used as they are, as WGS84 ones,
+    and a line is printed to say so. No other member is kept, and
+    ``write_to_geojson`` writes a ``generated``, ``brails_version``,
+    ``n_worlds`` and ``crs`` of its own. Written back with
     ``write_to_geojson`` in the form the file has, the kept features equal
     the source's features, for a file that ``write_to_geojson`` wrote.
 
@@ -217,15 +221,19 @@ def filter_to_region(  # noqa: C901
     of a city that spans several counties, the function filters them one
     after another into one inventory, in the order given, and looks the
     boundary up once. The sources must hold the same number of worlds and
-    the same vector features. An inventory states its ``n_pw`` and a file the
-    length of its kept lists. Nothing in a file states its number of worlds
-    otherwise, so a file whose kept assets hold no lists takes the others'
-    number unchecked. An asset id that lies inside the region in two sources
-    is refused, since the sources then overlap, and so are two kept ids with
-    the same string form, which ``write_to_geojson`` would write as one id. A
-    one-item list gives what its item gives. Another sequence, such as a
-    generator, is not taken as a list. Memory is that of the kept assets and
-    of one file's stream at a time.
+    the same vector features. An inventory states its ``n_pw`` and a file its
+    ``n_worlds``. For a file without the member, the count is the length of
+    its kept lists, so one whose kept assets hold no lists takes the others'
+    number unchecked. A file that states 1 world, or whose kept lists hold
+    one value, is refused beside a source of more worlds, since it may be one
+    world of a run. :meth:`AssetInventory.read_from_geojson` adds a file of 1
+    world without lists to an inventory of more worlds. An asset id that
+    lies inside the region in two sources is refused, since the sources then
+    overlap, and so are two kept ids with the same string form, which
+    ``write_to_geojson`` would write as one id. A one-item list gives what
+    its item gives. Another sequence, such as a generator, is not taken as a
+    list. Memory is that of the kept assets and of one file's stream at a
+    time.
 
     The function prints the number of assets kept, and for several sources
     the number kept from each.
@@ -258,13 +266,15 @@ def filter_to_region(  # noqa: C901
             If the region's bounds are not longitude and latitude, or a
             source inventory holds a housing-unit inventory. For a file, if
             it is not a GeoJSON FeatureCollection, names a ``crs`` other than
-            WGS84 or NAD83 longitude and latitude, holds a feature without an
+            WGS84 or NAD83 longitude and latitude, gives an ``n_worlds`` that
+            is not an integer of at least 1, holds a feature without an
             ``id``, with an id that is not a string or a number, with
             properties that are not an object, or with a geometry or
             coordinates BRAILS cannot read, or holds kept features with the
             same ``id``, with an empty list, or with lists of different
-            lengths. Also if an asset of an inventory has no coordinates or
-            its coordinates form no geometry (:func:`reference_point`).
+            lengths or of a length other than its ``n_worlds``. Also if an
+            asset of an inventory has no coordinates or its coordinates form
+            no geometry (:func:`reference_point`).
 
     Examples:
         >>> from shapely.geometry import box
@@ -386,7 +396,8 @@ def filter_to_region(  # noqa: C901
             count = 0
             # How many kept features were keyed by their unique_id.
             numbered = 0
-            for feature in _stream_features(path):
+            stated: dict[str, int] = {}
+            for feature in _stream_features(path, stated):
                 count += 1
                 if not isinstance(feature, dict) or 'id' not in feature:
                     msg = (
@@ -494,17 +505,28 @@ def filter_to_region(  # noqa: C901
                     'file again with write_to_geojson, in one form.'
                 )
                 raise ValueError(msg)
-            if len(lengths) > 1:
+            # The file's n_worlds and the lengths of its kept lists, which
+            # must agree.
+            counts = lengths | set(stated.values())
+            if len(counts) > 1:
                 msg = (
                     f'The features of {path} inside the region hold lists of '
-                    f'{sorted(lengths)} values, so they share no number of '
-                    'possible worlds. A file written from one inventory holds '
-                    'lists of one length. Write the file again from a single '
-                    'inventory whose features pass validate_possible_worlds.'
+                    + ' and '.join(str(length) for length in sorted(lengths))
+                    + (
+                        ' values, but the file gives n_worlds as '
+                        f'{stated["n_worlds"]}. Write the file again with '
+                        'write_to_geojson from an inventory whose features pass '
+                        'validate_possible_worlds.'
+                        if len(lengths) == 1
+                        else ' values, so they share no number of possible worlds. '
+                        'A file written from one inventory holds lists of one '
+                        'length. Write the file again from a single inventory '
+                        'whose features pass validate_possible_worlds.'
+                    )
                 )
                 raise ValueError(msg)
-            if lengths:
-                worlds[label] = lengths.pop()
+            if counts:
+                worlds[label] = counts.pop()
             vector_features[label] = list(result.vector_features)
 
         if len(set(worlds.values())) > 1:
@@ -512,9 +534,15 @@ def filter_to_region(  # noqa: C901
                 'The sources hold different numbers of possible worlds: '
                 + ', '.join(f'{n} in {where}' for where, n in worlds.items())
                 + '. Pass sources of one run, such as the county files of one '
-                'testbed, which share their number of worlds, and pass a file '
-                'by its path rather than as an inventory read with '
-                'read_from_geojson, which gives it n_pw 1.'
+                'testbed, which share their number of worlds.'
+                + (
+                    ' A source of 1 world, such as one world of a run written '
+                    'alone, is not merged with sources of more worlds. For an '
+                    'inventory read with read_from_geojson from a file without '
+                    'n_worlds, which leaves n_pw at 1, pass the file by its path.'
+                    if 1 in worlds.values()
+                    else ''
+                )
             )
             raise ValueError(msg)
         first = labels[0]
@@ -578,7 +606,9 @@ def _print(message: str) -> None:
         )
 
 
-def _stream_features(path: Path) -> Iterator[dict[str, Any]]:  # noqa: C901
+def _stream_features(  # noqa: C901
+    path: Path, stated: dict[str, int]
+) -> Iterator[dict[str, Any]]:
     """
     Yield the features of a GeoJSON FeatureCollection one at a time.
 
@@ -588,13 +618,17 @@ def _stream_features(path: Path) -> Iterator[dict[str, Any]]:  # noqa: C901
     come in any order. A value that ends at the end of what has been read, or
     before a character that could continue a number, is parsed again with
     more of the file, so a number cut at a chunk's edge is not taken short.
-    The members ``type`` and ``crs`` are checked when they are read, so a
-    file that writes them before ``features``, as ``write_to_geojson`` and
-    GDAL do, is refused before its first feature is yielded.
+    The members ``type``, ``crs`` and ``n_worlds`` are checked when they are
+    read, so a file that writes them before ``features``, as
+    ``write_to_geojson`` does, is refused before its first feature is
+    yielded.
 
     Args:
         path (Path):
             The file.
+        stated (dict[str, int]):
+            Receives the file's ``n_worlds`` under that key, if the file gives
+            one.
 
     Yields:
         dict[str, Any]:
@@ -605,8 +639,9 @@ def _stream_features(path: Path) -> Iterator[dict[str, Any]]:  # noqa: C901
             If the file is not a JSON object, holds invalid JSON (a trailing
             comma or a member name that is not a string among it), has no
             ``features`` member or two, has a ``type`` other than
-            ``FeatureCollection``, or has a ``crs`` other than one of
-            :data:`GEOGRAPHIC_CRS_NAMES` and :data:`NAD83_CRS_NAMES`.
+            ``FeatureCollection``, has a ``crs`` other than one of
+            :data:`GEOGRAPHIC_CRS_NAMES` and :data:`NAD83_CRS_NAMES`, or has
+            an ``n_worlds`` that is not an integer of at least 1.
     """
     decoder = json.JSONDecoder()
     buffer = ''
@@ -695,6 +730,8 @@ def _stream_features(path: Path) -> Iterator[dict[str, Any]]:  # noqa: C901
                                 raise refuse('a comma ends the features array')
                 else:
                     member = value()
+                    if key == 'n_worlds':
+                        stated['n_worlds'] = check_n_worlds(member, path)
                     if key == 'type' and member != 'FeatureCollection':
                         msg = (
                             f'{path} has the type {member!r}, not '

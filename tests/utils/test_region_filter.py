@@ -706,7 +706,7 @@ class TestFile:
         source.inventory['in_b'].features['StructureType'] = ['S1', 'S2']
         path = tmp_path / 'mixed.geojson'
         source.write_to_geojson(str(path))
-        with pytest.raises(ValueError, match=r'lists of \[2, 3\] values'):
+        with pytest.raises(ValueError, match='lists of 2 and 3 values'):
             filter_to_region(path, REGION)
 
     def test_one_world_without_lists(self, tmp_path: Path) -> None:
@@ -1048,8 +1048,8 @@ class TestSources:
         with pytest.raises(TypeError, match='is a generator.* list or tuple'):
             filter_to_region(sources, REGION)
 
-    def test_scalar_file_of_other_worlds_unchecked(self, tmp_path: Path) -> None:
-        """A file whose kept assets hold no lists is not checked for its worlds."""
+    def test_stated_worlds_without_kept_lists(self, tmp_path: Path) -> None:
+        """A file's n_worlds sets its number of worlds when it keeps no lists."""
         west_path, _ = two_counties(tmp_path)
         five = inventory(
             {
@@ -1060,8 +1060,9 @@ class TestSources:
         )
         five_path = tmp_path / 'five.geojson'
         five.write_to_geojson(str(five_path))
-        assert filter_to_region(five_path, REGION).n_pw == 1
-        assert filter_to_region([five_path, west_path], REGION).n_pw == 3
+        assert filter_to_region(five_path, REGION).n_pw == 5
+        with pytest.raises(ValueError, match=r'5 in .*five.geojson, 3 in'):
+            filter_to_region([five_path, west_path], REGION)
 
     def test_ids_of_one_string_form_refused(self) -> None:
         """Ids 7 and '7', in two sources or in one, would be written as one."""
@@ -1096,12 +1097,13 @@ class TestSources:
             filter_to_region([west_path, one_world], REGION)
 
     def test_scalar_file_takes_the_others_worlds(self, tmp_path: Path) -> None:
-        """A file whose kept assets hold no lists sets no number of worlds."""
+        """A file without n_worlds and without kept lists takes the others' count."""
         west_path, _ = two_counties(tmp_path)
-        scalars = tmp_path / 'scalars.geojson'
-        inventory({'s': ([[-122.0, 38.004]], {'PlanArea': 10.0})}).write_to_geojson(
-            str(scalars)
-        )
+        collection = inventory(
+            {'s': ([[-122.0, 38.004]], {'PlanArea': 10.0})}
+        ).write_to_geojson()
+        del collection['n_worlds']
+        scalars = write(tmp_path / 'scalars.geojson', collection)
         both = filter_to_region([scalars, west_path], REGION)
         assert both.n_pw == 3
         both.validate_possible_worlds()
@@ -1122,3 +1124,91 @@ class TestSources:
         copy_path.write_bytes(west_path.read_bytes())
         with pytest.raises(ValueError, match=r"'w_in' .* both .*west.geojson and"):
             filter_to_region([west_path, copy_path], REGION)
+
+
+class TestStatedWorlds:
+    """A file's n_worlds is checked and gives the source its number of worlds."""
+
+    def test_count_without_kept_lists(self, tmp_path: Path) -> None:
+        """A file of ten worlds whose kept assets hold no lists gives n_pw 10."""
+        ten = inventory(
+            {
+                's': ([[-122.0, 38.004]], {'PlanArea': 10.0}),
+                'far': ([[-121.0, 38.0]], {'StructureType': ['W1'] * 10}),
+            },
+            n_pw=10,
+        )
+        path = tmp_path / 'ten.geojson'
+        ten.write_to_geojson(str(path))
+        assert filter_to_region(path, REGION).n_pw == 10
+        other = inventory(
+            {'x': ([[-122.002, 38.0]], {'StructureType': ['W1'] * 10})}, n_pw=10
+        )
+        both = filter_to_region([path, other], REGION)
+        assert both.n_pw == 10
+        both.validate_possible_worlds()
+
+    def test_kept_lists_of_another_length_refused(self, tmp_path: Path) -> None:
+        """Kept lists of one length other than the stated count are refused."""
+        collection = three_worlds().write_to_geojson()
+        assert collection['n_worlds'] == 3
+        for feature in collection['features'][:2]:
+            feature['properties']['StructureType'] = ['S1', 'S2']
+        path = write(tmp_path / 'short.geojson', collection)
+        with pytest.raises(
+            ValueError,
+            match='hold lists of 2 values, but the file gives n_worlds as 3. Write',
+        ):
+            filter_to_region(path, REGION)
+
+    def test_kept_lists_of_two_lengths_refused(self, tmp_path: Path) -> None:
+        """Kept lists of two lengths are refused."""
+        collection = three_worlds().write_to_geojson()
+        collection['features'][1]['properties']['StructureType'] = ['S1', 'S2']
+        path = write(tmp_path / 'mixed.geojson', collection)
+        with pytest.raises(
+            ValueError, match='lists of 2 and 3 values, so they share no number'
+        ):
+            filter_to_region(path, REGION)
+
+    def test_one_world_beside_more_refused(self, tmp_path: Path) -> None:
+        """A file of 1 world is refused beside a file of 3, as one world of a run."""
+        west_path, _ = two_counties(tmp_path)
+        one = tmp_path / 'one.geojson'
+        inventory({'s': ([[-122.0, 38.004]], {'PlanArea': 10.0})}).write_to_geojson(
+            str(one)
+        )
+        with pytest.raises(
+            ValueError, match=r'1 in .*one.geojson. Pass .* A source of 1 world'
+        ):
+            filter_to_region([west_path, one], REGION)
+
+    def test_list_outside_the_region_not_checked(self, tmp_path: Path) -> None:
+        """Only the kept lists are checked against the stated count."""
+        collection = three_worlds().write_to_geojson()
+        collection['features'][2]['properties']['StructureType'] = ['W1']
+        path = write(tmp_path / 'far_short.geojson', collection)
+        assert filter_to_region(path, REGION).n_pw == 3
+
+    def test_member_not_a_count_refused(self, tmp_path: Path) -> None:
+        """A member that is not an integer of at least 1 is refused."""
+        collection = three_worlds().write_to_geojson()
+        collection['n_worlds'] = 0
+        path = write(tmp_path / 'bad.geojson', collection)
+        with pytest.raises(ValueError, match='gives n_worlds as'):
+            filter_to_region(path, REGION)
+
+    def test_member_after_features_checked(self, tmp_path: Path) -> None:
+        """An n_worlds written after features is checked once they are read."""
+        document = {
+            'type': 'FeatureCollection',
+            'features': [{'id': 's', 'geometry': json.loads(POINT)}],
+            'n_worlds': 10,
+        }
+        assert (
+            filter_to_region(write(tmp_path / 'ten.geojson', document), REGION).n_pw
+            == 10
+        )
+        document['n_worlds'] = 0
+        with pytest.raises(ValueError, match='gives n_worlds as 0'):
+            filter_to_region(write(tmp_path / 'zero.geojson', document), REGION)

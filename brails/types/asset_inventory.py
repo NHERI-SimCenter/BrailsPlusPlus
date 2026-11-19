@@ -2465,10 +2465,11 @@ class AssetInventory:
         and each of its lists holds that many values, with a printed line when
         it holds no lists. A file of 1 world whose features hold no lists is
         added to an inventory of more worlds, with a printed line saying that
-        its values are taken for every world. Other counts are refused. Every
-        check runs before an asset is added, so a refused file leaves the
-        inventory as it was. A file without the member leaves ``n_pw`` as it
-        is.
+        its values are taken for every world. ``filter_to_region``, which
+        merges the files of one run, refuses such a file beside a source of
+        more worlds. Other counts are refused. Every check runs before an asset
+        is added, so a refused file leaves the inventory as it was. A file
+        without the member leaves ``n_pw`` as it is.
 
         Args:
             file_path (str):
@@ -3036,7 +3037,8 @@ class AssetInventory:
         and the lists share one length of at least 1, it is that length.
         Otherwise, or when ``n_pw`` is not an integer of at least 1, the member
         is left out and a printed line gives the lengths found.
-        :meth:`read_from_geojson` checks the member when it reads the file.
+        :meth:`read_from_geojson` and ``filter_to_region`` check the member
+        when they read the file.
 
         Args:
             output_file(str, optional):
