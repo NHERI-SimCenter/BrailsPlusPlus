@@ -819,6 +819,57 @@ class TestTargetAreaKey:
         one = run(buildings, donors, 1, target_area_key='Area', areas=areas)
         assert value_of(one, 't') == pytest.approx(200.0)
 
+    def test_areas_in_place_of_an_area_stage(self) -> None:
+        """Unfrozen areas value as the same areas frozen and are checked alike."""
+        buildings = inventory(
+            {
+                'n': nsi_building(10.0, 100.0, 1.0),
+                't': target(0.0, Area=99.0),
+            }
+        )
+        buildings.n_pw = 3
+        areas = AssetInventory()
+        for asset_id, area in (('n', 4.0), ('t', 2.0)):
+            coordinates = buildings.inventory[asset_id].coordinates
+            areas.add_asset(asset_id, Asset(asset_id, coordinates, {'Area': area}))
+        donors = donor_stage(buildings, {'t': 'n'})
+        frozen = run(buildings, donors, 1, target_area_key='Area', areas=areas)
+        freeze = StageFreeze()
+        freeze.freeze('stage', buildings)
+        freeze.freeze('donors', donors)
+        given = ReplacementCostImputer(seed=SEED).impute_stage(
+            freeze, 'stage', 'donors', world=1, target_area_key='Area', areas=areas
+        )
+        pd.testing.assert_frame_equal(given.log, frozen.log)
+        assert value_of(given, 't') == value_of(frozen, 't') == pytest.approx(200.0)
+        freeze.freeze('areas', areas)
+        with pytest.raises(ValueError, match='area_stage or areas, not both'):
+            ReplacementCostImputer(seed=SEED).impute_stage(
+                freeze,
+                'stage',
+                'donors',
+                target_area_key='Area',
+                area_stage='areas',
+                areas=areas,
+            )
+        with pytest.raises(ValueError, match='areas are given without the'):
+            ReplacementCostImputer(seed=SEED).impute_stage(
+                freeze, 'stage', 'donors', areas=areas
+            )
+        stray = AssetInventory()
+        stray.add_asset('x', Asset('x', square(0.0, 0.0), {'Area': 1.0}))
+        with pytest.raises(ValueError, match='area inventory holds assets the'):
+            ReplacementCostImputer(seed=SEED).impute_stage(
+                freeze, 'stage', 'donors', target_area_key='Area', areas=stray
+            )
+        two = AssetInventory()
+        two.add_asset('t', Asset('t', square(0.0, 0.0), {'Area': [1.0, 2.0]}))
+        two.n_pw = 2
+        with pytest.raises(ValueError, match='the area inventory 2. Each must'):
+            ReplacementCostImputer(seed=SEED).impute_stage(
+                freeze, 'stage', 'donors', target_area_key='Area', areas=two
+            )
+
     def test_none_computes_from_the_footprint(self) -> None:
         """An explicit None is the default: the area is computed from the footprint."""
         buildings = inventory(

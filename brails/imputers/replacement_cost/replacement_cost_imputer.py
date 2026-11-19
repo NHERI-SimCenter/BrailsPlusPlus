@@ -420,6 +420,7 @@ class ReplacementCostImputer(Imputation):
         world: int | None = None,
         target_area_key: str | None = None,
         area_stage: str | None = None,
+        areas: AssetInventory | None = None,
     ) -> ReplacementCostResult:
         """
         Value the buildings of a frozen stage.
@@ -431,8 +432,8 @@ class ReplacementCostImputer(Imputation):
         draws with that world's index.
 
         With a ``target_area_key``, a building's gross area is read from
-        that feature, of ``area_stage`` where one is named and otherwise of
-        ``stage``, and logged as
+        that feature, of ``area_stage`` or ``areas`` where one is given and
+        otherwise of ``stage``, and logged as
         :data:`~brails.constants.AREA_FROM_FEATURE`. The footprint is then
         not read for the area, and a building without a finite number above
         zero there gets no value, logged as
@@ -463,6 +464,11 @@ class ReplacementCostImputer(Imputation):
                 The frozen stage that holds ``target_area_key``, for a
                 ``stage`` frozen before the areas were computed. Defaults to
                 ``None``, which reads the feature from ``stage``.
+            areas (AssetInventory, optional):
+                An inventory that holds ``target_area_key`` and is not frozen,
+                read in place of ``area_stage``, such as the areas of the one
+                world a caller computes before valuing it. Defaults to
+                ``None``.
 
         Returns:
             ReplacementCostResult:
@@ -476,15 +482,15 @@ class ReplacementCostImputer(Imputation):
             LookupError:
                 If a named stage is not frozen.
             ValueError:
-                If ``area_stage`` is named without a ``target_area_key``, a
-                stage holds a number of worlds other than 1 and the largest,
-                the donor stage or the area stage holds an asset the stage
-                lacks, the donor stage names a donor the stage lacks,
-                ``world`` is not a world of the stages, a building holding a
-                value carries no source string that
+                If ``area_stage`` or ``areas`` is given without a
+                ``target_area_key``, both are given, a stage holds a number
+                of worlds other than 1 and the largest, the donor stage or
+                the areas hold an asset the stage lacks, the donor stage
+                names a donor the stage lacks, ``world`` is not a world of
+                the stages, a building holding a value carries no source
+                string that
                 :func:`~brails.types.asset_inventory.read_source_string`
-                reads, or a building's
-                coordinates cannot be read.
+                reads, or a building's coordinates cannot be read.
         """
         if donor_stage is None:
             msg = (
@@ -493,18 +499,25 @@ class ReplacementCostImputer(Imputation):
                 'take the rate of its donor.'
             )
             raise TypeError(msg)
-        if area_stage is not None and target_area_key is None:
-            msg = (
-                f'area_stage {area_stage!r} is named without the '
-                'target_area_key feature to read from it.'
+        if area_stage is not None and areas is not None:
+            msg = 'impute_stage takes area_stage or areas, not both.'
+            raise ValueError(msg)
+        if target_area_key is None and (area_stage is not None or areas is not None):
+            given = (
+                'areas are given'
+                if area_stage is None
+                else f'area_stage {area_stage!r} is named'
             )
+            msg = f'{given} without the target_area_key feature to read from them.'
             raise ValueError(msg)
         buildings = freeze.read(stage)
-        # The other stages, keyed by the name the error messages give them.
+        # The other inventories, keyed by the name the error messages give them.
         others = {'donor stage': freeze.read(donor_stage)}
         if area_stage is not None:
-            others['area stage'] = freeze.read(area_stage)
-        donors, areas = others['donor stage'], others.get('area stage')
+            areas = others['area stage'] = freeze.read(area_stage)
+        elif areas is not None:
+            others['area inventory'] = areas
+        donors = others['donor stage']
         for name, held in others.items():
             stray = sorted(
                 repr(asset_id)

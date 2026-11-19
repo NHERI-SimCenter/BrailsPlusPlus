@@ -43,7 +43,8 @@ footprints, computes the same gross area for a footprint without a
 one. A computed value is a float, not rounded, in the units of the
 ``ReplacementCost`` its rate came from. Given ``target_area_key``, the imputer
 multiplies the rate by the gross area that feature holds, read from the frozen
-stage ``area_stage`` where ``impute_stage`` is given one, and logs it as
+stage ``area_stage`` or the inventory ``areas`` where ``impute_stage`` is given
+one, and logs it as
 ``AREA_FROM_FEATURE``. A building without a finite number above zero in that
 feature gets no value, unless it keeps a local value. The same-class neighbor
 draw still locates a building by its footprint, so a building that would take
@@ -114,7 +115,8 @@ first holds the buildings. The second, the donor stage, is the inventory that
 ``ObservedDonorImputer.impute_stage``. It names, for each building and world,
 the donor whose copied values the building kept. Given ``target_area_key``, the
 imputer reads the gross areas from that feature of the stage the caller names
-as ``area_stage``, for buildings frozen before their areas were computed, and
+as ``area_stage``, for buildings frozen before their areas were computed, or of
+the inventory it gives as ``areas``, for areas that are not frozen, and
 otherwise from the buildings' stage. In each world, the imputer reads that
 world's realization of each inventory, or the one world of an inventory that
 holds one.
