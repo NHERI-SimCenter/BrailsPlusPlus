@@ -233,6 +233,33 @@ _TYPE_KEY = 'type'
 # applies, as (asset id, world, property); write refuses a file it names.
 MISSING_DEFAULTS_LOG = 'missing_defaults'
 
+# Every log a run can hold, in the order the steps write them. A run holds
+# stacked_parts and stacked_asset_ids only with merge_stacked. write without
+# detailed removes a file at the stem under any of these names.
+LOG_NAMES = (
+    'stacked_parts',
+    'stacked_asset_ids',
+    'footprint_ties',
+    'join_links',
+    'join_unlinked',
+    'join_branch_counts',
+    'stories',
+    'budget',
+    'budget_diagnostic',
+    'budget_gaps',
+    'budget_nonresidential',
+    'imputer',
+    'year_fit',
+    'pair_redraw',
+    'resolution',
+    'neighbor_year',
+    'nonresidential_resolution',
+    'schema_check',
+    'gross_area',
+    'value',
+    MISSING_DEFAULTS_LOG,
+)
+
 # The frozen stages, in the order they are frozen.
 STAGE_S01_FOOTPRINTS = 's01_footprints'
 STAGE_S01_LOCAL = 's01_local'
@@ -498,9 +525,10 @@ class CompilationResult(NamedTuple):
         integer_ids: bool = False,
         keep_partly_excluded: bool = False,
         extra_properties: str | Sequence[str] = (),
+        detailed: bool = False,
     ) -> None:
         """
-        Write every world, or one, as GeoJSON, with the report, manifest and logs.
+        Write every world, or one, as GeoJSON, with the report and the manifest.
 
         The GeoJSON at ``path`` holds every world the run computed, a
         property whose worlds differ as a list in which position ``i`` is
@@ -520,15 +548,28 @@ class CompilationResult(NamedTuple):
         ``integer_ids`` the file takes the form the R2D tools read: each
         building also holds
         ``type``, within which :meth:`AssetInventory.write_to_geojson`
-        numbers the features, and its asset id as ``unique_id``. Beside it,
-        under the stem of ``path``: the report through
-        :meth:`CompilationReport.save` as ``<stem>_report.parquet``, the
-        manifest through :meth:`StageFreeze.save_manifest` as
-        ``<stem>_manifest.json``, and the logs through
-        :meth:`CompilationReport.save_logs` as ``<stem>_<name>.parquet``,
-        the report and the logs keeping the rows of the written worlds. The
-        summary's notices, timings and schema check cover every world the run
-        computed.
+        numbers the features, and its asset id as ``unique_id``.
+
+        Beside the GeoJSON, under the stem of ``path``, :meth:`write` saves
+        the report's summary as ``<stem>_report_summary.json`` and its
+        exclusion rows as ``<stem>_report_exclusions.parquet``, through
+        :meth:`CompilationReport.save`, and the manifest through
+        :meth:`StageFreeze.save_manifest` as ``<stem>_manifest.json``. With
+        ``detailed`` it also saves the report's action rows as
+        ``<stem>_report.parquet`` and every log of :attr:`logs` through
+        :meth:`CompilationReport.save_logs` as ``<stem>_<name>.parquet``.
+        Before anything is written, every call removes the file at
+        ``<stem>_<name>.parquet`` for each name of :data:`LOG_NAMES` that
+        :attr:`logs` does not hold, and a call without ``detailed`` that is not
+        refused also removes ``<stem>_report.parquet`` and the files of every
+        other name of :data:`LOG_NAMES`, whoever wrote them. The stem then
+        holds no action rows and no log beside the files this call writes. A
+        refused file leaves a GeoJSON that an earlier call wrote at ``path`` in
+        place. Where a write fails after the removal, the stem keeps what an
+        earlier call wrote there, less the removed files. The report and the
+        logs keep the rows of the written worlds. The summary's notices,
+        timings and schema check cover every world the run computed.
+        :attr:`logs` holds every log whatever ``detailed`` says.
 
         Args:
             path (str or os.PathLike):
@@ -546,6 +587,9 @@ class CompilationResult(NamedTuple):
                 Features of :attr:`inventory` to write beside the default
                 properties, or :data:`ALL_PROPERTIES` for every feature it
                 holds. They change no value of the default properties.
+            detailed (bool, optional):
+                Whether to save the report's action rows and the logs too.
+                Defaults to ``False``. A refused file saves them either way.
 
         Raises:
             TypeError:
@@ -561,10 +605,15 @@ class CompilationResult(NamedTuple):
             RuntimeError:
                 If the log :data:`MISSING_DEFAULTS_LOG` names a default
                 property that a compiled building lacks in a written world,
-                once the report, the logs and the manifest are written and
-                before the GeoJSON is; or if a frozen stage changed after it
-                was frozen, in which case every file but the manifest has been
-                written.
+                once the report with its action rows, every log and the
+                manifest are written, whatever ``detailed`` says, and before
+                the GeoJSON is; or if a frozen stage changed after it was
+                frozen, in which case every file this call writes but the
+                manifest has been written.
+            OSError:
+                If a file the call removes cannot be removed, before anything
+                is written. The message names the file, and the files
+                removed before it stay removed.
         """
         # The report holds the run's worlds and checks world numbers against
         # them. An inventory without assets holds one world, whatever the run
@@ -610,6 +659,24 @@ class CompilationResult(NamedTuple):
         path = Path(path)
         missing = self.logs[MISSING_DEFAULTS_LOG]
         lacking = missing[missing['world'].isin(worlds)]
+        # Every call removes the logs of another run, which this result does
+        # not hold, and a lean call also the action rows and every log, all
+        # before it writes anything.
+        lean = not detailed and lacking.empty
+        for name in (
+            ('report', *LOG_NAMES)
+            if lean
+            else [name for name in LOG_NAMES if name not in self.logs]
+        ):
+            stale = path.with_name(f'{path.stem}_{name}.parquet')
+            try:
+                stale.unlink(missing_ok=True)
+            except OSError as error:
+                msg = (
+                    f'{stale} cannot be removed ({error}). write removes it '
+                    'first, and nothing has been written.'
+                )
+                raise OSError(msg) from error
         if not lacking.empty:
             self.report.save(
                 path.with_name(f'{path.stem}_report.parquet'), worlds=worlds
@@ -686,9 +753,12 @@ class CompilationResult(NamedTuple):
         )
         inventory.write_to_geojson(str(path), integer_ids=integer_ids)
         self.report.save(
-            path.with_name(f'{path.stem}_report.parquet'), worlds=worlds
+            path.with_name(f'{path.stem}_report.parquet'),
+            worlds=worlds,
+            actions=detailed,
         )
-        self.report.save_logs(path.parent, path.stem, self.logs, worlds=worlds)
+        if detailed:
+            self.report.save_logs(path.parent, path.stem, self.logs, worlds=worlds)
         self.freeze.save_manifest(path.with_name(f'{path.stem}_manifest.json'))
 
 

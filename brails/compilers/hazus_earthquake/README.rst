@@ -80,8 +80,9 @@ excluded from a world, as the section "The compilation report" of
 stage of the run and its ``manifest`` their digests. Its ``logs`` hold, by
 name, the logs of the components and those the compiler writes itself, such
 as ``gross_area`` and ``schema_check``. Its ``seed`` is the seed of the run's
-random draws. ``write`` saves the inventory as GeoJSON with the report, the
-manifest and the logs beside it (see "The written file" below).
+random draws. ``write`` saves the inventory as GeoJSON with the report's
+summary and exclusions and the manifest beside it, and with ``detailed=True``
+the report's actions and the logs too (see "The written file" below).
 
 The imputer's settings
 ----------------------
@@ -764,15 +765,27 @@ the NSI join adds, such as ``NSIOccupancyClass``, ``NSIRecords``,
 ``NSIReach`` and ``NSIGrossArea``; ``StoriesFromHeight``; and
 ``LocalGrossArea``. An extra property changes no value of a default one.
 
-Beside the GeoJSON, under the stem of its path, ``write`` saves the report as
-three files: its action rows as ``<stem>_report.parquet``, its exclusion rows
-as ``<stem>_report_exclusions.parquet`` and its summary as
-``<stem>_report_summary.json``. It also saves the manifest as
-``<stem>_manifest.json`` and each log as ``<stem>_<name>.parquet``. The saved
-report keeps the rows of the written worlds, and so does each log with a
-``world`` column. A log without a ``world`` column is written whole. The saved
-report lists each excluded building with its reason in each written world,
-whether or not the GeoJSON holds the building. A building's ``ReplacementCost``
+Beside the GeoJSON, under the stem of its path, ``write`` saves three files by
+default: the report's summary as ``<stem>_report_summary.json``, its exclusion
+rows as ``<stem>_report_exclusions.parquet``, which list each excluded building
+with its reason in each written world, whether or not the GeoJSON holds the
+building, and the manifest as ``<stem>_manifest.json``. With ``detailed=True``
+it also saves the report's action rows as ``<stem>_report.parquet`` and each
+log of the result's ``logs`` as ``<stem>_<name>.parquet``, the log
+``gross_area`` among them. A file that ``write`` refuses for a missing default
+property saves the action rows and every log whatever ``detailed`` says, since
+they explain the refusal. Before it writes anything, every write removes the
+file at ``<stem>_<name>.parquet`` for each name of ``LOG_NAMES``, every log a
+run can hold, that its result does not hold. A write without ``detailed`` that
+is not refused also removes ``<stem>_report.parquet`` and the files of every
+other name of ``LOG_NAMES``, whoever wrote them. The stem then holds no action
+rows and no log beside the files of that write. A file that cannot be removed
+stops the write, with ``OSError``, before it writes anything. A refused write
+leaves a GeoJSON that an earlier write left at its path, and a write that fails
+after the removal leaves what an earlier write left, less the removed files.
+The result holds every log in memory either way. The saved report keeps the
+rows of the written worlds, and so does each log with a ``world`` column. A log
+without a ``world`` column is written whole. A building's ``ReplacementCost``
 divided by its ``GrossArea`` is the rate per square foot that
 ``s13_replacement_cost`` gave it, except for a building that keeps a local
 ``ReplacementCost``, whose rate the step computes from ``NSIGrossArea``.

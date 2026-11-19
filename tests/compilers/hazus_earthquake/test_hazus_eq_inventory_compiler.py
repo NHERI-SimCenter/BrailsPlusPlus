@@ -35,6 +35,7 @@
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import functools
 import json
@@ -786,17 +787,103 @@ class TestOutput:
         )
 
     def test_files(self, compiled: object, tmp_path: object) -> None:
-        """The manifest and the logs are written beside the file, readable."""
+        """By default the summary, exclusions and manifest; detailed adds more."""
         result = compiled(n_worlds=3)
-        result.write(tmp_path / 'run.geojson')
+        lean = {
+            'run.geojson',
+            'run_report_summary.json',
+            'run_report_exclusions.parquet',
+            'run_manifest.json',
+        }
+        (tmp_path / 'lean').mkdir()
+        result.write(tmp_path / 'lean' / 'run.geojson')
+        assert {p.name for p in (tmp_path / 'lean').iterdir()} == lean
+        result.write(tmp_path / 'run.geojson', detailed=True)
+        assert {p.name for p in tmp_path.iterdir() if p.is_file()} == lean | {
+            'run_report.parquet',
+            *(f'run_{name}.parquet' for name in result.logs),
+        }
+        assert 'gross_area' in result.logs
         manifest = json.loads(
             (tmp_path / 'run_manifest.json').read_text(encoding='utf-8')
         )
         assert manifest == result.manifest
-        for name in result.logs:
-            assert (tmp_path / f'run_{name}.parquet').exists()
         counts = pd.read_parquet(tmp_path / 'run_join_branch_counts.parquet')
         assert 'inside' in set(counts['branch'])
+
+    @pytest.mark.parametrize('world', [None, 1])
+    def test_a_default_write_removes_the_detailed_files(
+        self, compiled: object, tmp_path: object, world: object
+    ) -> None:
+        """A default write after a detailed one leaves only its own files."""
+        result = compiled(n_worlds=3)
+        result.write(tmp_path / 'run.geojson', detailed=True)
+        (tmp_path / 'other_report.parquet').write_bytes(b'')
+        # A log of merge_stacked, which this result does not hold.
+        (tmp_path / 'run_stacked_parts.parquet').write_bytes(b'')
+        result.write(tmp_path / 'run.geojson', world=world)
+        assert {p.name for p in tmp_path.iterdir()} == {
+            'run.geojson',
+            'run_report_summary.json',
+            'run_report_exclusions.parquet',
+            'run_manifest.json',
+            'other_report.parquet',
+        }
+        rows = pd.read_parquet(tmp_path / 'run_report_exclusions.parquet')
+        assert set(rows['world']) == ({0, 1, 2} if world is None else {1})
+
+    def test_a_detailed_write_removes_a_log_it_lacks(
+        self, compiled: object, tmp_path: object
+    ) -> None:
+        """A detailed write removes the file of a log the result does not hold."""
+        result = compiled(n_worlds=3)
+        (tmp_path / 'run_stacked_parts.parquet').write_bytes(b'')
+        result.write(tmp_path / 'run.geojson', detailed=True)
+        assert 'stacked_parts' not in result.logs
+        assert not (tmp_path / 'run_stacked_parts.parquet').exists()
+        assert {p.name for p in tmp_path.iterdir()} == {
+            'run.geojson',
+            'run_report_summary.json',
+            'run_report_exclusions.parquet',
+            'run_manifest.json',
+            'run_report.parquet',
+            *(f'run_{name}.parquet' for name in result.logs),
+        }
+
+    def test_a_file_that_cannot_be_removed(
+        self, compiled: object, tmp_path: object
+    ) -> None:
+        """A stale file that cannot be removed stops the write before it writes."""
+        # A directory at a log's file name, which unlink refuses.
+        (tmp_path / 'run_value.parquet').mkdir()
+        with pytest.raises(OSError, match='run_value.parquet cannot be removed'):
+            compiled(n_worlds=3).write(tmp_path / 'run.geojson')
+        assert {p.name for p in tmp_path.iterdir()} == {'run_value.parquet'}
+
+    def test_log_names_list_every_log(self, compiled: object) -> None:
+        """LOG_NAMES holds every name the compiler writes a log under."""
+        # The syntax tree catches a log stored as logs[name] = ... anywhere in
+        # the module, and fails on a key it cannot read. It misses one added
+        # by logs.update, setdefault or a dict of another name, and the run
+        # below holds the fixture's logs only, without merge_stacked.
+        tree = ast.parse(Path(hc.__file__).read_text(encoding='utf-8'))
+        written = {
+            node.slice.value
+            if isinstance(node.slice, ast.Constant)
+            else node.slice.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Subscript)
+            and isinstance(node.ctx, ast.Store)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == 'logs'
+        }
+        written = {
+            hc.MISSING_DEFAULTS_LOG if n == 'MISSING_DEFAULTS_LOG' else n
+            for n in written
+        }
+        assert written == set(hc.LOG_NAMES)
+        assert len(hc.LOG_NAMES) == len(set(hc.LOG_NAMES))
+        assert set(compiled(n_worlds=3).logs) <= set(hc.LOG_NAMES)
 
 
 class TestWrittenFile:
@@ -896,11 +983,17 @@ class TestWrittenFile:
             result.logs[MISSING_DEFAULTS_LOG].itertuples(index=False, name=None)
         )
         assert (building, 0, key) in lacking
+        # A log of merge_stacked, which this result does not hold.
+        (tmp_path / 'run_stacked_parts.parquet').write_bytes(b'')
         with pytest.raises(RuntimeError, match=key):
             result.write(tmp_path / 'run.geojson')
         assert not (tmp_path / 'run.geojson').exists()
+        assert not (tmp_path / 'run_stacked_parts.parquet').exists()
+        # The refusal saves the actions and every log without detailed.
         assert (tmp_path / 'run_report.parquet').exists()
         assert (tmp_path / 'run_manifest.json').exists()
+        for name in result.logs:
+            assert (tmp_path / f'run_{name}.parquet').exists()
         saved = pd.read_parquet(tmp_path / f'run_{MISSING_DEFAULTS_LOG}.parquet')
         assert (building, 0, key) in set(saved.itertuples(index=False, name=None))
 
@@ -948,6 +1041,16 @@ class TestWrittenFile:
         for stem, worlds in (('world0', {0}), ('both', {0, 1}), ('world1', {1})):
             rows = pd.read_parquet(tmp_path / f'{stem}_report_exclusions.parquet')
             assert set(rows['world']) == worlds
+        # A valid write at the stem of a refused one removes the files the
+        # refusal left beyond the four it writes.
+        assert (tmp_path / f'both_{MISSING_DEFAULTS_LOG}.parquet').exists()
+        result.write(tmp_path / 'both.geojson', world=0)
+        assert {p.name for p in tmp_path.iterdir() if p.stem.startswith('both')} == {
+            'both.geojson',
+            'both_report_summary.json',
+            'both_report_exclusions.parquet',
+            'both_manifest.json',
+        }
 
     @pytest.mark.parametrize(
         ('name', 'replacement', 'building', 'key'),
@@ -1473,6 +1576,7 @@ class TestWorlds:
             world=world,
             keep_partly_excluded=True,
             extra_properties=ALL_PROPERTIES,
+            detailed=True,
         )
         properties = written(tmp_path / 'one.geojson')
         expected = features_in(result.inventory, world)
@@ -1994,7 +2098,7 @@ class TestYearsAndTypes:
 
     def test_year_fit_log(self, compiled: object, tmp_path: object) -> None:
         """The written year fit log names the block group of each row."""
-        compiled(n_worlds=3).write(tmp_path / 'run.geojson')
+        compiled(n_worlds=3).write(tmp_path / 'run.geojson', detailed=True)
         fit = pd.read_parquet(tmp_path / 'run_year_fit.parquet')
         assert {BLOCK_GROUP_KEY, 'world'} <= set(fit.columns)
 

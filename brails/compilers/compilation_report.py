@@ -620,16 +620,24 @@ class CompilationReport:
             'schema_check': self._schema_check,
         }
 
-    def save(self, path: str | Path, *, worlds: Iterable[int] | None = None) -> None:
+    def save(
+        self,
+        path: str | Path,
+        *,
+        worlds: Iterable[int] | None = None,
+        actions: bool = True,
+    ) -> None:
         """
-        Write the action rows, the exclusion rows and the summary from one path.
+        Write the report's rows and summary from one path.
 
         The action rows go to ``path`` as Parquet, and beside it the exclusions
         to the stem, :data:`EXCLUSIONS_SUFFIX` and the suffix of ``path``,
         and the summary to the stem and ``_summary.json``: given
         ``run/report.parquet``, ``run/report_exclusions.parquet`` and
         ``run/report_summary.json``. A summary value JSON cannot serialize
-        is written as its text form.
+        is written as its text form. Without ``actions``, the file at
+        ``path`` is not written, and the other two are written as named
+        from it.
 
         Args:
             path (str or Path):
@@ -639,6 +647,8 @@ class CompilationReport:
                 The worlds whose rows are written, with the summary of
                 :meth:`summary` for the same selection. ``None`` writes
                 every row.
+            actions (bool, optional):
+                Whether to write the action rows. Defaults to ``True``.
 
         Raises:
             ValueError:
@@ -648,12 +658,14 @@ class CompilationReport:
         selected = None if worlds is None else self._selected_worlds(worlds)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        records = self.records
         exclusions = self.exclusions
         if selected is not None:
-            records = records[records['world'].isin(selected)]
             exclusions = exclusions[exclusions['world'].isin(selected)]
-        records.to_parquet(path, index=False)
+        if actions:
+            records = self.records
+            if selected is not None:
+                records = records[records['world'].isin(selected)]
+            records.to_parquet(path, index=False)
         exclusions.to_parquet(
             path.with_name(f'{path.stem}{EXCLUSIONS_SUFFIX}{path.suffix}'),
             index=False,

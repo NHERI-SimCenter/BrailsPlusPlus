@@ -584,6 +584,23 @@ def test_save_keeps_the_rows_of_the_selected_worlds(tmp_path: Path) -> None:
     }
 
 
+def test_save_without_actions_writes_the_other_two_files(tmp_path: Path) -> None:
+    """Without the action rows, the exclusions and the summary are written alone."""
+    report = new_report(11)
+    report.set_world_count(1)
+    report.record_exclusion('c', world=0, stage='screen', category='conflict')
+
+    report.save(tmp_path / 'report.parquet', actions=False)
+
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        'report_exclusions.parquet',
+        'report_summary.json',
+    ]
+    assert list(
+        pd.read_parquet(tmp_path / 'report_exclusions.parquet')['asset_id']
+    ) == ['c']
+
+
 def test_an_empty_report_saves(tmp_path: Path) -> None:
     """A report holding nothing saves, with the columns of its frames."""
     report = new_report(11)
