@@ -35,6 +35,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -337,14 +338,16 @@ def test_get_world_realization_has_one_world_and_a_dataframe(
 
 
 def test_get_world_realization_reads_back_a_multi_world_file(tmp_path: Any) -> None:
-    """A multi-world file read back with n_pw 1 refuses an index other than 0."""
+    """Without n_worlds, a multi-world file reads with n_pw 1 and world 0 only."""
     inventory = AssetInventory()
     inventory.add_asset(
         'A1', Asset('A1', [[-122.4, 37.8]], {'YearBuilt': [1950, 1960, 1970]})
     )
     inventory.n_pw = 3
     path = tmp_path / 'worlds.geojson'
-    inventory.write_to_geojson(str(path))
+    collection = inventory.write_to_geojson()
+    del collection['n_worlds']
+    path.write_text(json.dumps(collection), encoding='utf-8')
     back = AssetInventory()
     back.read_from_geojson(str(path))
 

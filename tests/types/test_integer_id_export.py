@@ -673,6 +673,7 @@ class TestDefaultWriteUnchanged:
             'type': 'FeatureCollection',
             'generated': '2026-01-01 00:00:00+00:00',
             'brails_version': '9.9',
+            'n_worlds': 1,
             'crs': {
                 'type': 'name',
                 'properties': {'name': 'urn:ogc:def:crs:OGC:1.3:CRS84'},

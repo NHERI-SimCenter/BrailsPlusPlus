@@ -46,6 +46,7 @@ This module defines asset inventories, their assets and the source string reader
     AssetInventory
     Asset
     read_source_string
+    check_n_worlds
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ import csv
 import hashlib
 import json
 import math
+import numbers
 import os
 import random
 import tempfile
@@ -412,6 +414,33 @@ def _report_first_problems(problems: list[str], separator: str) -> str:
     if left_out > 0:
         text += f'{separator}... and {left_out} more'
     return text
+
+
+def check_n_worlds(value: object, path: str | Path) -> int:
+    """
+    Check the ``n_worlds`` member of a GeoJSON file.
+
+    Args:
+        value (object):
+            The member's value, as parsed.
+        path (str | Path):
+            The file, for the message.
+
+    Returns:
+        int:
+            The number of possible worlds the file states.
+
+    Raises:
+        ValueError:
+            If the value is not an integer of at least 1. A bool is not one.
+    """
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise ValueError(
+            f'{path} gives n_worlds as {value!r}, which is not an integer of at '
+            'least 1. Write the file again with write_to_geojson, or remove the '
+            'member.'
+        )
+    return value
 
 
 def is_probabilistic_feature(
@@ -2423,6 +2452,24 @@ class AssetInventory:
         (using `id_column`), auto-generating new numeric IDs, or keying assets
         by the `unique_id` property (using `key_by_unique_id`).
 
+        A file whose ``FeatureCollection`` holds the member ``n_worlds``, as
+        :meth:`write_to_geojson` writes it, must hold that many values in each
+        of its list-valued features, counted as
+        :func:`is_probabilistic_feature` counts them under the inventory's
+        ``vector_features``. The file does not state its vector features. A
+        file written under other vector features can be refused, or, if its
+        writer did not declare a vector feature, can state that feature's
+        length as its count. An empty inventory takes the count as its
+        ``n_pw``. An inventory with assets keeps its ``n_pw`` for a file of its
+        own number of worlds, and takes a larger count when its ``n_pw`` is 1
+        and each of its lists holds that many values, with a printed line when
+        it holds no lists. A file of 1 world whose features hold no lists is
+        added to an inventory of more worlds, with a printed line saying that
+        its values are taken for every world. Other counts are refused. Every
+        check runs before an asset is added, so a refused file leaves the
+        inventory as it was. A file without the member leaves ``n_pw`` as it
+        is.
+
         Args:
             file_path (str):
                 Path to the GeoJSON file to be read. Must represent a valid
@@ -2461,7 +2508,9 @@ class AssetInventory:
                 `key_by_unique_id`, also if `id_column` is given, or if a
                 feature's `unique_id` value is missing or empty, is shared
                 with another feature, or already keys an asset in the
-                inventory.
+                inventory. If the file's ``n_worlds`` is not an integer of at
+                least 1, disagrees with one of its lists, or cannot be taken by
+                the inventory, as the rules above state.
 
         Example:
             Example GeoJSON file (`seattle_buildings.geojson`):
@@ -2551,6 +2600,8 @@ class AssetInventory:
         features = data.get('features', [])
         if not isinstance(features, list) or not features:
             raise ValueError('GeoJSON FeatureCollection contains no valid features.')
+
+        n_pw = self._check_n_worlds(data, features, file_path)
 
         if key_by_unique_id:
             if id_column is not None:
@@ -2688,7 +2739,101 @@ class AssetInventory:
                     f'skipping asset data at index {i}'
                 )
 
+        self.n_pw = n_pw
         return True
+
+    def _check_n_worlds(
+        self, data: dict[str, Any], features: list[Any], file_path: str
+    ) -> int:
+        """
+        Check the ``n_worlds`` member of a file for :meth:`read_from_geojson`.
+
+        Prints a line when a file of 1 world is added to an inventory of more.
+
+        Args:
+            data (dict[str, Any]):
+                The file's ``FeatureCollection``, as parsed.
+            features (list[Any]):
+                Its ``features`` array.
+            file_path (str):
+                The file's path, for the messages.
+
+        Returns:
+            int:
+                The ``n_pw`` of the inventory once the file's assets are added,
+                which is the inventory's own for a file without the member.
+
+        Raises:
+            ValueError:
+                If the member is not an integer of at least 1, a list of the file
+                holds another number of values, or the inventory cannot take
+                the count, by the rules :meth:`read_from_geojson` states.
+        """
+        if 'n_worlds' not in data:
+            return self.n_pw
+        n_worlds = check_n_worlds(data['n_worlds'], file_path)
+        # The index and the key of the file's first list, if it holds one.
+        first_list = None
+        for index, feature in enumerate(features):
+            properties = (
+                feature.get('properties') if isinstance(feature, dict) else None
+            )
+            if not isinstance(properties, dict):
+                continue
+            for key, value in properties.items():
+                if not is_probabilistic_feature(key, value, self.vector_features):
+                    continue
+                first_list = first_list or (index, key)
+                if len(value) != n_worlds:
+                    noun = 'value' if len(value) == 1 else 'values'
+                    raise ValueError(
+                        f'Feature {index} of {file_path} holds {len(value)} '
+                        f'{noun} under {key!r}, but the file gives n_worlds as '
+                        f'{n_worlds}. If {key!r} is a vector feature, pass it '
+                        'in vector_features when creating the inventory.'
+                    )
+        if not self.inventory or n_worlds == self.n_pw:
+            return n_worlds
+        if n_worlds == 1:
+            if first_list:
+                index, key = first_list
+                raise ValueError(
+                    f'{file_path} holds 1 possible world, and feature {index} '
+                    f'holds a list of one value under {key!r}, but the '
+                    f'inventory holds {self.n_pw} worlds. Read the file into '
+                    'an empty inventory.'
+                )
+            print(
+                f'{file_path} holds 1 possible world, so its values are taken '
+                f'for every one of the inventory\'s {self.n_pw} worlds.'
+            )
+            return self.n_pw
+        if self.n_pw > 1:
+            raise ValueError(
+                f'{file_path} holds {n_worlds} possible worlds and the inventory '
+                f'holds {self.n_pw}. Read the file into an empty inventory.'
+            )
+        holds_lists = False
+        for asset_id, asset in self.inventory.items():
+            for key, value in asset.features.items():
+                if not is_probabilistic_feature(key, value, self.vector_features):
+                    continue
+                holds_lists = True
+                if len(value) != n_worlds:
+                    noun = 'value' if len(value) == 1 else 'values'
+                    raise ValueError(
+                        f'{file_path} holds {n_worlds} possible worlds, but '
+                        f'asset {asset_id!r} of the inventory holds '
+                        f'{len(value)} {noun} under {key!r}. Read the file '
+                        'into an empty inventory.'
+                    )
+        if not holds_lists:
+            print(
+                'The inventory holds 1 possible world and no lists, so the values '
+                f'of its assets are taken for every one of the {n_worlds} worlds '
+                f'of {file_path}.'
+            )
+        return n_worlds
 
     def remove_asset(self, asset_id: str | int) -> bool:
         """
@@ -2883,6 +3028,16 @@ class AssetInventory:
         writes it to the specified file path (if provided), and returns the
         GeoJSON object.
 
+        The returned and written ``FeatureCollection`` gives the number of
+        possible worlds as the member ``n_worlds``, after ``brails_version``.
+        It is ``n_pw`` when every list-valued feature, as
+        :func:`is_probabilistic_feature` counts them under ``vector_features``,
+        holds ``n_pw`` values, or when no feature is one. When ``n_pw`` is 1
+        and the lists share one length of at least 1, it is that length.
+        Otherwise, or when ``n_pw`` is not an integer of at least 1, the member
+        is left out and a printed line gives the lengths found.
+        :meth:`read_from_geojson` checks the member when it reads the file.
+
         Args:
             output_file(str, optional):
                 Path to the output GeoJSON file. If empty, no file is written.
@@ -2994,6 +3149,41 @@ class AssetInventory:
             for index, feature in enumerate(geojson['features']):
                 feature_id = feature['properties'].pop('id', str(index))
                 feature['id'] = str(feature_id)
+
+        # A count that is not an integer of at least 1 is written as no count.
+        integral = isinstance(self.n_pw, numbers.Integral) and not isinstance(
+            self.n_pw, bool
+        )
+        n_pw = int(self.n_pw) if integral else 0
+        lengths = {
+            len(value)
+            for feature in geojson['features']
+            for key, value in feature['properties'].items()
+            if is_probabilistic_feature(key, value, self.vector_features)
+        }
+        n_worlds = None
+        if n_pw >= 1 and lengths <= {n_pw}:
+            n_worlds = n_pw
+        elif n_pw == 1 and len(lengths) == 1 and 0 not in lengths:
+            (n_worlds,) = lengths
+        else:
+            target = os.path.abspath(output_file) if output_file else 'the GeoJSON'
+            found = ' and '.join(str(length) for length in sorted(lengths))
+            reason = (
+                f'n_pw is {self.n_pw if integral else repr(self.n_pw)}, which is '
+                'not an integer of at least 1'
+                if n_pw < 1
+                else f'n_pw is {n_pw} and the lists hold {found} values. '
+                'validate_possible_worlds names the assets whose lists do not '
+                'hold n_pw values'
+            )
+            print(f'n_worlds is left out of {target}: {reason}.')
+        if n_worlds is not None:
+            members = list(geojson.items())
+            after = list(geojson).index('brails_version') + 1
+            geojson = dict(
+                [*members[:after], ('n_worlds', n_worlds), *members[after:]]
+            )
 
         # If a file name is provided, write the created GeoJSON dictionary into
         # a GeoJSON file:
