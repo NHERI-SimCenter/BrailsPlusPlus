@@ -342,10 +342,23 @@ action rows as its ``records``. These rows are not records in the sense of
 "Stages and freezing".
 
 An exclusion row records that a step excluded an asset from one world: the
-report stage, the category, the diagnosis of the component that refused the
-asset, a detail in words, and ``resolvable_by``, the features whose change
-alone would let that component accept the asset. An asset excluded from
-several worlds has one row in each.
+report stage, the category, the diagnosis, a detail in words, and
+``resolvable_by``, the features whose change alone would let the step admit the
+asset. The diagnosis says what happened, in one of three ways. Where an
+inferer, a sampler or the composed screen refused the asset, it is the verdict
+that component's check returned, one of those of
+``brails/inferers/inference_diagnosis.py``. Where a component refused it
+without a verdict, the compiler names the verdict that describes the refusal:
+the Hazus earthquake compiler gives ``invalid`` to a building its schema check
+refuses, and to the replacement cost imputer's outcomes it gives ``no_donor``
+or ``invalid``. Where no component refused the asset, the compiler gives the
+verdict or label that describes what happened: the Hazus earthquake compiler
+gives ``DIAGNOSIS_NOT_SELECTED`` of ``compilation_report.py``,
+``'not_selected'``, to a footprint the unit budget drops, and ``infeasible`` to
+a building whose local building type letter contradicts its structure type,
+with ``BuildingType`` in ``resolvable_by``, since without the local letter the
+step writes the type's own. An asset excluded from several worlds has one row
+in each.
 
 A report accepts the report stages and categories its compiler gives it when
 the report is created, and refuses a row that names any other. The Hazus

@@ -170,16 +170,17 @@ label. The exception is the six records frozen right after ``s10``: three are
 named after ``s12`` and the other three after ``s13`` and ``s14``, because the
 values of those steps replace what the records withhold.
 
-From ``s06`` on, a step that cannot complete a building in a world, or finds
-it inconsistent, excludes it from that world. Steps ``s08``, ``s09``, ``s10``
-and ``s11`` then skip the building in that world. The other steps compute
-their values for it as for any building, and ``s15`` leaves the computed
-gross area and replacement cost out of its output. Earlier, ``s04`` drops
-footprints from every world: a small footprint that becomes no dwelling, as
-the subsection ``s04_unit_budget`` states. A dropped footprint is not in the
-compiled inventory. The report files each exclusion under one of the
-categories that the section "Exclusion categories" of
-``brails/compilers/README.rst`` defines.
+From ``s06`` on, a step that cannot complete a building in a world, or finds it
+inconsistent, excludes it from that world. Steps ``s08``, ``s09``, ``s10`` and
+``s11`` then skip the building in that world. The other steps compute their
+values for it as for any building, and ``s15`` leaves the computed gross area
+and replacement cost out of its output. Earlier, ``s04`` drops footprints from
+every world: a small footprint that becomes no dwelling, as the subsection
+``s04_unit_budget`` states. A dropped footprint is not in the compiled
+inventory. The report files each exclusion under one of the categories that the
+section "Exclusion categories" of ``brails/compilers/README.rst`` defines, with
+a diagnosis, as that section states. The subsections below name the diagnosis
+of each exclusion.
 
 The run
 -------
@@ -303,9 +304,9 @@ record of the occupancy classes the mobile-home rule replaces, each withheld
 from its source. ``s04_unit_budget`` is a part of the ``imputed`` source and
 holds the budget's values in each world. The report holds a ``withheld`` row
 under ``s04_unit_budget`` for each replaced occupancy class, and a row in the
-category ``dropped`` for each dropped footprint, both in every world. The
-budget's logs are ``budget``, ``budget_diagnostic``, ``budget_gaps`` and
-``budget_nonresidential``.
+category ``dropped``, with the diagnosis ``not_selected``, for each dropped
+footprint, both in every world. The budget's logs are ``budget``,
+``budget_diagnostic``, ``budget_gaps`` and ``budget_nonresidential``.
 
 ``s05_imputation``
 ~~~~~~~~~~~~~~~~~~
@@ -496,16 +497,16 @@ so does ``s13_replacement_cost`` when it computes its rates, since it reads
 ``s08_view``. The local and NSI gross areas stay in every merged inventory
 as ``LocalGrossArea`` and ``NSIGrossArea``.
 
-``s11`` checks every building not yet excluded from the world against the
-Hazus input schema of the damage and loss model library, ``DLML_DATASET``.
-The schema states the features the assessment reads and the values it
-accepts, such as the design levels it accepts for each structure type. A
-building the schema refuses is excluded from the world under
-``s11_schema_check``, as ``fails_schema``, with the schema's messages as the
-detail. The messages are the log ``schema_check``, and the report's summary
-holds the dataset and the number of buildings refused in each world. The
-schema reads none of ``GrossArea``, ``ReplacementCost`` and ``BuildingType``,
-which the next steps give, so the check does not depend on them.
+``s11`` checks every building not yet excluded from the world against the Hazus
+input schema of the damage and loss model library, ``DLML_DATASET``. The schema
+states the features the assessment reads and the values it accepts, such as the
+design levels it accepts for each structure type. A building the schema refuses
+is excluded from the world under ``s11_schema_check``, as ``fails_schema``,
+with the diagnosis ``invalid`` and the schema's messages as the detail. The
+messages are the log ``schema_check``, and the report's summary holds the
+dataset and the number of buildings refused in each world. The schema reads
+none of ``GrossArea``, ``ReplacementCost`` and ``BuildingType``, which the next
+steps give, so the check does not depend on them.
 
 ``s12_gross_area``
 ~~~~~~~~~~~~~~~~~~
@@ -547,14 +548,16 @@ takes its rate from the local building.
 
 A building not yet excluded for which the imputer finds no donor is excluded
 from the world under ``s13_replacement_cost``, as ``no_plausible_value``, with
-the diagnosis ``no_donor``. A
-building not yet excluded has an occupancy class, which the schema requires,
-and a footprint that encloses an area, so the step files no other outcome. A
-building that the step left without a replacement cost for another reason
-would be excluded as ``missing_input``. A building excluded earlier is not
-filed again. The imputer's log is the log ``value``, and the replacement
-costs that are not local ones are frozen, over the worlds, as the computed
-stage ``s13_replacement_cost`` (see ``s15_output``).
+the diagnosis ``no_donor``. A building not yet excluded has an occupancy class,
+which the schema requires, and a footprint that encloses an area, so the step
+files no other outcome. A building that the step left without a replacement
+cost for want of an occupancy class or of an area would be excluded as
+``missing_input``, with the diagnosis ``invalid``. The imputer gives no other
+outcome without a value; one would be filed as ``no_plausible_value``, with
+``infeasible``. A building excluded earlier is not filed again. The imputer's
+log is the log ``value``, and the replacement costs that are not local ones are
+frozen, over the worlds, as the computed stage ``s13_replacement_cost`` (see
+``s15_output``).
 
 ``s14_building_type``
 ~~~~~~~~~~~~~~~~~~~~~
@@ -564,18 +567,17 @@ buildings included, the letter of its structure type in the world: ``W``,
 ``S``, ``C``, ``M`` or ``MH``. The letter follows the pairing of
 ``get_hazus_general_type_membership`` in
 ``brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py``, the same
-pairing that the structure type draw restricts itself with. A building
-without a structure type gets no letter. NSI's letter, which the draw read,
-is not written. A local letter is kept. A building not yet excluded whose
-local letter is not the letter of its structure type in a world, such as a
-local ``W`` beside a ``C1``, is excluded from that world under
-``s14_building_type``, as ``conflict``. The structure type draw keeps to a
-local letter. A local letter can therefore contradict only a structure type
-that the building held before the draw: a local structure type, or one its
-footprint carries. Every earlier step has run in that world by then, so
-such a building has served as a donor like any other. The letters are
-frozen, over the worlds, as the computed stage ``s14_building_type`` (see
-``s15_output``).
+pairing that the structure type draw restricts itself with. A building without
+a structure type gets no letter. NSI's letter, which the draw read, is not
+written. A local letter is kept. A building not yet excluded whose local letter
+is not the letter of its structure type in a world, such as a local ``W``
+beside a ``C1``, is excluded from that world under ``s14_building_type``, as
+``conflict``, with the diagnosis ``infeasible``. The structure type draw keeps
+to a local letter. A local letter can therefore contradict only a structure
+type that the building held before the draw: a local structure type, or one its
+footprint carries. Every earlier step has run in that world by then, so such a
+building has served as a donor like any other. The letters are frozen, over the
+worlds, as the computed stage ``s14_building_type`` (see ``s15_output``).
 
 ``s15_output``
 ~~~~~~~~~~~~~~

@@ -92,11 +92,14 @@ from brails.constants import (
 )
 from brails.imputers.observed_donor_imputer.donor_records import (
     OUTCOME_DONOR,
+    OUTCOME_NO_AREA,
     OUTCOME_NO_DONOR,
+    OUTCOME_NONE_ADMITTED,
 )
 from brails.imputers.replacement_cost.replacement_cost_imputer import (
     OUTCOME_IMPUTATION_DONOR,
     OUTCOME_LOCAL_VALUE,
+    OUTCOME_NO_CLASS,
     OUTCOME_OWN_RATE,
     OUTCOME_VALUE_CODES,
     ReplacementCostImputer,
@@ -1252,6 +1255,15 @@ class TestReport:
         for key in ('s09_nonresidential_year', 's10_nonresidential_structure'):
             assert pause <= seconds[key] < 2 * pause, key
 
+    @pytest.mark.parametrize('n_worlds', [3, 10])
+    def test_every_exclusion_has_a_diagnosis(
+        self, compiled: object, n_worlds: int
+    ) -> None:
+        """Every exclusion row of the study area carries a diagnosis."""
+        rows = compiled(n_worlds=n_worlds).report.exclusions
+        assert len(rows)
+        assert (rows['diagnosis'].str.len() > 0).all()
+
     def test_timings_and_settings(self, compiled: object) -> None:
         """The summary holds seconds per stage, per world and of the manifest."""
         result = compiled(n_worlds=3)
@@ -1431,6 +1443,7 @@ class TestStoriesUnitsAndImputation:
         assert sorted(rows['world']) == [0, 1, 2]
         assert set(rows['category']) == {'dropped'}
         assert set(rows['stage']) == {'s04_unit_budget'}
+        assert set(rows['diagnosis']) == {'not_selected'}
 
     def test_local_values_unchanged(self, compiled: object) -> None:
         """No local value is withheld or replaced, the mobile-home rule's included."""
@@ -1855,6 +1868,8 @@ class TestYearsAndTypes:
             ('q03', world) for world in range(3)
         }
         assert set(conflicts['category']) == {'conflict'}
+        assert set(conflicts['diagnosis']) == {'infeasible'}
+        assert set(conflicts['resolvable_by']) == {(BUILDING_TYPE_KEY,)}
         for world in range(3):
             q03 = features_in(result.inventory, world)['q03']
             assert q03[EXCLUDED_KEY] is True
@@ -2346,7 +2361,7 @@ class TestYearAndValueOfTheRest:
         assert list(log.loc[log['asset_id'] == 'f01', 'outcome']) == ['no_class']
 
     def test_no_value_excluded(self, compiled: object) -> None:
-        """A building without a donor is excluded as no_plausible_value, and any other building without a value as missing_input."""
+        """No value is missing_input without a class or an area, else no donor."""
         result = compiled(n_worlds=3)
         log = result.logs['value']
         rows = result.report.exclusions.set_index(['asset_id', 'world'])
@@ -2361,15 +2376,54 @@ class TestYearAndValueOfTheRest:
         assert set(valued.index) <= set(zip(without['asset_id'], without['world']))
         outcomes = without.set_index(['asset_id', 'world'])['outcome']
         expected = [
-            'no_plausible_value'
-            if outcomes[key] == OUTCOME_NO_DONOR
-            else 'missing_input'
+            'missing_input'
+            if outcomes[key] in (OUTCOME_NO_CLASS, OUTCOME_NO_AREA)
+            else 'no_plausible_value'
             for key in valued.index
         ]
         assert list(valued['category']) == expected
         assert 'no_plausible_value' in expected
         no_donor = valued['category'] == 'no_plausible_value'
         assert set(valued.loc[no_donor, 'diagnosis']) == {'no_donor'}
+
+    def test_another_outcome_without_a_value(
+        self, study_area: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An unexpected outcome without a value is filed as infeasible."""
+        real = hc.ReplacementCostImputer.impute_stage
+
+        def renamed(*args: object, **kwargs: object) -> object:
+            """
+            Value a world, then give its no-donor rows another outcome.
+
+            Args:
+                *args (object):
+                    The method's arguments.
+                **kwargs (object):
+                    The method's keyword arguments.
+
+            Returns:
+                object:
+                    The result, its log changed.
+            """
+            result = real(*args, **kwargs)
+            log = result.log
+            log.loc[log['outcome'] == OUTCOME_NO_DONOR, 'outcome'] = (
+                OUTCOME_NONE_ADMITTED
+            )
+            return result
+
+        monkeypatch.setattr(hc.ReplacementCostImputer, 'impute_stage', renamed)
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+        ).compile(study_area)
+        rows = result.report.exclusions
+        rows = rows[rows['stage'] == 's13_replacement_cost']
+        assert len(rows)
+        assert set(zip(rows['category'], rows['diagnosis'])) == {
+            ('no_plausible_value', 'infeasible')
+        }
+        assert all(OUTCOME_NONE_ADMITTED in detail for detail in rows['detail'])
 
     def test_schema_check_takes_no_value(self, compiled: object) -> None:
         """A building the schema refuses takes no value, NSI's included."""
@@ -2378,6 +2432,8 @@ class TestYearAndValueOfTheRest:
         assert set(rows.loc[rows['asset_id'] == 'u08', 'category']) == {
             'fails_schema'
         }
+        refused = rows[rows['stage'] == 's11_schema_check']
+        assert set(refused['diagnosis']) == {'invalid'}
         log = result.logs['value']
         assert set(log.loc[log['asset_id'] == 'u08', 'world']) == {0, 1, 2}
         for world in range(3):
@@ -2709,4 +2765,5 @@ class TestLastSteps:
         assert list(zip(rows['stage'], rows['category'])) == [
             ('s13_replacement_cost', 'missing_input')
         ]
+        assert list(rows['diagnosis']) == ['invalid']
         assert 'no_class' in rows['detail'].iloc[0]

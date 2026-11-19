@@ -67,6 +67,7 @@ from brails.aggregators.stacked_footprints.stacked_footprints import (
 )
 from brails.compilers.compilation_report import (
     CONFLICT_CATEGORY,
+    DIAGNOSIS_NOT_SELECTED,
     DROPPED_CATEGORY,
     FAILS_SCHEMA_CATEGORY,
     MISSING_INPUT_CATEGORY,
@@ -112,12 +113,16 @@ from brails.constants import (
     UNITS_KEY,
     YEAR_BUILT_KEY,
 )
-from brails.imputers.observed_donor_imputer.donor_records import OUTCOME_NO_DONOR
+from brails.imputers.observed_donor_imputer.donor_records import (
+    OUTCOME_NO_AREA,
+    OUTCOME_NO_DONOR,
+)
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
     ObservedDonorImputer,
     imputation_donors_from_log,
 )
 from brails.imputers.replacement_cost.replacement_cost_imputer import (
+    OUTCOME_NO_CLASS,
     OUTCOME_VALUE_CODES,
     ReplacementCostImputer,
     footprint_gross_area,
@@ -1887,6 +1892,7 @@ class HazusEQInventoryCompiler:
                     world=world,
                     stage='s04_unit_budget',
                     category=DROPPED_CATEGORY,
+                    diagnosis=DIAGNOSIS_NOT_SELECTED,
                     detail=detail,
                 )
         return allocation
@@ -2952,6 +2958,7 @@ class HazusEQInventoryCompiler:
                 world=world,
                 stage='s11_schema_check',
                 category=FAILS_SCHEMA_CATEGORY,
+                diagnosis=DIAGNOSIS_INVALID,
                 detail='; '.join(messages),
             )
             excluded.add(asset_id)
@@ -3032,20 +3039,31 @@ class HazusEQInventoryCompiler:
         for asset_id, outcome in zip(result.log['asset_id'], result.log['outcome']):
             code = OUTCOME_VALUE_CODES.get(outcome)
             if code is None and asset_id not in excluded:
-                # A building without a donor has no plausible value. A
-                # building without an occupancy class fails the schema check
-                # first, and every footprint encloses an area, so no other
-                # outcome without a value is expected here. One that occurs
-                # is filed as a missing input rather than passed over.
-                no_donor = outcome == OUTCOME_NO_DONOR
+                # The three outcomes the value imputer gives without a value.
+                # A building without an occupancy class fails the schema check
+                # first, and every footprint encloses an area, so only
+                # no_donor is expected here.
+                category, diagnosis = {
+                    OUTCOME_NO_CLASS: (MISSING_INPUT_CATEGORY, DIAGNOSIS_INVALID),
+                    OUTCOME_NO_AREA: (MISSING_INPUT_CATEGORY, DIAGNOSIS_INVALID),
+                    OUTCOME_NO_DONOR: (
+                        NO_PLAUSIBLE_VALUE_CATEGORY,
+                        DIAGNOSIS_NO_DONOR,
+                    ),
+                }.get(
+                    outcome,
+                    # The imputer gives no other outcome without a value. One
+                    # would say neither that an input is missing nor that the
+                    # donor search found none, only that the imputer, with its
+                    # inputs, gave no value, which infeasible states.
+                    (NO_PLAUSIBLE_VALUE_CATEGORY, DIAGNOSIS_INFEASIBLE),
+                )
                 report.record_exclusion(
                     asset_id,
                     world=world,
                     stage='s13_replacement_cost',
-                    category=NO_PLAUSIBLE_VALUE_CATEGORY
-                    if no_donor
-                    else MISSING_INPUT_CATEGORY,
-                    diagnosis=DIAGNOSIS_NO_DONOR if no_donor else '',
+                    category=category,
+                    diagnosis=diagnosis,
                     detail=f'the value step gives no {REPLACEMENT_COST_KEY}: '
                     f'{outcome}',
                 )
@@ -3134,9 +3152,12 @@ class HazusEQInventoryCompiler:
                     world=world,
                     stage='s14_building_type',
                     category=CONFLICT_CATEGORY,
+                    diagnosis=DIAGNOSIS_INFEASIBLE,
                     detail=f'the local {BUILDING_TYPE_KEY} '
                     f'{asset.features[BUILDING_TYPE_KEY]!r} is not the letter '
                     f'{letter!r} of the {STRUCTURE_TYPE_KEY} {structure_type!r}',
+                    # Without the local letter, s14 writes the type's letter.
+                    resolvable_by=(BUILDING_TYPE_KEY,),
                 )
                 excluded.add(asset_id)
         report.set_timing(

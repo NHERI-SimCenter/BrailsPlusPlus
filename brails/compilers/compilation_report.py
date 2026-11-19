@@ -68,6 +68,13 @@ ACTIONS = ('withheld', 'restored', 'redrawn', 'derived')
 # every world and from those excluded in some.
 DROPPED_CATEGORY = 'dropped'
 
+# The diagnosis of an exclusion that no component refused, where a step that
+# keeps some assets and drops others did not keep the asset, as the unit
+# budget of the Hazus earthquake compiler drops a footprint it makes no
+# dwelling. No check returns it, so it is not one of the verdicts of
+# :mod:`~brails.inferers.inference_diagnosis`.
+DIAGNOSIS_NOT_SELECTED = 'not_selected'
+
 # The exclusion categories the Hazus earthquake compiler and its resolution
 # loop file under, besides DROPPED_CATEGORY. The section "Exclusion
 # categories" of the compilers' README defines each.
@@ -330,13 +337,16 @@ class CompilationReport:
             category (str):
                 Why it was excluded, one of :attr:`exclusion_categories`.
             diagnosis (str):
-                The diagnosis the refusing component returned, one of the
-                ``DIAGNOSIS_*`` constants of
+                What happened, one of the verdicts of
                 :mod:`~brails.inferers.inference_diagnosis`, such as
-                ``'infeasible'``. Inferers, samplers and the composed screen
-                return one. Empty for an exclusion that comes with no
-                diagnosis, such as a dropped footprint or a building the
-                input schema refuses.
+                ``'infeasible'``, or :data:`DIAGNOSIS_NOT_SELECTED`. It is
+                the verdict a check returned, where an inferer, a sampler or
+                the composed screen refused the asset. Where a component
+                refused it without a verdict, such as a schema validator or
+                an imputer's outcome, the compiler names the verdict that
+                describes the refusal. Where no component refused it, the
+                compiler gives the verdict or label that describes what
+                happened. Defaults to ``''``, for a compiler that gives none.
             detail (str):
                 What happened, in words.
             resolvable_by (Iterable[str]):
