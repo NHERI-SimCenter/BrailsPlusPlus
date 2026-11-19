@@ -269,8 +269,8 @@ step excludes no building.
 ~~~~~~~~~~~~~~~~~~~
 
 The step reads the merged inventory after ``s03`` and the source of each
-footprint's occupancy class. A footprint has an occupancy class from a source
-when the local inventory, NSI or the NSI join's derived values give it one. The
+footprint's occupancy class. A footprint has an observed occupancy class when
+the local inventory, NSI or the NSI join's derived values give it one. The
 other footprints are the budget's targets. ``ACSUnitBudget``, configured by the
 compiler's ``budget_options``, distributes among them the housing units that
 table B25024 counts in their block group, less the units of the footprints that
@@ -311,11 +311,11 @@ budget's logs are ``budget``, ``budget_diagnostic``, ``budget_gaps`` and
 
 The step fills the occupancy class, the unit count and the story count that are
 still missing. It reads the same merged inventory as ``s04``, with the budget's
-values. The observed donors are the footprints that have an occupancy class
-from a source and hold a story count. Every other footprint the budget kept is
-a target. ``ObservedDonorImputer``, with the settings of "The imputer's
-settings" above, copies each of those three features that a target lacks from
-one observed donor in each world, as the section "Donors" of
+values. The observed donors are the footprints that have an observed occupancy
+class and hold a story count. Every other footprint the budget kept is a
+target. ``ObservedDonorImputer``, with the settings of "The imputer's settings"
+above, copies each of those three features that a target lacks from one
+observed donor in each world, as the section "Donors" of
 ``brails/compilers/README.rst`` describes. For a target whose residential
 status the budget decided, the imputer takes that status from the budget. For
 the other targets, the imputer's own status round decides it, in each world: a
@@ -324,10 +324,10 @@ status. The imputer checks each copy for an implausible pair of occupancy class
 and story count (see "Pair re-draw" below), and it gives a target whose copy
 fails this check one more draw, from another donor. A target that fails again
 keeps its first values, and its pair stays implausible, since ``s07`` only logs
-a pair with an imputed member. A target whose occupancy class comes from a
-source and is not a residential occupancy class keeps no imputed unit count.
-The values are frozen as ``s05_imputation``, a part of the ``imputed`` source,
-and the imputer's draws are the log ``imputer``. The step excludes no building.
+a pair with an imputed member. A target with an observed occupancy class that
+is not a residential occupancy class keeps no imputed unit count. The values
+are frozen as ``s05_imputation``, a part of the ``imputed`` source, and the
+imputer's draws are the log ``imputer``. The step excludes no building.
 
 The run then freezes the view ``s05_view``. From the imputer's log it freezes
 the computed stage ``s05_donors``: the donor whose values each target kept in

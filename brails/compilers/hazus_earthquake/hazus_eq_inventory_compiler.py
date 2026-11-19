@@ -361,12 +361,12 @@ _CODE_POSITION = {
     feature: position for position, feature in enumerate(HAZUS_EQ_SOURCE_FEATURES)
 }
 
-# The sources of an observed occupancy class: the local inventory, NSI, and
-# the classes the NSI join sets from a unit count band. An asset whose
-# occupancy class comes from one of them has an occupancy class from a
-# source: the unit budget reads it as observed, and with a story count the
-# asset is an observed donor. The second tuple holds the sources whose
-# occupancy class the unit budget's mobile-home rule may relabel.
+# The sources of an observed occupancy class: the local inventory, NSI, and the
+# classes the NSI join sets from a unit count band. An asset whose occupancy
+# class comes from one of them has an observed occupancy class: it is not a
+# target of the unit budget, and with a story count it is an observed donor.
+# The second tuple holds the sources whose occupancy class the unit budget's
+# mobile-home rule may relabel.
 _OCCUPANCY_SOURCE_LABELS = ('local', 'nsi', 'derived')
 _RELABELED_SOURCES = ('nsi', 'derived')
 
@@ -1694,7 +1694,7 @@ class HazusEQInventoryCompiler:
             UnitBudgetResult:
                 The budget's allocation, whose values s05's targets carry.
         """
-        # A footprint has an occupancy class from a source where one of
+        # A footprint has an observed occupancy class where one of
         # _OCCUPANCY_SOURCE_LABELS holds its class.
         with_occupancy_source = _select_assets(
             merged,
@@ -1899,9 +1899,9 @@ class HazusEQInventoryCompiler:
             for values in imputer_log['values']
         ]
         logs['imputer'] = imputer_log
-        # A footprint with an occupancy class from a source and outside the
-        # residential classes is a target for its story count only, since the
-        # join gives units only to the NSI points of housing.
+        # A footprint with an observed occupancy class outside the residential
+        # classes is a target for its story count only, since the join gives
+        # units only to the NSI points of housing.
         for asset_id, asset in imputation.imputed.inventory.items():
             class_of = merged.inventory[asset_id].features.get(OCCUPANCY_KEY)
             if (

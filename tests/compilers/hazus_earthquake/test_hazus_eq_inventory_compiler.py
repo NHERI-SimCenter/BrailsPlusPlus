@@ -1258,7 +1258,7 @@ class TestStoriesUnitsAndImputation:
                 assert features[asset_id][OCCUPANCY_KEY] not in UNIT_COUNT_CLASSES
 
     def test_local_class_is_a_source_class(self, study_area: object) -> None:
-        """A footprint with a local occupancy class goes to the budget as one with a class from a source, and is an observed donor."""
+        """A local occupancy class is observed for the budget and the donors."""
         allocate = hc.ACSUnitBudget.allocate
         impute = hc.ObservedDonorImputer.impute_stage
         with (
