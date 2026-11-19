@@ -104,7 +104,9 @@ class _DonorWorldView(NamedTuple):
         eligible (numpy.ndarray):
             Whether each donor holds every required feature.
         status (numpy.ndarray):
-            Each donor's status code.
+            Each donor's status code in this world: :data:`_STATUS_INSIDE` or
+            :data:`_STATUS_OUTSIDE`, or :data:`_STATUS_UNKNOWN` where its value of
+            the status key is missing.
         filters (dict[str, numpy.ndarray]):
             Each soft filter's donor values, ``None`` where missing.
         donor_values (list[dict[str, Any]]):
@@ -148,9 +150,9 @@ def _is_missing(features: Mapping[str, Any], key: str) -> bool:
 
     Args:
         features (Mapping[str, Any]):
-            An asset's features.
+            An asset's features by name, with the values it holds in one world.
         key (str):
-            The feature.
+            The name of the feature checked.
 
     Returns:
         bool:
@@ -216,9 +218,10 @@ def _world_features(
 
     Args:
         features (Mapping[str, Any]):
-            The asset's features.
+            The asset's features by name as its inventory holds them, a value held
+            per world being a list with one entry per world.
         world (int):
-            The world.
+            The index of the world whose values are kept, from 0.
         n_pw (int):
             The number of worlds of the asset's inventory. With one world,
             every world reads realization 0.
@@ -227,7 +230,10 @@ def _world_features(
 
     Returns:
         dict[str, Any]:
-            One value per feature.
+            The asset's features with one value each: a value held per world replaced
+            by its entry for ``world``, or its first entry when ``n_pw`` is 1, an
+            empty list of a feature that is not a vector feature by ``None``, and any
+            other value kept as it is.
     """
     vector_features = tuple(vector_features)
     reduced = {}
@@ -256,9 +262,11 @@ class DonorPool:
         donor_ids (tuple):
             The donors, in ascending order of the id as a string.
         lon (numpy.ndarray):
-            Donor centroid longitudes.
+            The longitude of each donor's centroid in degrees, in the order of
+            :attr:`donor_ids`.
         lat (numpy.ndarray):
-            Donor centroid latitudes.
+            The latitude of each donor's centroid in degrees, in the order of
+            :attr:`donor_ids`.
         log_area (numpy.ndarray):
             Natural log of each donor's plan area in square meters.
         stories (numpy.ndarray):
@@ -321,7 +329,8 @@ class DonorPool:
             targets (Mapping[Any, _DonorSite]):
                 The sites of the targets that are not donors.
             no_area (Iterable[Any]):
-                Assets without area.
+                The ids of the donors and targets whose coordinates enclose no area,
+                kept as :attr:`no_area`.
             vector_features (Sequence[str]):
                 Features whose plain lists are single values.
             features (Sequence[str]):
@@ -402,7 +411,9 @@ class DonorPool:
 
         Returns:
             _DonorSite:
-                Its site.
+                The asset's centroid, log plan area, story count and block group. A
+                story count the asset holds per world is NaN here, and
+                :meth:`world_site` gives it.
 
         Raises:
             LookupError:
@@ -422,7 +433,7 @@ class DonorPool:
             asset_id (Hashable):
                 A donor or target with area.
             world (int):
-                The world.
+                The index of the world whose story count the site takes, from 0.
 
         Returns:
             _DonorSite:
@@ -451,9 +462,11 @@ class DonorPool:
 
         Args:
             site (_DonorSite):
-                The site.
+                The site searched around, of which only the longitude and latitude
+                are read.
             cap_m (float):
-                The distance in meters.
+                The largest great-circle distance from the site, in meters, at which
+                a donor is kept.
 
         Returns:
             _DonorNeighborhood:
@@ -476,7 +489,8 @@ class DonorPool:
 
         Args:
             world (int):
-                The world.
+                The index of the world whose donor values are read, from 0. When
+                every donor holds one world, every index gives the same view.
 
         Returns:
             _DonorWorldView:

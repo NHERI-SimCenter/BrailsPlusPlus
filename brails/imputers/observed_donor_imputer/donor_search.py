@@ -83,7 +83,8 @@ class _DonorPick(NamedTuple):
         index (int | None):
             The donor's index in the pool, ``None`` without one.
         level (int | None):
-            Soft filters relaxed.
+            The number of soft filters relaxed for the pick, ``None`` without a
+            donor.
         n_candidates (int):
             The number of candidates at the level used.
         distance (float):
@@ -91,7 +92,10 @@ class _DonorPick(NamedTuple):
         distance_m (float):
             Great-circle distance in meters, NaN without a donor.
         outcome (str):
-            The outcome code.
+            The outcome the draw records: ``OUTCOME_DONOR``, ``OUTCOME_RELAXED`` or
+            ``OUTCOME_FEWER_THAN_K`` for a pick within the cap,
+            ``OUTCOME_BLOCK_GROUP`` or ``OUTCOME_NO_DONOR`` from the block-group
+            fallback.
     """
 
     index: int | None
@@ -165,7 +169,8 @@ class DonorSearch:
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool whose search tree finds the donors and whose log plan areas
+                enter the distances.
             view (_DonorWorldView):
                 The donors in the target's world.
             site (_DonorSite):
@@ -193,13 +198,13 @@ class DonorSearch:
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool holding the donors' log plan areas.
             view (_DonorWorldView):
                 The donors in the target's world.
             site (_DonorSite):
                 The target's site in that world.
             index (numpy.ndarray):
-                Donor indices.
+                The indices in the pool of the donors measured.
             meters (numpy.ndarray):
                 Their great-circle distances in meters.
 
@@ -237,7 +242,8 @@ class DonorSearch:
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool the donors are indexed in, whose donor index maps the ids of
+                ``excluded`` to indices.
             view (_DonorWorldView):
                 The donors in this world.
             key (numpy.ndarray):
@@ -245,7 +251,8 @@ class DonorSearch:
             neighborhood (_DonorNeighborhood):
                 The donors within the cap, with their distances.
             excluded (set[Any]):
-                Donors that may not be picked.
+                The ids of the donors that may not be picked. An id the pool does not
+                hold as a donor is ignored.
             status_code (int | None):
                 The status code to match, ``None`` for none.
             soft (Sequence[tuple[str, Any]]):
@@ -253,9 +260,10 @@ class DonorSearch:
             purpose (str):
                 The purpose label of the pick.
             world (int):
-                The world.
+                The index of the target's world, from 0, which keys the uniform.
             iteration (int):
-                The iteration.
+                The iteration of the pick, which keys the uniform, so that successive
+                attempts of a draw use different uniforms.
 
         Returns:
             _DonorPick | None:
@@ -310,19 +318,21 @@ class DonorSearch:
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool whose donor index maps the ids of ``excluded`` to indices.
             view (_DonorWorldView):
                 The donors in this world.
             index (numpy.ndarray):
-                Donor indices.
+                The indices in the pool of the donors to mark.
             excluded (set[Any]):
-                Donors removed.
+                The ids of the donors that may not be picked. An id the pool does not
+                hold as a donor is ignored.
             status_code (int | None):
                 The status code to match, ``None`` for none.
 
         Returns:
             numpy.ndarray:
-                One boolean per index.
+                One boolean per entry of ``index``, true for a donor the draw may
+                pick.
         """
         mask = view.eligible[index].copy()
         mask &= view.status[index] != _STATUS_UNKNOWN
@@ -349,7 +359,7 @@ class DonorSearch:
             view (_DonorWorldView):
                 The donors in this world.
             index (numpy.ndarray):
-                Donor indices.
+                The indices in the pool of the candidates, in the order of ``base``.
             base (numpy.ndarray):
                 The mask after the hard filter.
             soft (Sequence[tuple[str, Any]]):
@@ -408,13 +418,15 @@ class DonorSearch:
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool holding each block group's donors, and the donor index that
+                maps the ids of ``excluded`` to indices.
             view (_DonorWorldView):
                 The donors in this world.
             site (_DonorSite):
-                The target's site.
+                The target's site, of which only the block group is read.
             excluded (set[Any]):
-                Donors removed.
+                The ids of the donors that may not be picked. An id the pool does not
+                hold as a donor is ignored.
             status_code (int | None):
                 The status code to match, ``None`` for none.
 
@@ -441,11 +453,14 @@ class DonorSearch:
             key (numpy.ndarray):
                 The target's key from :func:`asset_key_digest`.
             purpose (str):
-                The purpose label.
+                The purpose label of the draw, which keeps apart the uniforms of
+                draws made for different purposes, such as the status round, the
+                donor pick and their fallbacks.
             world (int):
-                The world.
+                The index of the world, from 0, which keys the uniform.
             iteration (int):
-                The iteration.
+                The iteration of the pick, which keys the uniform, so that successive
+                attempts of a draw use different uniforms.
 
         Returns:
             float:
@@ -467,7 +482,9 @@ class DonorSearch:
 
         Args:
             asset (Asset):
-                The asset.
+                The asset whose coordinates give the centroid and plan area, and
+                whose features give the story count under :attr:`stories_key` and the
+                block group.
 
         Returns:
             _DonorSite | None:

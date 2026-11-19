@@ -188,7 +188,9 @@ class _DonorOutcome(NamedTuple):
         round_one (DonorDraw | None):
             The status round, when it ran.
         draw (DonorDraw):
-            The donor round.
+            The draw of the donor round, or a draw without a donor where the path
+            stops before it, or where neither an attempt nor the nearest-first scan
+            admits a donor.
         status_code (int | None):
             The status code the donor round filtered on.
     """
@@ -607,11 +609,13 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             donors (AssetInventory | None):
-                The donors given directly.
+                The observed donors passed to :meth:`impute_stage`, ``None`` when
+                none were passed, as when they are read from a freeze.
             freeze (StageFreeze | None):
-                The freeze given.
+                The freeze passed to :meth:`impute_stage`, ``None`` without one.
             donor_stage (str | None):
-                The donor stage given.
+                The name of the frozen stage passed to :meth:`impute_stage` as
+                holding the observed donors, ``None`` without one.
 
         Raises:
             ValueError:
@@ -639,7 +643,8 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             asset_ids (Iterable[Hashable]):
-                The targets.
+                The ids of the targets, each keyed to a uniform under
+                :data:`PURPOSE_BATCH` at world 0.
 
         Returns:
             list[int]:
@@ -711,7 +716,8 @@ class ObservedDonorImputer(Imputation):
             pool (DonorPool):
                 A pool from :meth:`pool` that records the assets.
             asset_ids (Iterable[Hashable]):
-                The assets.
+                The ids of the assets whose chance is returned, each recorded by
+                ``pool``.
 
         Returns:
             dict[Hashable, float]:
@@ -801,13 +807,16 @@ class ObservedDonorImputer(Imputation):
                 filters. Defaults to the asset's missing features of
                 :attr:`features`.
             world (int):
-                The world.
+                The index of the possible world, from 0, whose donor values and story
+                counts the draw reads, and which keys the uniforms.
             iteration (int, optional):
                 The iteration of the first pick. Defaults to 0.
             admit (Callable[[Mapping[str, Any]], bool], optional):
                 Judges a candidate's values for ``redraw``.
             exclude_donors (Iterable[Any], optional):
-                Donors removed before ranking and before the fallback.
+                The ids of the donors that may not be picked, removed before ranking
+                and before the fallback. An id the pool does not hold as a donor is
+                ignored.
             status (bool, optional):
                 The status, ``True`` for a value among
                 :attr:`status_values`, which replaces the status round.
@@ -824,7 +833,12 @@ class ObservedDonorImputer(Imputation):
 
         Returns:
             DonorDraw:
-                The draw.
+                The draw: the donor and the values to copy from it, the filter level,
+                the number of candidates, the two distances, the attempts and the
+                outcome, with the asset's id, the world and the iteration. It holds
+                no donor and no values where the asset has no area, where no donor is
+                found, or where none is admitted. A status round run first is not
+                returned.
 
         Raises:
             LookupError:
@@ -873,13 +887,16 @@ class ObservedDonorImputer(Imputation):
             pool (DonorPool):
                 A pool built by this imputer's :meth:`pool`.
             asset_id (Hashable):
-                The asset.
+                The id of the asset, which the pool must record and which is never
+                its own donor.
             features (Mapping[str, Any]):
                 The asset's scalar features in ``world``.
             redraw (Sequence[str]):
-                The features to copy.
+                The features to copy. Only those among :attr:`features` are copied
+                from the admitted donor, and ``admit`` judges its values of them.
             world (int):
-                The world.
+                The index of the world, from 0, whose donor values and story counts
+                the scan reads.
             admit (Callable[[Mapping[str, Any]], bool]):
                 Judges a candidate's values for ``redraw``.
             protected (Iterable[str], optional):
@@ -946,11 +963,14 @@ class ObservedDonorImputer(Imputation):
             records (Sequence[tuple[Any, Asset, int, Sequence[str]]]):
                 ``(asset_id, asset, n_pw, vector_features)`` per donor.
             targets (AssetInventory | None):
-                The targets.
+                The targets whose sites the pool records beside the donors', ``None``
+                for none. A target that is also a donor keeps its donor site.
 
         Returns:
             DonorPool:
-                The pool.
+                The pool of the donors with area, in ascending order of the id as a
+                string, and of the targets' sites. The ids without area are its
+                :attr:`~brails.imputers.observed_donor_imputer.donor_pool.DonorPool.no_area`.
         """
         keep = (*self.features, *self.soft_filters, *self.required, self.stories_key)
         donors = []
@@ -1022,7 +1042,8 @@ class ObservedDonorImputer(Imputation):
             targets (AssetInventory):
                 The targets, for their own features and coordinates.
             n_worlds (int):
-                The number of worlds.
+                The number of worlds of the stage run, recorded as the number of
+                worlds of each donor record.
 
         Returns:
             list[tuple[Hashable, Asset, int, Sequence[str]]]:
@@ -1061,7 +1082,7 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             targets (AssetInventory):
-                The targets.
+                The targets, which must hold one possible world or ``n_worlds``.
             donors (AssetInventory | None):
                 The observed donors, if given directly.
             n_worlds (int):
@@ -1106,18 +1127,25 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool the draws read, which records every target of
+                ``target_ids``.
             targets (AssetInventory):
-                The targets.
+                The target inventory, read for the features of the targets of
+                ``target_ids``.
             target_ids (Sequence[Any]):
                 The targets to run, in ascending order of the id as a
                 string.
             n_worlds (int):
-                The number of worlds.
+                The number of worlds run. A target is drawn in each world where it
+                misses a feature of :attr:`features`.
             status (Mapping[Any, bool] | None):
-                Known statuses.
+                A status per target id, ``True`` for a value among
+                :attr:`status_values`, which replaces the status round for those
+                targets, or ``None`` for none.
             validate (Callable | None):
-                The validation test.
+                ``validate(asset_id, world, features)``, which judges a target in a
+                world after a feature of :attr:`validated` is copied to it. A
+                rejected target is repaired. ``None`` validates nothing.
 
         Returns:
             tuple[dict, list[dict[str, Any]]]:
@@ -1200,17 +1228,19 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool the rejected draw read.
             asset_id (Hashable):
-                The target.
+                The id of the target the validation rejected.
             features (Mapping[str, Any]):
                 Its features in ``world`` before the copy.
             outcome (_DonorOutcome):
-                The rejected draw.
+                The rejected draw path: its donor is excluded, the features it copied
+                are re-drawn and its status code is kept.
             world (int):
-                The world.
+                The index of the world the target was rejected in, from 0.
             validate (Callable):
-                The validation test.
+                ``validate(asset_id, world, features)``, called with the target's
+                features and each candidate's values in their place.
             neighborhood (_DonorNeighborhood | None):
                 The target's donors within the cap, with their distances.
 
@@ -1228,11 +1258,13 @@ class ObservedDonorImputer(Imputation):
 
             Args:
                 values (Mapping[str, Any]):
-                    The candidate's values.
+                    The candidate donor's values of the re-drawn features, which take
+                    the place of the target's own.
 
             Returns:
                 bool:
-                    The validation result.
+                    Whether ``validate`` accepts the target's features with the
+                    candidate's values in their place.
             """
             return bool(validate(asset_id, world, {**features, **values}))
 
@@ -1261,7 +1293,8 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             features (Mapping[str, Any]):
-                The asset's features.
+                The asset's features in the draw's world, read for its missing
+                features when ``redraw`` is ``None``.
             redraw (Sequence[str] | None):
                 The requested features, ``None`` for the missing ones.
             protected (Iterable[str]):
@@ -1269,7 +1302,9 @@ class ObservedDonorImputer(Imputation):
 
         Returns:
             tuple[str, ...]:
-                The features to copy.
+                The features to copy, in the order requested and each once, or the
+                asset's missing features of :attr:`features` when ``redraw`` is
+                ``None``.
 
         Raises:
             ValueError:
@@ -1321,11 +1356,16 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             features (Mapping[str, Any]):
-                The asset's features.
+                The asset's features in the draw's world, whose value of
+                :attr:`status_key` gives the status when no status is given and the
+                key is not re-drawn.
             redraw (Sequence[str]):
-                The features to copy.
+                The features to copy. When they hold :attr:`status_key`, the asset's
+                own value gives no status.
             status (bool | None):
-                A given status.
+                The status the caller gives, ``True`` for a value among
+                :attr:`status_values`, which takes precedence over the features, or
+                ``None`` for none.
 
         Returns:
             int | None:
@@ -1361,23 +1401,31 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool the draw reads, which must record ``asset_id``.
             asset_id (Hashable):
-                The asset.
+                The id of the asset drawn for, which is never its own donor.
             features (Mapping[str, Any]):
                 Its scalar features in ``world``.
             redraw (Sequence[str] | None):
-                The features to copy.
+                The features to copy, which count as missing for the soft filters, or
+                ``None`` for the asset's missing features of :attr:`features`.
             world (int):
-                The world.
+                The index of the possible world, from 0, whose donor values and story
+                counts the draw reads, and which keys the uniforms.
             iteration (int, optional):
-                The first iteration.
+                The iteration of the first pick, which keys the uniform; attempt
+                ``a`` picks at iteration ``iteration + a - 1``. Defaults to 0.
             admit (Callable | None, optional):
-                The repair test.
+                Judges a candidate's values for ``redraw``. With it the path makes up
+                to :attr:`max_attempts` attempts, as :meth:`draw` describes; without
+                it the first pick is taken.
             exclude_donors (Iterable[Any], optional):
-                Donors removed.
+                The ids of donors that may not be picked, besides the asset itself.
             status (bool | None, optional):
-                A given status.
+                The status, ``True`` for a value among :attr:`status_values`, which
+                replaces the status round. ``None`` reads it from the asset's value
+                of :attr:`status_key`, or runs the status round where that value is
+                missing or re-drawn.
             status_code (int | None, optional):
                 A given status code, which takes precedence over
                 ``status``.
@@ -1463,11 +1511,13 @@ class ObservedDonorImputer(Imputation):
 
             Args:
                 index (int):
-                    The donor's index.
+                    The donor's index in the pool.
 
             Returns:
                 dict[str, Any]:
-                    The values it holds.
+                    The donor's values in this world of the features of ``redraw``
+                    that are among :attr:`features`, leaving out a feature it lacks
+                    or holds as missing.
             """
             held = view.donor_values[index]
             return {f: held[f] for f in redraw if f in held}
@@ -1569,17 +1619,20 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool whose donor index maps the ids of ``excluded`` to indices,
+                and which holds each block group's donors for the fallback.
             view (_DonorWorldView):
                 The donors in this world.
             site (_DonorSite):
-                The target's site.
+                The target's site in this world, read only by the fallback, for its
+                block group and its distance to the donor.
             key (numpy.ndarray):
                 The target's key from :func:`asset_key_digest`.
             neighborhood (_DonorNeighborhood):
                 The donors within the cap, with their distances.
             excluded (set[Any]):
-                Donors that may not be picked.
+                The ids of the donors that may not be picked. An id the pool does not
+                hold as a donor is ignored.
             status_code (int | None):
                 The status code to match, ``None`` for none.
             soft (Sequence[tuple[str, Any]]):
@@ -1587,9 +1640,10 @@ class ObservedDonorImputer(Imputation):
             purposes (tuple[str, str]):
                 The purpose labels of the main pick and of the fallback.
             world (int):
-                The world.
+                The index of the world, from 0, which keys the uniform.
             iteration (int):
-                The iteration.
+                The iteration of the pick, which keys the uniform, so that successive
+                attempts of a draw use different uniforms.
 
         Returns:
             _DonorPick:
@@ -1641,15 +1695,19 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool holding each block group's donors with their coordinates and
+                log plan areas.
             view (_DonorWorldView):
                 The donors in this world.
             site (_DonorSite):
-                The target's site.
+                The target's site in this world. Its block group selects the donors,
+                and its centroid, log plan area and story count give the distances
+                the pick records.
             key (numpy.ndarray):
                 The target's key from :func:`asset_key_digest`.
             excluded (set[Any]):
-                Donors removed.
+                The ids of the donors that may not be picked. An id the pool does not
+                hold as a donor is ignored.
             status_code (int | None):
                 The status code to match.
             soft (Sequence[tuple[str, Any]]):
@@ -1658,9 +1716,10 @@ class ObservedDonorImputer(Imputation):
             purpose (str):
                 The purpose label of the pick.
             world (int):
-                The world.
+                The index of the world, from 0, which keys the uniform.
             iteration (int):
-                The iteration.
+                The iteration of the pick, which keys the uniform, so that successive
+                attempts of a draw use different uniforms.
 
         Returns:
             _DonorPick:
@@ -1723,17 +1782,20 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             pool (DonorPool):
-                The pool.
+                The pool whose donor index maps the ids of ``excluded`` to indices,
+                and whose donor ids name the admitted donor.
             view (_DonorWorldView):
                 The donors in this world.
             site (_DonorSite):
-                The target's site.
+                The target's site in this world, read when ``neighborhood`` is not
+                given.
             asset_id (Hashable):
-                The target.
+                The id of the target, recorded on the draw.
             redraw (Sequence[str]):
-                The features to copy.
+                The features to copy. Only those among :attr:`features` are copied
+                from the admitted donor, and ``admit`` judges its values of them.
             world (int):
-                The world.
+                The index of the world, from 0, recorded on the draw.
             iteration (int):
                 The iteration of the first pick, recorded on the draw.
             admit (Callable[[Mapping[str, Any]], bool]):
@@ -1741,7 +1803,7 @@ class ObservedDonorImputer(Imputation):
             status_code (int):
                 The status code to match.
             excluded (set[Any]):
-                Donors removed.
+                The ids the scan skips, the target's own among them.
             attempts (int):
                 The attempts made before the scan.
             neighborhood (_DonorNeighborhood | None, optional):
@@ -1750,9 +1812,9 @@ class ObservedDonorImputer(Imputation):
 
         Returns:
             DonorDraw:
-                Outcome
+                The draw of the nearest donor ``admit`` accepts, with outcome
                 :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_NEAREST_ADMITTED`
-                or
+                or a draw without a donor with outcome
                 :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_NONE_ADMITTED`.
         """
         if neighborhood is None:
@@ -1797,7 +1859,8 @@ class ObservedDonorImputer(Imputation):
             copied (Mapping[Any, Mapping[int, Mapping[str, Any]]]):
                 The values per target and world.
             n_worlds (int):
-                The number of worlds.
+                The number of worlds of the inventory written, over which each
+                feature's values are collapsed.
 
         Returns:
             AssetInventory:
@@ -1930,23 +1993,25 @@ def _as_draw(
 
     Args:
         pool (DonorPool):
-            The pool.
+            The pool whose donor ids name the picked donor.
         asset_id (Hashable):
-            The target.
+            The id of the target the draw is for.
         world (int):
-            The world.
+            The index of the world the draw is for, from 0.
         iteration (int):
-            The iteration.
+            The iteration of the pick, recorded on the draw.
         pick (_DonorPick):
-            The pick.
+            The pick whose donor, filter level, number of candidates, two distances
+            and outcome the draw records, the donor by id.
         values (Mapping[str, Any]):
-            The copied values.
+            The values copied from the picked donor, recorded as empty without one.
         attempts (int):
-            Attempts judged.
+            The number of keyed picks ``admit`` judged, not counting the candidates
+            of the nearest-first scan; 0 without ``admit``.
 
     Returns:
         DonorDraw:
-            The draw.
+            The draw, which names the picked donor by id, ``None`` without one.
     """
     donor = None if pick.index is None else pool.donor_ids[pick.index]
     return DonorDraw(
@@ -1976,15 +2041,22 @@ def _empty_draw(
 
     Args:
         asset_id (Hashable):
-            The target.
+            The id of the target the draw is for.
         world (int):
-            The world.
+            The index of the world the draw is for, from 0.
         iteration (int):
-            The iteration.
+            The iteration of the first pick of the draw, recorded on it.
         outcome (str):
-            The outcome code.
+            The outcome code that says why nothing was copied:
+            :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_NO_AREA`,
+            :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_NO_DONOR`,
+            :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_EXHAUSTED`
+            or
+            :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_NONE_ADMITTED`.
         attempts (int, optional):
-            Attempts judged.
+            The number of keyed picks ``admit`` judged before the draw ended without
+            a donor, not counting the candidates of the nearest-first scan. Defaults
+            to 0.
 
     Returns:
         DonorDraw:

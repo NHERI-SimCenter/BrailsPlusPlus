@@ -77,9 +77,9 @@ class DonorDraw(NamedTuple):
 
     Attributes:
         asset_id (Hashable):
-            The target.
+            The id of the target the draw is for.
         world (int):
-            The possible world.
+            The index of the possible world the draw is for, from 0.
         iteration (int):
             The iteration of the accepted pick, or of the first pick.
         donor_id (Any):
@@ -161,10 +161,11 @@ def _log_row(draw: DonorDraw, round_number: int) -> dict[str, Any]:
 
     Args:
         draw (DonorDraw):
-            The draw.
+            The draw to log. Its fields become the row's columns, and its ``values``
+            mapping is copied into a new dict.
         round_number (int):
-            :data:`ROUND_STATUS`, :data:`ROUND_DONOR` or
-            :data:`ROUND_REPAIR`.
+            The round the draw belongs to, written to the row's ``round`` column:
+            :data:`ROUND_STATUS`, :data:`ROUND_DONOR` or :data:`ROUND_REPAIR`.
 
     Returns:
         dict[str, Any]:
