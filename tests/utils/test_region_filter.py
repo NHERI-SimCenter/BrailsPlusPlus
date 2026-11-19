@@ -330,6 +330,10 @@ class TestInventory:
         source.housing_unit_inventory = HousingUnitInventory()
         with pytest.raises(ValueError, match=r'remove_housing_unit_inventory\(\)'):
             filter_to_region(source, REGION)
+        with pytest.raises(ValueError, match='^The inventory holds a housing-unit'):
+            filter_to_region(source, REGION)
+        with pytest.raises(ValueError, match='^Inventory 2 of the list holds'):
+            filter_to_region([three_worlds(), source], REGION)
 
     def test_asset_without_coordinates(self) -> None:
         """An asset without coordinates names itself in the error."""
@@ -459,6 +463,20 @@ class TestFile:
             ValueError, match='cannot read as longitude and latitude'
         ):
             filter_to_region(path, REGION)
+
+    def test_null_crs_is_no_crs(self, tmp_path: Path) -> None:
+        """A crs of null, which the 2008 specification allowed, is accepted."""
+        feature = {
+            'type': 'Feature',
+            'id': 'a',
+            'properties': {},
+            'geometry': json.loads(POINT),
+        }
+        path = write(
+            tmp_path / 'null_crs.geojson',
+            {'type': 'FeatureCollection', 'crs': None, 'features': [feature]},
+        )
+        assert list(filter_to_region(path, REGION).inventory) == ['a']
 
     @pytest.mark.parametrize(
         'name',
@@ -769,3 +787,198 @@ class TestRegion:
         filter_to_region(three_worlds(), 'Cañada, CA')
         console.flush()
         assert raw.getvalue() == b'Kept 2 of 3 assets inside Canada.\n'
+
+
+def two_counties(tmp_path: Path) -> tuple[Path, Path]:
+    """
+    Write two county-shaped files of three worlds that share the line -122.0.
+
+    Args:
+        tmp_path (Path):
+            The folder.
+
+    Returns:
+        tuple[Path, Path]:
+            The west file, with ``w_in`` inside :data:`REGION` and ``w_out``
+            outside, and the east file, with ``e_in`` and ``e_out``.
+    """
+    west = inventory(
+        {
+            'w_in': (square(-122.005, 38.0), {'StructureType': ['W1', 'W2', 'C1']}),
+            'w_out': (square(-122.05, 38.0), {'StructureType': ['W1', 'W1', 'W1']}),
+        },
+        n_pw=3,
+    )
+    east = inventory(
+        {
+            'e_in': ([[-121.995, 38.002]], {'StructureType': ['S1', 'S2', 'S2']}),
+            'e_out': ([[-121.95, 38.0]], {'StructureType': ['C2', 'C2', 'C1']}),
+        },
+        n_pw=3,
+    )
+    west_path, east_path = tmp_path / 'west.geojson', tmp_path / 'east.geojson'
+    west.write_to_geojson(str(west_path))
+    east.write_to_geojson(str(east_path))
+    return west_path, east_path
+
+
+class TestSources:
+    """A list of inventories and paths is filtered into one inventory."""
+
+    def test_two_counties_by_one_boundary(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A boundary across two files keeps the union of the two results."""
+        west_path, east_path = two_counties(tmp_path)
+        west = filter_to_region(west_path, REGION)
+        east = filter_to_region(east_path, REGION)
+        capsys.readouterr()
+        both = filter_to_region([west_path, east_path], REGION)
+        assert list(both.inventory) == ['w_in', 'e_in']
+        assert both.n_pw == 3
+        assert both.vector_features == west.vector_features
+        for asset_id, asset in (west.inventory | east.inventory).items():
+            assert both.inventory[asset_id].features == asset.features
+            assert both.inventory[asset_id].coordinates == asset.coordinates
+        both.validate_possible_worlds()
+        assert capsys.readouterr().out == (
+            f'Kept 1 of 2 assets of {west_path} inside the region.\n'
+            f'Kept 1 of 2 assets of {east_path} inside the region.\n'
+            'Kept 2 of 4 assets inside the region.\n'
+        )
+
+    def test_order_given(self, tmp_path: Path) -> None:
+        """The sources are filtered in the order given."""
+        west_path, east_path = two_counties(tmp_path)
+        assert list(filter_to_region((east_path, west_path), REGION).inventory) == [
+            'e_in',
+            'w_in',
+        ]
+
+    def test_inventories_and_paths_together(self, tmp_path: Path) -> None:
+        """An inventory and a path can be filtered together."""
+        west_path, _ = two_counties(tmp_path)
+        source = three_worlds()
+        both = filter_to_region([source, west_path], REGION)
+        assert list(both.inventory) == ['in_a', 'in_b', 'w_in']
+        assert both.inventory['in_a'] is not source.inventory['in_a']
+
+    def test_one_item_list_is_its_item(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A one-item list gives what its item gives, and prints the same."""
+        west_path, _ = two_counties(tmp_path)
+        capsys.readouterr()
+        alone = filter_to_region(west_path, REGION)
+        printed = capsys.readouterr().out
+        listed = filter_to_region([west_path], REGION)
+        assert capsys.readouterr().out == printed
+        assert list(listed.inventory) == list(alone.inventory)
+        assert listed.n_pw == alone.n_pw
+
+    def test_boundary_looked_up_once(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A place name is looked up once for all sources."""
+        calls = []
+
+        def get_boundary(
+            self: RegionBoundary, *_args: object, **_kwargs: object
+        ) -> tuple[Polygon, str, int]:
+            calls.append(self.query_area)
+            return REGION, 'Testville', 1
+
+        monkeypatch.setattr(RegionBoundary, 'get_boundary', get_boundary)
+        filter_to_region(list(two_counties(tmp_path)), 'Testville, CA')
+        assert calls == ['Testville, CA']
+
+    def test_empty_list_refused(self) -> None:
+        """An empty list names what to pass."""
+        with pytest.raises(ValueError, match='list of sources is empty'):
+            filter_to_region([], REGION)
+
+    def test_other_source_refused(self) -> None:
+        """A source that is neither an inventory nor a path is refused."""
+        with pytest.raises(TypeError, match='Item 2 of the list is an int'):
+            filter_to_region([three_worlds(), 7], REGION)
+
+    def test_generator_is_not_a_list(self) -> None:
+        """A generator is refused, with lists and tuples named."""
+        sources = (source for source in [three_worlds()])
+        with pytest.raises(TypeError, match='is a generator.* list or tuple'):
+            filter_to_region(sources, REGION)
+
+    def test_scalar_file_of_other_worlds_unchecked(self, tmp_path: Path) -> None:
+        """A file whose kept assets hold no lists is not checked for its worlds."""
+        west_path, _ = two_counties(tmp_path)
+        five = inventory(
+            {
+                's': ([[-122.0, 38.004]], {'PlanArea': 10.0}),
+                'far': ([[-121.0, 38.0]], {'StructureType': ['W1'] * 5}),
+            },
+            n_pw=5,
+        )
+        five_path = tmp_path / 'five.geojson'
+        five.write_to_geojson(str(five_path))
+        assert filter_to_region(five_path, REGION).n_pw == 1
+        assert filter_to_region([five_path, west_path], REGION).n_pw == 3
+
+    def test_ids_of_one_string_form_refused(self) -> None:
+        """Ids 7 and '7', in two sources or in one, would be written as one."""
+        first = inventory({7: ([[-122.0, 38.0]], {})})
+        second = inventory({'7': ([[-122.001, 38.0]], {})})
+        with pytest.raises(ValueError, match=r"asset '7' .* both inventory 1"):
+            filter_to_region([first, second], REGION)
+        both = inventory({7: ([[-122.0, 38.0]], {}), '7': ([[-122.001, 38.0]], {})})
+        with pytest.raises(ValueError, match="writes as the one id '7'"):
+            filter_to_region(both, REGION)
+
+    def test_every_path_checked_before_lookup(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A missing second path is refused before the name is looked up."""
+        calls = []
+        monkeypatch.setattr(
+            RegionBoundary, 'get_boundary', lambda *_args: calls.append(1)
+        )
+        west_path, _ = two_counties(tmp_path)
+        with pytest.raises(FileNotFoundError, match='missing.geojson is not a file'):
+            filter_to_region([west_path, tmp_path / 'missing.geojson'], 'Testville')
+        assert calls == []
+
+    def test_different_worlds_refused(self, tmp_path: Path) -> None:
+        """Sources of different numbers of worlds name each source."""
+        west_path, _ = two_counties(tmp_path)
+        one_world = inventory({'x': ([[-122.0, 38.004]], {})})
+        with pytest.raises(
+            ValueError, match=r'3 in .*west.geojson, 1 in inventory 2'
+        ):
+            filter_to_region([west_path, one_world], REGION)
+
+    def test_scalar_file_takes_the_others_worlds(self, tmp_path: Path) -> None:
+        """A file whose kept assets hold no lists sets no number of worlds."""
+        west_path, _ = two_counties(tmp_path)
+        scalars = tmp_path / 'scalars.geojson'
+        inventory({'s': ([[-122.0, 38.004]], {'PlanArea': 10.0})}).write_to_geojson(
+            str(scalars)
+        )
+        both = filter_to_region([scalars, west_path], REGION)
+        assert both.n_pw == 3
+        both.validate_possible_worlds()
+
+    def test_different_vector_features_refused(self) -> None:
+        """Inventories of different vector features are refused."""
+        first = three_worlds()
+        second = three_worlds()
+        second.inventory = {'x': second.inventory['in_b']}
+        second.vector_features = ['HousingUnits', 'Extra']
+        with pytest.raises(ValueError, match='same vector_features'):
+            filter_to_region([first, second], REGION)
+
+    def test_overlapping_sources_refused(self, tmp_path: Path) -> None:
+        """An asset inside the region in two sources names both."""
+        west_path, _ = two_counties(tmp_path)
+        copy_path = tmp_path / 'west_again.geojson'
+        copy_path.write_bytes(west_path.read_bytes())
+        with pytest.raises(ValueError, match=r"'w_in' .* both .*west.geojson and"):
+            filter_to_region([west_path, copy_path], REGION)

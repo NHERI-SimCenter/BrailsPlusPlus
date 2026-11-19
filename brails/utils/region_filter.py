@@ -47,6 +47,7 @@ The module is imported by its full path,
 from __future__ import annotations
 
 import json
+import os
 import unicodedata
 from copy import deepcopy
 from pathlib import Path
@@ -66,7 +67,6 @@ from brails.utils.asset_id import LATITUDE_RANGE, LONGITUDE_RANGE
 from brails.utils.geo_tools import GeoTools
 
 if TYPE_CHECKING:
-    import os
     from collections.abc import Hashable, Iterator
 
 READ_CHUNK_CHARS = 1 << 24
@@ -131,7 +131,11 @@ def reference_point(asset: Asset, asset_id: Hashable) -> tuple[float, float]:
 
 
 def filter_to_region(  # noqa: C901
-    inventory_or_geojson_path: AssetInventory | str | os.PathLike[str],
+    inventory_or_geojson_path: AssetInventory
+    | str
+    | os.PathLike[str]
+    | list[AssetInventory | str | os.PathLike[str]]
+    | tuple[AssetInventory | str | os.PathLike[str], ...],
     region: str | RegionBoundary | Polygon | MultiPolygon,
 ) -> AssetInventory:
     """
@@ -145,8 +149,8 @@ def filter_to_region(  # noqa: C901
 
     A boundary looked up by name is built by :class:`RegionBoundary` from the
     outer members of the place's OpenStreetMap relation only, so it has no
-    holes, and the assets of an enclave, such as Piedmont inside Oakland, are
-    kept. Where holes matter, pass the boundary as a Shapely polygon, whose
+    holes, and the assets of an enclave inside the place are kept. Where holes
+    matter, pass the boundary as a Shapely polygon, whose
     holes the filter keeps.
 
     The kept assets are deep copies, so a change to the returned inventory
@@ -182,12 +186,27 @@ def filter_to_region(  # noqa: C901
     reserves, and one with several types repeats ids across them, which this
     function refuses.
 
-    The function prints the number of assets kept.
+    Given a list or tuple of inventories and paths, such as the county files
+    of a city that spans several counties, the function filters them one
+    after another into one inventory, in the order given, and looks the
+    boundary up once. The sources must hold the same number of worlds and
+    the same vector features. An inventory states its ``n_pw`` and a file the
+    length of its kept lists. Nothing in a file states its number of worlds
+    otherwise, so a file whose kept assets hold no lists takes the others'
+    number unchecked. An asset id that lies inside the region in two sources
+    is refused, since the sources then overlap, and so are two kept ids with
+    the same string form, which ``write_to_geojson`` would write as one id. A
+    one-item list gives what its item gives. Another sequence, such as a
+    generator, is not taken as a list. Memory is that of the kept assets and
+    of one file's stream at a time.
+
+    The function prints the number of assets kept, and for several sources
+    the number kept from each.
 
     Args:
-        inventory_or_geojson_path (AssetInventory | str | os.PathLike[str]):
-            The inventory, or the path of a GeoJSON FeatureCollection in
-            longitude and latitude (WGS84).
+        inventory_or_geojson_path (AssetInventory | str | PathLike | list | tuple):
+            The inventory, the path of a GeoJSON FeatureCollection in
+            longitude and latitude (WGS84), or a list or tuple of them.
         region (str | RegionBoundary | Polygon | MultiPolygon):
             A place name, looked up once with :class:`RegionBoundary`, which
             prints the name it found; a :class:`RegionBoundary`, whose
@@ -203,9 +222,13 @@ def filter_to_region(  # noqa: C901
         FileNotFoundError:
             If a path is given and is not a file, before any lookup.
         TypeError:
-            If ``region`` is none of the accepted types.
+            If ``region`` is none of the accepted types, or a source is
+            neither an inventory nor a path.
         ValueError:
-            If the region's bounds are not longitude and latitude, or the
+            If the list of sources is empty, the sources hold different
+            numbers of worlds or different vector features, or two kept
+            asset ids, of one source or of two, have the same string form.
+            If the region's bounds are not longitude and latitude, or a
             source inventory holds a housing-unit inventory. For a file, if
             it is not a GeoJSON FeatureCollection, names a ``crs`` other than
             WGS84 longitude and latitude, holds a feature without an
@@ -229,11 +252,48 @@ def filter_to_region(  # noqa: C901
         >>> berkeley.get_asset_ids()
         ['A']
     """
-    if not isinstance(inventory_or_geojson_path, AssetInventory):
-        path = Path(inventory_or_geojson_path)
-        if not path.is_file():
-            msg = f'{path} is not a file. Pass the path of a GeoJSON inventory.'
-            raise FileNotFoundError(msg)
+    sources: list[AssetInventory | Path] = []
+    labels: list[str] = []
+    items = (
+        list(inventory_or_geojson_path)
+        if isinstance(inventory_or_geojson_path, (list, tuple))
+        else [inventory_or_geojson_path]
+    )
+    if not items:
+        msg = (
+            'The list of sources is empty. Pass an inventory, the path of a '
+            'GeoJSON inventory, or a list of them.'
+        )
+        raise ValueError(msg)
+    listed = isinstance(inventory_or_geojson_path, (list, tuple))
+    for index, item in enumerate(items):
+        if isinstance(item, AssetInventory):
+            sources.append(item)
+            labels.append(
+                f'inventory {index + 1} of the list' if listed else 'the inventory'
+            )
+        elif isinstance(item, (str, os.PathLike)):
+            path = Path(item)
+            if not path.is_file():
+                msg = f'{path} is not a file. Pass the path of a GeoJSON inventory.'
+                raise FileNotFoundError(msg)
+            sources.append(path)
+            labels.append(str(path))
+        else:
+            kind = type(item).__name__
+            article = 'an' if kind[0].lower() in 'aeiou' else 'a'
+            if listed:
+                msg = (
+                    f'Item {index + 1} of the list is {article} {kind}. Pass an '
+                    'AssetInventory or the path of a GeoJSON inventory.'
+                )
+            else:
+                msg = (
+                    f'The first argument is {article} {kind}. Pass an '
+                    'AssetInventory, the path of a GeoJSON inventory, or a list '
+                    'or tuple of them.'
+                )
+            raise TypeError(msg)
 
     if isinstance(region, str):
         region = RegionBoundary({'type': 'locationName', 'data': region})
@@ -262,123 +322,201 @@ def filter_to_region(  # noqa: C901
         boundary = shapely.make_valid(boundary)
     shapely.prepare(boundary)
 
-    if isinstance(inventory_or_geojson_path, AssetInventory):
-        source = inventory_or_geojson_path
-        if source.housing_unit_inventory is not None:
-            msg = (
-                'The inventory holds a housing-unit inventory, which '
-                'filter_to_region does not divide. Filter the inventory '
-                'before assigning housing units, or remove them first with '
-                'remove_housing_unit_inventory().'
-            )
-            raise ValueError(msg)
-        asset_ids = list(source.inventory)
-        points = np.array(
-            [reference_point(source.inventory[a], a) for a in asset_ids],
-            dtype=float,
-        ).reshape(-1, 2)
-        inside = shapely.contains_xy(boundary, points[:, 0], points[:, 1])
-        result = AssetInventory(vector_features=source.vector_features)
-        result.n_pw = source.n_pw
-        for asset_id, is_inside in zip(asset_ids, inside):
-            if is_inside:
-                result.inventory[asset_id] = deepcopy(source.inventory[asset_id])
-        total = len(asset_ids)
-    else:
-        result = AssetInventory()
-        lengths: set[int] = set()
-        total = 0
-        for feature in _stream_features(path):
-            total += 1
-            if not isinstance(feature, dict) or 'id' not in feature:
+    result = AssetInventory()
+    # The number of worlds each source holds, for the sources that state one.
+    worlds: dict[str, int] = {}
+    vector_features: dict[str, list[str]] = {}
+    # The source and the id of each kept asset, by the id's string form.
+    kept_from: dict[str, tuple[str, Hashable]] = {}
+    messages = []
+    total = 0
+    for source, label in zip(sources, labels):
+        kept: dict[Hashable, Asset] = {}
+        if isinstance(source, AssetInventory):
+            if source.housing_unit_inventory is not None:
                 msg = (
-                    f'Feature {total - 1} of {path} has no id. Give every '
-                    'feature a unique id, as write_to_geojson does.'
+                    f'{label[0].upper() + label[1:]} holds a housing-unit '
+                    'inventory, which filter_to_region does not divide. Filter the '
+                    'inventory before assigning housing units, or remove them '
+                    'first with remove_housing_unit_inventory().'
                 )
                 raise ValueError(msg)
-            asset_id = feature['id']
-            if not isinstance(asset_id, (str, int, float)) or isinstance(
-                asset_id, bool
-            ):
-                msg = (
-                    f'Feature {total - 1} of {path} has the id {asset_id!r}. '
-                    'Give every feature a string or a number as its id.'
-                )
-                raise ValueError(msg)  # noqa: TRY004, a malformed file
-            properties = feature.get('properties') or {}
-            if not isinstance(properties, dict):
-                msg = (
-                    f'Feature {asset_id!r} of {path} has properties that are '
-                    'not an object. Write its properties as a JSON object.'
-                )
-                raise ValueError(msg)  # noqa: TRY004, a malformed file
-            geometry = feature.get('geometry')
-            remedy = (
-                'Remove the feature from the file, or give it a Point, '
-                'LineString, Polygon or MultiPolygon in longitude and latitude '
-                '(EPSG:4326).'
-            )
-            try:
-                coordinates = GeoTools.parse_geojson_geometry(geometry)
-            except (TypeError, ValueError, NotImplementedError, IndexError) as error:
-                kind = geometry.get('type') if isinstance(geometry, dict) else None
-                msg = (
-                    f'Feature {asset_id!r} of {path} has a geometry BRAILS '
-                    f'cannot read ({kind}). {remedy}'
-                )
-                raise ValueError(msg) from error
-            asset = Asset(asset_id, coordinates, properties)
-            if not asset.coordinates:
-                msg = (
-                    f'Feature {asset_id!r} of {path} has coordinates BRAILS '
-                    f'cannot read as longitude and latitude. {remedy}'
-                )
-                raise ValueError(msg)
-            lon, lat = reference_point(asset, asset_id)
-            if not shapely.contains_xy(boundary, lon, lat):
-                continue
-            if asset_id in result.inventory:
-                msg = (
-                    f'Two features of {path} inside the region have the id '
-                    f'{asset_id!r}. Feature ids must be unique. A file that '
-                    'write_to_geojson wrote with integer_ids and several types '
-                    'numbers each type from 1, and filter_to_region cannot '
-                    'read it. Filter the inventory it was written from instead.'
-                )
-                raise ValueError(msg)
-            for key, value in properties.items():
-                if not is_probabilistic_feature(key, value, result.vector_features):
-                    continue
-                if not value:
+            asset_ids = list(source.inventory)
+            points = np.array(
+                [reference_point(source.inventory[a], a) for a in asset_ids],
+                dtype=float,
+            ).reshape(-1, 2)
+            inside = shapely.contains_xy(boundary, points[:, 0], points[:, 1])
+            for asset_id, is_inside in zip(asset_ids, inside):
+                if is_inside:
+                    kept[asset_id] = deepcopy(source.inventory[asset_id])
+            count = len(asset_ids)
+            worlds[label] = source.n_pw
+            vector_features[label] = list(source.vector_features)
+        else:
+            path = source
+            lengths: set[int] = set()
+            count = 0
+            for feature in _stream_features(path):
+                count += 1
+                if not isinstance(feature, dict) or 'id' not in feature:
                     msg = (
-                        f'Feature {asset_id!r} of {path} holds an empty list '
-                        f'under {key!r}, which gives no possible world. Write '
-                        'a single value or one value per world in its place.'
+                        f'Feature {count - 1} of {path} has no id. Give every '
+                        'feature a unique id, as write_to_geojson does.'
                     )
                     raise ValueError(msg)
-                lengths.add(len(value))
-            result.inventory[asset_id] = asset
-        if len(lengths) > 1:
+                asset_id = feature['id']
+                if not isinstance(asset_id, (str, int, float)) or isinstance(
+                    asset_id, bool
+                ):
+                    msg = (
+                        f'Feature {count - 1} of {path} has the id '
+                        f'{asset_id!r}. Give every feature a string or a '
+                        'number as its id.'
+                    )
+                    raise ValueError(msg)  # noqa: TRY004, a malformed file
+                properties = feature.get('properties') or {}
+                if not isinstance(properties, dict):
+                    msg = (
+                        f'Feature {asset_id!r} of {path} has properties that '
+                        'are not an object. Write its properties as a JSON '
+                        'object.'
+                    )
+                    raise ValueError(msg)  # noqa: TRY004, a malformed file
+                geometry = feature.get('geometry')
+                remedy = (
+                    'Remove the feature from the file, or give it a Point, '
+                    'LineString, Polygon or MultiPolygon in longitude and '
+                    'latitude (EPSG:4326).'
+                )
+                try:
+                    coordinates = GeoTools.parse_geojson_geometry(geometry)
+                except (
+                    TypeError,
+                    ValueError,
+                    NotImplementedError,
+                    IndexError,
+                ) as error:
+                    kind = (
+                        geometry.get('type') if isinstance(geometry, dict) else None
+                    )
+                    msg = (
+                        f'Feature {asset_id!r} of {path} has a geometry BRAILS '
+                        f'cannot read ({kind}). {remedy}'
+                    )
+                    raise ValueError(msg) from error
+                asset = Asset(asset_id, coordinates, properties)
+                if not asset.coordinates:
+                    msg = (
+                        f'Feature {asset_id!r} of {path} has coordinates BRAILS '
+                        f'cannot read as longitude and latitude. {remedy}'
+                    )
+                    raise ValueError(msg)
+                lon, lat = reference_point(asset, asset_id)
+                if not shapely.contains_xy(boundary, lon, lat):
+                    continue
+                if asset_id in kept:
+                    msg = (
+                        f'Two features of {path} inside the region have the id '
+                        f'{asset_id!r}. Feature ids must be unique. A file that '
+                        'write_to_geojson wrote with integer_ids and several '
+                        'types numbers each type from 1, and filter_to_region '
+                        'cannot read it. Filter the inventory it was written '
+                        'from instead.'
+                    )
+                    raise ValueError(msg)
+                for key, value in properties.items():
+                    if not is_probabilistic_feature(
+                        key, value, result.vector_features
+                    ):
+                        continue
+                    if not value:
+                        msg = (
+                            f'Feature {asset_id!r} of {path} holds an empty list '
+                            f'under {key!r}, which gives no possible world. '
+                            'Write a single value or one value per world in '
+                            'its place.'
+                        )
+                        raise ValueError(msg)
+                    lengths.add(len(value))
+                kept[asset_id] = asset
+            if len(lengths) > 1:
+                msg = (
+                    f'The features of {path} inside the region hold lists of '
+                    f'{sorted(lengths)} values, so they share no number of '
+                    'possible worlds. A file written from one inventory holds '
+                    'lists of one length. Write the file again from a single '
+                    'inventory whose features pass validate_possible_worlds.'
+                )
+                raise ValueError(msg)
+            if lengths:
+                worlds[label] = lengths.pop()
+            vector_features[label] = list(result.vector_features)
+
+        if len(set(worlds.values())) > 1:
             msg = (
-                f'The features of {path} inside the region hold lists of '
-                f'{sorted(lengths)} values, so they share no number of possible '
-                'worlds. A file written from one inventory holds lists of one '
-                'length. Write the file again from a single inventory whose '
-                'features pass validate_possible_worlds.'
+                'The sources hold different numbers of possible worlds: '
+                + ', '.join(f'{n} in {where}' for where, n in worlds.items())
+                + '. Pass sources of one run, such as the county files of one '
+                'testbed, which share their number of worlds, and pass a file '
+                'by its path rather than as an inventory read with '
+                'read_from_geojson, which gives it n_pw 1.'
             )
             raise ValueError(msg)
-        result.n_pw = lengths.pop() if lengths else 1
+        first = labels[0]
+        if set(vector_features[label]) != set(vector_features[first]):
+            msg = (
+                f'{label} has the vector features {vector_features[label]} and '
+                f'{first} has {vector_features[first]}. A file has the default '
+                f'{list(result.vector_features)}. Give each inventory those '
+                'vector_features before filtering it with a file, give the '
+                'inventories the same vector_features, or pass every source '
+                'as a file.'
+            )
+            raise ValueError(msg)
+        for asset_id in kept:
+            key = str(asset_id)
+            if key in kept_from:
+                other_label, other_id = kept_from[key]
+                if other_label == label:
+                    msg = (
+                        f'{label} holds the ids {other_id!r} and {asset_id!r} '
+                        'inside the region, which write_to_geojson writes as '
+                        f'the one id {key!r}. Give the assets ids whose string '
+                        'forms differ.'
+                    )
+                else:
+                    msg = (
+                        f'The asset {asset_id!r} lies inside the region in both '
+                        f'{other_label} and {label}, so the sources overlap. '
+                        'Pass sources that hold no asset twice, such as the '
+                        'county files of one testbed, which the county lines '
+                        'divide, or filter each source alone.'
+                    )
+                raise ValueError(msg)
+            kept_from[key] = (label, asset_id)
+        result.inventory.update(kept)
+        total += count
+        if len(sources) > 1:
+            noun = 'asset' if count == 1 else 'assets'
+            messages.append(
+                f'Kept {len(kept)} of {count} {noun} of {label} inside {name}.'
+            )
 
+    result.vector_features = list(vector_features[labels[0]])
+    result.n_pw = next(iter(worlds.values()), 1)
     noun = 'asset' if total == 1 else 'assets'
-    message = f'Kept {len(result.inventory)} of {total} {noun} inside {name}.'
-    try:
-        print(message)
-    except UnicodeEncodeError:
-        print(
-            unicodedata.normalize('NFKD', message)
-            .encode('ascii', 'ignore')
-            .decode('ascii')
-        )
+    messages.append(f'Kept {len(result.inventory)} of {total} {noun} inside {name}.')
+    for message in messages:
+        # A few lines are printed, so the try in the loop costs nothing.
+        try:
+            print(message)
+        except UnicodeEncodeError:  # noqa: PERF203
+            print(
+                unicodedata.normalize('NFKD', message)
+                .encode('ascii', 'ignore')
+                .decode('ascii')
+            )
     return result
 
 
@@ -506,7 +644,9 @@ def _stream_features(path: Path) -> Iterator[dict[str, Any]]:  # noqa: C901
                             'FeatureCollection of the inventory.'
                         )
                         raise ValueError(msg)
-                    if key == 'crs':
+                    # A null crs, which the 2008 GeoJSON specification
+                    # allowed, is taken as no crs.
+                    if key == 'crs' and member is not None:
                         properties = (
                             member.get('properties')
                             if isinstance(member, dict)
