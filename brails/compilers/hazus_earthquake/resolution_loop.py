@@ -47,6 +47,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple
 
+from brails.compilers.compilation_report import (
+    CONFLICT_CATEGORY,
+    MISSING_INPUT_CATEGORY,
+    NO_PLAUSIBLE_VALUE_CATEGORY,
+    UNDETERMINED_CATEGORY,
+    UNSUPPORTED_CATEGORY,
+)
 from brails.compilers.world_assembly import _build_inventory
 from brails.inferers.inference_diagnosis import (
     DIAGNOSIS_INVALID,
@@ -71,16 +78,6 @@ if TYPE_CHECKING:
     from brails.inferers.hazus_inferer_earthquake.hazus_eq_structure_type_inferer import (
         HazusEQStructureTypeInferer,
     )
-
-# The exclusion categories the loop and the Hazus earthquake compiler file
-# under, besides the report's DROPPED_CATEGORY. The section "Exclusion
-# categories" of the compilers' README defines each.
-MISSING_INPUT_CATEGORY = 'missing_input'
-UNSUPPORTED_CATEGORY = 'unsupported'
-CONFLICT_CATEGORY = 'conflict'
-NO_PLAUSIBLE_VALUE_CATEGORY = 'no_plausible_value'
-UNDETERMINED_CATEGORY = 'undetermined'
-FAILS_SCHEMA_CATEGORY = 'fails_schema'
 
 # The stages of the composed screen, in the order it runs them. Each name
 # is also the stage of the compilation report that the loop records under,

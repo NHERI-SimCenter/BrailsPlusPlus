@@ -68,6 +68,16 @@ ACTIONS = ('withheld', 'restored', 'redrawn', 'derived')
 # every world and from those excluded in some.
 DROPPED_CATEGORY = 'dropped'
 
+# The exclusion categories the Hazus earthquake compiler and its resolution
+# loop file under, besides DROPPED_CATEGORY. The section "Exclusion
+# categories" of the compilers' README defines each.
+MISSING_INPUT_CATEGORY = 'missing_input'
+UNSUPPORTED_CATEGORY = 'unsupported'
+CONFLICT_CATEGORY = 'conflict'
+NO_PLAUSIBLE_VALUE_CATEGORY = 'no_plausible_value'
+UNDETERMINED_CATEGORY = 'undetermined'
+FAILS_SCHEMA_CATEGORY = 'fails_schema'
+
 # The columns of the frame :attr:`CompilationReport.records` returns, in
 # order, with the dtype each one carries. A report holding no rows
 # carries these same dtypes.

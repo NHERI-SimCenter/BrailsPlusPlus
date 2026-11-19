@@ -65,18 +65,21 @@ from brails.aggregators.stacked_footprints.stacked_footprints import (
     RULE_STACKED,
     StackedFootprintMerge,
 )
-from brails.compilers.compilation_report import DROPPED_CATEGORY, CompilationReport
-from brails.compilers.hazus_earthquake.pair_redraw import PairRedraw
-from brails.compilers.hazus_earthquake.resolution_loop import (
+from brails.compilers.compilation_report import (
     CONFLICT_CATEGORY,
+    DROPPED_CATEGORY,
     FAILS_SCHEMA_CATEGORY,
     MISSING_INPUT_CATEGORY,
     NO_PLAUSIBLE_VALUE_CATEGORY,
+    UNDETERMINED_CATEGORY,
+    UNSUPPORTED_CATEGORY,
+    CompilationReport,
+)
+from brails.compilers.hazus_earthquake.pair_redraw import PairRedraw
+from brails.compilers.hazus_earthquake.resolution_loop import (
     STAGE_DESIGN_LEVEL,
     STAGE_RESOLUTION,
     STAGE_STRUCTURE_TYPE,
-    UNDETERMINED_CATEGORY,
-    UNSUPPORTED_CATEGORY,
     ComposedScreen,
     ResolutionLoop,
 )
