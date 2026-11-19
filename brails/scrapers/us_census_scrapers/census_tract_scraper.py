@@ -63,8 +63,9 @@ from brails.constants import (
     TRACT_GEOID_LENGTH,
     TRACT_KEY,
 )
-from brails.types.asset_inventory import Asset, AssetInventory
+from brails.types.asset_inventory import AssetInventory
 from brails.utils.id_preview import preview_ids
+from brails.utils.region_filter import reference_point
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Sequence
@@ -394,9 +395,7 @@ class CensusTractScraper:
         """
         asset_ids = sorted(inventory.inventory, key=str)
         points = shapely.points(
-            np.array(
-                [_reference_point(inventory.inventory[a], a) for a in asset_ids]
-            )
+            np.array([reference_point(inventory.inventory[a], a) for a in asset_ids])
         )
         if frame is None:
             url = (
@@ -562,40 +561,3 @@ def _read_polygons(
         np.array(geoids, dtype=object),
         np.asarray(frame.geometry.array),
     )
-
-
-def _reference_point(asset: Asset, asset_id: Hashable) -> tuple[float, float]:
-    """
-    Return the point an asset is located by.
-
-    Args:
-        asset (Asset):
-            The asset.
-        asset_id (Hashable):
-            Its id, for the error messages.
-
-    Returns:
-        tuple[float, float]:
-            The longitude and latitude of the centroid of the asset's
-            exterior rings, of the point for a point asset, or of the
-            Shapely centroid for a geometry enclosing no area.
-
-    Raises:
-        ValueError:
-            If the asset has no coordinates or its coordinates form no
-            geometry.
-    """
-    coordinates = asset.coordinates
-    if not coordinates:
-        msg = f'Asset {asset_id!r} has no coordinates.'
-        raise ValueError(msg)
-    if len(coordinates) == 1 and not isinstance(coordinates[0][0], list):
-        return float(coordinates[0][0]), float(coordinates[0][1])
-    if AssetInventory.has_area(coordinates):
-        return AssetInventory.centroid_and_plan_area(coordinates)[:2]
-    geometry = asset.get_geometry()
-    if geometry is None or geometry.is_empty:
-        msg = f'Asset {asset_id!r} has coordinates that form no geometry.'
-        raise ValueError(msg)
-    point = geometry.centroid
-    return float(point.x), float(point.y)
