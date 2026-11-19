@@ -4,9 +4,7 @@ Filter a county inventory to a place.
 This example keeps the buildings of a county inventory that lie inside a place
 and writes them to a new GeoJSON file. It takes a county inventory of the
 SimCenter San Francisco Bay Area testbed, or another GeoJSON inventory that
-BRAILS++ wrote with ``write_to_geojson``, the place name and the output file.
-A file written with ``integer_ids`` is taken only while no two of the features
-inside the place share a number:
+BRAILS++ wrote with ``write_to_geojson``, the place name and the output file:
 
     python filter_inventory_to_place.py county.geojson "Berkeley, CA" out.geojson
 
@@ -21,14 +19,10 @@ boundary. A boundary looked up by name has no holes, so the buildings of an
 enclave inside the place are kept. Where holes matter, pass the boundary to
 ``filter_to_region`` as a Shapely polygon instead of the name.
 
-R2D reads the integer-id form of the file, ``write_to_geojson(...,
-integer_ids=True)``, which needs a ``type`` on every building. The county
-files carry none, so set ``asset.features['type'] = 'building'`` for each asset
-of ``inventory.inventory.values()`` before that write. A file already in the
-integer-id form cannot be written in that form again after filtering.
-
-Close the output file in any other program, such as QGIS, before the script
-writes it again.
+For the integer-id form that R2D reads, write the result with
+``write_to_geojson(..., integer_ids=True, asset_type='building')``. Close the
+output file in any other program, such as QGIS, before the script writes it
+again.
 """
 
 import argparse

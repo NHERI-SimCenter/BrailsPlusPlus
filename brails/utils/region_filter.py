@@ -169,22 +169,38 @@ def filter_to_region(  # noqa: C901
     the assets kept and not with the file. Each kept feature becomes an asset
     keyed by the feature's ``id``, with its properties as written and its
     geometry as :meth:`AssetInventory.read_from_geojson` reads it, exterior
-    rings only. No ``type`` is added. ``n_pw`` is the number of values of the
-    kept assets' list-valued features, those that
+    rings only. No ``type`` is added.
+
+    A feature of the integer-id form, which ``write_to_geojson(...,
+    integer_ids=True)`` writes as an integer ``id`` beside a string
+    ``unique_id`` property, is keyed by its ``unique_id`` string instead. The
+    ``unique_id`` property is dropped, the feature's number is not kept, and
+    its ``type`` stays a property, so such a file can be filtered and written
+    in that form again with the same features. Any other ``unique_id`` is an
+    ordinary property: the default form of ``write_to_geojson`` writes every
+    ``id`` as a string, so its files never take this form. The keys stay
+    strings when every ``unique_id`` is digits, where
+    ``read_from_geojson(key_by_unique_id=True)`` makes them integers, and the
+    export writes the same file from either. The checks on ``unique_id``, an
+    empty one, a repeated one, or kept features of both forms, cover the kept
+    features.
+
+    ``n_pw`` is
+    the number of values of the kept assets' list-valued features, those that
     :func:`~brails.types.asset_inventory.is_probabilistic_feature` counts as
     holding worlds under the default ``vector_features``, and 1 without
     such lists. Of the file's other top-level members, ``type`` must be
     ``FeatureCollection`` and ``crs``, if present, must name WGS84 longitude
     and latitude, each checked when it is read. None of them is kept, and
     ``write_to_geojson`` writes a ``generated``, ``brails_version`` and
-    ``crs`` of its own. For a file that ``write_to_geojson`` wrote without
-    ``integer_ids``, the kept features written back with ``write_to_geojson``
-    equal the source's features.
+    ``crs`` of its own. Written back with ``write_to_geojson`` in the form the
+    file has, the kept features equal the source's features, for a file that
+    ``write_to_geojson`` wrote.
 
-    A file already in the integer-id form cannot be written in that form again
-    after filtering, since its assets carry the ``unique_id`` the export
-    reserves, and one with several types repeats ids across them, which this
-    function refuses.
+    The integer-id form that R2D reads requires a ``type`` on every asset.
+    ``write_to_geojson(..., integer_ids=True, asset_type='building')`` writes
+    that type for the assets without one, such as the buildings of a county
+    file of the testbed as compiled.
 
     Given a list or tuple of inventories and paths, such as the county files
     of a city that spans several counties, the function filters them one
@@ -357,6 +373,8 @@ def filter_to_region(  # noqa: C901
             path = source
             lengths: set[int] = set()
             count = 0
+            # How many kept features were keyed by their unique_id.
+            numbered = 0
             for feature in _stream_features(path):
                 count += 1
                 if not isinstance(feature, dict) or 'id' not in feature:
@@ -383,6 +401,24 @@ def filter_to_region(  # noqa: C901
                         'object.'
                     )
                     raise ValueError(msg)  # noqa: TRY004, a malformed file
+                # A feature of the integer-id form, an integer id beside a
+                # string unique_id, is keyed by its unique_id.
+                has_unique_id = (
+                    isinstance(asset_id, int)
+                    and not isinstance(asset_id, bool)
+                    and isinstance(properties.get('unique_id'), str)
+                )
+                if has_unique_id:
+                    unique_id = properties.pop('unique_id')
+                    if not unique_id:
+                        msg = (
+                            f'Feature {asset_id!r} of {path} has an empty '
+                            'unique_id. Write the file again with '
+                            'write_to_geojson, which gives every asset its id '
+                            'there.'
+                        )
+                        raise ValueError(msg)
+                    asset_id = unique_id
                 geometry = feature.get('geometry')
                 remedy = (
                     'Remove the feature from the file, or give it a Point, '
@@ -416,13 +452,11 @@ def filter_to_region(  # noqa: C901
                 if not shapely.contains_xy(boundary, lon, lat):
                     continue
                 if asset_id in kept:
+                    field = 'unique_id' if has_unique_id else 'id'
                     msg = (
-                        f'Two features of {path} inside the region have the id '
-                        f'{asset_id!r}. Feature ids must be unique. A file that '
-                        'write_to_geojson wrote with integer_ids and several '
-                        'types numbers each type from 1, and filter_to_region '
-                        'cannot read it. Filter the inventory it was written '
-                        'from instead.'
+                        f'Two features of {path} inside the region have the '
+                        f'{field} {asset_id!r}. Give every feature a unique '
+                        f'{field}, as write_to_geojson does.'
                     )
                     raise ValueError(msg)
                 for key, value in properties.items():
@@ -440,6 +474,15 @@ def filter_to_region(  # noqa: C901
                         raise ValueError(msg)
                     lengths.add(len(value))
                 kept[asset_id] = asset
+                numbered += has_unique_id
+            if 0 < numbered < len(kept):
+                msg = (
+                    f'Of the features of {path} inside the region, {numbered} '
+                    'have the integer-id form (an integer id beside a string '
+                    f'unique_id) and {len(kept) - numbered} do not. Write the '
+                    'file again with write_to_geojson, in one form.'
+                )
+                raise ValueError(msg)
             if len(lengths) > 1:
                 msg = (
                     f'The features of {path} inside the region hold lists of '

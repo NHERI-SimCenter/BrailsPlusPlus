@@ -392,43 +392,144 @@ class TestFile:
         source.write_to_geojson(str(path))
         assert list(filter_to_region(path, REGION).inventory) == ['inside']
 
-    def test_integer_id_export_needs_a_type(self, tmp_path: Path) -> None:
-        """A filtered county file takes integer ids once its assets have a type."""
+    def test_integer_id_export_with_asset_type(self, tmp_path: Path) -> None:
+        """A filtered county file is written with integer ids given asset_type."""
         path = tmp_path / 'county.geojson'
         three_worlds().write_to_geojson(str(path))
         result = filter_to_region(path, REGION)
         out = tmp_path / 'r2d.geojson'
-        with pytest.raises(ValueError, match="has no 'type' value"):
+        with pytest.raises(ValueError, match="no 'type' value.* Pass asset_type"):
             result.write_to_geojson(str(out), integer_ids=True)
-        for asset in result.inventory.values():
-            asset.features['type'] = 'building'
-        written = result.write_to_geojson(str(out), integer_ids=True)
-        assert sorted(f['id'] for f in written['features']) == [1, 2]
+        written = result.write_to_geojson(
+            str(out), integer_ids=True, asset_type='building'
+        )
+        assert [f['id'] for f in written['features']] == [1, 2]
+        assert {f['properties']['type'] for f in written['features']} == {'building'}
+        assert all('type' not in a.features for a in result.inventory.values())
 
-    def test_integer_id_file_is_not_written_in_that_form_again(
-        self, tmp_path: Path
-    ) -> None:
-        """A filtered integer-id file carries unique_id, which the export refuses."""
-        source = three_worlds()
-        for asset in source.inventory.values():
-            asset.features['type'] = 'building'
-        path = tmp_path / 'r2d.geojson'
-        source.write_to_geojson(str(path), integer_ids=True)
-        result = filter_to_region(path, REGION)
-        with pytest.raises(ValueError, match="already carries a 'unique_id'"):
-            result.write_to_geojson(
-                str(tmp_path / 'again.geojson'), integer_ids=True
-            )
+    def test_integer_id_round_trip(self, tmp_path: Path) -> None:
+        """County file, filter, integer ids, filter, integer ids: equal features."""
+        county = tmp_path / 'county.geojson'
+        three_worlds().write_to_geojson(str(county))
+        first = tmp_path / 'r2d_first.geojson'
+        filter_to_region(county, REGION).write_to_geojson(
+            str(first), integer_ids=True, asset_type='building'
+        )
+        again = filter_to_region(first, REGION)
+        assert list(again.inventory) == ['in_a', 'in_b']
+        assert all('unique_id' not in a.features for a in again.inventory.values())
+        assert all(
+            a.features['type'] == 'building' for a in again.inventory.values()
+        )
+        second = tmp_path / 'r2d_second.geojson'
+        again.write_to_geojson(str(second), integer_ids=True)
+        assert (
+            json.loads(second.read_text(encoding='utf-8'))['features']
+            == json.loads(first.read_text(encoding='utf-8'))['features']
+        )
 
-    def test_integer_id_file_of_several_types_refused(self, tmp_path: Path) -> None:
-        """Each type is numbered from 1, so kept features repeat an id."""
+    def test_integer_id_file_of_several_types(self, tmp_path: Path) -> None:
+        """Numbers repeat across types, and the unique_ids key the assets."""
         source = three_worlds()
         source.inventory['in_a'].features['type'] = 'building'
         source.inventory['in_b'].features['type'] = 'bridge'
         source.inventory['out'].features['type'] = 'building'
         path = tmp_path / 'r2d.geojson'
-        source.write_to_geojson(str(path), integer_ids=True)
-        with pytest.raises(ValueError, match='several types numbers each type'):
+        written = source.write_to_geojson(str(path), integer_ids=True)
+        assert sorted(f['id'] for f in written['features']) == [1, 1, 2]
+        result = filter_to_region(path, REGION)
+        assert {k: a.features['type'] for k, a in result.inventory.items()} == {
+            'in_a': 'building',
+            'in_b': 'bridge',
+        }
+
+    def test_digit_unique_ids_stay_strings(self, tmp_path: Path) -> None:
+        """Digit unique_ids key the assets as strings, and the file is the same."""
+        source = inventory(
+            {
+                5: ([[-122.0, 38.0]], {'type': 'building'}),
+                12: ([[-122.001, 38.0]], {'type': 'building'}),
+            }
+        )
+        path = tmp_path / 'r2d.geojson'
+        first = source.write_to_geojson(str(path), integer_ids=True)
+        result = filter_to_region(path, REGION)
+        assert list(result.inventory) == ['5', '12']
+        again = result.write_to_geojson(integer_ids=True)
+        assert again['features'] == first['features']
+
+    def test_default_form_unique_id_is_a_property(self, tmp_path: Path) -> None:
+        """A unique_id beside a string id is kept as written, and written back."""
+        source = inventory(
+            {
+                'a': ([[-122.0, 38.0]], {'unique_id': 'SRC-1'}),
+                'b': ([[-122.001, 38.0]], {'unique_id': 'SRC-2'}),
+            }
+        )
+        path = tmp_path / 'county.geojson'
+        first = source.write_to_geojson(str(path))
+        result = filter_to_region(path, REGION)
+        assert list(result.inventory) == ['a', 'b']
+        assert result.inventory['a'].features == {'unique_id': 'SRC-1'}
+        again = result.write_to_geojson()
+        assert again['features'] == first['features']
+
+    def test_integer_id_with_other_unique_id_is_not_the_form(
+        self, tmp_path: Path
+    ) -> None:
+        """An integer id beside a unique_id that is not a string is not re-keyed."""
+        feature = {
+            'type': 'Feature',
+            'id': 1,
+            'properties': {'unique_id': 7},
+            'geometry': json.loads(POINT),
+        }
+        path = write(
+            tmp_path / 'numbers.geojson',
+            {'type': 'FeatureCollection', 'features': [feature]},
+        )
+        result = filter_to_region(path, REGION)
+        assert list(result.inventory) == [1]
+        assert result.inventory[1].features == {'unique_id': 7}
+
+    def test_unique_id_in_some_features_refused(self, tmp_path: Path) -> None:
+        """A file that mixes the two forms inside the region is refused."""
+        features = [
+            {
+                'type': 'Feature',
+                'id': 1,
+                'properties': {'unique_id': 'a', 'type': 'building'},
+                'geometry': json.loads(POINT),
+            },
+            {
+                'type': 'Feature',
+                'id': 'b',
+                'properties': {},
+                'geometry': {'type': 'Point', 'coordinates': [-122.001, 38.0]},
+            },
+        ]
+        path = write(
+            tmp_path / 'mixed.geojson',
+            {'type': 'FeatureCollection', 'features': features},
+        )
+        with pytest.raises(
+            ValueError, match='1 have the integer-id form .* 1 do not'
+        ):
+            filter_to_region(path, REGION)
+
+    def test_empty_unique_id_refused(self, tmp_path: Path) -> None:
+        """An empty unique_id names the feature."""
+        feature = {
+            'type': 'Feature',
+            'id': 1,
+            'properties': {'unique_id': ''},
+            'geometry': json.loads(POINT),
+        }
+        path = write(
+            tmp_path / 'empty_unique_id.geojson',
+            {'type': 'FeatureCollection', 'features': [feature]},
+        )
+        with pytest.raises(ValueError, match='Feature 1 .* has an empty unique_id'):
             filter_to_region(path, REGION)
 
     def test_projected_file_refused_at_its_crs(
@@ -540,25 +641,6 @@ class TestFile:
         three_worlds().write_to_geojson(str(path))
         path.write_bytes(b'\xef\xbb\xbf' + path.read_bytes())
         assert sorted(filter_to_region(path, REGION).inventory) == ['in_a', 'in_b']
-
-    def test_integer_ids(self, tmp_path: Path) -> None:
-        """A file of integer ids is keyed by them and keeps unique_id and type."""
-        source = three_worlds()
-        for asset in source.inventory.values():
-            asset.features['type'] = 'building'
-        path = tmp_path / 'r2d.geojson'
-        source.write_to_geojson(str(path), integer_ids=True)
-        result = filter_to_region(path, REGION)
-        assert sorted(result.inventory) == [1, 2]
-        assert sorted(
-            a.features['unique_id'] for a in result.inventory.values()
-        ) == [
-            'in_a',
-            'in_b',
-        ]
-        assert all(
-            a.features['type'] == 'building' for a in result.inventory.values()
-        )
 
     def test_mixed_list_lengths_refused(self, tmp_path: Path) -> None:
         """Kept lists of different lengths name no number of worlds."""
