@@ -153,6 +153,8 @@ include = [
     "tests/utils/test_census_api_key.py",
     "brails/scrapers/us_census_scrapers/acs_table_scraper.py",
     "tests/scrapers/test_acs_table_scraper.py",
+    "brails/types/geometry_region.py",
+    "tests/types/test_geometry_region.py",
 
     "brails/scrapers/nsi_parser/nsi_conventions.py",
     "brails/scrapers/nsi_parser/nsi_file_reader.py",
