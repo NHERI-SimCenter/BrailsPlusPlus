@@ -130,6 +130,8 @@ include = [
     "tests/types/test_inventory_merge.py",
     "tests/types/test_integer_id_export.py",
     "tests/types/test_geojson_n_worlds.py",
+    "brails/types/census_boundary.py",
+    "tests/types/test_census_boundary.py",
     "tests/types/test_asset_inventory_geometry.py",
     "tests/utils/test_input_validator.py",
     "tests/conftest.py",

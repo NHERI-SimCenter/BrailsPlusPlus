@@ -36,3 +36,4 @@
 from .asset_inventory import AssetInventory, Asset
 from .housing_unit_inventory import HousingUnitInventory, HousingUnit
 from .region_boundary import RegionBoundary
+from .census_boundary import CensusBoundary
