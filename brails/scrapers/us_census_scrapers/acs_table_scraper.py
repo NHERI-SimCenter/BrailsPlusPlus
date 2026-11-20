@@ -100,11 +100,11 @@ _KEY_CHECK_PARAMS = {'get': 'NAME', 'for': 'state:01'}
 
 
 class _KeyRedaction(logging.Filter):
-    """Replace the API key in the message of a log record."""
+    """Replace the Census API key in the message of a log record."""
 
     def __init__(self, key: str) -> None:
         """
-        Hold the key to replace.
+        Hold the Census API key to replace.
 
         Args:
             key (str):
@@ -115,7 +115,7 @@ class _KeyRedaction(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         """
-        Rewrite a record whose message holds the key, and keep every record.
+        Rewrite a record whose message holds the Census API key; keep every record.
 
         Args:
             record (logging.LogRecord):
@@ -136,45 +136,31 @@ class ACSTableScraper:
     """
     Read American Community Survey tables from the Census Data API.
 
-    The scraper reads one table of the ACS five-year detailed tables for every block
-    group or every tract of the counties given, with one request per county. The
-    result holds the estimate and the margin of error of each line of the table as
-    numbers, under the Census Bureau's variable names, such as ``B25024_002E`` and
-    ``B25024_002M``. The annotation columns, whose names end in ``EA`` and ``MA``,
-    are dropped. From the 2022 release on, the ACS publishes Connecticut by its
-    planning regions (09110 to 09190), so the API holds no geography for the county
-    codes 09001 to 09015 in those releases.
-
-    The key is resolved once, when the scraper is created, by
-    :func:`~brails.utils.census_api_key.resolve_census_api_key`, from the argument or
-    else from the stores it reads, and :meth:`check_key` asks the API whether it
-    accepts the key. The key is sent with every request. It appears in no exception
-    the scraper raises, in none of the frames such an exception carries, and in no
-    record the HTTP library writes through :mod:`logging`
-    for the request.
+    Each call of :meth:`get_table` reads one ACS five-year table for the block groups
+    or tracts of a list of counties. The README beside this module states what a
+    table holds, where the Census API key comes from and how the scraper keeps it out
+    of messages and logs.
 
     Args:
         api_key (str, optional):
-            The Census Data API key. Defaults to ``None``, which reads the stores
+            The Census API key. Defaults to ``None``, which reads the stores
             :func:`~brails.utils.census_api_key.find_census_api_key` names.
         timeout (float, optional):
-            The seconds to wait for the connection and for each part of the answer,
-            as ``requests`` applies a timeout. Defaults to 120.
+            Seconds to wait for the connection and for each part of the answer.
+            Defaults to 120.
         retries (int, optional):
-            How many times a failed request is tried again, as
-            :func:`~brails.utils.http_session.create_retrying_session` does it.
-            Defaults to 3.
+            How many times a failed request is tried again. Defaults to 3.
 
     Attributes:
         key_source (str):
-            Where the key came from, in words that name the argument, the variable,
-            the secret or the file, for the messages about the key.
+            Where the Census API key came from, in words, for the messages about it.
 
     Raises:
         ValueError:
-            If the key holds a character other than an ASCII letter or digit.
+            If the Census API key holds a character other than an ASCII letter or
+            digit.
         LookupError:
-            If ``api_key`` is not given or empty and no store holds a key.
+            If ``api_key`` is not given or empty and no store holds a Census API key.
     """
 
     def __init__(
@@ -184,8 +170,9 @@ class ACSTableScraper:
         timeout: float = 120,
         retries: int = 3,
     ) -> None:
-        """Resolve the key and keep the request settings."""
-        # Held as a CensusApiKey from here on, so that no frame shows its text.
+        """Resolve the Census API key and keep the request settings."""
+        # The Census API key is held as a CensusApiKey from here on, so that no frame
+        # shows its text.
         if isinstance(api_key, str):
             api_key = CensusApiKey(api_key)
         self._api_key, self.key_source = resolve_census_api_key(api_key)
@@ -217,38 +204,27 @@ class ACSTableScraper:
 
         Returns:
             pandas.DataFrame:
-                One row per block group or tract and one column of floats per
-                estimate and per margin, the columns in ascending order of name. The
-                index, named :data:`GEOID_INDEX` and in ascending order, holds the
-                GEOIDs as strings of :data:`~brails.constants.GEOID_LENGTH` digits
-                for block groups or :data:`~brails.constants.TRACT_GEOID_LENGTH`
-                digits for tracts. A null value and a value below
-                :data:`CODED_VALUE_LIMIT`, one of the Census Bureau's coded values,
-                are NaN.
+                One row per block group or tract, indexed by GEOID under
+                :data:`GEOID_INDEX`, and one column of floats per estimate and per
+                margin. The Census Bureau's coded values are NaN.
 
         Raises:
             ValueError:
-                If ``table`` is not a table id of letters and digits that starts with
-                a letter, ``level`` is not one of the two levels, ``counties`` is
-                empty or holds a code that is not five digits or a code twice; or if
-                the API holds no geography of a county; or if ``retries`` is not an
-                integer of at least 0.
+                If ``table``, ``level`` or ``counties`` is not of the form above, a
+                county is given twice, the API holds no geography of a county, or
+                ``retries`` is not an integer of at least 0.
             TypeError:
                 If ``vintage`` is not an integer.
             requests.exceptions.HTTPError:
                 If the API answers with a 4xx status, or with 5xx or 429 after the
-                retries. The message quotes the API's answer, and a 404's asks to
-                check the vintage. The exception carries the status in its message
-                and no response.
+                retries.
             requests.exceptions.ConnectionError:
                 If the connection keeps failing after the retries, or an answer is
                 cut short.
             RuntimeError:
-                If the API answers with something other than the table asked: the
-                page it sends for a key that is not valid or not activated, another
-                page, a body without the expected columns, a value that is not a
-                number or rows of another county; or if a request fails with an error
-                that is not retried, such as too many redirects.
+                If the API answers with something other than the table asked, such as
+                the page it sends for a Census API key that is not valid or not
+                activated, or a request fails with an error that is not retried.
         """
         table = table.upper() if isinstance(table, str) else table
         if not isinstance(table, str) or not re.fullmatch(r'[A-Z][A-Z0-9]*', table):
@@ -328,10 +304,7 @@ class ACSTableScraper:
 
     def check_key(self, vintage: int = DEFAULT_ACS_VINTAGE) -> None:
         """
-        Ask the Census Data API whether it accepts the key.
-
-        Send one request, for the name of one state, with the key, and raise if the
-        API refuses the key, such as one not activated yet.
+        Ask the Census Data API whether it accepts the Census API key.
 
         Args:
             vintage (int, optional):
@@ -342,16 +315,14 @@ class ACSTableScraper:
             TypeError:
                 If ``vintage`` is not an integer.
             RuntimeError:
-                If the API answers with the page it sends for a key that is not valid
-                or not activated, whose message names :attr:`key_source`, or with
-                something other than a table.
+                If the API refuses the Census API key, with a message that names
+                :attr:`key_source`, or answers with something other than a table.
             requests.exceptions.HTTPError:
                 If the API answers with a 4xx status, or with 5xx or 429 after the
                 retries.
             requests.exceptions.ConnectionError:
                 If the connection keeps failing after the retries, or the answer is
-                cut short as :func:`~brails.utils.http_session.get_whole_body`
-                finds it.
+                cut short.
         """
         what = f'the key check against the {vintage} release'
         self._read_rows(self._send_request(vintage, _KEY_CHECK_PARAMS, what), what)
@@ -360,19 +331,16 @@ class ACSTableScraper:
         self, vintage: int, params: dict[str, str], what: str
     ) -> requests.Response:
         """
-        Send a request in a session that tries it again after a failure.
+        Send a request with the Census API key, retried after a failure.
 
-        The key is added to the query. While the request is under way, the frames of
-        ``requests`` and urllib3 hold the URL with the key as plain text, so every
-        exception that leaves them is raised again here, afresh: no exception raised
-        here carries those frames, a context or the key. The request lines urllib3
-        logs show the key replaced.
+        Every exception is raised again afresh, without the frames of ``requests``
+        and urllib3, which hold the URL with the Census API key.
 
         Args:
             vintage (int):
                 The last year of the five-year release asked.
             params (dict[str, str]):
-                The query, without the key.
+                The query, without the Census API key.
             what (str):
                 What was requested, in words, for the messages.
 
@@ -387,15 +355,13 @@ class ACSTableScraper:
                 If ``retries`` is not an integer of at least 0.
             requests.exceptions.ConnectionError:
                 If the connection keeps failing after the retries, or the answer is
-                cut short as :func:`~brails.utils.http_session.get_whole_body`
-                finds it, with the session's message and what was asked.
+                cut short.
             RuntimeError:
                 If the request fails with another error of ``requests``, such as too
-                many redirects, which only its name describes.
+                many redirects.
             BaseException:
-                Any other exception, such as ``KeyboardInterrupt``, raised again as
-                one of its type with a message, or as ``RuntimeError`` where its type
-                takes no message.
+                Any other exception, such as ``KeyboardInterrupt``, as one of its
+                type or as ``RuntimeError``.
         """
         if isinstance(vintage, bool) or not isinstance(vintage, int):
             msg = f'vintage must be an integer year, not {vintage!r}.'
@@ -406,15 +372,15 @@ class ACSTableScraper:
         for name in _HTTP_LOGGERS:
             logging.getLogger(name).addFilter(redaction)
         # Not safe_get_json, which re-raises the HTTPError of a 4xx answer, whose
-        # message holds the URL with the key.
+        # message holds the URL with the Census API key.
         try:
             with create_retrying_session(self.retries) as session:
                 response = get_whole_body(session, url, self.timeout, params=params)
         except exceptions.ConnectionError as error:
-            # The session's message and get_whole_body's name no key.
+            # The session's and get_whole_body's messages hold no Census API key.
             fresh = exceptions.ConnectionError(f'{error} It asked for {what}.')
         except exceptions.RequestException as error:
-            # Its name alone, since its message can hold the URL with the key.
+            # Its name alone: its message can hold the URL with the Census API key.
             fresh = RuntimeError(
                 f'The request to the Census Data API for {what} failed '
                 f'({type(error).__name__}). The API may be down; try again later.'
@@ -454,15 +420,12 @@ class ACSTableScraper:
 
         Raises:
             ValueError:
-                If the API holds no geography of the county (an empty answer, HTTP
-                204).
+                If the API holds no geography of the county (HTTP 204).
             requests.exceptions.HTTPError:
-                On a 4xx or 5xx answer; for 404 the message asks to check the
-                vintage.
+                On a 4xx or 5xx answer.
             RuntimeError:
-                If the answer is not a table. For the page the API sends for a key
-                that is not valid or not activated, the message names where the key
-                came from.
+                If the answer is not a table, such as the page the API sends for a
+                Census API key that is not valid or not activated.
         """
         body = response.text.replace(self._api_key, REDACTED).strip()
         if response.status_code == 204:  # noqa: PLR2004

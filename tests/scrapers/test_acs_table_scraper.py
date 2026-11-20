@@ -613,6 +613,7 @@ def test_missing_release_names_the_vintage(
         ACSTableScraper(KEY).get_table('B25024', LEVEL_BLOCK_GROUP, ['06001'], 2030)
     assert 'of 2030' in str(raised.value)
     assert KEY not in str(raised.value)
+    assert raised.value.response is None
 
 
 def test_answer_that_is_not_the_table_asked_is_refused(
