@@ -615,7 +615,7 @@ class CompilerInputs(NamedTuple):
         cls,
         place: str | RegionBoundary | Polygon | MultiPolygon,
         *,
-        source: str = 'census',
+        place_source: str = 'census',
         buffer_m: float = DEFAULT_DONOR_CAP_M,
         overture_options: Mapping[str, object] | None = None,
         block_group_vintage: int = DEFAULT_TIGER_VINTAGE,
@@ -637,12 +637,13 @@ class CompilerInputs(NamedTuple):
         Args:
             place (str | RegionBoundary | Polygon | MultiPolygon):
                 A place name with its state, as in ``'Berkeley, CA'``, looked up
-                where ``source`` says; a :class:`RegionBoundary` of any kind; or a
-                Shapely polygon or multipolygon in longitude and latitude.
-            source (str, optional):
-                Where a place name is looked up: ``'census'`` for the census places
-                and counties, ``'osm'`` for OpenStreetMap. Not consulted for a
-                region that is not a place name. Defaults to ``'census'``.
+                where ``place_source`` says; a :class:`RegionBoundary` of any kind;
+                or a Shapely polygon or multipolygon in longitude and latitude.
+            place_source (str, optional):
+                Where a place name is looked up, ``'census'`` for the census places
+                and counties or ``'osm'`` for OpenStreetMap; checked, and otherwise
+                ignored, for a region that is not a place name. Defaults to
+                ``'census'``.
             buffer_m (float, optional):
                 How far in meters both areas reach past the place and its block
                 groups. Defaults to the observed-donor imputer's default ``cap_m``.
@@ -713,7 +714,7 @@ class CompilerInputs(NamedTuple):
         # Checked first, so that a missing or refused key stops before a download.
         ACSTableScraper().check_key(DEFAULT_ACS_VINTAGE)
 
-        region = resolve_region(place, source, vintage=block_group_vintage)
+        region = resolve_region(place, place_source, vintage=block_group_vintage)
         boundary, name, identifier = read_boundary(region)
         record = _record_boundary(region, name, identifier)
         notices = []
@@ -1722,26 +1723,27 @@ class HazusEQInventoryCompiler:
         self,
         place: str | RegionBoundary | Polygon | MultiPolygon,
         *,
-        source: str = 'census',
+        place_source: str = 'census',
         **from_place_options: object,
     ) -> CompilationResult:
         """
         Compile a place from its name or boundary.
 
-        The call is ``compile(CompilerInputs.from_place(place, source=source,
-        compiler=self, **from_place_options))``, so a state or zone the compiler
-        would refuse stops it before the footprints are read. ``buffer_m`` defaults
-        to the imputer's ``cap_m``. The Census API key is checked by both calls. No
-        inputs are kept, so a compilation that fails loses the downloads; call
-        :meth:`CompilerInputs.from_place` and :meth:`compile` apart to keep them.
-        It raises what those two raise.
+        The call is ``compile(CompilerInputs.from_place(place,
+        place_source=place_source, compiler=self, **from_place_options))``, so a
+        state or zone the compiler would refuse stops it before the footprints are
+        read. ``buffer_m`` defaults to the imputer's ``cap_m``. The Census API key
+        is checked by both calls. No inputs are kept, so a compilation that fails
+        loses the downloads; call :meth:`CompilerInputs.from_place` and
+        :meth:`compile` apart to keep them. It raises what those two raise.
 
         Args:
             place (str | RegionBoundary | Polygon | MultiPolygon):
                 The place, as :meth:`CompilerInputs.from_place` takes it.
-            source (str, optional):
+            place_source (str, optional):
                 Where a place name is looked up, as :meth:`CompilerInputs.from_place`
-                takes it. Defaults to ``'census'``.
+                takes it; checked, and otherwise ignored, for a region that is not a
+                place name. Defaults to ``'census'``.
             **from_place_options:
                 The other keyword arguments of :meth:`CompilerInputs.from_place`,
                 except ``compiler``.
@@ -1756,7 +1758,7 @@ class HazusEQInventoryCompiler:
         )
         return self.compile(
             CompilerInputs.from_place(
-                place, source=source, compiler=self, **from_place_options
+                place, place_source=place_source, compiler=self, **from_place_options
             )
         )
 

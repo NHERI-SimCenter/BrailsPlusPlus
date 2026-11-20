@@ -21,7 +21,7 @@ that ends in a word such as County or Island, the national county file. A
 building is kept when the centroid of its footprint lies inside the place's
 boundary. The boundary keeps its holes, so the buildings of an enclave, such as
 Piedmont inside Oakland, are left out. For a place the census does not name, call
-``filter_to_region(..., source='osm')`` from Python, which looks the name up in
+``filter_to_region(..., place_source='osm')`` from Python, which looks the name up in
 OpenStreetMap.
 
 For the integer-id form that R2D reads, write the result with

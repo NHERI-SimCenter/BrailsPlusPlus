@@ -293,10 +293,10 @@ def test_nonfunctioning_place_not_matched_by_name() -> None:
     message = (
         "No census place or county in California is named 'Riverbend' (TIGER/Line "
         '2023). Near matches: Riverbend metro government (balance) (0699002). Pass '
-        "one of these names or its GEOID, or pass source='osm' to filter_to_region "
-        'to look the name up in OpenStreetMap. A county is written with the word '
-        "that ends its census name, such as County or Parish, as in 'Marin County, "
-        "CA'."
+        "one of these names or its GEOID, or pass place_source='osm' to "
+        'filter_to_region to look the name up in OpenStreetMap. A county is written '
+        'with the word that ends its census name, such as County or Parish, as in '
+        "'Marin County, CA'."
     )
     with pytest.raises(ValueError, match=f'^{re.escape(message)}$'):
         CensusBoundary('Riverbend, CA').get_boundary()
@@ -320,9 +320,9 @@ def test_misspelled_name_suggests_by_similarity() -> None:
     message = (
         "No census place or county in California is named 'Berkely' (TIGER/Line "
         '2023). Near matches: Berkeley city (0606000). Pass one of these names or '
-        "its GEOID, or pass source='osm' to filter_to_region to look the name up in "
-        'OpenStreetMap. A county is written with the word that ends its census '
-        "name, such as County or Parish, as in 'Marin County, CA'."
+        "its GEOID, or pass place_source='osm' to filter_to_region to look the name "
+        'up in OpenStreetMap. A county is written with the word that ends its '
+        "census name, such as County or Parish, as in 'Marin County, CA'."
     )
     with pytest.raises(ValueError, match=f'^{re.escape(message)}$'):
         CensusBoundary('Berkely, CA').get_boundary()

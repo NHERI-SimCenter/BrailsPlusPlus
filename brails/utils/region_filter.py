@@ -156,7 +156,7 @@ def filter_to_region(  # noqa: C901
     | tuple[AssetInventory | str | os.PathLike[str], ...],
     region: str | RegionBoundary | Polygon | MultiPolygon,
     *,
-    source: str = 'census',
+    place_source: str = 'census',
 ) -> AssetInventory:
     """
     Return the assets of an inventory whose reference point lies inside a region.
@@ -170,7 +170,7 @@ def filter_to_region(  # noqa: C901
     A place name is looked up among the census places and counties of its state
     with :class:`~brails.types.census_boundary.CensusBoundary`, whose boundary
     keeps its holes: the assets of an enclave, such as Piedmont inside Oakland,
-    are left out. With ``source='osm'`` the name is looked up in OpenStreetMap
+    are left out. With ``place_source='osm'`` the name is looked up in OpenStreetMap
     with :class:`RegionBoundary`, whose boundary has no holes, so those assets are
     kept.
 
@@ -199,18 +199,18 @@ def filter_to_region(  # noqa: C901
             longitude and latitude (WGS84), or a list or tuple of them.
         region (str | RegionBoundary | Polygon | MultiPolygon):
             A place name with its state, as in ``'Berkeley, CA'``, looked up
-            once as ``source`` selects, and the lookup prints the name it
+            once as ``place_source`` selects, and the lookup prints the name it
             found; a :class:`RegionBoundary` of any kind, whose boundary is
             fetched; or a Shapely polygon or multipolygon in longitude and
             latitude (WGS84), taken as given and repaired as
             :func:`read_boundary` repairs it if invalid.
-        source (str, optional):
-            Where a place name is looked up: ``'census'`` among the
+        place_source (str, optional):
+            Where a place name is looked up, ``'census'`` among the
             TIGER/Line places and counties with
-            :class:`~brails.types.census_boundary.CensusBoundary`, or
-            ``'osm'`` in OpenStreetMap with :class:`RegionBoundary`. Not
-            consulted for a region that is not a place name. Defaults to
-            ``'census'``.
+            :class:`~brails.types.census_boundary.CensusBoundary` or
+            ``'osm'`` in OpenStreetMap with :class:`RegionBoundary`; checked,
+            and otherwise ignored, for a region that is not a place name.
+            Defaults to ``'census'``.
 
     Returns:
         AssetInventory:
@@ -238,7 +238,7 @@ def filter_to_region(  # noqa: C901
             lengths or of a length other than its ``n_worlds``. Also if an
             asset of an inventory has no coordinates or its coordinates form
             no geometry (:func:`reference_point`). Also as :func:`resolve_region`
-            raises, for ``source`` and the place name.
+            raises, for ``place_source`` and the place name.
 
     Examples:
         >>> from shapely.geometry import box
@@ -296,7 +296,7 @@ def filter_to_region(  # noqa: C901
                 )
             raise TypeError(msg)
 
-    boundary, name, _ = read_boundary(resolve_region(region, source))
+    boundary, name, _ = read_boundary(resolve_region(region, place_source))
     west, south, east, north = boundary.bounds
     if not (
         LONGITUDE_RANGE[0] <= west <= east <= LONGITUDE_RANGE[1]
@@ -618,7 +618,7 @@ def read_boundary(
 
 def resolve_region(
     region: str | RegionBoundary | Polygon | MultiPolygon,
-    source: str = 'census',
+    place_source: str = 'census',
     *,
     vintage: int = DEFAULT_TIGER_VINTAGE,
 ) -> RegionBoundary | Polygon | MultiPolygon:
@@ -629,11 +629,11 @@ def resolve_region(
         region (str | RegionBoundary | Polygon | MultiPolygon):
             A place name with its state, or a region, which is returned as it is
             for the caller to check, a value of another type included.
-        source (str, optional):
-            Where a place name is looked up: ``'census'`` for
-            :class:`~brails.types.census_boundary.CensusBoundary`, ``'osm'`` for
-            :class:`RegionBoundary` of the name. Not consulted for a region that
-            is not a place name. Defaults to ``'census'``.
+        place_source (str, optional):
+            Where a place name is looked up, ``'census'`` for
+            :class:`~brails.types.census_boundary.CensusBoundary` or ``'osm'`` for
+            :class:`RegionBoundary` of the name; checked, and otherwise ignored,
+            for a region that is not a place name. Defaults to ``'census'``.
         vintage (int, optional):
             The year of the TIGER/Line release a census lookup reads. Defaults to
             :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
@@ -646,15 +646,15 @@ def resolve_region(
 
     Raises:
         ValueError:
-            If ``source`` is another value, whatever the region, or if
+            If ``place_source`` is another value, whatever the region, or if
             ``CensusBoundary`` refuses the name.
     """
-    if source not in ('census', 'osm'):
-        msg = f"source must be 'census' or 'osm', not {source!r}."
+    if place_source not in ('census', 'osm'):
+        msg = f"place_source must be 'census' or 'osm', not {place_source!r}."
         raise ValueError(msg)
     if not isinstance(region, str):
         return region
-    if source == 'osm':
+    if place_source == 'osm':
         return RegionBoundary({'type': 'locationName', 'data': region})
     return CensusBoundary(region, vintage=vintage)
 

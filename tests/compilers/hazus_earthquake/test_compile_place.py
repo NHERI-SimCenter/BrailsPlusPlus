@@ -505,13 +505,13 @@ class TestFromPlace:
         )
 
     def test_osm_name(self, services: Services) -> None:
-        """A name with source='osm' reaches OpenStreetMap, which the record names."""
+        """A name with place_source='osm' reaches OpenStreetMap, which it records."""
         with mock.patch.object(
             RegionBoundary,
             'get_boundary',
             return_value=(polygon(PLACE), 'Placeville', 123),
         ) as lookup:
-            inputs = gather(services, 'Placeville, CA', source='osm')
+            inputs = gather(services, 'Placeville, CA', place_source='osm')
 
         lookup.assert_called_once()
         assert inputs.boundary_record == {
@@ -658,10 +658,10 @@ class TestCompilePlace:
         with mock.patch.object(
             CompilerInputs, 'from_place', return_value=inputs
         ) as gather_inputs:
-            result = compiler.compile_place('Placeville, CA', source='osm')
+            result = compiler.compile_place('Placeville, CA', place_source='osm')
 
         gather_inputs.assert_called_once_with(
-            'Placeville, CA', compiler=compiler, source='osm', buffer_m=3000.0
+            'Placeville, CA', compiler=compiler, place_source='osm', buffer_m=3000.0
         )
         expected = compiler.compile(inputs)
         assert {
@@ -670,7 +670,7 @@ class TestCompilePlace:
         assert result.report.summary()['notices'][0] == 'A notice of the inputs.'
 
     def test_compile_place_source_defaults_to_census(self) -> None:
-        """compile_place without source passes source='census' to from_place."""
+        """compile_place without place_source passes 'census' to from_place."""
         compiler = HazusEQInventoryCompiler(seed=SEED, n_worlds=1)
         with (
             mock.patch.object(
@@ -680,7 +680,7 @@ class TestCompilePlace:
         ):
             compiler.compile_place('Placeville, CA')
 
-        assert gather_inputs.call_args.kwargs['source'] == 'census'
+        assert gather_inputs.call_args.kwargs['place_source'] == 'census'
 
     def test_zone_refused_before_footprints(self, services: Services) -> None:
         """A place outside California without a zone stops before footprints."""

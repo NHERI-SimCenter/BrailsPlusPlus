@@ -829,8 +829,9 @@ A compilation from a place
 ``CompilerInputs.from_place`` gathers the inputs of a place, and the compiler's
 ``compile_place`` compiles them in one call. The place is a name with its state,
 looked up among the census places and counties by ``CensusBoundary``, or in
-OpenStreetMap with ``source='osm'``; a ``RegionBoundary``; or a Shapely polygon.
-``from_place`` takes these steps, the quick ones and the likely failures first:
+OpenStreetMap with ``place_source='osm'``; a ``RegionBoundary``; or a Shapely
+polygon. ``from_place`` takes these steps, the quick ones and the likely failures
+first:
 
 1. It asks the Census Data API whether it accepts the key, before any download, since
    the compiler reads the census tables with it.

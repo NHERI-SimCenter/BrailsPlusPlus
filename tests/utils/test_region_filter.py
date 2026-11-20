@@ -878,7 +878,9 @@ class TestRegion:
             return REGION, 'Testville', 1
 
         monkeypatch.setattr(RegionBoundary, 'get_boundary', get_boundary)
-        result = filter_to_region(three_worlds(), 'Testville, CA', source='osm')
+        result = filter_to_region(
+            three_worlds(), 'Testville, CA', place_source='osm'
+        )
         assert calls == [('locationName', 'Testville, CA')]
         assert sorted(result.inventory) == ['in_a', 'in_b']
         assert capsys.readouterr().out == 'Kept 2 of 3 assets inside Testville.\n'
@@ -955,7 +957,7 @@ class TestRegion:
         )
         with pytest.raises(FileNotFoundError, match='is not a file'):
             filter_to_region(
-                tmp_path / 'missing.geojson', 'Testville, CA', source='osm'
+                tmp_path / 'missing.geojson', 'Testville, CA', place_source='osm'
             )
         assert calls == []
 
@@ -980,7 +982,7 @@ class TestRegion:
         raw = io.BytesIO()
         console = io.TextIOWrapper(raw, encoding='ascii')
         monkeypatch.setattr(sys, 'stdout', console)
-        filter_to_region(three_worlds(), 'Cañada, CA', source='osm')
+        filter_to_region(three_worlds(), 'Cañada, CA', place_source='osm')
         console.flush()
         assert raw.getvalue() == b'Kept 2 of 3 assets inside Canada.\n'
 
@@ -1085,7 +1087,9 @@ class TestSources:
             return REGION, 'Testville', 1
 
         monkeypatch.setattr(RegionBoundary, 'get_boundary', get_boundary)
-        filter_to_region(list(two_counties(tmp_path)), 'Testville, CA', source='osm')
+        filter_to_region(
+            list(two_counties(tmp_path)), 'Testville, CA', place_source='osm'
+        )
         assert calls == ['Testville, CA']
 
     def test_empty_list_refused(self) -> None:
@@ -1141,7 +1145,9 @@ class TestSources:
         west_path, _ = two_counties(tmp_path)
         with pytest.raises(FileNotFoundError, match='missing.geojson is not a file'):
             filter_to_region(
-                [west_path, tmp_path / 'missing.geojson'], 'Testville', source='osm'
+                [west_path, tmp_path / 'missing.geojson'],
+                'Testville',
+                place_source='osm',
             )
         assert calls == []
 
@@ -1306,7 +1312,7 @@ class TestSource:
         monkeypatch.setattr(RegionBoundary, 'get_boundary', osm)
         return calls
 
-    @pytest.mark.parametrize('options', [{}, {'source': 'census'}])
+    @pytest.mark.parametrize('options', [{}, {'place_source': 'census'}])
     def test_name_goes_to_the_census(
         self,
         lookups: list,
@@ -1322,8 +1328,8 @@ class TestSource:
         )
 
     def test_osm_only_with_osm(self, lookups: list) -> None:
-        """With source='osm' the name goes to RegionBoundary, not to the census."""
-        filter_to_region(three_worlds(), 'Testville, CA', source='osm')
+        """With place_source='osm' a name goes to RegionBoundary, not the census."""
+        filter_to_region(three_worlds(), 'Testville, CA', place_source='osm')
         assert lookups == [('osm', 'Testville, CA')]
 
     def test_census_boundary_given(self, lookups: list) -> None:
@@ -1352,34 +1358,36 @@ class TestSource:
             filter_to_region(three_worlds(), 'Testville, CA')
         assert lookups == [('census', 'refused')]
 
-    @pytest.mark.parametrize('source', ['census', 'osm'])
+    @pytest.mark.parametrize('place_source', ['census', 'osm'])
     def test_source_beside_a_polygon_not_consulted(
-        self, lookups: list, source: str
+        self, lookups: list, place_source: str
     ) -> None:
         """Either source beside a polygon is accepted and looks nothing up."""
-        result = filter_to_region(three_worlds(), REGION, source=source)
+        result = filter_to_region(three_worlds(), REGION, place_source=place_source)
         assert sorted(result.inventory) == ['in_a', 'in_b']
         assert lookups == []
 
-    @pytest.mark.parametrize('source', ['census', 'osm'])
+    @pytest.mark.parametrize('place_source', ['census', 'osm'])
     def test_source_beside_a_region_boundary_not_consulted(
-        self, lookups: list, source: str
+        self, lookups: list, place_source: str
     ) -> None:
         """Either source beside a RegionBoundary reads only the region's boundary."""
         data = (-122.01, 37.99, -121.99, 38.01)
         region = RegionBoundary({'type': 'locationPolygon', 'data': data})
-        result = filter_to_region(three_worlds(), region, source=source)
+        result = filter_to_region(three_worlds(), region, place_source=place_source)
         assert sorted(result.inventory) == ['in_a', 'in_b']
         assert lookups == [('osm', data)]
 
     @pytest.mark.parametrize('region', ['Testville, CA', REGION])
-    @pytest.mark.parametrize('source', ['nominatim', None])
+    @pytest.mark.parametrize('place_source', ['nominatim', None])
     def test_unknown_source_refused(
-        self, lookups: list, region: object, source: object
+        self, lookups: list, region: object, place_source: object
     ) -> None:
         """A source other than 'census' or 'osm' is refused, whatever the region."""
-        with pytest.raises(ValueError, match="source must be 'census' or 'osm'"):
-            filter_to_region(three_worlds(), region, source=source)
+        with pytest.raises(
+            ValueError, match="place_source must be 'census' or 'osm'"
+        ):
+            filter_to_region(three_worlds(), region, place_source=place_source)
         assert lookups == []
 
 

@@ -237,8 +237,8 @@ class CensusBoundary(RegionBoundary):
         elif len(parts) <= 1:
             msg = (
                 f"'{place}' names no state. Add the place's state, as in "
-                "'Berkeley, CA', or pass source='osm' to filter_to_region for a "
-                'place outside the US.'
+                "'Berkeley, CA', or pass place_source='osm' to filter_to_region "
+                'for a place outside the US.'
             )
             raise ValueError(msg)
         else:
@@ -255,7 +255,8 @@ class CensusBoundary(RegionBoundary):
                     f"'{parts[-1]}' is not a US state, DC or territory. Write the "
                     'state as its two-letter code or its full name, as in '
                     "'Berkeley, CA' or 'Berkeley, California'. For a place outside "
-                    "the United States, pass source='osm' to filter_to_region."
+                    "the United States, pass place_source='osm' to "
+                    'filter_to_region.'
                 )
                 raise ValueError(msg)
             self._state = found[0]
@@ -360,8 +361,8 @@ class CensusBoundary(RegionBoundary):
                     "'Berkeley city, CA', or its "
                     f"{PLACE_GEOID_LENGTH}-digit GEOID alone, as in '0606000',"
                 )
-                + " or pass source='osm' to filter_to_region to look the name up in "
-                f'OpenStreetMap. {_COUNTY_ADVICE}'
+                + " or pass place_source='osm' to filter_to_region to look the "
+                f'name up in OpenStreetMap. {_COUNTY_ADVICE}'
             )
             raise ValueError(msg)
         if len(hits) > 1:
