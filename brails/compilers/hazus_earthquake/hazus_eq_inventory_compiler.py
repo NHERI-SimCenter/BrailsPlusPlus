@@ -57,6 +57,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, NamedTuple
 
+import numpy as np
 import pandas as pd
 
 from brails.aggregators.points_to_polygons.nsi_footprint_join import NSIFootprintJoin
@@ -110,6 +111,7 @@ from brails.constants import (
     STORIES_FROM_HEIGHT_KEY,
     STORIES_KEY,
     STRUCTURE_TYPE_KEY,
+    TRACT_GEOID_LENGTH,
     UNITS_KEY,
     YEAR_BUILT_KEY,
 )
@@ -133,10 +135,13 @@ from brails.imputers.residential_neighbor_year_sampler.residential_neighbor_year
 from brails.inferers.acs_unit_budget.acs_unit_budget import (
     DROP_PROBABILITY,
     GAP_NO_ACS,
+    GEOID_COLUMN,
     ACSUnitBudget,
     UnitBudgetResult,
 )
 from brails.inferers.acs_year_built_sampler.acs_year_built_sampler import (
+    B25034_BINS,
+    B25127_CELLS,
     ACSYearBuiltSampler,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_design_level_inferer import (
@@ -171,8 +176,13 @@ from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
     OVERTURE_PROVIDER,
     SOURCES_KEY,
 )
+from brails.scrapers.us_census_scrapers.acs_table_scraper import (
+    DEFAULT_ACS_VINTAGE,
+    ACSTableScraper,
+)
 from brails.scrapers.us_census_scrapers.census_tract_scraper import (
     LEVEL_BLOCK_GROUP,
+    LEVEL_TRACT,
     CensusTractScraper,
 )
 from brails.types.asset_inventory import (
@@ -391,6 +401,22 @@ _RESERVED_OPTIONS = {
     ),
 }
 
+# The ACS table and the level the compiler reads for each table of CompilerInputs
+# given as None.
+_ACS_TABLE_REQUESTS = {
+    'b25024_block_groups': ('B25024', LEVEL_BLOCK_GROUP),
+    'b25034_block_groups': ('B25034', LEVEL_BLOCK_GROUP),
+    'b25034_tracts': ('B25034', LEVEL_TRACT),
+    'b25127_tracts': ('B25127', LEVEL_TRACT),
+}
+
+# The estimates ACSYearBuiltSampler reads of each table it takes.
+_SAMPLER_VARIABLES = {
+    'b25034_block_groups': [row[3] for row in B25034_BINS],
+    'b25034_tracts': [row[3] for row in B25034_BINS],
+    'b25127_tracts': [name for _, _, pair in B25127_CELLS for name in pair],
+}
+
 # Position of each feature in the source string.
 _CODE_POSITION = {
     feature: position for position, feature in enumerate(HAZUS_EQ_SOURCE_FEATURES)
@@ -436,22 +462,27 @@ class CompilerInputs(NamedTuple):
         nsi_points (AssetInventory):
             The NSI points keyed by ``fd_id``, as
             :class:`~brails.scrapers.NSIFileReader` reads them.
-        b25024_block_groups (pandas.DataFrame):
+        b25024_block_groups (pandas.DataFrame | None):
             Table B25024 per block group, as
             :class:`~brails.inferers.acs_unit_budget.acs_unit_budget.ACSUnitBudget`
-            takes it.
-        b25034_block_groups (pandas.DataFrame):
+            takes it. ``None``, the default, has the compiler read it from the Census
+            Data API, which needs a Census API key.
+        b25034_block_groups (pandas.DataFrame | None):
             Table B25034 per block group, as
             :class:`~brails.inferers.acs_year_built_sampler.acs_year_built_sampler.ACSYearBuiltSampler`
-            takes it.
-        b25034_tracts (pandas.DataFrame):
-            Table B25034 per tract, in the same form.
-        b25127_tracts (pandas.DataFrame):
-            Table B25127 per tract, in the same form.
+            takes it. ``None``, the default, has the compiler read it, as for
+            ``b25024_block_groups``.
+        b25034_tracts (pandas.DataFrame | None):
+            Table B25034 per tract, in the same form. ``None``, the default, has the
+            compiler read it, as for ``b25024_block_groups``.
+        b25127_tracts (pandas.DataFrame | None):
+            Table B25127 per tract, in the same form. ``None``, the default, has the
+            compiler read it, as for ``b25024_block_groups``.
         mh_park_points (object):
             The mobile-home park points, in any form
             :class:`~brails.inferers.acs_unit_budget.acs_unit_budget.ACSUnitBudget`
-            accepts for ``mh_park_points``.
+            accepts for ``mh_park_points``. Its default, ``None``, is not such a
+            form: the field takes a default only because the tables before it do.
         footprint_release (str | None):
             The Overture release the footprints come from, written to every
             Overture footprint as ``overture_<release>``. ``None`` writes
@@ -479,11 +510,11 @@ class CompilerInputs(NamedTuple):
 
     footprints: AssetInventory
     nsi_points: AssetInventory
-    b25024_block_groups: pd.DataFrame
-    b25034_block_groups: pd.DataFrame
-    b25034_tracts: pd.DataFrame
-    b25127_tracts: pd.DataFrame
-    mh_park_points: object
+    b25024_block_groups: pd.DataFrame | None = None
+    b25034_block_groups: pd.DataFrame | None = None
+    b25034_tracts: pd.DataFrame | None = None
+    b25127_tracts: pd.DataFrame | None = None
+    mh_park_points: object = None
     footprint_release: str | None = None
     local: AssetInventory | None = None
     study_area: str = ''
@@ -1044,6 +1075,7 @@ class HazusEQInventoryCompiler:
         budget_options: Mapping[str, object] | None = None,
         sampler_options: Mapping[str, object] | None = None,
         merge_stacked: bool = False,
+        acs_vintage: int = DEFAULT_ACS_VINTAGE,
     ) -> None:
         """
         Store the compiler's settings and refuse any that a component would refuse.
@@ -1099,10 +1131,15 @@ class HazusEQInventoryCompiler:
                 footprints' height unit, which re-keys them by geohash. The
                 footprints must then all be Overture footprints with an
                 ``overture_id``, and no local inventory is accepted.
+            acs_vintage (int, optional):
+                The last year of the ACS five-year release from which :meth:`compile`
+                reads each census table that :class:`CompilerInputs` gives as
+                ``None``. Defaults to
+                :data:`~brails.scrapers.us_census_scrapers.acs_table_scraper.DEFAULT_ACS_VINTAGE`.
 
         Raises:
             TypeError:
-                If ``seed`` or ``n_worlds`` is not an integer,
+                If ``seed``, ``n_worlds`` or ``acs_vintage`` is not an integer,
                 ``merge_stacked`` is not a boolean, an options argument is
                 not a mapping, or an options mapping names an argument its
                 class does not take or that the compiler sets.
@@ -1134,6 +1171,10 @@ class HazusEQInventoryCompiler:
             msg = f'merge_stacked must be a boolean, not {merge_stacked!r}.'
             raise TypeError(msg)
         self.merge_stacked = merge_stacked
+        if isinstance(acs_vintage, bool) or not isinstance(acs_vintage, int):
+            msg = f'acs_vintage must be an integer year, not {acs_vintage!r}.'
+            raise TypeError(msg)
+        self.acs_vintage = acs_vintage
 
         try:
             # Built only to check the state. Each world builds its own.
@@ -1218,9 +1259,20 @@ class HazusEQInventoryCompiler:
                 than one possible world, or is given with ``merge_stacked``;
                 or as the components raise, among them a footprint outside
                 every block group and, with ``merge_stacked``, a footprint
-                that is not Overture's.
+                that is not Overture's; or, for a census table given as ``None``, if
+                a key store holds a value that cannot be a key or a table the year
+                sampler reads holds an estimate the Census Bureau does not publish
+                where the run reads it.
+            LookupError:
+                If a census table is given as ``None`` and no Census API key is
+                found.
             RuntimeError:
-                If a frozen stage changed during the run.
+                If a frozen stage changed during the run; or, for a census table
+                given as ``None``, if the Census Data API refuses the key or answers
+                a request with something other than the table asked.
+            requests.exceptions.RequestException:
+                If the key check or a request for a census table fails, as
+                :meth:`~brails.scrapers.ACSTableScraper.get_table` raises.
         """
         not_strings = [
             a for a in inputs.footprints.inventory if not isinstance(a, str)
@@ -1297,9 +1349,11 @@ class HazusEQInventoryCompiler:
         sources = _WorldSources(freeze)
         logs: dict[str, pd.DataFrame] = {}
 
+        inputs, acs_scraper = self._read_inputs_before_s01(inputs, report)
         started = time.perf_counter()
         centroids = self._prepare_footprints(inputs, sources, logs, report)
         report.set_timing(STAGE_S01_FOOTPRINTS, time.perf_counter() - started)
+        inputs = self._read_census_tables(inputs, acs_scraper, freeze, report)
 
         started = time.perf_counter()
         self._join_nsi_to_footprints(inputs, sources, logs, centroids)
@@ -1573,6 +1627,145 @@ class HazusEQInventoryCompiler:
                     ]
             sources.add_part('local', STAGE_S01_LOCAL, local)
         return centroids
+
+    def _read_inputs_before_s01(
+        self, inputs: CompilerInputs, report: CompilationReport
+    ) -> tuple[CompilerInputs, ACSTableScraper | None]:
+        """
+        Check the Census API key for the census tables left as ``None``.
+
+        The check runs before s01, so that a run without a usable key stops before
+        any step. The tables are read after s01, by :meth:`_read_census_tables`.
+
+        Args:
+            inputs (CompilerInputs):
+                The study area's data.
+            report (CompilationReport):
+                The report, whose settings record ``acs_vintage`` when a table is to
+                be read.
+
+        Returns:
+            tuple[CompilerInputs, ACSTableScraper | None]:
+                The inputs, and the scraper holding the checked key, or ``None`` when
+                every table is given.
+
+        Raises:
+            LookupError, RuntimeError:
+                If no key is found or the API refuses it, with a sentence naming the
+                tables that need it.
+            ValueError, requests.exceptions.RequestException:
+                As :class:`ACSTableScraper` and its ``check_key`` raise.
+        """
+        missing = [
+            name for name in _ACS_TABLE_REQUESTS if getattr(inputs, name) is None
+        ]
+        if not missing:
+            return inputs, None
+        try:
+            scraper = ACSTableScraper()
+            scraper.check_key(self.acs_vintage)
+        except (LookupError, RuntimeError) as error:
+            msg = (
+                f'{error} CompilerInputs leaves {", ".join(missing)} as None, so '
+                'the compiler reads them from the Census Data API, which needs a '
+                'key. Give the tables in CompilerInputs to compile without one.'
+            )
+            raise type(error)(msg) from error
+        report.settings['acs_vintage'] = self.acs_vintage
+        return inputs, scraper
+
+    def _read_census_tables(
+        self,
+        inputs: CompilerInputs,
+        scraper: ACSTableScraper | None,
+        freeze: StageFreeze,
+        report: CompilationReport,
+    ) -> CompilerInputs:
+        """
+        Read the census tables given as ``None`` for the counties of the footprints.
+
+        A county is read whole. The year sampler receives the rows of B25034 for the
+        footprints' block groups and tracts only, and every tract of B25127, whose
+        county totals it sums.
+
+        Args:
+            inputs (CompilerInputs):
+                The study area's data.
+            scraper (ACSTableScraper | None):
+                The scraper the tables are read with, holding the checked key, or
+                ``None`` when every table is given, which reads nothing.
+            freeze (StageFreeze):
+                The freeze holding :data:`STAGE_S01_FOOTPRINTS`, whose block groups
+                name the counties.
+            report (CompilationReport):
+                The report, whose notice names the release, the tables and the
+                counties, and which times the reading as ``s01_acs_tables``.
+
+        Returns:
+            CompilerInputs:
+                A copy of ``inputs`` holding the tables read, each in the form its
+                field takes.
+
+        Raises:
+            ValueError:
+                If a table the year sampler reads holds, in the rows it receives, an
+                estimate the Census Bureau does not publish, or as
+                :meth:`ACSTableScraper.get_table` raises.
+            RuntimeError, requests.exceptions.RequestException:
+                As :meth:`ACSTableScraper.get_table` raises.
+        """
+        if scraper is None:
+            return inputs
+        started = time.perf_counter()
+        block_groups = {
+            asset.features[BLOCK_GROUP_KEY]
+            for asset in freeze.read(STAGE_S01_FOOTPRINTS).inventory.values()
+        }
+        # A county's FIPS code is the first five digits of a GEOID.
+        counties = sorted({geoid[:5] for geoid in block_groups})
+        rows = {
+            'b25034_block_groups': block_groups,
+            'b25034_tracts': {geoid[:TRACT_GEOID_LENGTH] for geoid in block_groups},
+        }
+        requested = [
+            name for name in _ACS_TABLE_REQUESTS if getattr(inputs, name) is None
+        ]
+        print(
+            f'Reading the ACS {self.acs_vintage} five-year tables of '
+            f'{", ".join(requested)} for the counties {", ".join(counties)} from '
+            'the Census Data API.'
+        )
+        tables = {}
+        for name in requested:
+            table, level = _ACS_TABLE_REQUESTS[name]
+            frame = scraper.get_table(
+                table, level, counties, vintage=self.acs_vintage
+            )
+            if name == 'b25024_block_groups':
+                # The budget takes the table with a GEOID column.
+                tables[name] = frame.rename_axis(GEOID_COLUMN).reset_index()
+                continue
+            if name in rows:
+                frame = frame.loc[frame.index.isin(rows[name])]
+            estimates = frame[_SAMPLER_VARIABLES[name]]
+            unfit = estimates.index[~np.isfinite(estimates).all(axis=1)]
+            if len(unfit):
+                msg = (
+                    f'The ACS {self.acs_vintage} table {table} read for {name}, by '
+                    f'{level.replace("_", " ")}, holds an estimate the Census '
+                    f'Bureau does not publish for {len(unfit)} GEOID(s), among them '
+                    f'{list(unfit[:5])}. Give {name} in CompilerInputs with those '
+                    'estimates filled, or choose another acs_vintage.'
+                )
+                raise ValueError(msg)
+            tables[name] = frame
+        report.note(
+            f'ACS {self.acs_vintage} five-year tables read from the Census Data API '
+            f'for {", ".join(requested)}, covering the counties '
+            f'{", ".join(counties)}.'
+        )
+        report.set_timing('s01_acs_tables', time.perf_counter() - started)
+        return inputs._replace(**tables)
 
     def _join_nsi_to_footprints(
         self,

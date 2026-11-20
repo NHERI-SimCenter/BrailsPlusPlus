@@ -47,11 +47,11 @@ The caller gives the data of the study area in a ``CompilerInputs``:
   is to be written with ``integer_ids``;
 - the points of the National Structure Inventory (NSI), as the NSI reader
   returns them;
-- three tables of the American Community Survey: B25024, the housing units by
-  the number of units in their structure, per block group; B25034, the
-  housing units by the year their structure was built, per block group and
-  per tract; and B25127, the occupied housing units by year built and
-  structure size, per tract;
+- optionally, three tables of the American Community Survey: B25024, the housing
+  units by the number of units in their structure, per block group; B25034, the
+  housing units by the year their structure was built, per block group and per tract;
+  and B25127, the occupied housing units by year built and structure size, per tract.
+  A table left as ``None`` is read from the Census Data API (see ``s01_footprints``);
 - the points of the mobile-home parks;
 - optionally, a local inventory of values known locally, which takes
   precedence over every other source (see "Local inputs" below);
@@ -64,7 +64,8 @@ The constructor of the compiler takes the settings of the run: the seed of
 every random draw, the number of worlds, the state, the seismic zone and the
 design level method that the Hazus inferers read, the distance cap of the NSI
 join and the projected coordinate system of its distances, the options of
-three components, and whether to merge stacked footprints first. Given no
+three components, whether to merge stacked footprints first, and ``acs_vintage``, the
+ACS release of the census tables the run reads. Given no
 seed, the compiler draws one, which ``CompilationResult.seed`` and the
 report's summary hold, so that the run can be repeated. The constructor
 checks the settings. It also builds four of the components, so that each can
@@ -222,6 +223,21 @@ footprints it merged and its log of ids are written as the logs
 ``stacked_parts`` and ``stacked_asset_ids``, and a notice in the report
 counts the merges. Without the option the footprints are taken as given,
 keyed by the caller's asset ids.
+
+Where a census table of ``CompilerInputs`` is ``None``, ``ACSTableScraper`` reads it
+from the Census Data API, from the ACS five-year release that the compiler's
+``acs_vintage`` names. A table that is given is used as it is. The requests cover
+every block group or tract of each county that holds one of the footprints' block
+groups, so a single footprint across a county line brings in the whole of that
+county. Reading a table needs a Census API key, which ``find_census_api_key`` in
+``brails/utils/census_api_key.py`` looks up. Before ``s01_footprints`` starts,
+``compile`` asks the API whether it accepts the key. Without a key, or with one the
+API refuses, the run stops there. The year sampler receives the rows of B25034 for
+the footprints' block groups and their tracts, and every tract of B25127, whose
+county totals it sums. The run stops if one of those rows holds an estimate the
+Census Bureau does not publish. The report records the release among its settings
+and, in a notice, the tables and the counties read, and it times the reading as
+``s01_acs_tables``.
 
 ``s02_nsi_join``
 ~~~~~~~~~~~~~~~~
