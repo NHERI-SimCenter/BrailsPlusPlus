@@ -34,11 +34,10 @@
 """
 Fill missing building features by copying them from one observed donor.
 
-``DonorPool`` (from
-:mod:`~brails.imputers.observed_donor_imputer.donor_pool`), ``DonorDraw``
-and ``DonorImputationResult`` (from
-:mod:`~brails.imputers.observed_donor_imputer.donor_records`) can also be
-imported from this module.
+``DonorPool`` (from :mod:`~brails.imputers.observed_donor_imputer.donor_pool`),
+``DonorDraw`` and ``DonorImputationResult`` (from
+:mod:`~brails.imputers.observed_donor_imputer.donor_records`) can also be imported
+from this module.
 
 .. autosummary::
 
@@ -128,8 +127,8 @@ OCCUPANCY_UNITS_AND_STORIES = (OCCUPANCY_KEY, UNITS_KEY, STORIES_KEY)
 # Features a donor must hold.
 REQUIRED_DONOR_FEATURES = (OCCUPANCY_KEY, STORIES_KEY)
 
-# Features whose copy makes a target subject to validation by default, of
-# those the imputer fills.
+# Features whose copy makes a target subject to validation by default, of those the
+# imputer fills.
 VALIDATED_FEATURES = (OCCUPANCY_KEY, STORIES_KEY)
 
 # Name of the default status, which enters the purpose labels of its round.
@@ -140,14 +139,13 @@ PURPOSE_DONOR = 'observed_donor'
 PURPOSE_FALLBACK = 'observed_donor_fallback'
 PURPOSE_BATCH = 'observed_donor_batch'
 
-# The defaults below are described in README.rst, "Defaults".
-# Default number of nearest donors picked among, and the donor distance cap
-# in meters.
+# The defaults below are described in README.rst, "Defaults". Default number of
+# nearest donors picked among, and the donor distance cap in meters.
 DEFAULT_DONOR_K = 20
 DEFAULT_DONOR_CAP_M = 2000.0
 
-# Default terms of the donor distance: the meters of separation counted as
-# one unit, and the weights of the plan-area and story-count terms.
+# Default terms of the donor distance: the meters of separation counted as one unit,
+# and the weights of the plan-area and story-count terms.
 DEFAULT_LOCATION_SCALE_M = 100.0
 DEFAULT_AREA_WEIGHT = 1.0
 DEFAULT_STORIES_WEIGHT = 1.0
@@ -173,8 +171,7 @@ def _status_purposes(status_name: str) -> tuple[str, str]:
     return label, f'{label}_fallback'
 
 
-# Purpose labels of the status round and its fallback under the default
-# status name.
+# Purpose labels of the status round and its fallback under the default status name.
 PURPOSE_RESIDENTIAL, PURPOSE_RESIDENTIAL_FALLBACK = _status_purposes(
     RESIDENTIAL_STATUS_NAME
 )
@@ -204,23 +201,22 @@ class ObservedDonorImputer(Imputation):
     """
     Fill missing features of each target from one observed donor per world.
 
-    Donors are buildings with observed values. An asset has the status when
-    its value of ``status_key`` is among ``status_values``, by default when
-    its occupancy class is residential. For each target and world,
-    the donors within ``cap_m`` that match the target's status and its
-    known soft-filter features are ranked by a distance over location, log
-    plan area and story count. One of the ``k`` nearest donors is picked with
-    inverse-distance weights and using the target's keyed uniform, and every
-    missing feature is copied from it. A target whose ``status_key`` value
-    is unknown and whose status is not given, first takes its status from a
-    pick among all donors within the cap. A target with no donor within the
-    cap draws one donor of its own block group with equal weights. The donor
-    in such cases may lie beyond the cap in a rural block group that covers
-    a large area. Every draw depends on the target's id, the seed, the world,
-    the iteration and the donors, but never on processing order.
+    Donors are buildings with observed values. An asset has the status when its value
+    of ``status_key`` is among ``status_values``, by default when its occupancy class
+    is residential. For each target and world, the donors within ``cap_m`` that match
+    the target's status and its known soft-filter features are ranked by a distance
+    over location, log plan area and story count. One of the ``k`` nearest donors is
+    picked with inverse-distance weights and using the target's keyed uniform, and
+    every missing feature is copied from it. A target whose ``status_key`` value is
+    unknown and whose status is not given, first takes its status from a pick among
+    all donors within the cap. A target with no donor within the cap draws one donor
+    of its own block group with equal weights. The donor in such cases may lie beyond
+    the cap in a rural block group that covers a large area. Every draw depends on
+    the target's id, the seed, the world, the iteration and the donors, but never on
+    processing order.
 
-    Every constructor argument is stored as an attribute of the same name,
-    read-only by convention, and ``seed`` holds the seed used.
+    Every constructor argument is stored as an attribute of the same name, read-only
+    by convention, and ``seed`` holds the seed used.
     """
 
     def __init__(  # noqa: PLR0913
@@ -248,75 +244,68 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             features (Sequence[str], optional):
-                The features filled. Defaults to
-                :data:`OCCUPANCY_UNITS_AND_STORIES`.
+                The features filled. Defaults to :data:`OCCUPANCY_UNITS_AND_STORIES`.
             soft_filters (Sequence[str], optional):
-                Features a donor must match where the target holds them,
-                relaxed one at a time from the last when fewer than ``k``
-                donors match. Defaults to the occupancy class.
+                Features a donor must match where the target holds them, relaxed one
+                at a time from the last when fewer than ``k`` donors match. Defaults
+                to the occupancy class.
             required (Sequence[str], optional):
                 Features a donor must hold. Defaults to
                 :data:`REQUIRED_DONOR_FEATURES`.
             status_key (str, optional):
-                The feature an asset's status is read from, one of
-                ``features``, ``soft_filters`` or ``required``. A donor
-                without it is never drawn. Defaults to
-                :data:`OCCUPANCY_KEY`.
+                The feature an asset's status is read from, one of ``features``,
+                ``soft_filters`` or ``required``. A donor without it is never drawn.
+                Defaults to :data:`OCCUPANCY_KEY`.
             status_values (Sequence[Any], optional):
-                The values of ``status_key`` that give an asset the status.
-                Defaults to
-                :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`.
+                The values of ``status_key`` that give an asset the status. Defaults
+                to :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`.
             status_name (str, optional):
-                The name of the status, which forms the purpose labels of
-                its round, ``f'{PURPOSE_DONOR}_{status_name}'`` and that
-                label followed by ``'_fallback'``. Defaults to
-                :data:`RESIDENTIAL_STATUS_NAME`, which gives
-                :data:`PURPOSE_RESIDENTIAL` and
+                The name of the status, which forms the purpose labels of its round,
+                ``f'{PURPOSE_DONOR}_{status_name}'`` and that label followed by
+                ``'_fallback'``. Defaults to :data:`RESIDENTIAL_STATUS_NAME`, which
+                gives :data:`PURPOSE_RESIDENTIAL` and
                 :data:`PURPOSE_RESIDENTIAL_FALLBACK`.
             validated (Sequence[str], optional):
-                The features, among ``features``, whose copy makes a target
-                subject to the validation of :meth:`impute_stage`. ``None``
-                takes those of :data:`VALIDATED_FEATURES` that ``features``
-                holds, possibly none.
+                The features, among ``features``, whose copy makes a target subject
+                to the validation of :meth:`impute_stage`. ``None`` takes those of
+                :data:`VALIDATED_FEATURES` that ``features`` holds, possibly none.
             k (int, optional):
                 The number of nearest donors picked among. Defaults to
                 :data:`DEFAULT_DONOR_K`.
             cap_m (float, optional):
-                The donor distance cap in meters, the same for every target.
-                Defaults to :data:`DEFAULT_DONOR_CAP_M`.
+                The donor distance cap in meters, the same for every target. Defaults
+                to :data:`DEFAULT_DONOR_CAP_M`.
             location_scale_m (float, optional):
-                Meters of separation counted as one unit of distance.
-                Defaults to :data:`DEFAULT_LOCATION_SCALE_M`.
+                Meters of separation counted as one unit of distance. Defaults to
+                :data:`DEFAULT_LOCATION_SCALE_M`.
             area_weight (float, optional):
-                Weight of the squared difference of log plan areas.
-                Defaults to :data:`DEFAULT_AREA_WEIGHT`.
+                Weight of the squared difference of log plan areas. Defaults to
+                :data:`DEFAULT_AREA_WEIGHT`.
             stories_key (str | None, optional):
-                The feature holding the story count the distance compares,
-                on targets and donors alike. A side without a count there
-                adds nothing to the distance, and ``None`` drops the term.
-                Defaults to :data:`STORIES_KEY`.
+                The feature holding the story count the distance compares, on targets
+                and donors alike. A side without a count there adds nothing to the
+                distance, and ``None`` drops the term. Defaults to
+                :data:`STORIES_KEY`.
             stories_weight (float, optional):
-                Weight of the squared difference of story counts.
-                Defaults to :data:`DEFAULT_STORIES_WEIGHT`.
+                Weight of the squared difference of story counts. Defaults to
+                :data:`DEFAULT_STORIES_WEIGHT`.
             max_attempts (int, optional):
-                Number of repair attempts before giving up or scanning the
-                nearest donors. Defaults to 5.
+                Number of repair attempts before giving up or scanning the nearest
+                donors. Defaults to 5.
             n_batches (int, optional):
-                The number of feedback batches of :meth:`impute_stage`.
-                Defaults to 1, no feedback.
+                The number of feedback batches of :meth:`impute_stage`. Defaults to
+                1, no feedback.
             seed (int, optional):
                 The seed. ``None`` draws one from system entropy.
 
         Raises:
             ValueError:
-                If ``k``, ``max_attempts`` or ``n_batches`` is below 1,
-                ``cap_m`` or ``location_scale_m`` is not positive, a weight
-                is negative, ``status_key`` is not among ``features``,
-                ``soft_filters`` and ``required``,
-                ``status_values`` is a string or empty, ``status_name`` is
-                empty or gives a purpose label the imputer uses for another
-                draw, or ``validated`` is a string or names a feature not
-                in ``features``.
+                If ``k``, ``max_attempts`` or ``n_batches`` is below 1, ``cap_m`` or
+                ``location_scale_m`` is not positive, a weight is negative,
+                ``status_key`` is not among ``features``, ``soft_filters`` and
+                ``required``, ``status_values`` is a string or empty, ``status_name``
+                is empty or gives a purpose label the imputer uses for another draw,
+                or ``validated`` is a string or names a feature not in ``features``.
         """
         if k < 1 or max_attempts < 1 or n_batches < 1:
             msg = 'k, max_attempts and n_batches must be at least 1.'
@@ -412,9 +401,8 @@ class ObservedDonorImputer(Imputation):
         """
         Fill the missing features of an inventory from its own assets.
 
-        Every asset may be a target and a donor. As a donor it supplies
-        only values it holds in the input, so no imputed value feeds
-        another target.
+        Every asset may be a target and a donor. As a donor it supplies only values
+        it holds in the input, so no imputed value feeds another target.
 
         Args:
             input_inventory (AssetInventory):
@@ -424,8 +412,8 @@ class ObservedDonorImputer(Imputation):
 
         Returns:
             AssetInventory:
-                A copy of the inventory with the copied values filled in,
-                declaring ``n_worlds`` possible worlds.
+                A copy of the inventory with the copied values filled in, declaring
+                ``n_worlds`` possible worlds.
 
         Raises:
             ValueError:
@@ -458,53 +446,49 @@ class ObservedDonorImputer(Imputation):
         """
         Fill the missing features of targets from a donor inventory.
 
-        A target is an asset of ``targets`` missing a feature of
-        :attr:`features` in a world; it receives only the features it is
-        missing, all from one donor in that world. World ``w`` reads the
-        targets' realization ``w`` and draws with ``world=w``.
+        A target is an asset of ``targets`` missing a feature of :attr:`features` in
+        a world; it receives only the features it is missing, all from one donor in
+        that world. World ``w`` reads the targets' realization ``w`` and draws with
+        ``world=w``.
 
         With ``validate``, each target for which this run copied a feature of
-        :attr:`validated` is checked after the copy. A rejected target takes
-        one repair :meth:`draw` at iteration 1. The repair re-draws only the
-        copied features, excludes the rejected donor, keeps the status of the
-        rejected draw and makes no nearest-first scan. Like any draw, it
-        falls back to the target's block group, which may reach past the
-        cap, once no candidate within the cap is left untried. A target
-        still rejected keeps its first values and is logged
+        :attr:`validated` is checked after the copy. A rejected target takes one
+        repair :meth:`draw` at iteration 1. The repair re-draws only the copied
+        features, excludes the rejected donor, keeps the status of the rejected draw
+        and makes no nearest-first scan. Like any draw, it falls back to the target's
+        block group, which may reach past the cap, once no candidate within the cap
+        is left untried. A target still rejected keeps its first values and is logged
         :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_EXHAUSTED`.
 
-        With ``freeze``, the observed donors are read from it as
-        ``donor_stage``, and the targets run in :attr:`n_batches` batches,
-        one batch when :attr:`n_batches` is 1. A target's batch is ``1 +
-        floor(u * n_batches)`` for its keyed uniform under
-        :data:`PURPOSE_BATCH` at world 0, so it is the same in every world.
-        Batch ``j`` draws from the observed donors and from the frozen
-        batches ``1`` to ``j - 1``. A target of an earlier batch donates, in
-        world ``w``, its own features with the values copied to it in world
-        ``w`` in their place, and it replaces its own observed record when
-        it is also an observed donor. Each batch is validated and repaired,
-        then frozen as ``f'{batch_prefix}_batch{j}'``, an empty batch
-        included. Nothing else is frozen.
+        With ``freeze``, the observed donors are read from it as ``donor_stage``, and
+        the targets run in :attr:`n_batches` batches, one batch when
+        :attr:`n_batches` is 1. A target's batch is ``1 + floor(u * n_batches)`` for
+        its keyed uniform under :data:`PURPOSE_BATCH` at world 0, so it is the same
+        in every world. Batch ``j`` draws from the observed donors and from the
+        frozen batches ``1`` to ``j - 1``. A target of an earlier batch donates, in
+        world ``w``, its own features with the values copied to it in world ``w`` in
+        their place, and it replaces its own observed record when it is also an
+        observed donor. Each batch is validated and repaired, then frozen as
+        ``f'{batch_prefix}_batch{j}'``, an empty batch included. Nothing else is
+        frozen.
 
         Args:
             targets (AssetInventory):
-                The targets, with one possible world or ``n_worlds``. Not
-                modified.
+                The targets, with one possible world or ``n_worlds``. Not modified.
             donors (AssetInventory, optional):
-                The observed donors, with one possible world. Not modified.
-                Required without ``freeze``.
+                The observed donors, with one possible world. Not modified. Required
+                without ``freeze``.
             n_worlds (int, optional):
                 The number of worlds. Defaults to 1.
             status (Mapping[Any, bool], optional):
                 A status per target id, ``True`` for a value among
-                :attr:`status_values`, which replaces the status round for
-                those targets.
+                :attr:`status_values`, which replaces the status round for those
+                targets.
             validate (Callable[[Any, int, Mapping[str, Any]], bool], optional):
-                ``validate(asset_id, world, features)``, called with the
-                target's features in that world after the copy.
+                ``validate(asset_id, world, features)``, called with the target's
+                features in that world after the copy.
             freeze (StageFreeze, optional):
-                The freeze the donors are read from and the batches written
-                to.
+                The freeze the donors are read from and the batches written to.
             donor_stage (str, optional):
                 The frozen stage holding the observed donors. Required with
                 ``freeze``.
@@ -513,22 +497,20 @@ class ObservedDonorImputer(Imputation):
 
         Returns:
             DonorImputationResult:
-                The copied values as an inventory with ``n_worlds`` possible
-                worlds, assets in ascending order of the id as a string. A
-                feature equal in every world is stored as a scalar and
-                otherwise as a list with ``None`` where no value was copied.
-                With ``freeze``, the inventory is the union of the frozen
-                batches. The result also carries the log, the pool, the seed
-                and the names of the frozen batches.
+                The copied values as an inventory with ``n_worlds`` possible worlds,
+                assets in ascending order of the id as a string. A feature equal in
+                every world is stored as a scalar and otherwise as a list with
+                ``None`` where no value was copied. With ``freeze``, the inventory is
+                the union of the frozen batches. The result also carries the log, the
+                pool, the seed and the names of the frozen batches.
 
         Raises:
             ValueError:
-                If ``n_worlds`` is below 1; if the observed donors hold more
-                than one possible world; if ``targets`` holds a number of
-                worlds other than 1 and ``n_worlds``; if both ``donors`` and
-                ``freeze`` are given, or neither; if ``freeze`` is given
-                without ``donor_stage``; or if :attr:`n_batches` is above 1
-                without ``freeze``.
+                If ``n_worlds`` is below 1; if the observed donors hold more than one
+                possible world; if ``targets`` holds a number of worlds other than 1
+                and ``n_worlds``; if both ``donors`` and ``freeze`` are given, or
+                neither; if ``freeze`` is given without ``donor_stage``; or if
+                :attr:`n_batches` is above 1 without ``freeze``.
             LookupError:
                 If the freeze lacks the donor stage or an earlier batch.
         """
@@ -648,8 +630,8 @@ class ObservedDonorImputer(Imputation):
 
         Returns:
             list[int]:
-                One batch number from 1 to :attr:`n_batches` per target, in
-                the order given, as :meth:`impute_stage` describes.
+                One batch number from 1 to :attr:`n_batches` per target, in the order
+                given, as :meth:`impute_stage` describes.
         """
         asset_ids = list(asset_ids)
         if not asset_ids:
@@ -670,8 +652,8 @@ class ObservedDonorImputer(Imputation):
 
         Args:
             donors (AssetInventory):
-                The observed donors, with one possible world. An asset
-                lacking a required feature is kept but never drawn.
+                The observed donors, with one possible world. An asset lacking a
+                required feature is kept but never drawn.
             targets (AssetInventory, optional):
                 The targets whose sites the pool records beside the donors'.
 
@@ -701,16 +683,15 @@ class ObservedDonorImputer(Imputation):
         """
         Return the chance that the status round gives each asset the status.
 
-        By default this is the chance of being residential. The chance is that
-        of the status round's pick on ``pool`` in world 0 at iteration 0,
-        before its uniform is drawn: the inverse-distance weight of the donors
-        with the status among the ``k`` nearest donors within :attr:`cap_m`,
-        over the weight of all of them. Without a donor within the cap it is
-        the share of the donors of the asset's block group with the status,
-        which the round's fallback picks with equal weights. Like the round, it
-        reads no soft filter and no feature of the asset itself, and the asset
-        is never its own donor. Under batch feedback a later batch's round
-        reads more donors than an observed pool holds.
+        By default this is the chance of being residential. The chance is that of the
+        status round's pick on ``pool`` in world 0 at iteration 0, before its uniform
+        is drawn: the inverse-distance weight of the donors with the status among the
+        ``k`` nearest donors within :attr:`cap_m`, over the weight of all of them.
+        Without a donor within the cap it is the share of the donors of the asset's
+        block group with the status, which the round's fallback picks with equal
+        weights. Like the round, it reads no soft filter and no feature of the asset
+        itself, and the asset is never its own donor. Under batch feedback a later
+        batch's round reads more donors than an observed pool holds.
 
         Args:
             pool (DonorPool):
@@ -721,8 +702,8 @@ class ObservedDonorImputer(Imputation):
 
         Returns:
             dict[Hashable, float]:
-                The chance per asset, NaN for an asset without area or
-                without any donor the round could pick.
+                The chance per asset, NaN for an asset without area or without any
+                donor the round could pick.
 
         Raises:
             LookupError:
@@ -779,19 +760,19 @@ class ObservedDonorImputer(Imputation):
         """
         Draw one donor for one asset in one world.
 
-        This is the path :meth:`impute_stage` takes for each target, so at
-        iteration 0 without ``admit`` it reproduces the stage result,
-        including the status round where the stage runs it.
+        This is the path :meth:`impute_stage` takes for each target, so at iteration
+        0 without ``admit`` it reproduces the stage result, including the status
+        round where the stage runs it.
 
-        With ``admit``, the draw makes up to :attr:`max_attempts` attempts.
-        Attempt ``a`` picks among the untried candidates, those of the
-        block-group fallback included, at iteration ``iteration + a - 1``, and
-        ``admit`` judges the picked donor's values for ``redraw``. A rejected
-        donor counts as tried. Once no untried candidate lies within the cap,
-        an attempt falls back to the block group, whose donors may lie beyond
-        the cap. When the attempts are spent or no untried candidate is left,
-        :meth:`nearest_admitted` runs if ``scan_nearest`` is set; it scans only
-        donors within the cap. Without an admitted donor the outcome is
+        With ``admit``, the draw makes up to :attr:`max_attempts` attempts. Attempt
+        ``a`` picks among the untried candidates, those of the block-group fallback
+        included, at iteration ``iteration + a - 1``, and ``admit`` judges the picked
+        donor's values for ``redraw``. A rejected donor counts as tried. Once no
+        untried candidate lies within the cap, an attempt falls back to the block
+        group, whose donors may lie beyond the cap. When the attempts are spent or no
+        untried candidate is left, :meth:`nearest_admitted` runs if ``scan_nearest``
+        is set; it scans only donors within the cap. Without an admitted donor the
+        outcome is
         :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_EXHAUSTED`,
         with no donor and empty values, and the caller keeps its value.
 
@@ -803,9 +784,8 @@ class ObservedDonorImputer(Imputation):
             features (Mapping[str, Any]):
                 The asset's scalar features in ``world``.
             redraw (Sequence[str], optional):
-                The features to copy, which count as missing for the
-                filters. Defaults to the asset's missing features of
-                :attr:`features`.
+                The features to copy, which count as missing for the filters.
+                Defaults to the asset's missing features of :attr:`features`.
             world (int):
                 The index of the possible world, from 0, whose donor values and story
                 counts the draw reads, and which keys the uniforms.
@@ -818,18 +798,18 @@ class ObservedDonorImputer(Imputation):
                 and before the fallback. An id the pool does not hold as a donor is
                 ignored.
             status (bool, optional):
-                The status, ``True`` for a value among
-                :attr:`status_values`, which replaces the status round.
+                The status, ``True`` for a value among :attr:`status_values`, which
+                replaces the status round.
             protected (Iterable[str], optional):
                 Features the draw may not change.
             scan_nearest (bool, optional):
-                Whether a repair ends with :meth:`nearest_admitted`.
-                Defaults to ``True``.
+                Whether a repair ends with :meth:`nearest_admitted`. Defaults to
+                ``True``.
             purpose_prefix (str, optional):
-                A caller's own prefix for the purpose labels. With it, each
-                label becomes ``f'{purpose_prefix}:{label}'``, so the
-                caller's uniforms are distinct from the stage's by label.
-                Defaults to ``None``, the module's labels.
+                A caller's own prefix for the purpose labels. With it, each label
+                becomes ``f'{purpose_prefix}:{label}'``, so the caller's uniforms are
+                distinct from the stage's by label. Defaults to ``None``, the
+                module's labels.
 
         Returns:
             DonorDraw:
@@ -844,8 +824,8 @@ class ObservedDonorImputer(Imputation):
             LookupError:
                 If the pool does not record ``asset_id``.
             ValueError:
-                If a feature is both in ``redraw`` and ``protected``, there
-                is nothing to draw, or another imputer built the pool.
+                If a feature is both in ``redraw`` and ``protected``, there is
+                nothing to draw, or another imputer built the pool.
         """
         self._check_pool(pool)
         return self._draw(
@@ -878,10 +858,9 @@ class ObservedDonorImputer(Imputation):
         """
         Scan the donors within the cap, nearest first, for the first admitted.
 
-        The scan uses no uniform. It covers every donor within the cap
-        that holds the required features and has the target's status,
-        ordered by donor distance and then by id as a string, and
-        copies only ``redraw``.
+        The scan uses no uniform. It covers every donor within the cap that holds the
+        required features and has the target's status, ordered by donor distance and
+        then by id as a string, and copies only ``redraw``.
 
         Args:
             pool (DonorPool):
@@ -903,9 +882,8 @@ class ObservedDonorImputer(Imputation):
                 Features the scan may not change.
             status (bool, optional):
                 The status, needed because the scan matches it even when
-                :attr:`status_key` is re-drawn. Defaults to the status of
-                the asset's :attr:`status_key` value when ``redraw`` does
-                not hold the key.
+                :attr:`status_key` is re-drawn. Defaults to the status of the asset's
+                :attr:`status_key` value when ``redraw`` does not hold the key.
 
         Returns:
             DonorDraw:
@@ -918,9 +896,8 @@ class ObservedDonorImputer(Imputation):
             LookupError:
                 If the pool does not record ``asset_id``.
             ValueError:
-                If a feature is both in ``redraw`` and ``protected``, the
-                status is neither given nor known, or another imputer built
-                the pool.
+                If a feature is both in ``redraw`` and ``protected``, the status is
+                neither given nor known, or another imputer built the pool.
         """
         self._check_pool(pool)
         redraw = self._check_redraw(features, redraw, protected)
@@ -996,8 +973,8 @@ class ObservedDonorImputer(Imputation):
                     no_area.add(asset_id)
                 else:
                     target_sites[asset_id] = site
-        # Each target's story count in each world, where it holds one per
-        # world, which its site reads as none.
+        # Each target's story count in each world, where it holds one per world,
+        # which its site reads as none.
         target_stories = {}
         if targets is not None and targets.n_pw > 1:
             for asset_id in target_sites:
@@ -1033,8 +1010,8 @@ class ObservedDonorImputer(Imputation):
         """
         Turn a frozen batch into donor records.
 
-        Each record holds the target's own features, its copied values
-        taking their place in the worlds where a value was copied.
+        Each record holds the target's own features, its copied values taking their
+        place in the worlds where a value was copied.
 
         Args:
             batch (AssetInventory):
@@ -1047,8 +1024,8 @@ class ObservedDonorImputer(Imputation):
 
         Returns:
             list[tuple[Hashable, Asset, int, Sequence[str]]]:
-                ``(asset_id, asset, n_worlds, vector_features)`` per asset
-                of the batch.
+                ``(asset_id, asset, n_worlds, vector_features)`` per asset of the
+                batch.
         """
         records = []
         for asset_id, imputed in batch.inventory.items():
@@ -1133,8 +1110,7 @@ class ObservedDonorImputer(Imputation):
                 The target inventory, read for the features of the targets of
                 ``target_ids``.
             target_ids (Sequence[Any]):
-                The targets to run, in ascending order of the id as a
-                string.
+                The targets to run, in ascending order of the id as a string.
             n_worlds (int):
                 The number of worlds run. A target is drawn in each world where it
                 misses a feature of :attr:`features`.
@@ -1155,10 +1131,10 @@ class ObservedDonorImputer(Imputation):
         log: list[dict[str, Any]] = []
         for asset_id in target_ids:
             raw = targets.inventory[asset_id].features
-            # The neighborhood of the last site and view. A world reuses it
-            # unless the target's site changes, or the donors' view changes
-            # while the target holds a story count, since only then do the
-            # donors' counts enter its distances.
+            # The neighborhood of the last site and view. A world reuses it unless
+            # the target's site changes, or the donors' view changes while the target
+            # holds a story count, since only then do the donors' counts enter its
+            # distances.
             shared = (None, None, None)
             for world in range(n_worlds):
                 features = _world_features(
@@ -1308,8 +1284,8 @@ class ObservedDonorImputer(Imputation):
 
         Raises:
             ValueError:
-                If a feature is in both ``redraw`` and ``protected``, or none
-                is left to copy.
+                If a feature is in both ``redraw`` and ``protected``, or none is left
+                to copy.
         """
         if redraw is None:
             redraw = [f for f in self.features if _is_missing(features, f)]
@@ -1427,15 +1403,14 @@ class ObservedDonorImputer(Imputation):
                 of :attr:`status_key`, or runs the status round where that value is
                 missing or re-drawn.
             status_code (int | None, optional):
-                A given status code, which takes precedence over
-                ``status``.
+                A given status code, which takes precedence over ``status``.
             protected (Iterable[str], optional):
                 Features that may not change.
             scan_nearest (bool, optional):
                 Whether a repair ends with the nearest-first scan.
             neighborhood (_DonorNeighborhood | None, optional):
-                The asset's donors within the cap with their distances,
-                computed when not given.
+                The asset's donors within the cap with their distances, computed when
+                not given.
             purpose_prefix (str | None, optional):
                 The prefix of the purpose labels, as :meth:`draw` takes it.
 
@@ -1647,8 +1622,8 @@ class ObservedDonorImputer(Imputation):
 
         Returns:
             _DonorPick:
-                The pick of :meth:`DonorSearch.select`, or the fallback's
-                when it finds none.
+                The pick of :meth:`DonorSearch.select`, or the fallback's when it
+                finds none.
         """
         pick = self._search.select(
             pool,
@@ -1711,8 +1686,8 @@ class ObservedDonorImputer(Imputation):
             status_code (int | None):
                 The status code to match.
             soft (Sequence[tuple[str, Any]]):
-                The soft filters, relaxed one at a time from the last until
-                a level holds a donor.
+                The soft filters, relaxed one at a time from the last until a level
+                holds a donor.
             purpose (str):
                 The purpose label of the pick.
             world (int):
@@ -1807,8 +1782,8 @@ class ObservedDonorImputer(Imputation):
             attempts (int):
                 The attempts made before the scan.
             neighborhood (_DonorNeighborhood | None, optional):
-                The donors within the cap with their distances, computed
-                when not given.
+                The donors within the cap with their distances, computed when not
+                given.
 
         Returns:
             DonorDraw:
@@ -1864,8 +1839,8 @@ class ObservedDonorImputer(Imputation):
 
         Returns:
             AssetInventory:
-                One asset per target that received a value, in ascending
-                order of the id as a string.
+                One asset per target that received a value, in ascending order of the
+                id as a string.
         """
         imputed = AssetInventory(vector_features=targets.vector_features)
         for asset_id in sorted(copied, key=str):
@@ -1890,9 +1865,9 @@ def imputation_donors_from_log(
     """
     Build the imputation donors from the log of an observed-donor stage run.
 
-    For each target and world the donor named is that of the log row with
-    the highest ``round`` whose ``values`` are not empty, the status round
-    excluded, so the donor named is the one whose values the target kept.
+    For each target and world the donor named is that of the log row with the highest
+    ``round`` whose ``values`` are not empty, the status round excluded, so the donor
+    named is the one whose values the target kept.
 
     Args:
         log (pandas.DataFrame):
@@ -1907,19 +1882,18 @@ def imputation_donors_from_log(
 
     Returns:
         AssetInventory:
-            One asset per target, in ascending order of the id as a string,
-            with the target's coordinates and :data:`IMPUTATION_DONOR_KEY`
-            holding the donor id per world, ``None`` in a world where the
-            target kept no donor's values or has no log row. A donor equal
-            in every world is stored as a scalar, otherwise as a list, so a
-            target without a donor in any world holds a list of ``None``.
-            The inventory declares ``n_worlds`` possible worlds.
+            One asset per target, in ascending order of the id as a string, with the
+            target's coordinates and :data:`IMPUTATION_DONOR_KEY` holding the donor
+            id per world, ``None`` in a world where the target kept no donor's values
+            or has no log row. A donor equal in every world is stored as a scalar,
+            otherwise as a list, so a target without a donor in any world holds a
+            list of ``None``. The inventory declares ``n_worlds`` possible worlds.
 
     Raises:
         ValueError:
-            If ``n_worlds`` is not a positive integer, the log lacks a
-            column, a row's world is not an integer below ``n_worlds``, or
-            a row names an asset that ``targets`` lacks.
+            If ``n_worlds`` is not a positive integer, the log lacks a column, a
+            row's world is not an integer below ``n_worlds``, or a row names an asset
+            that ``targets`` lacks.
     """
     if isinstance(n_worlds, bool) or not isinstance(n_worlds, int) or n_worlds < 1:
         msg = f'n_worlds must be a positive integer, not {n_worlds!r}.'

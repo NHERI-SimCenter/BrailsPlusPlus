@@ -111,10 +111,9 @@ class DonorSearch:
     The donor distance, the candidate filters and the keyed pick.
 
     :class:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.ObservedDonorImputer`
-    checks its arguments and builds one search, which reads an asset's site,
-    finds and ranks the donors within the cap and picks among them. The status
-    round, the donor round, the fallback and the nearest-first scan are the
-    imputer's.
+    checks its arguments and builds one search, which reads an asset's site, finds
+    and ranks the donors within the cap and picks among them. The status round, the
+    donor round, the fallback and the nearest-first scan are the imputer's.
 
     Every argument is stored as an attribute of the same name, read-only by
     convention.
@@ -164,8 +163,8 @@ class DonorSearch:
         """
         Find the donors within the cap of a site with their donor distances.
 
-        The result depends on the site, the pool's geometry and the donors'
-        story counts in the view's world.
+        The result depends on the site, the pool's geometry and the donors' story
+        counts in the view's world.
 
         Args:
             pool (DonorPool):
@@ -210,9 +209,9 @@ class DonorSearch:
 
         Returns:
             numpy.ndarray:
-                ``sqrt((g / location_scale_m)**2 + area_weight * (ln A_t -
-                ln A_d)**2 + stories_weight * (n_t - n_d)**2)``, with the
-                story term zero where either side has no count.
+                ``sqrt((g / location_scale_m)**2 + area_weight * (ln A_t - ln
+                A_d)**2 + stories_weight * (n_t -
+                n_d)**2)``, with the story term zero where either side has no count.
         """
         location = (meters / self.location_scale_m) ** 2
         area = self.area_weight * (site.log_area - pool.log_area[index]) ** 2
@@ -236,9 +235,9 @@ class DonorSearch:
         """
         Pick one donor among a target's candidates within the cap.
 
-        The first filter level with :attr:`k` or more candidates is used,
-        else the loosest level with any. One of its :attr:`k` nearest is
-        picked with inverse-distance weights and the target's uniform.
+        The first filter level with :attr:`k` or more candidates is used, else the
+        loosest level with any. One of its :attr:`k` nearest is picked with
+        inverse-distance weights and the target's uniform.
 
         Args:
             pool (DonorPool):
@@ -267,8 +266,8 @@ class DonorSearch:
 
         Returns:
             _DonorPick | None:
-                The pick, ``None`` when no candidate within the cap passes
-                the hard filter.
+                The pick, ``None`` when no candidate within the cap passes the hard
+                filter.
         """
         base = self.eligible(pool, view, neighborhood.index, excluded, status_code)
         levels = self.levels(view, neighborhood.index, base, soft)
@@ -313,8 +312,8 @@ class DonorSearch:
         """
         Mark the donors a draw may pick.
 
-        A donor qualifies when it holds the required features, has a known
-        status matching ``status_code``, and is not excluded.
+        A donor qualifies when it holds the required features, has a known status
+        matching ``status_code``, and is not excluded.
 
         Args:
             pool (DonorPool):
@@ -390,14 +389,13 @@ class DonorSearch:
             neighborhood (_DonorNeighborhood):
                 The donors within the cap, with distances and their order.
             mask (numpy.ndarray):
-                The candidates admitted, one boolean per donor of the
-                neighborhood, at least one true.
+                The candidates admitted, one boolean per donor of the neighborhood,
+                at least one true.
 
         Returns:
             tuple[numpy.ndarray, numpy.ndarray]:
-                The positions into the neighborhood of the :attr:`k`
-                nearest admitted candidates, nearest first, and their
-                inverse-distance weights.
+                The positions into the neighborhood of the :attr:`k` nearest admitted
+                candidates, nearest first, and their inverse-distance weights.
         """
         ranked = neighborhood.order[mask[neighborhood.order]][: self.k]
         weights = 1.0 / np.maximum(
@@ -432,8 +430,8 @@ class DonorSearch:
 
         Returns:
             tuple[numpy.ndarray, numpy.ndarray]:
-                The donors' indices in ascending order, empty without a
-                block group, and the mask of :meth:`eligible` over them.
+                The donors' indices in ascending order, empty without a block group,
+                and the mask of :meth:`eligible` over them.
         """
         if site.block_group is None:
             index = np.zeros(0, dtype=np.int64)
@@ -489,8 +487,8 @@ class DonorSearch:
         Returns:
             _DonorSite | None:
                 Its site, with a NaN story count where the value of
-                :attr:`stories_key` is not a finite number, or ``None``
-                when its coordinates enclose no area.
+                :attr:`stories_key` is not a finite number, or ``None`` when its
+                coordinates enclose no area.
         """
         coordinates = asset.coordinates
         if not coordinates:

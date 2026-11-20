@@ -64,8 +64,8 @@ OUTCOME_EXHAUSTED = 'exhausted'
 OUTCOME_NEAREST_ADMITTED = 'nearest_admitted'
 OUTCOME_NONE_ADMITTED = 'none_admitted'
 
-# Values of the ``round`` column of the log: 1 for the status round
-# (residential by default), 2 for the donor round and 3 for a repair.
+# Values of the ``round`` column of the log: 1 for the status round (residential by
+# default), 2 for the donor round and 3 for a repair.
 ROUND_STATUS = 1
 ROUND_DONOR = 2
 ROUND_REPAIR = 3
@@ -87,16 +87,15 @@ class DonorDraw(NamedTuple):
         values (Mapping[str, Any]):
             The copied features, empty when ``donor_id`` is ``None``.
         level (int | None):
-            The number of soft filters relaxed, ``None`` where no filter
-            level applies.
+            The number of soft filters relaxed, ``None`` where no filter level
+            applies.
         n_candidates (int):
-            The number of candidates at the level used, or in the
-            target's block group for :data:`OUTCOME_BLOCK_GROUP`.
+            The number of candidates at the level used, or in the target's block
+            group for :data:`OUTCOME_BLOCK_GROUP`.
         distance (float):
             The donor distance, NaN without a donor.
         distance_m (float):
-            The great-circle distance to the donor in meters, NaN without
-            one.
+            The great-circle distance to the donor in meters, NaN without one.
         attempts (int):
             The number of picks ``admit`` judged, 0 without it.
         outcome (str):
@@ -133,19 +132,18 @@ class DonorImputationResult(NamedTuple):
 
     Attributes:
         imputed (AssetInventory):
-            The targets that received a value, holding only the copied
-            features.
+            The targets that received a value, holding only the copied features.
         log (pandas.DataFrame):
             One row per target, world and round, with the columns of
             :data:`LOG_COLUMNS`.
         pool (DonorPool):
-            The pool the draws read; with a freeze, the pool of the last
-            batch, which holds the sites of that batch's targets only.
+            The pool the draws read; with a freeze, the pool of the last batch, which
+            holds the sites of that batch's targets only.
         seed (int):
             The seed of the draws.
         batches (tuple[str, ...]):
-            The names of the frozen batches, in order; empty when no
-            freeze was given.
+            The names of the frozen batches, in order; empty when no freeze was
+            given.
     """
 
     imputed: AssetInventory

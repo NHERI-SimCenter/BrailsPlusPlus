@@ -81,9 +81,9 @@ if TYPE_CHECKING:
 
     from brails.imputers.observed_donor_imputer.donor_pool import DonorPool
 
-# Prefix of the purpose labels of the keyed uniforms, put before the donor
-# search's PURPOSE_DONOR and PURPOSE_FALLBACK. Part of the reproducibility
-# contract; see keyed_uniforms.
+# Prefix of the purpose labels of the keyed uniforms, put before the donor search's
+# PURPOSE_DONOR and PURPOSE_FALLBACK. Part of the reproducibility contract; see
+# keyed_uniforms.
 NEIGHBOR_YEAR_PURPOSE_PREFIX = 'year_built_neighbor'
 
 
@@ -91,23 +91,22 @@ class ResidentialNeighborYearSampler(InferenceEngine):
     """
     Copy to each building the construction year of a nearby residential one.
 
-    :meth:`select_donors` takes as donors the buildings of one world of a
-    frozen stage that are in
-    :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`
-    and hold a whole-number year, whatever its source. :meth:`draw` copies
-    to each building the year of a donor near it, or of one in its block
-    group where none lies within ``cap_m``, and :meth:`draw_details`
-    reports the donor each building draws. The README beside this module
-    states the method, the defaults and the scope.
+    :meth:`select_donors` takes as donors the buildings of one world of a frozen
+    stage that are in :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES` and
+    hold a whole-number year, whatever its source. :meth:`draw` copies to each
+    building the year of a donor near it, or of one in its block group where none
+    lies within ``cap_m``, and :meth:`draw_details` reports the donor each building
+    draws. The README beside this module states the method, the defaults and the
+    scope.
 
-    A draw depends on the asset's id and coordinates, its block group, the
-    seed, the world, the iteration, ``k``, ``cap_m`` and the donors, and
-    never on processing order or on another asset's draw; its uniforms
-    carry the labels of :data:`NEIGHBOR_YEAR_PURPOSE_PREFIX`. :meth:`check`
-    refuses a building it cannot draw for and says why.
+    A draw depends on the asset's id and coordinates, its block group, the seed, the
+    world, the iteration, ``k``, ``cap_m`` and the donors, and never on processing
+    order or on another asset's draw; its uniforms carry the labels of
+    :data:`NEIGHBOR_YEAR_PURPOSE_PREFIX`. :meth:`check` refuses a building it cannot
+    draw for and says why.
 
-    The sampler writes ``year_built_key`` whether or not one is already
-    there; keeping an observed year is the caller's decision.
+    The sampler writes ``year_built_key`` whether or not one is already there;
+    keeping an observed year is the caller's decision.
     """
 
     def __init__(
@@ -126,28 +125,28 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Args:
             seed (int | None):
-                Seed for the draw. If None, a seed is drawn from system
-                entropy and recorded on ``self.seed``.
+                Seed for the draw. If None, a seed is drawn from system entropy and
+                recorded on ``self.seed``.
             world (int):
-                Possible-world index, at least 0. A world other than the
-                default requires an explicit seed.
+                Possible-world index, at least 0. A world other than the default
+                requires an explicit seed.
             k (int):
                 The number of nearest donors picked among. Defaults to
                 :data:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.DEFAULT_DONOR_K`.
             cap_m (float):
-                The donor distance cap in meters, the same for every asset.
-                Defaults to
+                The donor distance cap in meters, the same for every asset. Defaults
+                to
                 :data:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.DEFAULT_DONOR_CAP_M`.
             occupancy_key (str):
                 Feature holding the occupancy class.
             year_built_key (str):
-                Feature holding a donor's year, and the name the copied
-                year is written to.
+                Feature holding a donor's year, and the name the copied year is
+                written to.
 
         Raises:
             ValueError:
-                If ``world`` is negative, or not the default and no seed
-                is given, ``k`` is below 1, or ``cap_m`` is at most 0.
+                If ``world`` is negative, or not the default and no seed is given,
+                ``k`` is below 1, or ``cap_m`` is at most 0.
         """
         if int(world) < 0:
             msg = f'world must be at least 0, got {world!r}.'
@@ -185,10 +184,9 @@ class ResidentialNeighborYearSampler(InferenceEngine):
         """
         Take the donors from one world of a frozen stage.
 
-        A stage holding several worlds is read in :attr:`world`, and a
-        stage holding one is read as it is. The call changes nothing in the
-        stage and reads nothing but it. A later call replaces the earlier
-        donors.
+        A stage holding several worlds is read in :attr:`world`, and a stage holding
+        one is read as it is. The call changes nothing in the stage and reads nothing
+        but it. A later call replaces the earlier donors.
 
         Args:
             freeze (StageFreeze):
@@ -206,9 +204,9 @@ class ResidentialNeighborYearSampler(InferenceEngine):
             LookupError:
                 If ``stage`` is not frozen.
             ValueError:
-                If the stage holds several worlds and not :attr:`world`, or
-                an asset holds one value per world in ``occupancy_key`` or
-                ``year_built_key`` in the world read.
+                If the stage holds several worlds and not :attr:`world`, or an asset
+                holds one value per world in ``occupancy_key`` or ``year_built_key``
+                in the world read.
         """
         if not isinstance(freeze, StageFreeze):
             msg = (
@@ -247,8 +245,7 @@ class ResidentialNeighborYearSampler(InferenceEngine):
                 and math.isfinite(year)
                 and float(year).is_integer()
             )
-            # an asset without area is left to the donor search, which
-            # never draws it
+            # an asset without area is left to the donor search, which never draws it
             if occupancy in UNIT_COUNT_CLASSES and whole:
                 donors.add_asset(asset_id, asset)
         self._donors = donors
@@ -262,11 +259,10 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Returns:
             pd.DataFrame:
-                One row per donor, in ascending order of the id as a string,
-                with the centroid's ``lon`` and ``lat``, the block group
-                under :data:`~brails.constants.BLOCK_GROUP_KEY` (``None``
-                where the donor holds none) and the year under
-                ``year_built_key``. A copy.
+                One row per donor, in ascending order of the id as a string, with the
+                centroid's ``lon`` and ``lat``, the block group under
+                :data:`~brails.constants.BLOCK_GROUP_KEY` (``None`` where the donor
+                holds none) and the year under ``year_built_key``. A copy.
 
         Raises:
             RuntimeError:
@@ -315,9 +311,9 @@ class ResidentialNeighborYearSampler(InferenceEngine):
         """
         Diagnose every asset without drawing anything.
 
-        A verdict reads the asset's features and coordinates and the
-        selected donors, the asset itself counted among them where it is one,
-        so a one-asset inventory gets the verdict of the full one.
+        A verdict reads the asset's features and coordinates and the selected donors,
+        the asset itself counted among them where it is one, so a one-asset inventory
+        gets the verdict of the full one.
 
         Args:
             input_inventory (AssetInventory):
@@ -326,16 +322,14 @@ class ResidentialNeighborYearSampler(InferenceEngine):
         Returns:
             pd.DataFrame:
                 One row per asset id, with ``diagnosis``, ``detail`` and
-                ``resolvable_by``. An occupancy or block group holding one
-                value per world is unsupported. An absent occupancy,
-                coordinates that enclose no area, or, for an asset with no
-                donor within ``cap_m``, an absent block group, is invalid.
-                A residential class is infeasible. A block group without a
-                donor, for an asset with none within ``cap_m`` and no other
-                failure, gives ``no_donor``.
-                ``resolvable_by`` names the failing feature where it is the
-                only failure, and nothing where several fail or the
-                coordinates do.
+                ``resolvable_by``. An occupancy or block group holding one value per
+                world is unsupported. An absent occupancy, coordinates that enclose
+                no area, or, for an asset with no donor within ``cap_m``, an absent
+                block group, is invalid. A residential class is infeasible. A block
+                group without a donor, for an asset with none within ``cap_m`` and no
+                other failure, gives ``no_donor``. ``resolvable_by`` names the
+                failing feature where it is the only failure, and nothing where
+                several fail or the coordinates do.
 
         Raises:
             RuntimeError:
@@ -372,9 +366,9 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Returns:
             tuple[str, str, tuple[str, ...]]:
-                The diagnosis, the detail, and the features that would
-                each, alone, admit the asset. A failure of another kind
-                beside the missing donor takes its diagnosis.
+                The diagnosis, the detail, and the features that would each, alone,
+                admit the asset. A failure of another kind beside the missing donor
+                takes its diagnosis.
         """
         for key in (self.occupancy_key, BLOCK_GROUP_KEY):
             if is_probabilistic_feature(key, features.get(key), vector_features):
@@ -384,8 +378,8 @@ class ResidentialNeighborYearSampler(InferenceEngine):
                     'one world at a time',
                     (),
                 )
-        # (feature or None, message) per failure: invalid, infeasible, and
-        # no donor in the cap or the block group.
+        # (feature or None, message) per failure: invalid, infeasible, and no donor
+        # in the cap or the block group.
         invalid: list[tuple[str | None, str]] = []
         uncovered: list[tuple[str | None, str]] = []
         without_donor: list[tuple[str | None, str]] = []
@@ -465,16 +459,15 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Returns:
             pd.Series:
-                Integer years indexed by asset id, named
-                ``year_built_key``.
+                Integer years indexed by asset id, named ``year_built_key``.
 
         Raises:
             RuntimeError:
                 If :meth:`select_donors` has not been called.
             ValueError:
-                If an asset does not pass :meth:`check`, naming the
-                assets, or draws no donor, which happens only when the
-                inventory is not a realization of the donors' stage.
+                If an asset does not pass :meth:`check`, naming the assets, or draws
+                no donor, which happens only when the inventory is not a realization
+                of the donors' stage.
         """
         return self.draw_details(input_inventory, iteration=iteration)[
             self.year_built_key
@@ -500,24 +493,23 @@ class ResidentialNeighborYearSampler(InferenceEngine):
         Returns:
             pd.DataFrame:
                 One row per asset id, with ``donor_id``, ``outcome``,
-                ``n_candidates``, ``distance_m`` and the copied integer
-                year under ``year_built_key``. ``outcome`` is the donor
-                search's:
+                ``n_candidates``, ``distance_m`` and the copied integer year under
+                ``year_built_key``. ``outcome`` is the donor search's:
                 :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_DONOR`
                 or
                 :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_FEWER_THAN_K`
                 within the cap, and
                 :data:`~brails.imputers.observed_donor_imputer.donor_records.OUTCOME_BLOCK_GROUP`
-                from the block group. ``n_candidates`` counts the donors
-                the pick was made among.
+                from the block group. ``n_candidates`` counts the donors the pick was
+                made among.
 
         Raises:
             RuntimeError:
                 If :meth:`select_donors` has not been called.
             ValueError:
-                If an asset does not pass :meth:`check`, naming the
-                assets, or draws no donor, which happens only when the
-                inventory is not a realization of the donors' stage.
+                If an asset does not pass :meth:`check`, naming the assets, or draws
+                no donor, which happens only when the inventory is not a realization
+                of the donors' stage.
         """
         pool = self._imputer.pool(self._get_donors(), input_inventory)
         assets = {}
@@ -538,8 +530,8 @@ class ResidentialNeighborYearSampler(InferenceEngine):
             )
         rows = []
         for asset_id, features in assets.items():
-            # status=True matches the residential donors; the asset's own
-            # class lies outside them and would match none
+            # status=True matches the residential donors; the asset's own class lies
+            # outside them and would match none
             pick = self._imputer.draw(
                 pool,
                 asset_id,
@@ -590,9 +582,8 @@ class ResidentialNeighborYearSampler(InferenceEngine):
 
         Args:
             input_inventory (AssetInventory):
-                The inventory to process. Every asset must pass
-                :meth:`check`; filter the inventory with it first if that
-                is not guaranteed.
+                The inventory to process. Every asset must pass :meth:`check`; filter
+                the inventory with it first if that is not guaranteed.
 
         Returns:
             AssetInventory:
@@ -603,8 +594,8 @@ class ResidentialNeighborYearSampler(InferenceEngine):
             RuntimeError:
                 If :meth:`select_donors` has not been called.
             ValueError:
-                If any asset cannot be drawn for, naming the assets and
-                the reason each fails.
+                If any asset cannot be drawn for, naming the assets and the reason
+                each fails.
         """
         verdicts = self.check(input_inventory)
         failed = verdicts.loc[verdicts['diagnosis'] != DIAGNOSIS_OK, 'detail']

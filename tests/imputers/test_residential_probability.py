@@ -105,8 +105,8 @@ class TestResidentialProbability:
         targets = inventory({'t': target(0, 0)})
         model = imputer(k=3)
         chance = model.status_probability(model.pool(donors, targets), ['t'])
-        # With equal areas and no story count, the donor distance is the
-        # location term alone, in units of 100 m.
+        # With equal areas and no story count, the donor distance is the location
+        # term alone, in units of 100 m.
         weights = {'h1': 1 / 1.0, 'h2': 1 / 2.0, 'c1': 1 / 4.0}
         expected = (weights['h1'] + weights['h2']) / sum(weights.values())
         assert chance['t'] == pytest.approx(expected, rel=1e-6)

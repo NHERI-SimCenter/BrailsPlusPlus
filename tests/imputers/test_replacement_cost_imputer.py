@@ -122,8 +122,8 @@ def source(occupancy: str = 'I', value: str = '-', stories: str = 'I') -> str:
 
     Returns:
         str:
-            The eight codes: the given occupancy class, stories and value
-            codes, and ``-`` for the other five features.
+            The eight codes: the given occupancy class, stories and value codes, and
+            ``-`` for the other five features.
     """
     return f'{occupancy}-{stories}----{value}'
 
@@ -232,8 +232,8 @@ def run(
     """
     Freeze a stage and its donor stage and value it on the fixture seed.
 
-    Every log row is checked to hold a value exactly where its outcome has a
-    code in ``OUTCOME_VALUE_CODES``.
+    Every log row is checked to hold a value exactly where its outcome has a code in
+    ``OUTCOME_VALUE_CODES``.
 
     Args:
         buildings (AssetInventory):
@@ -243,11 +243,11 @@ def run(
         world (int, optional):
             The world. Defaults to every world.
         target_area_key (str, optional):
-            The feature holding the gross areas. Defaults to ``None``, the
-            areas computed from the footprints.
+            The feature holding the gross areas. Defaults to ``None``, the areas
+            computed from the footprints.
         areas (AssetInventory, optional):
-            A stage holding that feature, frozen as the area stage.
-            Defaults to ``None``, which reads it from ``buildings``.
+            A stage holding that feature, frozen as the area stage. Defaults to
+            ``None``, which reads it from ``buildings``.
         **options (Any):
             Overrides of the constructor arguments.
 
@@ -941,8 +941,8 @@ class TestUnitBudgetGrossArea:
 
     def test_same_area_and_source(self) -> None:
         """Gross area and its source match the unit budget's on these footprints."""
-        # not covered: a footprint with neither area nor gross area, which the
-        # budget gives a zero area, and unreadable coordinates, on which it raises
+        # not covered: a footprint with neither area nor gross area, which the budget
+        # gives a zero area, and unreadable coordinates, on which it raises
         records = {
             'stories': target(30.0, NumberOfStories=3),
             'numpy': target(60.0, NumberOfStories=np.int64(2)),
@@ -1302,10 +1302,9 @@ def labeled_draws(
     """
     Return the neighbors of two targets, one per label, in every world.
 
-    ``near`` has five candidates within the cap and draws under the donor
-    label. ``bg`` lies in block group A, beyond the cap of every candidate,
-    and draws under the fallback label from three buildings of that block
-    group.
+    ``near`` has five candidates within the cap and draws under the donor label.
+    ``bg`` lies in block group A, beyond the cap of every candidate, and draws under
+    the fallback label from three buildings of that block group.
 
     Args:
         seed (int, optional):
@@ -1458,8 +1457,8 @@ class TestWorlds:
 
         Returns:
             tuple[AssetInventory, AssetInventory]:
-                The stage, whose target's stories and occupancy class
-                differ by world, and the donor stage, whose donor does.
+                The stage, whose target's stories and occupancy class differ by
+                world, and the donor stage, whose donor does.
         """
         buildings = inventory(
             {

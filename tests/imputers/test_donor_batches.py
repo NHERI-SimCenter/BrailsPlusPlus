@@ -455,8 +455,8 @@ class TestDonorAlsoTarget:
             )
             for i in range(3)
         }
-        # 'x' holds a class and a story count, so it is a donor, and lacks
-        # its unit count, so it is also a target.
+        # 'x' holds a class and a story count, so it is a donor, and lacks its unit
+        # count, so it is also a target.
         records['x'] = asset(50.0, 0.0, OccupancyClass='RES1', NumberOfStories=1)
         targets = dict(records)
         targets.update(

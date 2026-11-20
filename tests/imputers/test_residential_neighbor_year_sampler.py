@@ -75,8 +75,8 @@ BG_C = '060010001003'
 
 STAGE = 'residential'
 
-# Golden picks under SEED: a target with donors within the cap, and one
-# that falls back to its block group.
+# Golden picks under SEED: a target with donors within the cap, and one that falls
+# back to its block group.
 GOLDEN_PICKS = {'t0': ('r1', 1955), 'far': ('b0', 1990)}
 
 
@@ -113,9 +113,9 @@ def _donors() -> dict[str, tuple[list, dict[str, Any]]]:
 
     Returns:
         dict[str, tuple[list, dict[str, Any]]]:
-            ``r0`` to ``r4``, 100 to 500 m east of the origin in block group
-            A, with years 1950 to 1970, and ``b0`` to ``b2``, 10 km east in
-            block group B, with years 1990 to 1992.
+            ``r0`` to ``r4``, 100 to 500 m east of the origin in block group A, with
+            years 1950 to 1970, and ``b0`` to ``b2``, 10 km east in block group B,
+            with years 1990 to 1992.
     """
     classes = ('RES1', 'RES2', 'RES3A', 'RES3C', 'RES3F')
     records = {
@@ -145,8 +145,8 @@ def _targets() -> dict[str, tuple[list, dict[str, Any]]]:
 
     Returns:
         dict[str, tuple[list, dict[str, Any]]]:
-            ``t0`` to ``t3`` near the origin in block group A, and ``far``,
-            14 km east in block group B, beyond the cap of every donor.
+            ``t0`` to ``t3`` near the origin in block group A, and ``far``, 14 km
+            east in block group B, beyond the cap of every donor.
     """
     classes = ('COM1', 'RES4', 'IND1', 'EDU1')
     records = {
@@ -230,8 +230,8 @@ def test_select_donors_reads_the_held_stage_and_changes_nothing() -> None:
 
 def test_each_world_copies_its_own_residential_year() -> None:
     """Each world's draw copies its donor's year in that world."""
-    # only r is a donor: the nearer assets are non-residential, lack a
-    # year, hold a fractional year or enclose no area
+    # only r is a donor: the nearer assets are non-residential, lack a year, hold a
+    # fractional year or enclose no area
     records = {
         'r': asset(300.0, 0.0, OccupancyClass='RES1', YearBuilt=[1950, 1960, 1970]),
         'c': asset(30.0, 0.0, OccupancyClass='COM1', YearBuilt=1900),
@@ -458,9 +458,8 @@ def test_one_asset_calls_match_the_full_inventory() -> None:
 
 
 # The block group is read only for an asset with no donor within the cap, and
-# coordinates without area, or two failures at once, name nothing. A missing
-# donor gives no_donor alone, and beside a residential class the class's
-# infeasible.
+# coordinates without area, or two failures at once, name nothing. A missing donor
+# gives no_donor alone, and beside a residential class the class's infeasible.
 @pytest.mark.parametrize(
     ('record', 'diagnosis', 'resolvable_by'),
     [

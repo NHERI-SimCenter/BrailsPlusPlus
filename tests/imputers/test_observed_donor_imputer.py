@@ -98,8 +98,8 @@ def donor_grid() -> dict[str, tuple[list, dict[str, Any]]]:
 
     Returns:
         dict[str, tuple[list, dict[str, Any]]]:
-            Ids ``d00`` to ``d29``; every donor's ``NumberOfUnits`` is its
-            index, so a copied value names its donor.
+            Ids ``d00`` to ``d29``; every donor's ``NumberOfUnits`` is its index, so
+            a copied value names its donor.
     """
     classes = ('RES1', 'RES3A', 'COM1')
     records = {}
@@ -716,8 +716,8 @@ class TestStories:
             donor (dict[str, Any]):
                 The donor's story features.
             **options (Any):
-                Constructor arguments of the imputer. Donors need not hold
-                a count unless ``required`` is given.
+                Constructor arguments of the imputer. Donors need not hold a count
+                unless ``required`` is given.
 
         Returns:
             float:
@@ -799,16 +799,14 @@ class TestStoriesPerWorld:
 
         Args:
             near_class (str, optional):
-                The near donor's occupancy class. Defaults to COM1, the
-                target's.
+                The near donor's occupancy class. Defaults to COM1, the target's.
             stories (tuple[int, int], optional):
-                The target's story count in worlds 0 and 1. Defaults to
-                (1, 9).
+                The target's story count in worlds 0 and 1. Defaults to (1, 9).
 
         Returns:
             tuple[AssetInventory, AssetInventory]:
-                The donors, and the target in two worlds. With ``k=1`` and
-                a story weight of 100, the target's count picks the donor.
+                The donors, and the target in two worlds. With ``k=1`` and a story
+                weight of 100, the target's count picks the donor.
         """
         donors = {
             'near': asset(
@@ -881,8 +879,8 @@ class TestStoriesPerWorld:
             )
             for i in range(20)
         }
-        # Odd targets hold a count and compare; even ones lack it, receive
-        # one per world and donate. Equal footprints leave no area term.
+        # Odd targets hold a count and compare; even ones lack it, receive one per
+        # world and donate. Equal footprints leave no area term.
         records = {
             f't{i:02d}': asset(
                 15.0 * i,
@@ -1462,8 +1460,8 @@ def block_group_mix() -> dict[str, tuple[list, dict[str, Any]]]:
 
     Returns:
         dict[str, tuple[list, dict[str, Any]]]:
-            ``a_r1`` and ``b_r2``, residential, and ``c_n``,
-            non-residential, in ascending id order.
+            ``a_r1`` and ``b_r2``, residential, and ``c_n``, non-residential, in
+            ascending id order.
     """
     return {
         'a_r1': asset(
@@ -1640,8 +1638,8 @@ def material_neighbors() -> dict[str, tuple[list, dict[str, Any]]]:
 
     Returns:
         dict[str, tuple[list, dict[str, Any]]]:
-            Six RES1 donors, ``w0`` to ``w5``, alternating ``Material``
-            ``'C'`` and ``'W'``.
+            Six RES1 donors, ``w0`` to ``w5``, alternating ``Material`` ``'C'`` and
+            ``'W'``.
     """
     return {
         f'w{i}': asset(

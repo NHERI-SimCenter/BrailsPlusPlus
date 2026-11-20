@@ -47,8 +47,8 @@ from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
 from brails.utils.deterministic_sampling import asset_key_digest, keyed_uniforms
 from tests.imputers.donor_fixtures import BG_A, BG_B, SEED, asset, inventory
 
-# The arguments under which the donor distance is the great-circle distance
-# in meters, for a donor that supplies a year.
+# The arguments under which the donor distance is the great-circle distance in
+# meters, for a donor that supplies a year.
 LOCATION_ONLY = {
     'features': ('YearBuilt',),
     'soft_filters': (),
@@ -73,8 +73,8 @@ def test_location_alone_ignores_plan_area_and_stories() -> None:
     """The distance is in meters and ignores plan areas and story counts."""
     target = {'t': asset(0.0, 0.0, 10.0, OccupancyClass='COM1', NumberOfStories=2)}
     picks = []
-    # five donors 5 to 25 m away, given other areas and stories, ranked
-    # differently, the second time
+    # five donors 5 to 25 m away, given other areas and stories, ranked differently,
+    # the second time
     for sides, stories in (
         ((6, 8, 10, 12, 14), (1, 2, 3, 4, 5)),
         ((30, 20, 4, 9, 3), (9, 1, 6, 2, 8)),
@@ -143,8 +143,8 @@ def test_a_given_status_keeps_only_its_donors() -> None:
 
 def test_a_prefix_forms_the_labels_of_both_picks() -> None:
     """With a prefix, each pick is the one the prefixed label's uniform implies."""
-    # donors at 100 m and 300 m for the donor round, and g0 to g2, of equal
-    # weight and in id order, for the fallback
+    # donors at 100 m and 300 m for the donor round, and g0 to g2, of equal weight
+    # and in id order, for the fallback
     records = {
         'a': asset(100.0, 0.0, OccupancyClass='RES1', YearBuilt=1950),
         'b': asset(300.0, 0.0, OccupancyClass='RES1', YearBuilt=1960),
@@ -191,8 +191,7 @@ def test_a_prefix_forms_the_labels_of_both_picks() -> None:
                 ('far', PURPOSE_FALLBACK),
             )
         )
-        # the donor at 100 m holds three quarters of the total weight
-        # 1/100 + 1/300
+        # the donor at 100 m holds three quarters of the total weight 1/100 + 1/300
         assert near.donor_id == ('a' if u_near < 0.75 else 'b')
         assert far.donor_id == ('g0', 'g1', 'g2')[min(int(u_far * 3), 2)]
         assert (near.outcome, far.outcome) == (

@@ -83,8 +83,8 @@ class KnnImputer(Imputation):
             For reproducibility
         exclude_provider_ids (bool):
             If True (the default), the features in
-            :data:`brails.constants.PROVIDER_FEATURES` are not used as
-            predictors. They stay in the output inventory unchanged.
+            :data:`brails.constants.PROVIDER_FEATURES` are not used as predictors.
+            They stay in the output inventory unchanged.
     """
 
     def __init__(
@@ -208,8 +208,8 @@ class KnnImputer(Imputation):
                 )
                 column_names = bldg_properties_df.columns
 
-            # This runs after exclude_features, so a provider feature named
-            # there is still present when that list is checked.
+            # This runs after exclude_features, so a provider feature named there is
+            # still present when that list is checked.
             if self.exclude_provider_ids:
                 provider_columns = [
                     feature

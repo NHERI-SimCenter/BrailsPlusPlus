@@ -58,13 +58,12 @@ if TYPE_CHECKING:
         ObservedDonorImputer,
     )
 
-# Relative margin by which the tree search exceeds the cap before the
-# distances it returns are compared with the cap. Described in README.rst,
-# "Defaults".
+# Relative margin by which the tree search exceeds the cap before the distances it
+# returns are compared with the cap. Described in README.rst, "Defaults".
 TREE_RADIUS_MARGIN = 1e-6
 
-# Status codes of a donor: its value of the status key is missing, outside
-# the status values, or among them.
+# Status codes of a donor: its value of the status key is missing, outside the status
+# values, or among them.
 _STATUS_UNKNOWN = -1
 _STATUS_OUTSIDE = 0
 _STATUS_INSIDE = 1
@@ -82,9 +81,8 @@ class _DonorSite(NamedTuple):
         log_area (float):
             Natural log of the plan area in square meters.
         stories (float):
-            The story count the distance compares, NaN without one or
-            where it is held per world, which
-            :meth:`DonorPool.world_site` gives.
+            The story count the distance compares, NaN without one or where it is
+            held per world, which :meth:`DonorPool.world_site` gives.
         block_group (str | None):
             The asset's block-group GEOID, if it holds one.
     """
@@ -134,8 +132,8 @@ class _DonorNeighborhood(NamedTuple):
         distance (numpy.ndarray | None):
             Donor distance of each, ``None`` until computed.
         order (numpy.ndarray | None):
-            Positions into ``index`` sorted by donor distance, then by
-            donor index, ``None`` until computed.
+            Positions into ``index`` sorted by donor distance, then by donor index,
+            ``None`` until computed.
     """
 
     index: np.ndarray
@@ -223,8 +221,8 @@ def _world_features(
         world (int):
             The index of the world whose values are kept, from 0.
         n_pw (int):
-            The number of worlds of the asset's inventory. With one world,
-            every world reads realization 0.
+            The number of worlds of the asset's inventory. With one world, every
+            world reads realization 0.
         vector_features (Iterable[str]):
             Features whose plain list values are single values.
 
@@ -251,10 +249,10 @@ class DonorPool:
     """
     The donors and targets of one imputation, indexed for the donor search.
 
-    A pool holds the centroid, log plan area, story count and block group of
-    every donor and target with area, the donors' feature values and statuses,
-    and a haversine ``BallTree`` over the donors. Donors are ordered by their
-    id as a string. Build one with
+    A pool holds the centroid, log plan area, story count and block group of every
+    donor and target with area, the donors' feature values and statuses, and a
+    haversine ``BallTree`` over the donors. Donors are ordered by their id as a
+    string. Build one with
     :meth:`~brails.imputers.observed_donor_imputer.observed_donor_imputer.ObservedDonorImputer.pool`;
     only the imputer that built it accepts it.
 
@@ -270,14 +268,13 @@ class DonorPool:
         log_area (numpy.ndarray):
             Natural log of each donor's plan area in square meters.
         stories (numpy.ndarray):
-            Each donor's story count for the distance, NaN without one or
-            where it is held per world; :meth:`view` gives each world's.
+            Each donor's story count for the distance, NaN without one or where it is
+            held per world; :meth:`view` gives each world's.
         block_group (tuple):
             Each donor's block-group GEOID, or ``None``.
         no_area (frozenset):
-            Assets of the donor and target inventories whose coordinates
-            enclose no area. The pool holds no site for them and never
-            draws them.
+            Assets of the donor and target inventories whose coordinates enclose no
+            area. The pool holds no site for them and never draws them.
         tree (sklearn.neighbors.BallTree | None):
             The search tree, ``None`` without donors.
         imputer (ObservedDonorImputer):
@@ -297,8 +294,7 @@ class DonorPool:
         donor_index (dict):
             Each donor's index in :attr:`donor_ids`, by id.
         block_group_donors (dict):
-            The indices of each block group's donors in ascending order, by
-            GEOID.
+            The indices of each block group's donors in ascending order, by GEOID.
     """
 
     def __init__(
@@ -324,8 +320,8 @@ class DonorPool:
             imputer (ObservedDonorImputer):
                 The imputer building the pool.
             donors (Sequence[tuple[Any, _DonorSite, Mapping[str, Any], int]]):
-                ``(asset_id, site, features, n_pw)`` per donor, in ascending
-                order of the id as a string, each id once.
+                ``(asset_id, site, features, n_pw)`` per donor, in ascending order of
+                the id as a string, each id once.
             targets (Mapping[Any, _DonorSite]):
                 The sites of the targets that are not donors.
             no_area (Iterable[Any]):
@@ -344,11 +340,11 @@ class DonorPool:
             status_values (Sequence[Any]):
                 The values of ``status_key`` that give a donor the status.
             stories_key (str, optional):
-                The feature a donor's story count is read from in each
-                world, for a donor of several worlds.
+                The feature a donor's story count is read from in each world, for a
+                donor of several worlds.
             target_stories (Mapping[Any, Sequence[float]], optional):
-                The story count in each world of every target that holds
-                one per world, by id.
+                The story count in each world of every target that holds one per
+                world, by id.
 
         Raises:
             ValueError:
@@ -437,8 +433,8 @@ class DonorPool:
 
         Returns:
             _DonorSite:
-                The site of :meth:`site`, itself where the asset holds no
-                story count per world.
+                The site of :meth:`site`, itself where the asset holds no story count
+                per world.
 
         Raises:
             LookupError:
@@ -457,8 +453,8 @@ class DonorPool:
         """
         Find the donors within a distance of a site.
 
-        The tree searches a slightly larger radius, and the great-circle
-        distance it returns for each pair is compared with ``cap_m``.
+        The tree searches a slightly larger radius, and the great-circle distance it
+        returns for each pair is compared with ``cap_m``.
 
         Args:
             site (_DonorSite):
@@ -494,8 +490,8 @@ class DonorPool:
 
         Returns:
             _DonorWorldView:
-                Eligibility, status, soft-filter values, imputed-feature
-                values and story count of every donor in that world.
+                Eligibility, status, soft-filter values, imputed-feature values and
+                story count of every donor in that world.
         """
         key = world if self._per_world else 0
         if key in self._views:
