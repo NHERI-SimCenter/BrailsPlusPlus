@@ -25,8 +25,8 @@ compiler runs. The README beside each module describes that module in full.
   The compiler draws structure types from the West Coast tables of Hazus. It
   therefore accepts only states of that region, within the limits that the section
   "Scope" of its README states. Unless the compiler or the inputs name the state, the
-  compiler takes it from the block groups. It refuses inputs whose block groups lie
-  in two states.
+  compiler takes it from the block groups. In that case, it refuses inputs whose
+  block groups lie in two states.
 - **A compilation from a place name** (`CompilerInputs.from_place`,
   `HazusEQInventoryCompiler.compile_place`). The place can be a census place or
   county named with its state, an OpenStreetMap name, a region or a polygon. It gives
@@ -42,9 +42,9 @@ compiler runs. The README beside each module describes that module in full.
   excluded from a world carries a diagnosis.
 - **Pieces of the compiler that other compilers can use.** `StageFreeze`
   (`brails/utils/stage_freeze.py`) freezes each stage's output with a digest, and it
-  raises when a frozen output changes. `brails.compilers` also holds `PairRedraw`,
-  which re-draws implausible pairs of occupancy class and story count, and
-  `ComposedScreen` and `ResolutionLoop`.
+  raises when a frozen output changes. `brails.compilers` holds `PairRedraw`, which
+  re-draws implausible pairs of occupancy class and story count, and `ComposedScreen`
+  and `ResolutionLoop`.
 - **Hazus earthquake inferers** (`brails/inferers/hazus_inferer_earthquake/`).
   `HazusEQStructureTypeInferer`, `HazusEQDesignLevelInferer` (with
   `assign_design_levels` and `apply_w1_carveout`) and `HazusEQHeightClassInferer`
@@ -75,7 +75,7 @@ compiler runs. The README beside each module describes that module in full.
   environment variable `CENSUS_API_KEY`, a Google Colab secret or the file
   `~/.brails/census_api_key`.
 - **Other scrapers.** `MobileHomeParkScraper` scrapes HIFLD mobile-home parks.
-  `NSIFileReader` reads NSI records from a parquet table, which
+  `NSIFileReader` reads NSI records from a parquet table, such as one that
   `NSI_Parser.get_raw_data(raw_parquet_path=...)` writes. The new `simcenter_format`
   on `get_raw_data` maps NSI records to SimCenter names, among them `sqft` to
   `GrossArea`, `fullrep` to `ReplacementCost` and `med_yr_blt` to
