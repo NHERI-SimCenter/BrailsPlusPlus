@@ -58,11 +58,11 @@ OAKLAND = Polygon(
     [box(-122.24, 37.81, -122.2, 37.84).exterior.coords],
 )
 
-# Places of California: Berkeley, Alameda and Oakland as cities, a city and a CDP
-# of one name, two CDPs of one name, a name with an accent, three names that only
+# Places of California: Berkeley, Alameda and Oakland as cities, a city and a CDP of
+# one name, two CDPs of one name, a name with an accent, three names that only
 # resemble others, an invented nonfunctioning city beside its metro government's
-# balance, as Louisville has in Kentucky's file, a name with a period and a name
-# that ends in a county descriptor.
+# balance, as Louisville has in Kentucky's file, a name with a period and a name that
+# ends in a county descriptor.
 PLACES = gpd.GeoDataFrame(
     [
         ('0606000', 'Berkeley', 'Berkeley city', 'C1', 'A', 45e6),

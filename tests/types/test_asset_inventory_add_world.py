@@ -69,8 +69,8 @@ def inventory(
         n_pw (int, optional):
             The number of possible worlds to declare. Defaults to 1.
         vector_features (list[str], optional):
-            The features whose values are vectors. ``None`` takes the
-            inventory's default.
+            The features whose values are vectors. ``None`` takes the inventory's
+            default.
 
     Returns:
         AssetInventory:
@@ -89,8 +89,7 @@ def features(source: AssetInventory) -> dict[str, dict[str, Any]]:
 
     Args:
         source (AssetInventory):
-            The inventory whose features are returned, shared and not
-            copied.
+            The inventory whose features are returned, shared and not copied.
 
     Returns:
         dict[str, dict[str, Any]]:

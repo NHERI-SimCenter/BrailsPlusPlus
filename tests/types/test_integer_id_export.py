@@ -51,8 +51,8 @@ from brails.types.asset_inventory import Asset, AssetInventory
 if TYPE_CHECKING:
     from pathlib import Path
 
-# Geohash-style asset ids, including a suffixed collision and an all-digit
-# id that must stay a string.
+# Geohash-style asset ids, including a suffixed collision and an all-digit id that
+# must stay a string.
 ASSETS = {
     '9q8yyk8ytp': {
         'coordinates': [

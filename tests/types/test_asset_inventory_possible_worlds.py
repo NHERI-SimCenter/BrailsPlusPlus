@@ -67,8 +67,7 @@ if TYPE_CHECKING:
         ('StructureType', 'C1', False),
         ('StructureType', ['C1', 'C2'], True),
         ('NumberOfStories', 3, False),
-        # A plain list is one value of a vector feature, not one entry
-        # per world.
+        # A plain list is one value of a vector feature, not one entry per world.
         (VECTOR, [1, 2, 3], False),
         # A list of lists is one vector per world.
         (VECTOR, [[1, 2], [3, 4]], True),

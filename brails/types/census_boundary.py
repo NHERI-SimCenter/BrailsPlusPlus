@@ -164,8 +164,8 @@ class CensusBoundary(RegionBoundary):
     without the leading words of its census name, as ``'Virgin Islands'`` for the
     United States Virgin Islands. A trailing ``'USA'`` or ``'United States'`` is
     dropped, and accents, case and periods are ignored, so ``'St Helena, CA'``
-    matches St. Helena and ``'Washington, D.C.'`` names the District of Columbia.
-    A place's GEOID, such as ``'0606000'``, is taken alone or with its state.
+    matches St. Helena and ``'Washington, D.C.'`` names the District of Columbia. A
+    place's GEOID, such as ``'0606000'``, is taken alone or with its state.
 
     A place's ``NAMELSAD`` is its census name with its kind, as ``'Berkeley city'``,
     and its ``NAME`` the name alone, as ``'Berkeley'``. :meth:`get_boundary` reads
@@ -176,13 +176,13 @@ class CensusBoundary(RegionBoundary):
        the state whose ``NAMELSAD`` is the name, as ``'Marin County'``, read from the
        national county file;
     3. a place whose ``NAME`` is the name, leaving out the places whose ``FUNCSTAT``
-       is one of :data:`NONFUNCTIONING_STATUSES`. Of several places of that name,
-       the one incorporated place (``CLASSFP`` starting with ``C``) is taken over
-       the census-designated places, and a printed line names them all.
+       is one of :data:`NONFUNCTIONING_STATUSES`. Of several places of that name, the
+       one incorporated place (``CLASSFP`` starting with ``C``) is taken over the
+       census-designated places, and a printed line names them all.
 
     A county is matched only by its name with its descriptor, so ``'Marin, CA'``
-    finds no county. The boundary keeps its holes, such as Piedmont inside
-    Oakland. The files are read with
+    finds no county. The boundary keeps its holes, such as Piedmont inside Oakland.
+    The files are read with
     :func:`~brails.scrapers.us_census_scrapers.tiger_files.read_tiger_file`, which
     downloads each once per process.
 
@@ -215,8 +215,8 @@ class CensusBoundary(RegionBoundary):
                 If ``place`` is not a string.
             ValueError:
                 If the text names no state, names a state that is not one of
-                :data:`STATES`, or is a number other than the GEOID of a place of
-                its state, of :data:`PLACE_GEOID_LENGTH` digits that start with the
+                :data:`STATES`, or is a number other than the GEOID of a place of its
+                state, of :data:`PLACE_GEOID_LENGTH` digits that start with the
                 state's FIPS code.
         """
         if not isinstance(place, str):
@@ -286,10 +286,10 @@ class CensusBoundary(RegionBoundary):
 
         Args:
             print_progress (bool, optional):
-                If ``True``, print the boundary found and a line before the
-                county file is downloaded. The line naming the places of one name
-                when the incorporated one is taken is printed either way. Defaults
-                to ``True``.
+                If ``True``, print the boundary found and a line before the county
+                file is downloaded. The line naming the places of one name when the
+                incorporated one is taken is printed either way. Defaults to
+                ``True``.
 
         Returns:
             tuple[BaseGeometry, str, str]:
@@ -306,8 +306,8 @@ class CensusBoundary(RegionBoundary):
                 If a download fails otherwise.
         """
         # Imported here, since importing the scrapers while brails.types loads is
-        # circular: brails.scrapers imports from brails.utils, whose package
-        # imports brails.types.
+        # circular: brails.scrapers imports from brails.utils, whose package imports
+        # brails.types.
         from brails.scrapers.us_census_scrapers.tiger_files import (  # noqa: PLC0415
             read_tiger_file,
             tiger_file_url,
@@ -412,8 +412,8 @@ class CensusBoundary(RegionBoundary):
                 The rows of the first step that matches, empty if none does;
                 ``'place'`` or ``'county'``; and the rows the near matches of an
                 unmatched name are drawn from: the state's counties and then its
-                functioning places for a name that ends in a county descriptor,
-                and its functioning places otherwise.
+                functioning places for a name that ends in a county descriptor, and
+                its functioning places otherwise.
         """
         from brails.scrapers.us_census_scrapers.tiger_files import (  # noqa: PLC0415
             read_tiger_file,
@@ -462,8 +462,8 @@ def _normalize(text: str) -> str:
 
     Returns:
         str:
-            The name in NFKD form without combining marks and periods, case
-            folded, with runs of whitespace replaced by one space.
+            The name in NFKD form without combining marks and periods, case folded,
+            with runs of whitespace replaced by one space.
     """
     decomposed = unicodedata.normalize('NFKD', text)
     bare = ''.join(c for c in decomposed if not unicodedata.combining(c))
@@ -481,7 +481,7 @@ def _state_key(text: str) -> str:
 
     Returns:
         str:
-            The name as :func:`_normalize` gives it, with ``'united states'``
-            written ``'us'``.
+            The name as :func:`_normalize` gives it, with ``'united states'`` written
+            ``'us'``.
     """
     return _normalize(text).replace('united states', 'us')

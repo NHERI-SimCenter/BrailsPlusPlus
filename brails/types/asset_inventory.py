@@ -95,16 +95,16 @@ from brails.utils.geo_tools import GeoTools
 from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 
-# Features whose values are vectors. A plain list is one value of such
-# a feature, not one realization per possible world. all_elevations, which
-# USGSElevationScraper writes, holds the elevation of each footprint vertex.
+# Features whose values are vectors. A plain list is one value of such a feature, not
+# one realization per possible world. all_elevations, which USGSElevationScraper
+# writes, holds the elevation of each footprint vertex.
 DEFAULT_VECTOR_FEATURES: tuple[str, ...] = ('HousingUnits', 'all_elevations')
 
 # Upper bound on the number of problems named in an error message.
 MAX_REPORTED_WORLD_PROBLEMS = 10
 
-# Source labels that AssetInventory.merge accepts when it writes a source
-# string, and the code each label contributes.
+# Source labels that AssetInventory.merge accepts when it writes a source string, and
+# the code each label contributes.
 SOURCE_CODES: Mapping[str, str] = MappingProxyType(
     {
         'local': 'L',
@@ -127,8 +127,8 @@ SOURCE_CODE_NONE = '-'
 # Characters a source string may hold.
 SOURCE_STRING_CODES = frozenset({*SOURCE_CODES.values(), SOURCE_CODE_NONE})
 
-# Features covered by the source string by default, one character each,
-# in the order a Hazus earthquake inventory is built.
+# Features covered by the source string by default, one character each, in the order
+# a Hazus earthquake inventory is built.
 HAZUS_EQ_SOURCE_FEATURES: tuple[str, ...] = (
     OCCUPANCY_KEY,
     UNITS_KEY,
@@ -140,8 +140,8 @@ HAZUS_EQ_SOURCE_FEATURES: tuple[str, ...] = (
     REPLACEMENT_COST_KEY,
 )
 
-# String BRAILS readers, the footprint scrapers among them, write for an
-# absent provider value.
+# String BRAILS readers, the footprint scrapers among them, write for an absent
+# provider value.
 MISSING_VALUE_MARKER = 'NA'
 
 def _is_missing_value(value: Any) -> bool:  # noqa: ANN401
@@ -178,16 +178,15 @@ def read_source_string(
     """
     Return an asset's source string, checked against the features it covers.
 
-    A string passes when it holds one character per source feature, each
-    one of :data:`SOURCE_STRING_CODES`, as :meth:`AssetInventory.merge`
-    writes it.
+    A string passes when it holds one character per source feature, each one of
+    :data:`SOURCE_STRING_CODES`, as :meth:`AssetInventory.merge` writes it.
 
-    The function reads the source string of one world. An asset of a
-    realization that :meth:`AssetInventory.get_world_realization` returns
-    holds one string, as does an asset of an inventory of several worlds
-    whose strings agree. Where the worlds' strings differ, the inventory
-    holds a list of one string per world, and the function refuses it. To
-    read an asset's codes in one world, read that world's realization.
+    The function reads the source string of one world. An asset of a realization that
+    :meth:`AssetInventory.get_world_realization` returns holds one string, as does an
+    asset of an inventory of several worlds whose strings agree. Where the worlds'
+    strings differ, the inventory holds a list of one string per world, and the
+    function refuses it. To read an asset's codes in one world, read that world's
+    realization.
 
     Args:
         asset_id (Hashable):
@@ -208,9 +207,9 @@ def read_source_string(
 
     Raises:
         ValueError:
-            If the value is not a string (a per-world list included) or is
-            missing, its length differs from the number of source features,
-            or it holds a character outside :data:`SOURCE_STRING_CODES`.
+            If the value is not a string (a per-world list included) or is missing,
+            its length differs from the number of source features, or it holds a
+            character outside :data:`SOURCE_STRING_CODES`.
     """
     codes = features.get(source_string_key)
     if (
@@ -255,21 +254,20 @@ def _number_features_by_type(features: list[dict[str, Any]]) -> list[dict[str, A
 
     Args:
         features (list[dict[str, Any]]):
-            Features as built by ``AssetInventory.get_geojson``, each holding
-            its asset id in the property ``id``.
+            Features as built by ``AssetInventory.get_geojson``, each holding its
+            asset id in the property ``id``.
 
     Returns:
         list[dict[str, Any]]:
-            The features in the order ``write_to_geojson`` states, each
-            carrying its number within its ``type`` as the feature-level
-            ``id`` and its asset id, as a string, in the property
-            ``unique_id``.
+            The features in the order ``write_to_geojson`` states, each carrying its
+            number within its ``type`` as the feature-level ``id`` and its asset id,
+            as a string, in the property ``unique_id``.
 
     Raises:
         ValueError:
-            If an asset already carries a ``unique_id`` or ``AIM_id``
-            feature, has no ``type`` or a ``type`` that is ``None``, NaN or
-            an empty string, or if two asset ids have the same string form.
+            If an asset already carries a ``unique_id`` or ``AIM_id`` feature, has no
+            ``type`` or a ``type`` that is ``None``, NaN or an empty string, or if
+            two asset ids have the same string form.
     """
     keyed = []
     asset_ids_by_string = {}
@@ -319,16 +317,16 @@ def _write_geojson_output_file(path: str | Path, geojson: dict[str, Any]) -> Non
         path (str or Path):
             The output file.
         geojson (dict[str, Any]):
-            The GeoJSON ``FeatureCollection``, passed through
-            :func:`clean_floats` before it is written.
+            The GeoJSON ``FeatureCollection``, passed through :func:`clean_floats`
+            before it is written.
 
     Raises:
         ValueError:
-            If ``geojson`` holds an infinite value outside a tuple, in which
-            case no file is created.
+            If ``geojson`` holds an infinite value outside a tuple, in which case no
+            file is created.
         OSError:
-            If writing or replacing the file fails, in which case the
-            temporary file is removed and an existing file is left as it was.
+            If writing or replacing the file fails, in which case the temporary file
+            is removed and an existing file is left as it was.
     """
     payload = clean_floats(geojson)
     output_path = Path(path)
@@ -339,8 +337,8 @@ def _write_geojson_output_file(path: str | Path, geojson: dict[str, Any]) -> Non
     try:
         with os.fdopen(descriptor, 'w', encoding='utf-8') as f:
             json.dump(payload, f, indent=2)
-        # mkstemp creates the file readable by its owner only. Give it the
-        # mode a newly created file would have.
+        # mkstemp creates the file readable by its owner only. Give it the mode a
+        # newly created file would have.
         umask = os.umask(0)
         os.umask(umask)
         partial_path.chmod(0o666 & ~umask)
@@ -407,8 +405,8 @@ def _report_first_problems(problems: list[str], separator: str) -> str:
 
     Returns:
         str:
-            The joined descriptions, followed by ``... and N more`` when
-            some were left out.
+            The joined descriptions, followed by ``... and N more`` when some were
+            left out.
     """
     text = separator.join(problems[:MAX_REPORTED_WORLD_PROBLEMS])
     left_out = len(problems) - MAX_REPORTED_WORLD_PROBLEMS
@@ -450,10 +448,10 @@ def is_probabilistic_feature(
     """
     Check whether a feature value holds multiple possible worlds.
 
-    An ordinary feature holds one value per possible world, so a list
-    means the feature is probabilistic. A vector feature is list-valued
-    already, so a plain list is a single value and only a list of lists
-    means the feature is probabilistic.
+    An ordinary feature holds one value per possible world, so a list means the
+    feature is probabilistic. A vector feature is list-valued already, so a plain
+    list is a single value and only a list of lists means the feature is
+    probabilistic.
 
     Args:
         key (str):
@@ -465,8 +463,8 @@ def is_probabilistic_feature(
 
     Returns:
         bool:
-            ``True`` if the value holds one entry per possible world,
-            ``False`` if it is a single value shared by every world.
+            ``True`` if the value holds one entry per possible world, ``False`` if it
+            is a single value shared by every world.
 
     Examples:
         >>> is_probabilistic_feature('StructureType', ['C1', 'C2'], [])
@@ -632,8 +630,8 @@ class Asset:
         def update_possible_worlds(n_pw: int, key: str, val: Any) -> int:  # noqa: ANN401
             """Check a feature and update the number of possible worlds."""
             if not is_probabilistic_feature(key, val, vector_features):
-                # The feature is a single value shared by every world, so
-                # it says nothing about how many worlds there are.
+                # The feature is a single value shared by every world, so it says
+                # nothing about how many worlds there are.
                 return n_pw
 
             if (n_pw != 1) and (n_pw != len(val)):
@@ -839,9 +837,8 @@ class AssetInventory:
 
         Args:
             vector_features (list[str], optional):
-                Names of the features whose values are vectors. For
-                these, a plain list is a single value, not one entry
-                per possible world. Defaults to
+                Names of the features whose values are vectors. For these, a plain
+                list is a single value, not one entry per possible world. Defaults to
                 :data:`DEFAULT_VECTOR_FEATURES`.
         """
         self.inventory: dict = {}
@@ -1168,8 +1165,8 @@ class AssetInventory:
         """
         Add another AssetInventory's assets to this one, handling conflicts.
 
-        This method adds all unique assets from `other_inventory` to the
-        current inventory (`self`).
+        This method adds all unique assets from `other_inventory` to the current
+        inventory (`self`).
 
         - **Asset De-duplication:** It automatically skips any incoming
           asset that is an exact duplicate of an existing one (based on
@@ -1316,67 +1313,61 @@ class AssetInventory:
         """
         Merge per-source inventories of this inventory's assets.
 
-        This inventory is the spine, labeled ``name``: its assets define
-        the asset set and the geometry of the result. Every other source
-        is an inventory keyed by asset ids of this inventory, possibly a
-        subset. Each feature of each asset is taken from the first source
-        in ``precedence`` that holds a value for it. ``None``, any value
-        :func:`pandas.isna` reports as missing, the empty string and
-        :data:`MISSING_VALUE_MARKER` are not values. A feature that no
-        source holds a value for keeps the missing marker of the first
-        source in ``precedence`` that has it.
+        This inventory is the spine, labeled ``name``: its assets define the asset
+        set and the geometry of the result. Every other source is an inventory keyed
+        by asset ids of this inventory, possibly a subset. Each feature of each asset
+        is taken from the first source in ``precedence`` that holds a value for it.
+        ``None``, any value :func:`pandas.isna` reports as missing, the empty string
+        and :data:`MISSING_VALUE_MARKER` are not values. A feature that no source
+        holds a value for keeps the missing marker of the first source in
+        ``precedence`` that has it.
 
-        Unless ``source_features`` is ``None``, each asset also receives
-        the feature :data:`SOURCE_STRING_KEY`: one character per
-        feature of ``source_features``, in that order, holding the
-        :data:`SOURCE_CODES` code of the source the value came from, or
-        :data:`SOURCE_CODE_NONE` where no source holds one.
+        Unless ``source_features`` is ``None``, each asset also receives the feature
+        :data:`SOURCE_STRING_KEY`: one character per feature of ``source_features``,
+        in that order, holding the :data:`SOURCE_CODES` code of the source the value
+        came from, or :data:`SOURCE_CODE_NONE` where no source holds one.
 
-        Neither this inventory nor any source is modified. The result
-        holds deep copies, with assets inserted in ascending order of the
-        asset id as a string, so it does not depend on the order of
-        ``others`` or of the assets in any inventory.
+        Neither this inventory nor any source is modified. The result holds deep
+        copies, with assets inserted in ascending order of the asset id as a string,
+        so it does not depend on the order of ``others`` or of the assets in any
+        inventory.
 
         Args:
             others (Mapping[str, AssetInventory]):
                 The other sources, keyed by their labels.
             precedence (Sequence[str]):
-                Every source label, ``name`` included, highest precedence
-                first.
+                Every source label, ``name`` included, highest precedence first.
             name (str):
                 The label of this inventory.
             source_features (Sequence[str] | None, optional):
-                The features the source string covers, in order. Defaults
-                to :data:`HAZUS_EQ_SOURCE_FEATURES`. ``None`` writes no
-                source string.
+                The features the source string covers, in order. Defaults to
+                :data:`HAZUS_EQ_SOURCE_FEATURES`. ``None`` writes no source string.
 
         Returns:
             AssetInventory:
-                A new inventory holding every asset of this one. It
-                declares the vector features of all sources, and its
-                number of possible worlds is the largest among them.
+                A new inventory holding every asset of this one. It declares the
+                vector features of all sources, and its number of possible worlds is
+                the largest among them.
 
         Raises:
             TypeError:
-                If ``others`` is not a mapping, a label is not a string, a
-                source is not an :class:`AssetInventory`, or
-                ``precedence`` or ``source_features`` is a single string.
+                If ``others`` is not a mapping, a label is not a string, a source is
+                not an :class:`AssetInventory`, or ``precedence`` or
+                ``source_features`` is a single string.
             ValueError:
-                If ``name`` labels one of ``others``; if ``precedence``
-                omits a label, repeats one or names a label that is not a
-                source; if ``source_features`` repeats a feature or names
-                :data:`SOURCE_STRING_KEY`; if a source string is
-                requested and a label has no code in
-                :data:`SOURCE_CODES`; if any source already carries
-                :data:`SOURCE_STRING_KEY`; if a source holds an asset
-                id that this inventory lacks; if two sources hold
-                different numbers of possible worlds above one; or if a
-                source holds a housing unit inventory.
+                If ``name`` labels one of ``others``; if ``precedence`` omits a
+                label, repeats one or names a label that is not a source; if
+                ``source_features`` repeats a feature or names
+                :data:`SOURCE_STRING_KEY`; if a source string is requested and a
+                label has no code in :data:`SOURCE_CODES`; if any source already
+                carries :data:`SOURCE_STRING_KEY`; if a source holds an asset id that
+                this inventory lacks; if two sources hold different numbers of
+                possible worlds above one; or if a source holds a housing unit
+                inventory.
             BrailsError:
-                If a source with one possible world holds a list, which
-                the result would read as realizations, while another
-                source holds several worlds, or if the result fails
-                :meth:`validate_possible_worlds`.
+                If a source with one possible world holds a list, which the result
+                would read as realizations, while another source holds several
+                worlds, or if the result fails :meth:`validate_possible_worlds`.
 
         Examples:
             >>> spine = AssetInventory()
@@ -1463,8 +1454,8 @@ class AssetInventory:
 
         Returns:
             tuple[dict[str, AssetInventory], list[str]]:
-                Every source keyed by its label, this inventory included,
-                and the labels in order of precedence.
+                Every source keyed by its label, this inventory included, and the
+                labels in order of precedence.
 
         Raises:
             TypeError:
@@ -1534,9 +1525,9 @@ class AssetInventory:
 
         Returns:
             tuple[dict[str, AssetInventory], list[str], int]:
-                Every source keyed by its label, this inventory included;
-                the labels in order of precedence; and the number of
-                possible worlds of the result.
+                Every source keyed by its label, this inventory included; the labels
+                in order of precedence; and the number of possible worlds of the
+                result.
 
         Raises:
             TypeError:
@@ -1621,10 +1612,10 @@ class AssetInventory:
 
         Raises:
             BrailsError:
-                If a source with one possible world holds a list for a
-                feature that is not a vector feature of the result. The
-                message names the first such source and up to
-                :data:`MAX_REPORTED_WORLD_PROBLEMS` of its values.
+                If a source with one possible world holds a list for a feature that
+                is not a vector feature of the result. The message names the first
+                such source and up to :data:`MAX_REPORTED_WORLD_PROBLEMS` of its
+                values.
         """
         vector_features = {
             feature for label in order for feature in sources[label].vector_features
@@ -1653,27 +1644,25 @@ class AssetInventory:
         Return whether the exterior rings of a footprint enclose any area.
 
         A footprint without area receives no geohash asset id
-        (:func:`brails.utils.asset_id.assign_asset_ids`), so callers drop
-        such footprints with this test first.
+        (:func:`brails.utils.asset_id.assign_asset_ids`), so callers drop such
+        footprints with this test first.
 
         Args:
             coordinates (object):
-                A BRAILS coordinate list (a list of ``[lon, lat]`` for a
-                polygon, a list of such rings for a multipolygon), a GeoJSON
-                mapping of type ``Polygon`` or ``MultiPolygon``, or an object
-                with ``__geo_interface__``, such as a Shapely geometry, in
-                EPSG:4326.
+                A BRAILS coordinate list (a list of ``[lon, lat]`` for a polygon, a
+                list of such rings for a multipolygon), a GeoJSON mapping of type
+                ``Polygon`` or ``MultiPolygon``, or an object with
+                ``__geo_interface__``, such as a Shapely geometry, in EPSG:4326.
 
         Returns:
             bool:
-                True when the absolute areas of the exterior rings sum to
-                more than zero.
+                True when the absolute areas of the exterior rings sum to more than
+                zero.
 
         Raises:
             ValueError:
-                If the coordinates are not one of the accepted forms, or a
-                vertex is not a finite coordinate pair within EPSG:4326
-                ranges.
+                If the coordinates are not one of the accepted forms, or a vertex is
+                not a finite coordinate pair within EPSG:4326 ranges.
         """
         return _has_area(coordinates)
 
@@ -1682,15 +1671,14 @@ class AssetInventory:
         """
         Return a footprint's centroid and plan area, as its asset id reads them.
 
-        The centroid is the planar centroid of the exterior rings in
-        EPSG:4326, the point whose geohash is the footprint's id. It ignores
-        interior rings, so for a geometry with holes it differs from the
-        Shapely centroid that :meth:`Asset.get_centroid` returns. The plan
-        area is the exterior rings' shoelace area in square
-        degrees scaled to a sphere of radius
-        :data:`brails.constants.EARTH_RADIUS_M` at the centroid's
-        latitude. Neither depends on a ring's starting vertex, orientation
-        or closing vertex, or on the order of the parts.
+        The centroid is the planar centroid of the exterior rings in EPSG:4326, the
+        point whose geohash is the footprint's id. It ignores interior rings, so for
+        a geometry with holes it differs from the Shapely centroid that
+        :meth:`Asset.get_centroid` returns. The plan area is the exterior rings'
+        shoelace area in square degrees scaled to a sphere of radius
+        :data:`brails.constants.EARTH_RADIUS_M` at the centroid's latitude. Neither
+        depends on a ring's starting vertex, orientation or closing vertex, or on the
+        order of the parts.
 
         Args:
             coordinates (object):
@@ -1698,13 +1686,13 @@ class AssetInventory:
 
         Returns:
             tuple[float, float, float]:
-                The centroid's longitude and latitude, and the plan area in
-                square meters, unrounded.
+                The centroid's longitude and latitude, and the plan area in square
+                meters, unrounded.
 
         Raises:
             ValueError:
-                In the cases :meth:`has_area` raises it, or if the exterior
-                rings enclose no area.
+                In the cases :meth:`has_area` raises it, or if the exterior rings
+                enclose no area.
         """
         return _centroid_and_plan_area(coordinates)
 
@@ -2455,15 +2443,14 @@ class AssetInventory:
 
         The file's number of possible worlds is its member ``n_worlds``, as
         :meth:`write_to_geojson` writes it, and each list of the file that holds
-        worlds, as :func:`is_probabilistic_feature` counts them under the
-        inventory's ``vector_features``, must hold that many values. A file
-        without the member, such as one written by another tool or by an earlier
-        BRAILS, takes its number from those lists, 1 without them, and lists of
-        two lengths are refused; a number above 1 taken so is printed with the
-        feature it came from. An empty inventory takes the number as its
-        ``n_pw``. An inventory that holds assets refuses a file of another number
-        of worlds. Every check runs before an asset is added, so a refused file
-        leaves the inventory as it was.
+        worlds, as :func:`is_probabilistic_feature` counts them under the inventory's
+        ``vector_features``, must hold that many values. A file without the member,
+        such as one written by another tool or by an earlier BRAILS, takes its number
+        from those lists, 1 without them, and lists of two lengths are refused; a
+        number above 1 taken so is printed with the feature it came from. An empty
+        inventory takes the number as its ``n_pw``. An inventory that holds assets
+        refuses a file of another number of worlds. Every check runs before an asset
+        is added, so a refused file leaves the inventory as it was.
 
         Args:
             file_path (str):
@@ -2478,14 +2465,13 @@ class AssetInventory:
                 the unique asset ID. If `None` (default), IDs are
                 auto-generated sequentially.
             key_by_unique_id (bool, optional):
-                If `True`, key each asset by its `unique_id` property, which
-                reads back a file written by `write_to_geojson` with
-                `integer_ids=True`. The keys are ints when every `unique_id`
-                is ASCII digits without a leading zero (`'0'` included), the
-                rule under which that export orders numerically, and strings
-                otherwise. The property is not kept as a feature,
-                and each asset keeps its own `type`. Cannot be combined with
-                `id_column`. Defaults to `False`.
+                If `True`, key each asset by its `unique_id` property, which reads
+                back a file written by `write_to_geojson` with `integer_ids=True`.
+                The keys are ints when every `unique_id` is ASCII digits without a
+                leading zero (`'0'` included), the rule under which that export
+                orders numerically, and strings otherwise. The property is not kept
+                as a feature, and each asset keeps its own `type`. Cannot be combined
+                with `id_column`. Defaults to `False`.
 
         Returns:
             bool:
@@ -2604,9 +2590,9 @@ class AssetInventory:
                     'key_by_unique_id cannot be combined with '
                     f'id_column={id_column!r}.'
                 )
-            # Check every feature before any asset is added, so a missing,
-            # empty or repeated unique_id, or one that already keys an asset,
-            # leaves the inventory as it was.
+            # Check every feature before any asset is added, so a missing, empty or
+            # repeated unique_id, or one that already keys an asset, leaves the
+            # inventory as it was.
             seen_unique_ids = set()
             unique_ids = []
             for i, asset_data in enumerate(features):
@@ -2711,8 +2697,7 @@ class AssetInventory:
                     asset_id = id_counter
                     id_counter += 1
 
-                # Make sure numeric IDs are represented as ints to avoid
-                # duplicates
+                # Make sure numeric IDs are represented as ints to avoid duplicates
                 if isinstance(asset_id, str) and asset_id.isdigit():
                     asset_id = int(asset_id)
 
@@ -2753,14 +2738,14 @@ class AssetInventory:
 
         Returns:
             int:
-                The file's ``n_worlds``, or for a file without the member the
-                number of values its lists hold, and 1 without them.
+                The file's ``n_worlds``, or for a file without the member the number
+                of values its lists hold, and 1 without them.
 
         Raises:
             ValueError:
-                If the member is not an integer of at least 1, a list of the
-                file holds another number of values or none, or the inventory
-                holds assets and another number of worlds.
+                If the member is not an integer of at least 1, a list of the file
+                holds another number of values or none, or the inventory holds assets
+                and another number of worlds.
         """
         n_worlds = (
             check_n_worlds(data['n_worlds'], file_path)
@@ -3021,10 +3006,10 @@ class AssetInventory:
         writes it to the specified file path (if provided), and returns the
         GeoJSON object.
 
-        The returned and written ``FeatureCollection`` gives ``n_pw`` as the
-        member ``n_worlds``, after ``brails_version``. Every list that holds
-        worlds, as :func:`is_probabilistic_feature` counts them under
-        ``vector_features``, must hold ``n_pw`` values.
+        The returned and written ``FeatureCollection`` gives ``n_pw`` as the member
+        ``n_worlds``, after ``brails_version``. Every list that holds worlds, as
+        :func:`is_probabilistic_feature` counts them under ``vector_features``, must
+        hold ``n_pw`` values.
 
         Args:
             output_file(str, optional):
@@ -3035,30 +3020,28 @@ class AssetInventory:
                 ``null``, except inside a tuple, such as a coordinate pair,
                 whose values are written as stored (see ``clean_floats``).
             integer_ids (bool, optional):
-                If ``True``, write the form the R2D tool stack reads, which
-                requires integer ids. The features are numbered from 1 within
-                each ``type``, and each carries its number as the
-                feature-level ``id`` and its asset id, as a string, in the
-                property ``unique_id``. They are ordered by ``type`` and then
-                by asset id, numerically when every asset id, as a string, is
-                ASCII digits without a leading zero (``'0'`` included), and
-                as strings otherwise. Assets without geometry are skipped.
+                If ``True``, write the form the R2D tool stack reads, which requires
+                integer ids. The features are numbered from 1 within each ``type``,
+                and each carries its number as the feature-level ``id`` and its asset
+                id, as a string, in the property ``unique_id``. They are ordered by
+                ``type`` and then by asset id, numerically when every asset id, as a
+                string, is ASCII digits without a leading zero (``'0'`` included),
+                and as strings otherwise. Assets without geometry are skipped.
                 ``read_from_geojson(..., key_by_unique_id=True)`` and
-                ``filter_to_region`` read such a file back keyed by asset id,
-                without ``unique_id``, so it can be written in this form
-                again; ``read_from_geojson`` turns digit-string ids into
-                integers. Defaults to ``False``.
+                ``filter_to_region`` read such a file back keyed by asset id, without
+                ``unique_id``, so it can be written in this form again;
+                ``read_from_geojson`` turns digit-string ids into integers. Defaults
+                to ``False``.
             asset_type (str, optional):
-                The ``type`` written, in either form, for an asset whose
-                ``type`` is missing, ``None``, NaN or an empty string, the
-                rule ``read_from_geojson`` follows for ``asset_type`` with
+                The ``type`` written, in either form, for an asset whose ``type`` is
+                missing, ``None``, NaN or an empty string, the rule
+                ``read_from_geojson`` follows for ``asset_type`` with
                 ``key_by_unique_id``. An asset with a ``type`` keeps it,
-                ``asset_type`` changes no asset id, and the inventory is not
-                changed. Defaults to ``None``, which writes each ``type`` as
-                the inventory holds it, so that with ``integer_ids`` an asset
-                without one is refused. It is refused when it is blank or
-                names a missing value (``'nan'``, ``'none'`` or ``'null'``, in
-                any case).
+                ``asset_type`` changes no asset id, and the inventory is not changed.
+                Defaults to ``None``, which writes each ``type`` as the inventory
+                holds it, so that with ``integer_ids`` an asset without one is
+                refused. It is refused when it is blank or names a missing value
+                (``'nan'``, ``'none'`` or ``'null'``, in any case).
 
         Returns:
             dict:
@@ -3066,16 +3049,14 @@ class AssetInventory:
 
         Raises:
             ValueError:
-                If ``n_pw`` is not an integer of at least 1, or a list that
-                holds worlds holds another number of values. If
-                ``output_file`` is given and the inventory holds an
-                infinite value outside a tuple, in which case no file is
-                opened. With ``integer_ids``, also if a written asset already
-                carries a ``unique_id`` or ``AIM_id`` feature, has no
-                ``type`` or a ``type`` that is ``None``, NaN or an empty
-                string while ``asset_type`` is ``None``, or if two asset ids
-                have the same string form. Also if ``asset_type`` is not a
-                string that names a type.
+                If ``n_pw`` is not an integer of at least 1, or a list that holds
+                worlds holds another number of values. If ``output_file`` is given
+                and the inventory holds an infinite value outside a tuple, in which
+                case no file is opened. With ``integer_ids``, also if a written asset
+                already carries a ``unique_id`` or ``AIM_id`` feature, has no
+                ``type`` or a ``type`` that is ``None``, NaN or an empty string while
+                ``asset_type`` is ``None``, or if two asset ids have the same string
+                form. Also if ``asset_type`` is not a string that names a type.
 
         Examples:
             Define an AssetInventory consisting of a single asset.
@@ -3134,8 +3115,8 @@ class AssetInventory:
 
         geojson = self.get_geojson()
 
-        # Every list that holds worlds must hold n_pw values, checked while
-        # each feature still holds its asset id as the property 'id'.
+        # Every list that holds worlds must hold n_pw values, checked while each
+        # feature still holds its asset id as the property 'id'.
         for feature in geojson['features']:
             for key, value in feature['properties'].items():
                 if (
@@ -3155,16 +3136,16 @@ class AssetInventory:
                     raise ValueError(msg)
 
         if asset_type is not None:
-            # The properties are copies made by get_geojson, so the inventory
-            # keeps its own values.
+            # The properties are copies made by get_geojson, so the inventory keeps
+            # its own values.
             for feature in geojson['features']:
                 if _is_blank_type(feature['properties'].get('type')):
                     feature['properties']['type'] = asset_type
         if integer_ids:
             geojson['features'] = _number_features_by_type(geojson['features'])
         else:
-            # Ensure each feature has its asset id, as a string, as its
-            # top-level 'id'.
+            # Ensure each feature has its asset id, as a string, as its top-level
+            # 'id'.
             for index, feature in enumerate(geojson['features']):
                 feature_id = feature['properties'].pop('id', str(index))
                 feature['id'] = str(feature_id)
@@ -3460,13 +3441,12 @@ class AssetInventory:
         """
         Extract a single realization (possible world) from an inventory.
 
-        This method builds a new inventory of the same class with
-        ``n_pw`` 1 in which every feature holding multiple possible worlds
-        is reduced to its value in world ``id``. Other features are carried
-        over. A list or dict value is copied one level deep. Any other
-        value, and any container nested inside the realization's list or
-        dict value, is shared with this inventory. Coordinates and the
-        housing-unit inventory are copied.
+        This method builds a new inventory of the same class with ``n_pw`` 1 in which
+        every feature holding multiple possible worlds is reduced to its value in
+        world ``id``. Other features are carried over. A list or dict value is copied
+        one level deep. Any other value, and any container nested inside the
+        realization's list or dict value, is shared with this inventory. Coordinates
+        and the housing-unit inventory are copied.
 
         Args:
             id(int, default=0):
@@ -3480,8 +3460,8 @@ class AssetInventory:
                 A new inventory object representing the selected realization.
 
         Raises:
-            Exception: If ``id`` is not 0, ``n_pw`` is 1 and a feature
-                       holds more than one realization.
+            Exception: If ``id`` is not 0, ``n_pw`` is 1 and a feature holds more
+                       than one realization.
             Exception: If any feature has fewer realizations than the specified
                        ``id``.
         """
@@ -3535,27 +3515,25 @@ class AssetInventory:
         """
         Add a world to the inventory from an inventory of that world alone.
 
-        Called on an inventory without assets, ``add_world`` takes the
-        realization as world 0. It copies each of the realization's
-        :class:`Asset` objects, with a feature dict of its own, in ascending
-        order of the asset id as a string, and takes the realization's
-        vector features. Each later realization becomes the next world, and
-        :attr:`n_pw` counts the worlds added. A later realization must hold
-        the same asset ids at the same coordinates as world 0. A feature
-        keeps one value while every world agrees and becomes a list of one
-        value per world where one differs, and a key a realization lacks
-        counts as ``None`` there. The inventory shares coordinates and
-        feature values with the realizations, so a caller must not change a
-        realization after adding it.
+        Called on an inventory without assets, ``add_world`` takes the realization as
+        world 0. It copies each of the realization's :class:`Asset` objects, with a
+        feature dict of its own, in ascending order of the asset id as a string, and
+        takes the realization's vector features. Each later realization becomes the
+        next world, and :attr:`n_pw` counts the worlds added. A later realization
+        must hold the same asset ids at the same coordinates as world 0. A feature
+        keeps one value while every world agrees and becomes a list of one value per
+        world where one differs, and a key a realization lacks counts as ``None``
+        there. The inventory shares coordinates and feature values with the
+        realizations, so a caller must not change a realization after adding it.
 
-        Values are compared with ``==``. Two float NaN are equal, arrays are
-        compared with ``numpy.array_equal``, and values ``==`` cannot compare
-        are unequal. Since the inventory holds one value per world as a list, a
-        realization may hold a list only as the value of one of the world's
-        vector features, and there not a list whose first item is a list.
-        World 0's vector features are those its realization declares, and a
-        later world's are the inventory's and its realization's. Realizations
-        without assets leave the inventory without assets and at one world.
+        Values are compared with ``==``. Two float NaN are equal, arrays are compared
+        with ``numpy.array_equal``, and values ``==`` cannot compare are unequal.
+        Since the inventory holds one value per world as a list, a realization may
+        hold a list only as the value of one of the world's vector features, and
+        there not a list whose first item is a list. World 0's vector features are
+        those its realization declares, and a later world's are the inventory's and
+        its realization's. Realizations without assets leave the inventory without
+        assets and at one world.
 
         Args:
             realization (AssetInventory):
@@ -3565,15 +3543,14 @@ class AssetInventory:
             TypeError:
                 If ``realization`` is not an :class:`AssetInventory`.
             ValueError:
-                If the realization has more than one possible world; if it
-                holds a list as the value of a feature that is not one of the
-                world's vector features, or a list whose first item is a list
-                as the value of one that is; if its asset ids or coordinates
-                differ from those of world 0; or if a vector feature, of the
-                inventory or of the realization, whose world 0 value is not a
-                list takes a different value in the realization or is already
-                held as one value per world. The message names up to
-                :data:`MAX_REPORTED_WORLD_PROBLEMS` assets. A refused
+                If the realization has more than one possible world; if it holds a
+                list as the value of a feature that is not one of the world's vector
+                features, or a list whose first item is a list as the value of one
+                that is; if its asset ids or coordinates differ from those of world
+                0; or if a vector feature, of the inventory or of the realization,
+                whose world 0 value is not a list takes a different value in the
+                realization or is already held as one value per world. The message
+                names up to :data:`MAX_REPORTED_WORLD_PROBLEMS` assets. A refused
                 realization changes nothing.
         """
         if not isinstance(realization, AssetInventory):
@@ -3588,8 +3565,8 @@ class AssetInventory:
         vector = list(
             dict.fromkeys([*self.vector_features, *realization.vector_features])
         )
-        # World 0 keeps the realization's vector features alone, so its lists
-        # are checked against those.
+        # World 0 keeps the realization's vector features alone, so its lists are
+        # checked against those.
         checked = vector if self.inventory else list(realization.vector_features)
         listing = sorted(
             (
@@ -3659,8 +3636,8 @@ class AssetInventory:
 
             Returns:
                 bool:
-                    ``True`` if the value holds one value for each world
-                    added so far.
+                    ``True`` if the value holds one value for each world added so
+                    far.
             """
             return (
                 world > 1
@@ -3668,11 +3645,10 @@ class AssetInventory:
                 and len(value) == world
             )
 
-        # A vector feature held per world must hold a list in world 0, since
-        # a list of per-world values is distinguished from a vector value by
-        # its first item. A feature already held per world before a
-        # realization declares it a vector is checked through its world 0
-        # entry.
+        # A vector feature held per world must hold a list in world 0, since a list
+        # of per-world values is distinguished from a vector value by its first item.
+        # A feature already held per world before a realization declares it a vector
+        # is checked through its world 0 entry.
         ambiguous = []
         for asset_id in given:
             features = self.inventory[asset_id].features
@@ -3799,17 +3775,16 @@ class AssetInventory:
         """
         Check every feature against the inventory's number of worlds.
 
-        A feature value must be either a scalar, meaning one value shared
-        by every possible world, or a list holding exactly
-        :attr:`n_pw` realizations. Vector features are exempt unless they are
-        lists of lists, since a plain list is a single value for those.
+        A feature value must be either a scalar, meaning one value shared by every
+        possible world, or a list holding exactly :attr:`n_pw` realizations. Vector
+        features are exempt unless they are lists of lists, since a plain list is a
+        single value for those.
 
         Raises:
             BrailsError:
                 If any feature holds a number of realizations other than
-                :attr:`n_pw`. The message names the offending assets and
-                features, up to
-                :data:`MAX_REPORTED_WORLD_PROBLEMS` of them.
+                :attr:`n_pw`. The message names the offending assets and features, up
+                to :data:`MAX_REPORTED_WORLD_PROBLEMS` of them.
 
         Examples:
             >>> inventory = AssetInventory()
