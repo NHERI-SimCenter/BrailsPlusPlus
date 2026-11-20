@@ -93,6 +93,7 @@ earthquake inference chain, and the reproducible sampling the chain draws from.
 - **`MobileHomeParkScraper`** (`brails/scrapers/mobile_home_park_scraper/mobile_home_park_scraper.py`, exported from `brails.scrapers`), whose `get_assets` returns the HIFLD mobile-home park points inside a region, read from SeerAI's archive on Source Cooperative and keyed by their `MHPID`. Its `marker` and `written` name the write of the archive that was read.
 
 ### Changed
+- **`all_elevations` is a vector feature by default.** `DEFAULT_VECTOR_FEATURES` holds `all_elevations`, under which `USGSElevationScraper` stores one elevation per footprint vertex, so its plain list is one value, not one value per possible world. The vector features enter every digest `StageFreeze` records, so each stage's digest differs from one recorded before this change.
 - **Python 3.9 is no longer supported.** BRAILS++ requires Python 3.10, 3.11 or 3.12, the versions the tests run on.
 - **BRAILS is compatible with the records of the NSI 2026 Base only.**
 - **`med_yr_blt` from NSI now maps to `YearBuiltTractMedian`.** It is the median year built of the structures in a Census tract, so every building in a tract carries the same value. The converted path no longer emits `YearBuilt` at all. The legacy `nsi2brailsmap` path is unchanged and still maps `med_yr_blt` to `YearBuilt`, so the two conventions coexist for now.

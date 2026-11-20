@@ -96,8 +96,9 @@ from brails.utils.input_validator import InputValidator
 from brails.utils.spatial_join_methods.base import SpatialJoinMethods
 
 # Features whose values are vectors. A plain list is one value of such
-# a feature, not one realization per possible world.
-DEFAULT_VECTOR_FEATURES: tuple[str, ...] = ('HousingUnits',)
+# a feature, not one realization per possible world. all_elevations, which
+# USGSElevationScraper writes, holds the elevation of each footprint vertex.
+DEFAULT_VECTOR_FEATURES: tuple[str, ...] = ('HousingUnits', 'all_elevations')
 
 # Upper bound on the number of problems named in an error message.
 MAX_REPORTED_WORLD_PROBLEMS = 10

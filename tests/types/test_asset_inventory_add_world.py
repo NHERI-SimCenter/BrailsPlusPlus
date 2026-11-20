@@ -45,7 +45,11 @@ from brails.constants import OCCUPANCY_KEY, STRUCTURE_TYPE_KEY, YEAR_BUILT_KEY
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
     SOURCES_KEY,
 )
-from brails.types.asset_inventory import Asset, AssetInventory
+from brails.types.asset_inventory import (
+    DEFAULT_VECTOR_FEATURES,
+    Asset,
+    AssetInventory,
+)
 
 POINT = {'a': [[-122.40, 37.70]], 'b': [[-122.41, 37.70]], 'c': [[-122.42, 37.70]]}
 
@@ -134,7 +138,7 @@ def test_the_first_world_is_copied() -> None:
     assembled.add_world(inventory({'a': {YEAR_BUILT_KEY: 1960}}))
     assert first.inventory['a'].features == {YEAR_BUILT_KEY: 1950}
     assert assembled.n_pw == 2
-    assert assembled.vector_features == ['HousingUnits']
+    assert assembled.vector_features == list(DEFAULT_VECTOR_FEATURES)
 
 
 def test_absent_key_and_markers() -> None:
@@ -289,7 +293,7 @@ def test_world_0_refuses_a_list_its_realization_does_not_declare() -> None:
     with pytest.raises(ValueError, match="asset 'a', feature 'HousingUnits'"):
         assembled.add_world(realization)
     assert not assembled.inventory
-    assert assembled.vector_features == ['HousingUnits']
+    assert assembled.vector_features == list(DEFAULT_VECTOR_FEATURES)
 
 
 def test_a_list_of_lists_in_a_vector_feature_is_refused() -> None:

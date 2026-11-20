@@ -53,7 +53,7 @@ from tests.imputers.donor_fixtures import features_of
 N_WORLDS = 3
 
 # Digest of sample(), computed outside the module.
-GOLDEN_DIGEST = '644e1a9b3ca5cd503daccb9b7592254e'
+GOLDEN_DIGEST = '647b47db10f317f84cd80e8c2f3e4fb7'
 
 ALGORITHM = {'digest_algorithm': DIGEST_ALGORITHM}
 
@@ -379,13 +379,13 @@ for unit_id in ('2', '10', '1'):
 STAGE_SHAPES['housing units'].set_housing_unit_inventory(UNITS, validate=False)
 # Their digests, computed outside the module.
 PINNED_DIGESTS = {
-    'dropped record': 'dc927b313fb500e6e4056454846a3b05',
-    'empty stage': 'b13019be762b43a841145038cec74e3b',
-    'housing units': 'bcb1f6b42c1407059968acd7eb788845',
-    'per-world part, padded': '71fbefc960fcae2ef418a9919290b729',
-    'spine part': 'f7a607d5b291c4ced9ca43816e8a77ec',
+    'dropped record': '47d96aa4ed7e0ca6261383dd447f814a',
+    'empty stage': '5080bbfe757fafc9606ee0a2e8c4c37b',
+    'housing units': 'ef269b2d61054befd45999c6fba786f7',
+    'per-world part, padded': '33bbf8497fc2f1d04779c94c8f7c1d31',
+    'spine part': 'd718981241118060e914acfe0fca7ef7',
     'view': '57aa2756b68bc2efcb1f53b1b344c4e6',
-    'withheld record': 'ed653a8009a74eb3c10eb60f533119e1',
+    'withheld record': 'a72c3470bfd25bddca6a51419d99cf7e',
 }
 
 

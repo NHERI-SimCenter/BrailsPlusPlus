@@ -193,6 +193,20 @@ def test_validate_exempts_vector_features(
     inventory.validate_possible_worlds()
 
 
+def test_validate_accepts_vertex_elevations_in_one_world(
+    build_inventory: Callable[..., AssetInventory],
+) -> None:
+    """Per-vertex all_elevations lists are one value in an inventory of 1 world."""
+    inventory = build_inventory(
+        {
+            'A1': {'all_elevations': [1.0, 2.0, 3.0, 4.0]},
+            'A2': {'all_elevations': [1.0, 2.0, 3.0, 4.0, 5.0]},
+        },
+        n_pw=1,
+    )
+    inventory.validate_possible_worlds()
+
+
 def test_validate_checks_vector_features_of_lists(
     build_inventory: Callable[..., AssetInventory],
 ) -> None:
