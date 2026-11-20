@@ -170,15 +170,15 @@ class BasicPointsToPolygonsAllocator:
         Optionally applies convex hulls to polygons before matching and performs
         a second pass using buffered polygons to capture near misses.
 
-        Matching is one point per polygon and one polygon per point. Candidates
-        are ranked before they are taken, so the outcome does not depend on the
-        order the spatial join returned: containment candidates are ranked by
-        polygon area and then by the point's distance from the polygon centroid,
-        and near-miss candidates by the point's true distance to the footprint.
+        Matching is one point per polygon and one polygon per point. Candidates are
+        ranked before they are taken, so the outcome does not depend on the order the
+        spatial join returned: containment candidates are ranked by polygon area and
+        then by the point's distance from the polygon centroid, and near-miss
+        candidates by the point's true distance to the footprint.
 
         The second pass considers only polygons left unmatched by the first, so
-        raising `buffer_dist` cannot recover additional points inside a polygon
-        that already holds one.
+        raising `buffer_dist` cannot recover additional points inside a polygon that
+        already holds one.
 
         Args:
             use_convex_hull (bool): If True, replace polygon geometries with
@@ -219,11 +219,11 @@ class BasicPointsToPolygonsAllocator:
         candidates = pass1[[right_join_col]].reset_index()
         candidates.columns = ['polygon_id', 'point_id']
 
-        # Rank containment candidates by how specific the containing polygon is,
-        # then by how central the point sits in it. A point inside overlapping
-        # footprints belongs to the smallest one that holds it, and a polygon
-        # holding several points keeps the most central. Ids break remaining
-        # ties so the result does not depend on the order sjoin returned.
+        # Rank containment candidates by how specific the containing polygon is, then
+        # by how central the point sits in it. A point inside overlapping footprints
+        # belongs to the smallest one that holds it, and a polygon holding several
+        # points keeps the most central. Ids break remaining ties so the result does
+        # not depend on the order sjoin returned.
         candidates['rank_area'] = poly_metric.geometry.area.reindex(
             candidates['polygon_id']
         ).to_numpy()
@@ -354,8 +354,8 @@ class BasicPointsToPolygonsAllocator:
             used_points (set | None): Points already spoken for.
 
         Returns:
-            pandas.DataFrame: The accepted pairs, with `polygon_id` and
-                `point_id` columns.
+            pandas.DataFrame: The accepted pairs, with `polygon_id` and `point_id`
+                columns.
         """
         taken_polygons = set() if used_polygons is None else set(used_polygons)
         taken_points = set() if used_points is None else set(used_points)
@@ -399,16 +399,15 @@ class BasicPointsToPolygonsAllocator:
             KeyError: If a matched point cannot be found in the point inventory.
 
         Notes:
-            A polygon receives at most one point. Where a footprint covers
-            several structures, as with attached houses dissolved into a
-            single outline or a group of buildings mapped as one polygon,
-            only the highest ranked point is transferred. With `buffer_dist`
-            set, the points it outranked stay available to the second pass,
-            so each may be placed on a neighboring footprint that holds no
-            point of its own; the rest are left out of the inventory
-            altogether. Splitting such footprints before allocation is the
-            way to keep those records with their own structures when using
-            this allocator.
+            A polygon receives at most one point. Where a footprint covers several
+            structures, as with attached houses dissolved into a single outline or a
+            group of buildings mapped as one polygon, only the highest ranked point
+            is transferred. With `buffer_dist` set, the points it outranked stay
+            available to the second pass, so each may be placed on a neighboring
+            footprint that holds no point of its own; the rest are left out of the
+            inventory altogether. Splitting such footprints before allocation is the
+            way to keep those records with their own structures when using this
+            allocator.
         """
         matches_df = self._compute_matches(
             use_convex_hull=use_convex_hull, buffer_dist=buffer_dist

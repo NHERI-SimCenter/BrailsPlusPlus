@@ -576,8 +576,8 @@ def test_filtering_invalid_geoms(
 # Ranking, determinism, and buffer unit tests
 # -----------------------------------------------------------------------------
 
-# A real-world location, so buffer distances can be checked against ground
-# truth. San Francisco sits in UTM zone 10N.
+# A real-world location, so buffer distances can be checked against ground truth. San
+# Francisco sits in UTM zone 10N.
 SF_UTM = 'EPSG:32610'
 SF_ORIGIN_EASTING = 550000.0
 SF_ORIGIN_NORTHING = 4180000.0

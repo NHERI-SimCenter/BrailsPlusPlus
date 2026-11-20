@@ -57,8 +57,8 @@ from tests.scrapers.data.nsi_pooled_fixture_generator import (
     FIXTURE_PATH as NSI_SAMPLE,
 )
 
-# Test geometry is laid out in meters in UTM zone 10N near San Francisco and
-# stored in EPSG:4326, as the join receives it.
+# Test geometry is laid out in meters in UTM zone 10N near San Francisco and stored
+# in EPSG:4326, as the join receives it.
 METRIC_CRS = 'EPSG:32610'
 X0, Y0 = 550_000.0, 4_180_000.0
 _TO_LONLAT = Transformer.from_crs(METRIC_CRS, 'EPSG:4326', always_xy=True)
@@ -242,9 +242,9 @@ class TestInsidePass:
 
     def test_nearest_centroid_breaks_an_area_tie(self) -> None:
         """Between equal areas, the footprint whose centroid is nearest wins."""
-        # Two translated squares are equal in projected area only to
-        # rounding, so the pass is called on hand-built arrays, with one
-        # set of coordinates for the inside test and the measurements.
+        # Two translated squares are equal in projected area only to rounding, so the
+        # pass is called on hand-built arrays, with one set of coordinates for the
+        # inside test and the measurements.
         polygons = np.asarray(
             [shapely.box(4, 0, 14, 10), shapely.box(0, 0, 10, 10)], dtype=object
         )

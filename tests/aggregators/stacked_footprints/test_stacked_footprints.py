@@ -294,8 +294,8 @@ def test_a_member_must_lie_nine_tenths_inside(
 
 def test_a_nest_merges_into_its_outermost_footprint() -> None:
     """A footprint in a container that lies in another merges into the outermost."""
-    # The middle lies 92.5% inside the outer one, and the inner one only in
-    # the middle, half of it outside the outer one.
+    # The middle lies 92.5% inside the outer one, and the inner one only in the
+    # middle, half of it outside the outer one.
     outer = box(0.0, 0.0, 40.0, 40.0)
     middle = box(11.5, 0.0, 20.0, 20.0)
     inner = box(20.0, 0.0, 3.0, 3.0)
@@ -473,8 +473,8 @@ def test_the_length_unit_does_not_change_the_merges(part_height_m: float) -> Non
 
 def test_the_height_keeps_the_scale_of_its_source() -> None:
     """The stories inferer reads the merged height with the tallest part's scale."""
-    # The tallest part names its dataset without a property, and a shorter
-    # part names another dataset as the source of its own height.
+    # The tallest part names its dataset without a property, and a shorter part names
+    # another dataset as the source of its own height.
     inventory = inventory_of(
         overture('head', PODIUM, sources=MICROSOFT),
         overture(

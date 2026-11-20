@@ -78,8 +78,7 @@ ROOF_CLASS = 'roof'
 
 PART_IDS_FEATURE = 'overture_part_ids'
 PART_IDS_SEPARATOR = ';'
-# An entry of the Overture scraper's sources string whose property is the
-# height.
+# An entry of the Overture scraper's sources string whose property is the height.
 _HEIGHT_ENTRY = re.compile(
     rf'(?:^|, )property: {re.escape(HEIGHT_PROPERTY)}(?:, |$)'
 )
@@ -112,21 +111,20 @@ class StackedMergeResult(NamedTuple):
             A new inventory of the footprints that remain, keyed by
             :func:`~brails.utils.asset_id.assign_asset_ids` over them.
         parts (pandas.DataFrame):
-            One row per footprint of a merged group, its head included,
-            with columns :data:`PARTS_COLUMNS`: the key in ``inventory`` of
-            the asset the footprint is part of, the rule that merged the
-            group (:data:`RULE_STACKED` or :data:`RULE_COPY`), the
-            ``overture_id`` of the group's head and of the footprint, the
-            footprint's key in the input inventory, whether it is the head,
-            its plan area in square meters, its own height, floor count and
-            class, and the height and floor count of the asset it is part
-            of. Heights are in the merge's length unit, and a missing value
-            is NaN. The rows are ordered by asset key, rule, head first,
-            then ``overture_id``.
+            One row per footprint of a merged group, its head included, with columns
+            :data:`PARTS_COLUMNS`: the key in ``inventory`` of the asset the
+            footprint is part of, the rule that merged the group
+            (:data:`RULE_STACKED` or :data:`RULE_COPY`), the ``overture_id`` of the
+            group's head and of the footprint, the footprint's key in the input
+            inventory, whether it is the head, its plan area in square meters, its
+            own height, floor count and class, and the height and floor count of the
+            asset it is part of. Heights are in the merge's length unit, and a
+            missing value is NaN. The rows are ordered by asset key, rule, head
+            first, then ``overture_id``.
         id_log (list[dict]):
-            The collision log of ``assign_asset_ids`` over the footprints
-            that remain, with ``position`` counting the assets of the input
-            inventory in its order.
+            The collision log of ``assign_asset_ids`` over the footprints that
+            remain, with ``position`` counting the assets of the input inventory in
+            its order.
     """
 
     inventory: AssetInventory
@@ -138,22 +136,20 @@ class StackedFootprintMerge:
     """
     Merge the stacked Overture footprints of one building into one asset.
 
-    :meth:`merge` keeps one of the footprints that copy each other, merges
-    a nested footprint that shows Overture's stacking signal into the top
-    of its nest, and re-keys the footprints that remain with
-    :func:`~brails.utils.asset_id.assign_asset_ids`. A group's head is the
-    top footprint of a nest or, for a set of copies, the copy it keeps. A
-    merged asset holds the union of its parts, the largest ``height`` and
-    ``num_floors`` over them, the members' ``overture_id`` values under
-    :data:`PART_IDS_FEATURE`, the ``sources`` entries of its parts with the
-    height entries of the tallest part alone, and the other features of its
-    head.
+    :meth:`merge` keeps one of the footprints that copy each other, merges a nested
+    footprint that shows Overture's stacking signal into the top of its nest, and
+    re-keys the footprints that remain with
+    :func:`~brails.utils.asset_id.assign_asset_ids`. A group's head is the top
+    footprint of a nest or, for a set of copies, the copy it keeps. A merged asset
+    holds the union of its parts, the largest ``height`` and ``num_floors`` over
+    them, the members' ``overture_id`` values under :data:`PART_IDS_FEATURE`, the
+    ``sources`` entries of its parts with the height entries of the tallest part
+    alone, and the other features of its head.
 
-    A footprint in no collision set of either keying keeps the key the
-    Overture scraper gave it, and the merge leaves no footprint below an
-    area floor the scraper applied. The merge takes Overture footprints
-    only. ``README.rst`` states the method, where the thresholds come from
-    and what the rule leaves unmerged.
+    A footprint in no collision set of either keying keeps the key the Overture
+    scraper gave it, and the merge leaves no footprint below an area floor the
+    scraper applied. The merge takes Overture footprints only. ``README.rst`` states
+    the method, where the thresholds come from and what the rule leaves unmerged.
     """
 
     def __init__(self, *, length_unit: str = DEFAULT_UNITS['length']) -> None:
@@ -162,9 +158,9 @@ class StackedFootprintMerge:
 
         Args:
             length_unit (str, optional):
-                The unit of the inventory's heights, which the Overture
-                scraper writes in its length unit. Defaults to the length
-                unit of :data:`brails.constants.DEFAULT_UNITS`.
+                The unit of the inventory's heights, which the Overture scraper
+                writes in its length unit. Defaults to the length unit of
+                :data:`brails.constants.DEFAULT_UNITS`.
 
         Raises:
             ValueError:
@@ -186,9 +182,9 @@ class StackedFootprintMerge:
 
         Args:
             inventory (AssetInventory):
-                Overture footprints of one possible world keyed by string,
-                as the Overture footprint scraper builds them under the
-                ``'geohash'`` id scheme. It is not modified.
+                Overture footprints of one possible world keyed by string, as the
+                Overture footprint scraper builds them under the ``'geohash'`` id
+                scheme. It is not modified.
 
         Returns:
             StackedMergeResult:
@@ -196,11 +192,10 @@ class StackedFootprintMerge:
 
         Raises:
             ValueError:
-                If the inventory holds more than one possible world, an asset
-                key is not a string, an asset lacks ``footprint_provider``
+                If the inventory holds more than one possible world, an asset key is
+                not a string, an asset lacks ``footprint_provider``
                 :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OVERTURE_PROVIDER`
-                or an ``overture_id``, or its footprint is not a polygon with
-                area.
+                or an ``overture_id``, or its footprint is not a polygon with area.
         """
         keys, features, polygons = _footprints(inventory)
         ids = [str(asset_features[OVERTURE_ID_KEY]) for asset_features in features]
@@ -316,9 +311,9 @@ class StackedFootprintMerge:
 
         Returns:
             dict[int, list[int]]:
-                Each head's position to the positions of its members, in
-                ascending order of ``overture_id``. A head with no member
-                that shows the signal is absent.
+                Each head's position to the positions of its members, in ascending
+                order of ``overture_id``. A head with no member that shows the signal
+                is absent.
         """
         container: dict[int, int] = {}
         for big, small, iou, share in pairs:
@@ -339,8 +334,8 @@ class StackedFootprintMerge:
         groups: dict[int, list[int]] = {}
         for small in sorted(container, key=ids.__getitem__):
             top = container[small]
-            # A container is larger than the footprint it holds, so the
-            # climb ends at the top of the nest.
+            # A container is larger than the footprint it holds, so the climb ends at
+            # the top of the nest.
             while top in container:
                 top = container[top]
             small_height = features[small].get(HEIGHT_KEY)
@@ -407,9 +402,9 @@ class StackedFootprintMerge:
         if floor_counts:
             merged[NUM_FLOORS_KEY] = max(floor_counts)
 
-        # The stories inferer takes the height's source from the first entry
-        # whose property is the height, wherever it stands, so only the
-        # tallest part keeps such entries.
+        # The stories inferer takes the height's source from the first entry whose
+        # property is the height, wherever it stands, so only the tallest part keeps
+        # such entries.
         entries = []
         for part in dict.fromkeys(p for p in (tallest, *parts) if p is not None):
             value = features[part].get(SOURCES_KEY)
@@ -440,28 +435,25 @@ def _pairs(
 
     Returns:
         list[tuple[int, int, float, float]]:
-            For each pair whose intersection over union is at least
-            :data:`COPY_IOU` or whose intersection covers at least
-            :data:`NEST_MIN` of the smaller footprint: the position of the
-            larger and of the smaller footprint, ties of area going to the
-            lower id as the larger, the intersection over union, and the
-            share of the smaller footprint inside the larger.
+            For each pair whose intersection over union is at least :data:`COPY_IOU`
+            or whose intersection covers at least :data:`NEST_MIN` of the smaller
+            footprint: the position of the larger and of the smaller footprint, ties
+            of area going to the lower id as the larger, the intersection over union,
+            and the share of the smaller footprint inside the larger.
     """
     first, second = shapely.STRtree(geometries).query(
         geometries, predicate='intersects'
     )
     ordered = first < second
     first, second = first[ordered], second[ordered]
-    # Each pair in overture_id order, so that its ratios, which can differ
-    # in the last bits with the order of the intersection, do not depend on
-    # the input order.
+    # Each pair in overture_id order, so that its ratios, which can differ in the
+    # last bits with the order of the intersection, do not depend on the input order.
     names = np.array(ids, dtype=object)
     swap = names[first] > names[second]
     first, second = np.where(swap, second, first), np.where(swap, first, second)
-    # Either kind of pair needs an intersection of at least the lower
-    # threshold times the smaller area. The overlap of the bounding boxes
-    # bounds the intersection, so footprints that only touch are not
-    # intersected.
+    # Either kind of pair needs an intersection of at least the lower threshold times
+    # the smaller area. The overlap of the bounding boxes bounds the intersection, so
+    # footprints that only touch are not intersected.
     bounds = shapely.bounds(geometries)
     width = np.minimum(bounds[first, 2], bounds[second, 2]) - np.maximum(
         bounds[first, 0], bounds[second, 0]
@@ -549,13 +541,12 @@ def _footprints(
 
     Returns:
         tuple[list[str], list[Mapping[str, Any]], list[Polygon | MultiPolygon]]:
-            The asset keys in the inventory's order, and each asset's
-            features and footprint polygon.
+            The asset keys in the inventory's order, and each asset's features and
+            footprint polygon.
 
     Raises:
         ValueError:
-            On any of the conditions :meth:`StackedFootprintMerge.merge`
-            lists.
+            On any of the conditions :meth:`StackedFootprintMerge.merge` lists.
     """
     if inventory.n_pw != 1:
         msg = (

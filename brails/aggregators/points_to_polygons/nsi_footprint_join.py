@@ -34,8 +34,8 @@
 """
 Join NSI points to building footprints.
 
-Every NSI point is either linked to one footprint or returned as unlinked,
-never dropped.
+Every NSI point is either linked to one footprint or returned as unlinked, never
+dropped.
 
 .. autosummary::
 
@@ -76,8 +76,8 @@ if TYPE_CHECKING:
 
     from pyproj import CRS
 
-# Purpose label of the walk order's keyed uniform. Renaming it moves every
-# walk order and therefore every link the walk makes.
+# Purpose label of the walk order's keyed uniform. Renaming it moves every walk order
+# and therefore every link the walk makes.
 WALK_PURPOSE = 'nsi_footprint_walk'
 
 # World of the walk order's keyed uniform.
@@ -147,42 +147,38 @@ class NSIJoinResult(NamedTuple):
 
     Attributes:
         observed (AssetInventory):
-            One asset per footprint that received a point, keyed by its
-            asset id in ascending order, with the footprint's geometry and
-            the values NSI states. These are the governing record's fields
-            through ``to_simcenter``, without ``Longitude``, ``Latitude``,
-            ``GrossArea``, ``ReplacementCost``, ``resunits`` and ``fd_id``,
-            with its class renamed ``NSIOccupancyClass``. Every other field
-            the governing record carries is that one record's value and not
-            a sum over the footprint's records. Beside them are
-            ``OccupancyClass`` where the governing record's class is taken
-            as it is; ``NumberOfUnits`` where every unit was counted;
-            ``GrossArea`` and ``ReplacementCost`` where one received record
-            states the value; and ``NSIGoverningRecord``, ``NSIRecords``,
-            ``NSIReach`` and ``NumberOfUnitsStatus``.
+            One asset per footprint that received a point, keyed by its asset id in
+            ascending order, with the footprint's geometry and the values NSI states.
+            These are the governing record's fields through ``to_simcenter``, without
+            ``Longitude``, ``Latitude``, ``GrossArea``, ``ReplacementCost``,
+            ``resunits`` and ``fd_id``, with its class renamed ``NSIOccupancyClass``.
+            Every other field the governing record carries is that one record's value
+            and not a sum over the footprint's records. Beside them are
+            ``OccupancyClass`` where the governing record's class is taken as it is;
+            ``NumberOfUnits`` where every unit was counted; ``GrossArea`` and
+            ``ReplacementCost`` where one received record states the value; and
+            ``NSIGoverningRecord``, ``NSIRecords``, ``NSIReach`` and
+            ``NumberOfUnitsStatus``.
         derived (AssetInventory):
-            One asset per footprint for which the join derived a value,
-            keyed by its asset id in ascending order, with the footprint's
+            One asset per footprint for which the join derived a value, keyed by its
+            asset id in ascending order, with the footprint's
             geometry: ``OccupancyClass`` where the count band set it,
-            ``NumberOfUnits`` where any record's units were filled by a
-            class midpoint, and ``GrossArea`` and ``ReplacementCost`` where
-            two or more received records state a value, as their sums.
+            ``NumberOfUnits`` where any record's units were filled by a class
+            midpoint, and ``GrossArea`` and ``ReplacementCost`` where two or more
+            received records state a value, as their sums.
         links (pandas.DataFrame):
-            One row per linked point, in ascending ``fd_id``, with the
-            columns in :data:`LINK_COLUMNS`. ``walk_position`` is the
-            point's place in the walk order, from 0, and is missing for a
-            point linked inside its footprint.
+            One row per linked point, in ascending ``fd_id``, with the columns in
+            :data:`LINK_COLUMNS`. ``walk_position`` is the point's place in the walk
+            order, from 0, and is missing for a point linked inside its footprint.
         unlinked (pandas.DataFrame):
-            One row per point no footprint took, in ascending ``fd_id``,
-            with the columns in :data:`UNLINKED_COLUMNS`. ``units`` is what
-            the point would contribute to a unit count, missing for a
-            non-housing point. ``reason`` is
-            ``'no_footprint_within_cap'`` or ``'refused'``.
+            One row per point no footprint took, in ascending ``fd_id``, with the
+            columns in :data:`UNLINKED_COLUMNS`. ``units`` is what the point would
+            contribute to a unit count, missing for a non-housing point. ``reason``
+            is ``'no_footprint_within_cap'`` or ``'refused'``.
         branch_counts (pandas.DataFrame):
-            Points by branch (rows :data:`BRANCH_COUNT_ROWS`) and by walk
-            group (the columns :data:`GROUPS` and ``'all'``). The last row
-            counts the records outside every footprint that share their
-            coordinate with another record.
+            Points by branch (rows :data:`BRANCH_COUNT_ROWS`) and by walk group (the
+            columns :data:`GROUPS` and ``'all'``). The last row counts the records
+            outside every footprint that share their coordinate with another record.
         seed (int):
             The seed of the walk order.
         crs (pyproj.CRS):
@@ -231,14 +227,12 @@ def parse_occupancy_class(occtype: object) -> str | None:
 
     Args:
         occtype (object):
-            An NSI ``occtype`` such as ``'RES1-1SNB'``, ``'RES3A'`` or
-            ``'COM1'``.
+            An NSI ``occtype`` such as ``'RES1-1SNB'``, ``'RES3A'`` or ``'COM1'``.
 
     Returns:
         str or None:
-            The part before the first hyphen in upper case, with a bare
-            ``RES3`` read as ``RES3A``; None where the code is not a
-            string or is blank.
+            The part before the first hyphen in upper case, with a bare ``RES3`` read
+            as ``RES3A``; None where the code is not a string or is blank.
     """
     if not isinstance(occtype, str):
         return None
@@ -258,9 +252,8 @@ def walk_group(classified: str) -> str:
 
     Returns:
         str:
-            ``'single'`` for RES1 and RES2, ``'multi_family'`` for RES3A to
-            RES3F, and ``'non_residential'`` for every other class, RES4 to
-            RES6 included.
+            ``'single'`` for RES1 and RES2, ``'multi_family'`` for RES3A to RES3F,
+            and ``'non_residential'`` for every other class, RES4 to RES6 included.
     """
     if classified in SINGLE_CLASSES:
         return GROUP_SINGLE
@@ -305,36 +298,31 @@ class NSIFootprintJoin:
     """
     Join NSI points to footprints, one footprint per point at most.
 
-    A point that a footprint covers, its boundary included, belongs to it. A
-    point inside several footprints goes to the smallest, then to the one
-    whose centroid is nearest, then to the lowest asset id. The remaining
-    points are taken in the order of a keyed uniform of their ``fd_id`` (see
-    :meth:`walk_uniforms`), ties by ``fd_id``, and each takes the nearest
-    footprint within ``cap_m`` that accepts it, ties by asset id. The result
-    is the same in every possible world. A footprint holding no point
-    accepts any point. A footprint holding points refuses a point of the
-    single walk group, and accepts any other point only while the class it
-    takes from the points it already holds (below) is outside
-    :data:`SINGLE_CLASSES`. A point that no footprint within the cap accepts
-    is returned as unlinked.
+    A point that a footprint covers, its boundary included, belongs to it. A point
+    inside several footprints goes to the smallest, then to the one whose centroid is
+    nearest, then to the lowest asset id. The remaining points are taken in the order
+    of a keyed uniform of their ``fd_id`` (see :meth:`walk_uniforms`), ties by
+    ``fd_id``, and each takes the nearest footprint within ``cap_m`` that accepts it,
+    ties by asset id. The result is the same in every possible world. A footprint
+    holding no point accepts any point. A footprint holding points refuses a point of
+    the single walk group, and accepts any other point only while the class it takes
+    from the points it already holds (below) is outside :data:`SINGLE_CLASSES`. A
+    point that no footprint within the cap accepts is returned as unlinked.
 
     A point's class is its parsed ``occtype`` after the count rule (see
-    :func:`~brails.utils.unit_count_rules.point_class`), and its walk
-    group follows from that class (see :func:`walk_group`). The join reads
-    footprint geometry only, so footprint features held per possible world
-    do not change it.
+    :func:`~brails.utils.unit_count_rules.point_class`), and its walk group follows
+    from that class (see :func:`walk_group`). The join reads footprint geometry only,
+    so footprint features held per possible world do not change it.
 
-    Per footprint, the units are the sum of the housing records'
-    contributions (see
-    :func:`~brails.utils.unit_count_rules.unit_contribution`). The
-    governing record is chosen among every record the footprint receives,
-    inside or by the walk: a housing class
-    (:data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`) first,
-    then the largest stated ``sqft``, a record stating none ranking last,
-    then the lowest ``fd_id``. The footprint's class is the count band of
-    the units where the governing record's family is in
-    :data:`~brails.utils.unit_count_rules.COUNTED_FAMILIES`, and
-    otherwise the governing record's class.
+    Per footprint, the units are the sum of the housing records' contributions (see
+    :func:`~brails.utils.unit_count_rules.unit_contribution`). The governing record
+    is chosen among every record the footprint receives, inside or by the walk: a
+    housing class (:data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`) first,
+    then the largest stated ``sqft``, a record stating none ranking last, then the
+    lowest ``fd_id``. The footprint's class is the count band of the units where the
+    governing record's family is in
+    :data:`~brails.utils.unit_count_rules.COUNTED_FAMILIES`, and otherwise the
+    governing record's class.
 
     To import the :class:`NSIFootprintJoin` class, use:
 
@@ -354,22 +342,21 @@ class NSIFootprintJoin:
 
         Args:
             cap_m (float):
-                The walk's distance cap in meters, from a point to a
-                footprint's edge, inclusive. One value for every point.
+                The walk's distance cap in meters, from a point to a footprint's
+                edge, inclusive. One value for every point.
             seed (int, optional):
-                The seed of the walk order. When None, a seed is drawn from
-                system entropy and recorded on :attr:`seed`.
+                The seed of the walk order. When None, a seed is drawn from system
+                entropy and recorded on :attr:`seed`.
             projected_crs (object, optional):
-                A projected CRS in meters, in any form ``pyproj`` accepts,
-                for areas and distances. Web Mercator (EPSG:3857) is
-                refused. When None, a UTM zone is estimated from the
-                footprints on each call and returned in the result.
+                A projected CRS in meters, in any form ``pyproj`` accepts, for areas
+                and distances. Web Mercator (EPSG:3857) is refused. When None, a UTM
+                zone is estimated from the footprints on each call and returned in
+                the result.
 
         Raises:
             ValueError:
-                If ``cap_m`` is negative or not a finite number, or
-                ``projected_crs`` is not a projected CRS in meters or is
-                Web Mercator.
+                If ``cap_m`` is negative or not a finite number, or ``projected_crs``
+                is not a projected CRS in meters or is Web Mercator.
             TypeError:
                 If ``seed`` is neither None nor an integer.
         """
@@ -398,8 +385,8 @@ class NSIFootprintJoin:
 
         Returns:
             numpy.ndarray:
-                One uniform per id, in the order given. A point's uniform
-                depends on its id and the seed only.
+                One uniform per id, in the order given. A point's uniform depends on
+                its id and the seed only.
         """
         return keyed_uniforms(
             asset_key_digest(fd_ids),
@@ -418,10 +405,9 @@ class NSIFootprintJoin:
             footprints (AssetInventory):
                 Polygon assets in EPSG:4326, keyed by asset id.
             points (AssetInventory):
-                NSI point assets keyed by ``fd_id``, with features under NSI
-                names, as :class:`~brails.scrapers.NSIFileReader` reads them.
-                BRAILS is compatible with the records of the NSI 2026 Base
-                only.
+                NSI point assets keyed by ``fd_id``, with features under NSI names,
+                as :class:`~brails.scrapers.NSIFileReader` reads them. BRAILS is
+                compatible with the records of the NSI 2026 Base only.
 
         Returns:
             NSIJoinResult:
@@ -431,9 +417,9 @@ class NSIFootprintJoin:
             TypeError:
                 If either input is not an ``AssetInventory``.
             ValueError:
-                If either inventory is empty, a footprint is not a polygon,
-                a point is not a single point, a point has no parseable
-                ``occtype``, or the points hold values per possible world.
+                If either inventory is empty, a footprint is not a polygon, a point
+                is not a single point, a point has no parseable ``occtype``, or the
+                points hold values per possible world.
         """
         footprint_ids, polygons = self._read_footprints(footprints)
         records = self._read_points(points)
@@ -613,9 +599,8 @@ class NSIFootprintJoin:
             TypeError:
                 If the input is not an ``AssetInventory``.
             ValueError:
-                If it is empty, holds values per possible world, or has a
-                point that is not a single coordinate or has no parseable
-                ``occtype``.
+                If it is empty, holds values per possible world, or has a point that
+                is not a single coordinate or has no parseable ``occtype``.
         """
         if not isinstance(points, AssetInventory):
             raise TypeError(
@@ -699,8 +684,7 @@ class NSIFootprintJoin:
 
         Returns:
             dict[int, int]:
-                The footprint index of each point inside one, by point
-                index.
+                The footprint index of each point inside one, by point index.
         """
         tree = shapely.STRtree(polygons)
         point_index, footprint_index = tree.query(
@@ -748,8 +732,8 @@ class NSIFootprintJoin:
         Returns:
             dict[int, list[tuple[int, float]]]:
                 By point index, the footprints within the cap as
-                ``(footprint index, distance in meters)``, nearest first,
-                ties by asset id. A point with none is absent.
+                ``(footprint index, distance in meters)``, nearest first, ties by
+                asset id. A point with none is absent.
         """
         if not walkers:
             return {}
@@ -798,15 +782,13 @@ class NSIFootprintJoin:
             footprint_ids (list):
                 The footprint ids by index.
             received (dict):
-                By footprint index, its points as ``(point index,
-                branch)``.
+                By footprint index, its points as ``(point index, branch)``.
             records (list[_Point]):
                 The points.
 
         Returns:
             tuple[AssetInventory, AssetInventory]:
-                The observed and the derived inventory, in ascending asset
-                id.
+                The observed and the derived inventory, in ascending asset id.
         """
         observed = AssetInventory()
         derived = AssetInventory()
@@ -840,8 +822,8 @@ def _governing(arrivals: list[tuple[int, str]], records: list[_Point]) -> int:
 
     Returns:
         int:
-            The index of the point that ranks first by
-            :func:`_governing_key`. The order of arrival plays no part.
+            The index of the point that ranks first by :func:`_governing_key`. The
+            order of arrival plays no part.
     """
     return min(
         (index for index, _ in arrivals),
@@ -859,9 +841,9 @@ def _governing_key(record: _Point) -> tuple[bool, bool, float, tuple]:
 
     Returns:
         tuple:
-            A key that sorts a housing class first, then the largest stated
-            ``sqft`` (a record stating none after every record that states
-            one), then the lowest ``fd_id``.
+            A key that sorts a housing class first, then the largest stated ``sqft``
+            (a record stating none after every record that states one), then the
+            lowest ``fd_id``.
     """
     area = stated_number(record.features.get(AREA_FIELD))
     return (
@@ -882,8 +864,8 @@ def _unit_total(members: list[_Point]) -> float | int | None:
 
     Returns:
         float or int or None:
-            The sum of their contributions, or None where none of them is a
-            housing record.
+            The sum of their contributions, or None where none of them is a housing
+            record.
     """
     housing = [member.units for member in members if member.units is not None]
     return sum(housing) if housing else None
@@ -901,10 +883,10 @@ def _footprint_class(lead: _Point, units: float | None) -> tuple[str, bool]:
 
     Returns:
         tuple[str, bool]:
-            The count band of ``units`` and True where ``units`` is not None
-            and the governing record's family is in
-            :data:`~brails.utils.unit_count_rules.COUNTED_FAMILIES`,
-            otherwise the governing record's class and False.
+            The count band of ``units`` and True where ``units`` is not None and the
+            governing record's family is in
+            :data:`~brails.utils.unit_count_rules.COUNTED_FAMILIES`, otherwise the
+            governing record's class and False.
     """
     # RES3A to RES3F count as RES3
     family = 'RES3' if lead.nsi_class in RES3_CLASSES else lead.nsi_class
@@ -1072,8 +1054,7 @@ def _branch_counts(
 
     Returns:
         pandas.DataFrame:
-            Rows :data:`BRANCH_COUNT_ROWS`, columns :data:`GROUPS` and
-            ``'all'``.
+            Rows :data:`BRANCH_COUNT_ROWS`, columns :data:`GROUPS` and ``'all'``.
     """
     counts = pd.DataFrame(
         0, index=list(BRANCH_COUNT_ROWS), columns=[*GROUPS, ALL_GROUPS]
