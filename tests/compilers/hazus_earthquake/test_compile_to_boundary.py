@@ -452,3 +452,84 @@ def test_without_boundary_writes_as_with_keep_outside(
         pd.read_parquet(tmp_path / 'default_report_exclusions.parquet'),
         pd.read_parquet(tmp_path / 'outside_report_exclusions.parquet'),
     )
+
+
+@pytest.mark.parametrize('zone', ['0', '1', '2A', '2B', '3', '4', '9'])
+@pytest.mark.parametrize('state', [None, 'California', 'Oregon', 'Texas'])
+def test_state_and_zone_accepted_by_constructor(
+    study_area: CompilerInputs, state: str | None, zone: str
+) -> None:
+    """A state and zone are accepted where their design level table holds them."""
+    # California's design level table holds zones 3 and 4, that of other states
+    # zones 0 to 4; Texas draws structure types from tables the compiler refuses.
+    accepted = {
+        None: {'3', '4'},
+        'California': {'3', '4'},
+        'Oregon': {'0', '1', '2A', '2B', '3', '4'},
+        'Texas': set(),
+    }[state]
+    arguments = {} if state is None else {'state': state}
+    if zone not in accepted:
+        with pytest.raises(ValueError, match=r'zone|structure types'):
+            HazusEQInventoryCompiler(seed=SEED, seismic_zone=zone, **arguments)
+        return
+    result = HazusEQInventoryCompiler(
+        seed=SEED,
+        n_worlds=1,
+        projected_crs=METRIC_CRS,
+        seismic_zone=zone,
+        **arguments,
+    ).compile(study_area)
+    settings = result.report.summary()['settings']
+    assert (settings['state'], settings['seismic_zone']) == (
+        state or 'California',
+        zone,
+    )
+
+
+@pytest.mark.parametrize('merge_stacked', [False, True])
+def test_merge_stacked_of_compiler_applies(
+    study_area: CompilerInputs,
+    merge_stacked: bool,  # noqa: FBT001
+) -> None:
+    """merge_stacked given to the compiler applies whatever the inputs say."""
+    compiler = HazusEQInventoryCompiler(
+        seed=SEED, n_worlds=1, projected_crs=METRIC_CRS, merge_stacked=merge_stacked
+    )
+    if merge_stacked:
+        with pytest.raises(ValueError, match='cannot be given with merge_stacked'):
+            compiler.compile(study_area)
+        return
+    result = compiler.compile(study_area)
+    assert result.report.summary()['settings']['merge_stacked'] is False
+
+
+def test_defaults_compile_as_their_values(
+    study_area: CompilerInputs, whole: CompilationResult
+) -> None:
+    """A default compiler compiles stateless inputs as California at zone 4."""
+    given = HazusEQInventoryCompiler(
+        seed=SEED,
+        n_worlds=3,
+        projected_crs=METRIC_CRS,
+        state='California',
+        seismic_zone='4',
+        merge_stacked=False,
+    ).compile(study_area)
+
+    assert {a: asset.features for a, asset in whole.inventory.inventory.items()} == {
+        a: asset.features for a, asset in given.inventory.inventory.items()
+    }
+    for frame in ('records', 'exclusions'):
+        pd.testing.assert_frame_equal(
+            getattr(whole.report, frame), getattr(given.report, frame)
+        )
+    assert {
+        key: value
+        for key, value in whole.report.summary().items()
+        if key != 'timings'
+    } == {
+        key: value
+        for key, value in given.report.summary().items()
+        if key != 'timings'
+    }

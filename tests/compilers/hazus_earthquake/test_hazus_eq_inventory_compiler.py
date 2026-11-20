@@ -347,7 +347,7 @@ class TestConstructor:
             ({'n_worlds': True}, TypeError, 'n_worlds'),
             ({'seed': 1.5}, TypeError, None),
             ({'state': 'CA'}, ValueError, 'not a state in the Hazus region'),
-            ({'state': 'Texas'}, ValueError, 'complete_tables applies to the West'),
+            ({'state': 'Texas'}, ValueError, 'Census West region only, not Texas'),
             ({'state': 'Guam'}, ValueError, 'no RES1 distribution for Guam'),
             ({'seismic_zone': '9'}, ValueError, 'zone'),
             ({'join_cap_m': -1.0}, ValueError, 'cap_m'),

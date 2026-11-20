@@ -152,6 +152,8 @@ from brails.inferers.acs_year_built_sampler.acs_year_built_sampler import (
     ACSYearBuiltSampler,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_design_level_inferer import (
+    GENERIC_DESIGN_LEVELS,
+    STATE_DESIGN_LEVELS,
     HazusEQDesignLevelInferer,
     apply_w1_carveout,
 )
@@ -162,8 +164,10 @@ from brails.inferers.hazus_inferer_earthquake.hazus_eq_structure_type_inferer im
     HazusEQStructureTypeInferer,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_rulesets import (
+    WEST_COAST,
     get_hazus_general_type_membership,
     get_hazus_height_classes_by_type,
+    get_hazus_state_region_mapping,
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_table_completion import (
     is_implausible,
@@ -370,6 +374,11 @@ DLML_DATASET = 'seismic/building/portfolio/Hazus v5.1'
 CARVE_OUT_STATE = 'California'
 CARVE_OUT_METHOD = '5.1'
 
+# The state a compilation applies where neither the compiler nor its inputs name
+# one, and the 1997 UBC seismic zone it applies where the compiler is given none.
+DEFAULT_STATE = 'California'
+DEFAULT_SEISMIC_ZONE = '4'
+
 # The exclusion category of each diagnosis by which a year sampler, the
 # design level inferer or the height class inferer refuses an asset. An asset
 # ACSYearBuiltSampler finds infeasible lies in a block group the census tables
@@ -535,6 +544,13 @@ class CompilerInputs(NamedTuple):
         boundary_record (Mapping[str, object] | None):
             Where ``boundary`` comes from, such as the provider and the GEOID of a
             census place, which the report records. Read only with ``boundary``.
+        state (str | None):
+            The full name of the study area's state, which a compiler built
+            without a state applies. ``None``, the default, leaves the state to the
+            compiler.
+        merge_stacked (bool):
+            Whether a compiler built without ``merge_stacked`` merges the stacked
+            footprints. Defaults to ``False``.
     """
 
     footprints: AssetInventory
@@ -552,6 +568,8 @@ class CompilerInputs(NamedTuple):
     boundary: Polygon | MultiPolygon | None = None
     buffer_m: float | None = None
     boundary_record: Mapping[str, object] | None = None
+    state: str | None = None
+    merge_stacked: bool = False
 
 
 class CompilationResult(NamedTuple):
@@ -1109,6 +1127,47 @@ def _write_coded_values(
     features[SOURCE_STRING_KEY] = ''.join(codes)
 
 
+def _check_state(
+    state: str, seismic_zone: str, design_level_method: str, seed: int
+) -> None:
+    """
+    Refuse a state, zone or method that the inferers a compilation builds refuse.
+
+    The inferers are built only for the check. Each world builds its own.
+
+    Args:
+        state (str):
+            The full state name the compilation applies.
+        seismic_zone (str):
+            The 1997 UBC seismic zone it applies.
+        design_level_method (str):
+            The design level method of :class:`HazusEQDesignLevelInferer`.
+        seed (int):
+            The seed the structure type inferer is built with.
+
+    Raises:
+        ValueError:
+            If :class:`HazusEQStructureTypeInferer` refuses the state with its
+            completed tables, or :class:`HazusEQDesignLevelInferer` the state, the
+            zone or the method.
+        NotImplementedError:
+            If the design level method is not implemented.
+    """
+    try:
+        HazusEQStructureTypeInferer(state, seed=seed, complete_tables=True)
+    except ValueError as error:
+        group = get_hazus_state_region_mapping().get(state, {}).get('RegionGroup')
+        msg = (
+            'The compiler draws structure types from the completed West Coast '
+            'tables, which cover the states of the Census West region only, '
+            f'not {state}.'
+            if group not in (None, WEST_COAST)
+            else f'The compiler cannot draw structure types for {state}: {error}'
+        )
+        raise ValueError(msg) from error
+    HazusEQDesignLevelInferer(design_level_method, state, seismic_zone)
+
+
 class HazusEQInventoryCompiler:
     """
     Compile a Hazus earthquake inventory of one study area over several worlds.
@@ -1119,7 +1178,9 @@ class HazusEQInventoryCompiler:
 
     Every constructor argument is stored as an attribute of the same name,
     read-only by convention; ``seed`` holds the seed used, never ``None``,
-    and the options hold the mappings as resolved.
+    and the options hold the mappings as resolved. ``state``, ``seismic_zone`` and
+    ``merge_stacked`` keep ``None`` when left at it. Each compilation resolves them
+    and records the values applied in its summary's settings.
     """
 
     def __init__(  # noqa: C901
@@ -1127,15 +1188,15 @@ class HazusEQInventoryCompiler:
         *,
         seed: int | None = None,
         n_worlds: int = DEFAULT_N_WORLDS,
-        state: str = 'California',
-        seismic_zone: str = '4',
+        state: str | None = None,
+        seismic_zone: str | None = None,
         design_level_method: str = '5.1',
         join_cap_m: float = 15.0,
         projected_crs: object = None,
         imputer_options: Mapping[str, object] | None = None,
         budget_options: Mapping[str, object] | None = None,
         sampler_options: Mapping[str, object] | None = None,
-        merge_stacked: bool = False,
+        merge_stacked: bool | None = None,
         acs_vintage: int = DEFAULT_ACS_VINTAGE,
         block_group_vintage: int = DEFAULT_TIGER_VINTAGE,
     ) -> None:
@@ -1159,13 +1220,17 @@ class HazusEQInventoryCompiler:
                 The number of possible worlds :meth:`compile` computes.
                 Defaults to :data:`DEFAULT_N_WORLDS`.
             state (str, optional):
-                The full state name, as in ``'California'``, which every
-                inferer that takes a state receives. Structure types are
-                drawn from the completed West Coast tables, so the state
-                must be one of that region with a RES1 distribution.
+                The full state name, as in ``'California'``, which every inferer
+                that takes a state receives. Structure types are drawn from the
+                completed West Coast tables, so the state must be one of that
+                region with a RES1 distribution. ``None``, the default, applies the
+                state of :class:`CompilerInputs` and :data:`DEFAULT_STATE` where the
+                inputs name none.
             seismic_zone (str, optional):
-                The 1997 UBC seismic zone, which every inferer that takes
-                one receives.
+                The 1997 UBC seismic zone, which every inferer that takes one
+                receives. ``None``, the default, applies
+                :data:`DEFAULT_SEISMIC_ZONE`, which :meth:`compile` refuses for
+                inputs that name a state other than :data:`DEFAULT_STATE`.
             design_level_method (str, optional):
                 The design level method of
                 :class:`HazusEQDesignLevelInferer`.
@@ -1192,7 +1257,8 @@ class HazusEQInventoryCompiler:
                 building with :class:`StackedFootprintMerge`, in the
                 footprints' height unit, which re-keys them by geohash. The
                 footprints must then all be Overture footprints with an
-                ``overture_id``, and no local inventory is accepted.
+                ``overture_id``, and no local inventory is accepted. ``None``, the
+                default, applies the ``merge_stacked`` of :class:`CompilerInputs`.
             acs_vintage (int, optional):
                 The last year of the ACS five-year release from which :meth:`compile`
                 reads each census table that :class:`CompilerInputs` gives as
@@ -1208,9 +1274,10 @@ class HazusEQInventoryCompiler:
         Raises:
             TypeError:
                 If ``seed``, ``n_worlds``, ``acs_vintage`` or ``block_group_vintage``
-                is not an integer, ``merge_stacked`` is not a boolean, an options
-                argument is not a mapping, or an options mapping names an argument
-                its class does not take or that the compiler sets.
+                is not an integer, ``merge_stacked`` is neither a boolean nor
+                ``None``, an options argument is not a mapping, or an options
+                mapping names an argument its class does not take or that the
+                compiler sets.
             ValueError:
                 If ``n_worlds`` is below 1; if
                 :class:`HazusEQStructureTypeInferer` refuses the state with
@@ -1235,8 +1302,8 @@ class HazusEQInventoryCompiler:
         if self.n_worlds < 1:
             msg = f'n_worlds must be at least 1, not {self.n_worlds}.'
             raise ValueError(msg)
-        if not isinstance(merge_stacked, bool):
-            msg = f'merge_stacked must be a boolean, not {merge_stacked!r}.'
+        if merge_stacked is not None and not isinstance(merge_stacked, bool):
+            msg = f'merge_stacked must be a boolean or None, not {merge_stacked!r}.'
             raise TypeError(msg)
         self.merge_stacked = merge_stacked
         for name, vintage in (
@@ -1249,14 +1316,14 @@ class HazusEQInventoryCompiler:
         self.acs_vintage = acs_vintage
         self.block_group_vintage = block_group_vintage
 
-        try:
-            # Built only to check the state. Each world builds its own.
-            HazusEQStructureTypeInferer(state, seed=self.seed, complete_tables=True)
-        except ValueError as error:
-            msg = f'The compiler cannot draw structure types for {state}: {error}'
-            raise ValueError(msg) from error
-        # Built only to check the method, state and zone. Each world builds its own.
-        HazusEQDesignLevelInferer(design_level_method, state, seismic_zone)
+        # A compiler without a state is checked on DEFAULT_STATE, and compile
+        # checks another state the inputs name.
+        _check_state(
+            state or DEFAULT_STATE,
+            seismic_zone or DEFAULT_SEISMIC_ZONE,
+            design_level_method,
+            self.seed,
+        )
         self.state = state
         self.seismic_zone = seismic_zone
         self.design_level_method = design_level_method
@@ -1337,6 +1404,9 @@ class HazusEQInventoryCompiler:
                 than one possible world, or is given with ``merge_stacked``;
                 if no footprint lies inside the boundary, found right after
                 ``s01_footprints`` and before the census tables are read;
+                if the inputs name a state other than the compiler's, or other than
+                :data:`DEFAULT_STATE` for a compiler built without a seismic zone,
+                or one the inferers refuse with the compiler's seismic zone;
                 or as the components raise, among them a footprint outside
                 every block group and, with ``merge_stacked``, a footprint
                 that is not Overture's; or, for a census table given as ``None``, if
@@ -1360,7 +1430,7 @@ class HazusEQInventoryCompiler:
                 download of a TIGER/Line file of block groups or of the park points
                 fails.
         """
-        self._check_inputs(inputs)
+        state, seismic_zone, merge_stacked, notices = self._check_inputs(inputs)
 
         n_computed = self.n_worlds
         settings = {
@@ -1369,8 +1439,8 @@ class HazusEQInventoryCompiler:
             'height_unit': inputs.height_unit,
             'n_worlds': self.n_worlds,
             'worlds': list(range(n_computed)),
-            'state': self.state,
-            'seismic_zone': self.seismic_zone,
+            'state': state,
+            'seismic_zone': seismic_zone,
             'design_level_method': self.design_level_method,
             'join_cap_m': self.join_cap_m,
             'projected_crs': None
@@ -1379,7 +1449,7 @@ class HazusEQInventoryCompiler:
             'imputer_options': dict(self.imputer_options),
             'budget_options': dict(self.budget_options),
             'sampler_options': dict(self.sampler_options),
-            'merge_stacked': self.merge_stacked,
+            'merge_stacked': merge_stacked,
         }
         report = CompilationReport(
             self.seed,
@@ -1388,13 +1458,17 @@ class HazusEQInventoryCompiler:
             settings=settings,
         )
         report.set_world_count(n_computed)
+        for notice in notices:
+            report.note(notice)
         freeze = StageFreeze()
         sources = _WorldSources(freeze)
         logs: dict[str, pd.DataFrame] = {}
 
         inputs, acs_scraper = self._read_inputs_before_s01(inputs, report)
         started = time.perf_counter()
-        centroids = self._prepare_footprints(inputs, sources, logs, report)
+        centroids = self._prepare_footprints(
+            inputs, sources, logs, report, merge_stacked=merge_stacked
+        )
         boundary_assets = self._select_inside_boundary(inputs, freeze, report)
         report.set_timing(STAGE_S01_FOOTPRINTS, time.perf_counter() - started)
         inputs = self._read_census_tables(inputs, acs_scraper, freeze, report)
@@ -1458,11 +1532,24 @@ class HazusEQInventoryCompiler:
             sources, logs, centroids, report, n_computed, imputer, stories
         )
         self._assign_structure_in_each_world(
-            sources, logs, centroids, report, n_computed
+            sources,
+            logs,
+            centroids,
+            report,
+            n_computed,
+            state=state,
+            seismic_zone=seismic_zone,
         )
         self._freeze_view(STAGE_S08_VIEW, sources, report, n_computed)
         self._impute_nonresidential_years(
-            sources, logs, centroids, report, n_computed, imputer
+            sources,
+            logs,
+            centroids,
+            report,
+            n_computed,
+            imputer,
+            state=state,
+            seismic_zone=seismic_zone,
         )
 
         self._withhold_replaced_values(sources, centroids)
@@ -1583,13 +1670,24 @@ class HazusEQInventoryCompiler:
             boundary_assets=boundary_assets,
         )
 
-    def _check_inputs(self, inputs: CompilerInputs) -> None:
+    def _check_inputs(
+        self, inputs: CompilerInputs
+    ) -> tuple[str, str, bool, list[str]]:
         """
-        Refuse inputs the compiler cannot compile, before anything is read.
+        Refuse inputs the compiler cannot compile, and resolve its settings for them.
+
+        It runs before anything is read.
 
         Args:
             inputs (CompilerInputs):
                 The study area's data.
+
+        Returns:
+            tuple[str, str, bool, list[str]]:
+                The state, the seismic zone and ``merge_stacked`` the compilation
+                applies, and its notices about them: one naming the zone where the
+                inputs name :data:`DEFAULT_STATE` and the compiler was built without
+                a zone.
 
         Raises:
             TypeError:
@@ -1598,7 +1696,8 @@ class HazusEQInventoryCompiler:
             ValueError:
                 If the local inventory holds an asset that the footprints lack, a
                 feature of :data:`RESERVED_LOCAL_FEATURES` or more than one possible
-                world, or is given with ``merge_stacked``.
+                world, or is given with ``merge_stacked``; or as
+                :meth:`check_state` raises.
         """
         not_strings = [
             a for a in inputs.footprints.inventory if not isinstance(a, str)
@@ -1612,44 +1711,127 @@ class HazusEQInventoryCompiler:
                 f'{type(inputs.boundary).__name__}.'
             )
             raise TypeError(msg)
+        state, seismic_zone = self.check_state(inputs.state)
+        merge_stacked = (
+            inputs.merge_stacked
+            if self.merge_stacked is None
+            else self.merge_stacked
+        )
         if inputs.local is not None:
-            if self.merge_stacked:
-                msg = (
-                    'A local inventory cannot be given with merge_stacked: its '
-                    'ids are those of the footprints, which the merge re-keys.'
-                )
-                raise ValueError(msg)
-            stray = sorted(
-                set(inputs.local.inventory) - set(inputs.footprints.inventory),
-                key=str,
+            self._check_local(inputs, merge_stacked=merge_stacked)
+        notices = []
+        if inputs.state == DEFAULT_STATE and self.seismic_zone is None:
+            notices.append(
+                f'The inputs name {DEFAULT_STATE} and the compiler was built '
+                f'without seismic_zone, so zone {DEFAULT_SEISMIC_ZONE} applies.'
             )
-            if stray:
-                msg = (
-                    f'The local inventory holds {len(stray)} asset(s) the '
-                    f'footprints lack: {stray[:10]!r}.'
-                )
-                raise ValueError(msg)
-            if inputs.local.n_pw != 1:
-                msg = (
-                    'The local inventory must hold one possible world, not '
-                    f'{inputs.local.n_pw}.'
-                )
-                raise ValueError(msg)
-            reserved = sorted(
-                {
-                    key
-                    for asset in inputs.local.inventory.values()
-                    for key in asset.features
-                }
-                & set(RESERVED_LOCAL_FEATURES)
+        return state, seismic_zone, merge_stacked, notices
+
+    @staticmethod
+    def _check_local(inputs: CompilerInputs, *, merge_stacked: bool) -> None:
+        """
+        Refuse a local inventory the compiler cannot take.
+
+        Args:
+            inputs (CompilerInputs):
+                The study area's data, with a local inventory.
+            merge_stacked (bool):
+                Whether the compilation merges stacked footprints.
+
+        Raises:
+            ValueError:
+                If the local inventory holds an asset that the footprints lack, a
+                feature of :data:`RESERVED_LOCAL_FEATURES` or more than one possible
+                world, or is given with ``merge_stacked``.
+        """
+        if merge_stacked:
+            msg = (
+                'A local inventory cannot be given with merge_stacked: its '
+                'ids are those of the footprints, which the merge re-keys.'
             )
-            if reserved:
-                msg = (
-                    f'The local inventory holds {reserved}, of '
-                    f'RESERVED_LOCAL_FEATURES {list(RESERVED_LOCAL_FEATURES)}, '
-                    'which the compiler writes for itself and reads back.'
-                )
-                raise ValueError(msg)
+            raise ValueError(msg)
+        stray = sorted(
+            set(inputs.local.inventory) - set(inputs.footprints.inventory),
+            key=str,
+        )
+        if stray:
+            msg = (
+                f'The local inventory holds {len(stray)} asset(s) the '
+                f'footprints lack: {stray[:10]!r}.'
+            )
+            raise ValueError(msg)
+        if inputs.local.n_pw != 1:
+            msg = (
+                'The local inventory must hold one possible world, not '
+                f'{inputs.local.n_pw}.'
+            )
+            raise ValueError(msg)
+        reserved = sorted(
+            {
+                key
+                for asset in inputs.local.inventory.values()
+                for key in asset.features
+            }
+            & set(RESERVED_LOCAL_FEATURES)
+        )
+        if reserved:
+            msg = (
+                f'The local inventory holds {reserved}, of '
+                f'RESERVED_LOCAL_FEATURES {list(RESERVED_LOCAL_FEATURES)}, '
+                'which the compiler writes for itself and reads back.'
+            )
+            raise ValueError(msg)
+
+    def check_state(self, named: str | None) -> tuple[str, str]:
+        """
+        Return the state and the seismic zone a compilation of a study area applies.
+
+        The compiler's state applies where it was given one, the state the study
+        area is in where it was not, and :data:`DEFAULT_STATE` where neither is
+        named. The compiler's zone applies where it was given one, and
+        :data:`DEFAULT_SEISMIC_ZONE` otherwise. :meth:`compile` calls it for the
+        state its inputs name, and :meth:`CompilerInputs.from_place` for the state
+        of the place when given the compiler.
+
+        Args:
+            named (str | None):
+                The state the study area is in, such as the inputs name, or
+                ``None``.
+
+        Returns:
+            tuple[str, str]:
+                The full state name and the 1997 UBC seismic zone.
+
+        Raises:
+            ValueError:
+                In this order: if the compiler's state and ``named`` differ; for a
+                compiler built without a state, if the inferers refuse ``named``
+                with the zone; and if ``named`` is a state other than
+                :data:`DEFAULT_STATE` and the compiler was built without a zone.
+        """
+        if self.state is not None and named not in (None, self.state):
+            msg = (
+                f'The compiler was built for {self.state} and the study area is in '
+                f'{named}. Build the compiler without a state, and it takes the '
+                'state of the study area.'
+            )
+            raise ValueError(msg)
+        state = self.state or named or DEFAULT_STATE
+        seismic_zone = self.seismic_zone or DEFAULT_SEISMIC_ZONE
+        # The constructor checked the compiler's state, or DEFAULT_STATE without one.
+        if state != (self.state or DEFAULT_STATE):
+            _check_state(state, seismic_zone, self.design_level_method, self.seed)
+        if named not in (None, DEFAULT_STATE) and self.seismic_zone is None:
+            zones = STATE_DESIGN_LEVELS.get(named, GENERIC_DESIGN_LEVELS)
+            msg = (
+                f'The study area is in {named}, and the compiler was built without '
+                'seismic_zone. Build it with seismic_zone, the 1997 UBC zone of the '
+                f'study area, one of {", ".join(zones)}; zone '
+                f'{DEFAULT_SEISMIC_ZONE} applies without one only to inputs that '
+                f'name {DEFAULT_STATE} or no state.'
+            )
+            raise ValueError(msg)
+        return state, seismic_zone
 
     def _prepare_footprints(
         self,
@@ -1657,11 +1839,13 @@ class HazusEQInventoryCompiler:
         sources: _WorldSources,
         logs: dict[str, pd.DataFrame],
         report: CompilationReport,
+        *,
+        merge_stacked: bool,
     ) -> dict[str, list[list[float]]]:
         """
         Run s01: freeze the footprints with their block groups and plan areas.
 
-        With :attr:`merge_stacked`, the stacked footprints are merged first,
+        With ``merge_stacked``, the stacked footprints are merged first,
         and the rest of the step reads the merged set.
 
         Args:
@@ -1673,10 +1857,13 @@ class HazusEQInventoryCompiler:
                 :data:`STAGE_S01_LOCAL`.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``footprint_ties`` and, with
-                :attr:`merge_stacked`, the merge's parts table as
+                ``merge_stacked``, the merge's parts table as
                 ``stacked_parts`` and its id log as ``stacked_asset_ids``.
             report (CompilationReport):
                 The report, whose notices count the merges.
+            merge_stacked (bool):
+                Whether to merge the stacked footprints, as the compilation
+                resolved :attr:`merge_stacked`.
 
         Returns:
             dict[str, list[list[float]]]:
@@ -1690,7 +1877,7 @@ class HazusEQInventoryCompiler:
                 area, or as :meth:`StackedFootprintMerge.merge` raises.
         """
         footprints = inputs.footprints
-        if self.merge_stacked:
+        if merge_stacked:
             merge = StackedFootprintMerge(length_unit=inputs.height_unit)
             merged = merge.merge(footprints)
             footprints = merged.inventory
@@ -2718,6 +2905,9 @@ class HazusEQInventoryCompiler:
         centroids: Mapping[str, list[list[float]]],
         report: CompilationReport,
         n_computed: int,
+        *,
+        state: str,
+        seismic_zone: str,
     ) -> None:
         """
         Give each building its design level, structure type and height class.
@@ -2742,6 +2932,10 @@ class HazusEQInventoryCompiler:
                 actions and exclusions of every world.
             n_computed (int):
                 The number of worlds computed.
+            state (str):
+                The full state name the compilation applies.
+            seismic_zone (str):
+                The 1997 UBC seismic zone the compilation applies.
 
         Raises:
             ValueError:
@@ -2774,6 +2968,8 @@ class HazusEQInventoryCompiler:
                         excluded,
                         new[STAGE_S08_DERIVED],
                         new[STAGE_S08_STRUCTURE],
+                        state=state,
+                        seismic_zone=seismic_zone,
                     ),
                 }
             )
@@ -2805,6 +3001,8 @@ class HazusEQInventoryCompiler:
         derived: dict[str, dict[str, Any]],
         drawn: dict[str, dict[str, Any]],
         *,
+        state: str,
+        seismic_zone: str,
         step: str = 's08',
     ) -> dict[str, int]:
         """
@@ -2839,6 +3037,10 @@ class HazusEQInventoryCompiler:
                 The world's new derived values, written per asset.
             drawn (dict[str, dict[str, Any]]):
                 The world's new drawn values, written per asset.
+            state (str):
+                The full state name the compilation applies.
+            seismic_zone (str):
+                The 1997 UBC seismic zone the compilation applies.
             step (str, optional):
                 The label of the step the report files the rows under, the
                 prefix of each report stage: ``'s08'`` for the buildings with
@@ -2858,7 +3060,7 @@ class HazusEQInventoryCompiler:
                 building type has no source.
         """
         design = HazusEQDesignLevelInferer(
-            self.design_level_method, self.state, self.seismic_zone
+            self.design_level_method, state, seismic_zone
         )
         heights = HazusEQHeightClassInferer()
         labeled = [
@@ -2919,7 +3121,7 @@ class HazusEQInventoryCompiler:
 
         # The screen and the loop, then the type draw.
         structure = HazusEQStructureTypeInferer(
-            self.state, seed=self.seed, world=world, complete_tables=True
+            state, seed=self.seed, world=world, complete_tables=True
         )
         loop = ResolutionLoop(
             ComposedScreen(design, structure),
@@ -3005,7 +3207,7 @@ class HazusEQInventoryCompiler:
             if height_class is not None:
                 derived.setdefault(asset_id, {})[HEIGHT_CLASS_KEY] = height_class
 
-        if self.state == CARVE_OUT_STATE and design.method == CARVE_OUT_METHOD:
+        if state == CARVE_OUT_STATE and design.method == CARVE_OUT_METHOD:
             drawn_levels = [
                 a
                 for a in types.index
@@ -3044,6 +3246,9 @@ class HazusEQInventoryCompiler:
         report: CompilationReport,
         n_computed: int,
         imputer: ObservedDonorImputer,
+        *,
+        state: str,
+        seismic_zone: str,
     ) -> None:
         """
         Run s09 and s10: years built, then structure, for buildings without a year.
@@ -3076,6 +3281,10 @@ class HazusEQInventoryCompiler:
             imputer (ObservedDonorImputer):
                 The imputer of s05, whose ``k`` and ``cap_m`` the sampler
                 takes.
+            state (str):
+                The full state name the compilation applies.
+            seismic_zone (str):
+                The 1997 UBC seismic zone the compilation applies.
 
         Raises:
             ValueError:
@@ -3168,6 +3377,8 @@ class HazusEQInventoryCompiler:
                         excluded,
                         new[STAGE_S10_DERIVED],
                         new[STAGE_S10_NONRESIDENTIAL_STRUCTURE],
+                        state=state,
+                        seismic_zone=seismic_zone,
                         step='s10',
                     ),
                 }

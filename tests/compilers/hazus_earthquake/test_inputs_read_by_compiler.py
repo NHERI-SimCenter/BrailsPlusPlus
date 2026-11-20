@@ -31,7 +31,7 @@
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS++. If not, see <http://www.opensource.org/licenses/>.
 
-"""Tests of the Hazus earthquake inventory compiler reading inputs left as None."""
+"""Tests of inputs the Hazus earthquake compiler reads or takes settings from."""
 
 from __future__ import annotations
 
@@ -702,3 +702,106 @@ class TestParkPoints:
                 study_area._replace(mh_park_points=None)
             )
         assert not assign.called
+
+
+class TestStateAndMerge:
+    """The state and the merge of stacked footprints are taken from the inputs."""
+
+    def test_state_taken_from_inputs(self, study_area: CompilerInputs) -> None:
+        """A compiler without a state compiles the inputs' state as if given it."""
+        oregon = study_area._replace(state='Oregon')
+        taken = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS, seismic_zone='3'
+        ).compile(oregon)
+        given = HazusEQInventoryCompiler(
+            seed=SEED,
+            n_worlds=2,
+            projected_crs=METRIC_CRS,
+            state='Oregon',
+            seismic_zone='3',
+        ).compile(oregon)
+
+        assert_same_compilation(taken, given)
+        settings = taken.report.summary()['settings']
+        assert (settings['state'], settings['seismic_zone']) == ('Oregon', '3')
+
+    @pytest.mark.parametrize(
+        ('arguments', 'state', 'match'),
+        [
+            ({'state': 'California'}, 'Oregon', 'built for California and the'),
+            (
+                {'seismic_zone': '3'},
+                'Texas',
+                'Census West region only, not Texas',
+            ),
+            ({}, 'Oregon', 'with seismic_zone, .*one of 4, 3, 2B, 2A, 1, 0; zone 4'),
+            ({}, 'Texas', 'Census West region only, not Texas'),
+            ({'seismic_zone': '3'}, 'Guam', 'no RES1 distribution for Guam'),
+        ],
+    )
+    def test_state_of_inputs_refused(
+        self, study_area: CompilerInputs, arguments: dict, state: str, match: str
+    ) -> None:
+        """Another state, a state it cannot take, no zone: refused in that order."""
+        with (
+            mock.patch.object(
+                HazusEQInventoryCompiler, '_prepare_footprints'
+            ) as s01,
+            pytest.raises(ValueError, match=match),
+        ):
+            HazusEQInventoryCompiler(seed=SEED, **arguments).compile(
+                study_area._replace(state=state)
+            )
+        s01.assert_not_called()
+
+    @pytest.mark.parametrize('zone', [None, '4'])
+    def test_california_inputs_compile_as_default(
+        self,
+        study_area: CompilerInputs,
+        compiled: Callable[[int], CompilationResult],
+        zone: str | None,
+    ) -> None:
+        """Inputs in California compile as inputs without a state, the zone noted."""
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS, seismic_zone=zone
+        ).compile(study_area._replace(state='California'))
+
+        assert_same_compilation(result, compiled(3))
+        expected = compiled(3).report.summary()
+        notice = (
+            'The inputs name California and the compiler was built without '
+            'seismic_zone, so zone 4 applies.'
+        )
+        assert result.report.summary() == {
+            **expected,
+            'timings': result.report.summary()['timings'],
+            'notices': [notice] * (zone is None) + expected['notices'],
+        }
+
+    @pytest.mark.parametrize(
+        ('given', 'taken', 'merged'),
+        [(None, True, True), (False, True, False), (None, False, False)],
+    )
+    def test_merge_stacked_taken_from_inputs(
+        self,
+        study_area: CompilerInputs,
+        given: bool | None,  # noqa: FBT001
+        taken: bool,  # noqa: FBT001
+        merged: bool,  # noqa: FBT001
+    ) -> None:
+        """A compiler without merge_stacked merges where the inputs say to."""
+        footprints = build_inputs().footprints
+        for asset_id, asset in footprints.inventory.items():
+            asset.features.update(
+                {'footprint_provider': 'overture', 'overture_id': asset_id}
+            )
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS, merge_stacked=given
+        ).compile(
+            study_area._replace(
+                footprints=footprints, local=None, merge_stacked=taken
+            )
+        )
+
+        assert result.report.summary()['settings']['merge_stacked'] is merged
+        assert ('stacked_parts' in result.logs) is merged

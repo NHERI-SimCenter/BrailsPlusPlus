@@ -60,6 +60,8 @@ The caller gives the data of the study area in a ``CompilerInputs``:
   below);
 - optionally, a boundary, the place to compile inside the area the footprints
   cover (see "A boundary" below);
+- optionally, the state of the study area and whether to merge its stacked
+  footprints, which a compiler built without these settings applies;
 - the Overture release of the footprints, the length unit of their heights
   and a label of the study area for the report.
 
@@ -76,6 +78,15 @@ report's summary hold, so that the run can be repeated with the same inputs (see
 checks the settings. It also builds four of the components, so that each can
 refuse its own settings and a bad setting raises an error in the
 constructor, before any data is read.
+
+The state, the seismic zone and ``merge_stacked`` default to ``None``. A compilation
+then applies the state the inputs name, or ``DEFAULT_STATE`` where they name none,
+the zone ``DEFAULT_SEISMIC_ZONE``, and the inputs' ``merge_stacked``, which is off
+unless set. Before it reads any data, ``compile`` refuses, in this order, inputs that
+name a state other than the compiler's, a state the compiler cannot take, and a state
+other than ``DEFAULT_STATE`` when the compiler was built without a seismic zone.
+Where the inputs name ``DEFAULT_STATE`` and no zone was given, a notice names the
+zone applied.
 
 ``compile`` returns a ``CompilationResult``. Its ``inventory`` is the compiled
 inventory over every world, with each building's ``Excluded`` true in the
