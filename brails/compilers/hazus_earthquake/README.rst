@@ -11,12 +11,12 @@ and ``ComposedScreen`` and ``ResolutionLoop`` in ``resolution_loop.py``. This
 page states what the compiler produces and from which inputs, the settings it
 gives the observed-donor imputer, the run step by step in the order the code
 runs it, the frozen stages, the possible worlds, the local inputs, the block
-groups, a boundary, the written file and the scope, then the three classes. The terms
-this page shares with the general compilers page, such as possible world,
-stage, part, record, view, computed stage, source and donor, are defined in the
-section "Concepts" of ``brails/compilers/README.rst``. Its section "Composition
-and assembly" states how a source is put together from frozen stages. The
-docstrings state what a caller passes and receives.
+groups, a boundary, a compilation from a place, the written file and the scope, then
+the three classes. The terms this page shares with the general compilers page, such
+as possible world, stage, part, record, view, computed stage, source and donor, are
+defined in the section "Concepts" of ``brails/compilers/README.rst``. Its section
+"Composition and assembly" states how a source is put together from frozen stages.
+The docstrings state what a caller passes and receives.
 
 The inventory and its inputs
 ----------------------------
@@ -822,6 +822,42 @@ refuses a file for a missing default property of those buildings only. With
 ``keep_outside=True`` it saves every building and every row. The logs that
 ``detailed=True`` saves hold every building either way, since several of them are
 keyed by block group.
+
+A compilation from a place
+--------------------------
+
+``CompilerInputs.from_place`` gathers the inputs of a place, and the compiler's
+``compile_place`` compiles them in one call. The place is a name with its state,
+looked up among the census places and counties by ``CensusBoundary``, or in
+OpenStreetMap with ``source='osm'``; a ``RegionBoundary``; or a Shapely polygon.
+``from_place`` takes these steps, the quick ones and the likely failures first:
+
+1. It asks the Census Data API whether it accepts the key, before any download, since
+   the compiler reads the census tables with it.
+2. It reads the boundary, from the TIGER/Line files of ``block_group_vintage`` for a
+   census name, and finds its state. A census boundary lies in the state its record
+   names; another boundary lies in each state that holds at least
+   ``STATE_AREA_SHARE`` of its area. It first refuses a boundary that encloses no
+   area, or that lies in no state or in two. Then, without ``compiler``, it refuses a
+   state the compiler cannot take, and with it, what the compiler's ``check_state``
+   refuses, in this order: a state other than the compiler's, a state it cannot take,
+   a missing zone.
+3. It widens the place, together with the block groups with land that overlap it, by
+   ``buffer_m``, and refuses that area read where it intersects more than
+   ``max_block_groups`` block groups.
+4. It reads the Overture footprints of the area read once, keyed by geohash. The
+   place and the block groups that hold a footprint inside it, widened by
+   ``buffer_m``, make the area compiled. Footprints outside it are left out, and so
+   are those in no block group, with a notice. A notice also names a building inside
+   the place whose block group has no land and may reach past the area read.
+5. It reads the NSI points of the area compiled, widened by ``DEFAULT_JOIN_CAP_M``.
+
+The inputs carry the boundary, ``buffer_m``, the record of where the boundary comes
+from, the state, ``merge_stacked`` set on, and the notices, which the report lists.
+The census tables and the park points are left for the compiler to read, and the
+block groups are those of the area read. A compiler built without a state or
+``merge_stacked`` applies the inputs'. The docstring of ``compile_place`` states what
+it adds to the two calls.
 
 The written file
 ----------------

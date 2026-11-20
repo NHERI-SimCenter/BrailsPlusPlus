@@ -492,6 +492,7 @@ class NSI_Parser:
         *,
         simcenter_format: bool = False,
         raw_parquet_path: Optional[Union[str, Path]] = None,
+        omit_nulls: bool = False,
     ) -> AssetInventory:
         """
         Retrieve raw NSI data for a specified region.
@@ -513,6 +514,9 @@ class NSI_Parser:
                 :meth:`NSIFileReader.read
                 <brails.scrapers.nsi_parser.nsi_file_reader.NSIFileReader.read>`
                 can read the file back as the inventory returned.
+            omit_nulls (bool):
+                When True, a field whose value is null is left out of an asset's
+                features, as ``NSIFileReader`` leaves it out. Defaults to False.
 
         Returns:
             AssetInventory:
@@ -565,7 +569,7 @@ class NSI_Parser:
                 properties,
                 [[geometry.x, geometry.y]],
                 simcenter_format=simcenter_format,
-                omit_nulls=False,
+                omit_nulls=omit_nulls,
             )
             inventory.add_asset(fd_id, asset)
 

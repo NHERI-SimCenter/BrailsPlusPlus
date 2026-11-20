@@ -360,6 +360,19 @@ def test_a_served_null_is_kept_as_none(canned_fetch: Callable[..., None]) -> Non
     assert inventory.get_asset_features(11)[1]['firmzone'] is None
 
 
+def test_omit_nulls_leaves_a_served_null_out(
+    canned_fetch: Callable[..., None],
+) -> None:
+    """With omit_nulls, a field NSI serves as null is not a feature of its asset."""
+    canned_fetch([make_record(11, 0.0005, 0.0005, firmzone=None)])
+
+    inventory = NSI_Parser().get_raw_data(Region(), omit_nulls=True)
+
+    features = inventory.get_asset_features(11)[1]
+    assert 'firmzone' not in features
+    assert features['fd_id'] == 11
+
+
 # ---------------------------------------------------------------------
 # the stored NSI sample
 # ---------------------------------------------------------------------

@@ -48,6 +48,8 @@ from __future__ import annotations
 
 import inspect
 import json
+import math
+import numbers
 import operator
 import secrets
 import time
@@ -186,6 +188,10 @@ from brails.inferers.stories_from_height_inferer.stories_from_height_inferer imp
 from brails.scrapers.mobile_home_park_scraper.mobile_home_park_scraper import (
     MobileHomeParkScraper,
 )
+from brails.scrapers.nsi_parser.nsi_parser import NSI_Parser
+from brails.scrapers.overture_maps_scraper.overture_maps_footprint_scraper import (
+    OvertureMapsFootprintScraper,
+)
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
     OVERTURE_PROVIDER,
     SOURCES_KEY,
@@ -212,10 +218,16 @@ from brails.types.asset_inventory import (
     is_missing_value,
     read_source_string,
 )
+from brails.types.census_boundary import CensusBoundary
 from brails.types.geometry_region import GeometryRegion
-from brails.utils.region_filter import find_inside, read_boundary
+from brails.utils.region_filter import (
+    find_inside,
+    read_boundary,
+    reference_point,
+    resolve_region,
+)
 from brails.utils.stage_freeze import StageFreeze
-from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE
+from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE, read_tiger_file
 from brails.utils.unit_converter import UNIT_TO_METER
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from brails.validators.schema_validator import SchemaValidator
@@ -223,6 +235,10 @@ from brails.validators.schema_validator import SchemaValidator
 if TYPE_CHECKING:
     import os
     from collections.abc import Sequence
+
+    from shapely.geometry.base import BaseGeometry
+
+    from brails.types.region_boundary import RegionBoundary
 
 # The number of possible worlds compiled by default.
 DEFAULT_N_WORLDS = 10
@@ -378,6 +394,24 @@ CARVE_OUT_METHOD = '5.1'
 # one, and the 1997 UBC seismic zone it applies where the compiler is given none.
 DEFAULT_STATE = 'California'
 DEFAULT_SEISMIC_ZONE = '4'
+
+# The design level method a compiler applies by default.
+DEFAULT_DESIGN_LEVEL_METHOD = '5.1'
+
+# The NSI join's distance cap in meters that a compiler applies by default.
+DEFAULT_JOIN_CAP_M = 15.0
+
+# The share of a boundary's area that a second state may not reach in
+# CompilerInputs.from_place, measured against the TIGER/Line state polygons, which
+# hold coastal and inland water.
+STATE_AREA_SHARE = 0.01
+
+# The most block groups the area of CompilerInputs.from_place may intersect unless
+# the caller lifts the limit.
+DEFAULT_MAX_BLOCK_GROUPS = 800
+
+# The equal-area projection the state shares of a boundary are measured in.
+_EQUAL_AREA_CRS = 'EPSG:6933'
 
 # The exclusion category of each diagnosis by which a year sampler, the
 # design level inferer or the height class inferer refuses an asset. An asset
@@ -551,6 +585,9 @@ class CompilerInputs(NamedTuple):
         merge_stacked (bool):
             Whether a compiler built without ``merge_stacked`` merges the stacked
             footprints. Defaults to ``False``.
+        notices (tuple[str, ...]):
+            Notices about the inputs, which the report lists first, such as those
+            :meth:`from_place` writes. Defaults to an empty tuple.
     """
 
     footprints: AssetInventory
@@ -570,6 +607,212 @@ class CompilerInputs(NamedTuple):
     boundary_record: Mapping[str, object] | None = None
     state: str | None = None
     merge_stacked: bool = False
+    notices: tuple[str, ...] = ()
+
+    @classmethod
+    def from_place(
+        cls,
+        place: str | RegionBoundary | Polygon | MultiPolygon,
+        *,
+        source: str | None = None,
+        buffer_m: float = DEFAULT_DONOR_CAP_M,
+        overture_options: Mapping[str, object] | None = None,
+        block_group_vintage: int = DEFAULT_TIGER_VINTAGE,
+        max_block_groups: int | None = DEFAULT_MAX_BLOCK_GROUPS,
+        compiler: HazusEQInventoryCompiler | None = None,
+    ) -> CompilerInputs:
+        """
+        Gather the inputs of a compilation of a place from its name or boundary.
+
+        The section "A compilation from a place" of the README beside this module
+        states the steps. The area read is the place and the block groups with land
+        that overlap it, widened by ``buffer_m``; its Overture footprints are read
+        once. The area compiled is the place and the block groups that hold its
+        buildings, widened by ``buffer_m``. The inputs hold the footprints and NSI
+        points of the area compiled and the block groups of the area read, leave the
+        census tables and the park points as ``None`` for the compiler to read, and
+        ask it to merge stacked footprints.
+
+        Args:
+            place (str | RegionBoundary | Polygon | MultiPolygon):
+                A place name with its state, as in ``'Berkeley, CA'``, looked up
+                where ``source`` says; a :class:`RegionBoundary` of any kind; or a
+                Shapely polygon or multipolygon in longitude and latitude.
+            source (str, optional):
+                Where a place name is looked up: ``None`` or ``'census'`` for the
+                census places and counties, ``'osm'`` for OpenStreetMap.
+            buffer_m (float, optional):
+                How far in meters both areas reach past the place and its block
+                groups. Defaults to the observed-donor imputer's default ``cap_m``.
+            overture_options (Mapping[str, object], optional):
+                Options of :class:`~brails.scrapers.OvertureMapsFootprintScraper`,
+                such as ``'overtureRelease'`` or ``'local_path'``. The footprints
+                are keyed by geohash at the scraper's area floor, so
+                ``'id_scheme'`` and ``'min_area'`` are refused.
+            block_group_vintage (int, optional):
+                The year of the TIGER/Line release of the block groups and of a
+                census boundary looked up by name. Defaults to
+                :data:`~brails.utils.tiger_files.DEFAULT_TIGER_VINTAGE`.
+            max_block_groups (int | None, optional):
+                The most block groups the area read may intersect, counted before
+                the footprints are read. ``None`` sets no limit. Defaults to
+                :data:`DEFAULT_MAX_BLOCK_GROUPS`.
+            compiler (HazusEQInventoryCompiler, optional):
+                The compiler that will compile the inputs, whose
+                :meth:`~HazusEQInventoryCompiler.check_state` is called for the
+                place's state before the footprints are read, as
+                :meth:`HazusEQInventoryCompiler.compile_place` passes it. The inputs
+                are checked against that compiler only; another compiler checks
+                them in ``compile``. ``None``, the default, leaves the check to
+                ``compile``.
+
+        Returns:
+            CompilerInputs:
+                The footprints and NSI points of the area compiled, the block groups
+                of the area read, the boundary with ``buffer_m`` and its
+                ``boundary_record``, the state, the Overture release,
+                ``merge_stacked`` set on, and the notices for the report.
+
+        Raises:
+            TypeError:
+                If ``place`` is none of the accepted types, or ``buffer_m`` is not
+                a real number.
+            ValueError:
+                If ``buffer_m`` is less than 0 or not finite, or
+                ``overture_options`` sets ``'id_scheme'`` or ``'min_area'``; if
+                :func:`~brails.utils.region_filter.resolve_region` or the census
+                lookup refuses the place; if the boundary encloses no area, even as
+                repaired; if no state, or a second state, holds
+                :data:`STATE_AREA_SHARE` of a boundary that is not a census one;
+                if the compiler cannot take the place's state, or ``compiler`` was
+                built for another state or has no seismic zone for this one; if the
+                area read intersects more than ``max_block_groups`` block groups;
+                or if no footprint lies inside the place.
+            LookupError, RuntimeError:
+                If no Census API key is found or the Census Data API refuses it.
+            requests.exceptions.RequestException:
+                If a request fails, as the scrapers raise it.
+        """
+        if isinstance(buffer_m, bool) or not isinstance(buffer_m, numbers.Real):
+            msg = f'buffer_m must be a number of meters, not {buffer_m!r}.'
+            raise TypeError(msg)
+        if not (math.isfinite(buffer_m) and buffer_m >= 0):
+            msg = f'buffer_m must be a finite number of at least 0, not {buffer_m}.'
+            raise ValueError(msg)
+        fixed = sorted(set(overture_options or {}) & {'id_scheme', 'min_area'})
+        if fixed:
+            msg = (
+                f'overture_options sets {" and ".join(fixed)}, which from_place '
+                "fixes: the footprints are keyed by geohash at the scraper's area "
+                'floor, on which the stacked merge rests. Remove it from '
+                'overture_options.'
+            )
+            raise ValueError(msg)
+        # Checked first, so that a missing or refused key stops before a download.
+        ACSTableScraper().check_key(DEFAULT_ACS_VINTAGE)
+
+        region = resolve_region(place, source, vintage=block_group_vintage)
+        boundary, name, identifier = read_boundary(region)
+        record = _record_boundary(region, name, identifier)
+        notices = []
+        if (
+            isinstance(region, CensusBoundary)
+            and region.vintage != block_group_vintage
+        ):
+            notices.append(
+                f'The boundary comes from the TIGER/Line {region.vintage} files and '
+                f'the block groups from the {block_group_vintage} files.'
+            )
+        state = _find_state(boundary, name, record, block_group_vintage, compiler)
+
+        tiger = TIGERLineScraper(block_group_vintage)
+        overlapping = tiger.get_block_groups(GeometryRegion(boundary, name))
+        # The block groups likely to hold a building of the place have land and
+        # overlap it, and the area read is the place and those, widened. A building
+        # in a block group without land is noted below.
+        land = overlapping.loc[overlapping['ALAND'] > 0].to_crs(GEOGRAPHIC_CRS)
+        reach = _widen(shapely.union_all([boundary, *land.geometry]), buffer_m)
+        block_groups = tiger.get_block_groups(GeometryRegion(reach, name))
+        if max_block_groups is not None and len(block_groups) > max_block_groups:
+            msg = (
+                f'The area read around {name} intersects {len(block_groups)} block '
+                f'groups, more than max_block_groups={max_block_groups}. Pass '
+                'max_block_groups=None to compile it, with the memory it needs.'
+            )
+            raise ValueError(msg)
+
+        scraper = OvertureMapsFootprintScraper(
+            {'id_scheme': 'geohash', **(overture_options or {})}
+        )
+        read = scraper.get_footprints(GeometryRegion(reach, name)).inventory
+        inside = find_inside(read, boundary)
+        if not inside:
+            msg = (
+                f'No Overture footprint read lies inside {name}. For a polygon, '
+                'check that it is in longitude and latitude (EPSG:4326); with '
+                "'local_path', check that the files cover the place."
+            )
+            raise ValueError(msg)
+        # The block group of each footprint read, by the point find_inside reads.
+        ids = list(read)
+        xy = np.array(
+            [reference_point(read[a], a) for a in ids], dtype=float
+        ).reshape(-1, 2)
+        located = (
+            gpd.sjoin(
+                gpd.GeoDataFrame(
+                    {'asset_id': ids},
+                    geometry=gpd.points_from_xy(xy[:, 0], xy[:, 1]),
+                    crs=GEOGRAPHIC_CRS,
+                ),
+                block_groups[['GEOID', 'ALAND', 'geometry']].to_crs(GEOGRAPHIC_CRS),
+                predicate='within',
+                how='left',
+            )
+            .drop_duplicates('asset_id')
+            .set_index('asset_id')
+        )
+        held = located.loc[inside]
+        unread = held.index[held['ALAND'] == 0]
+        if len(unread):
+            notices.append(
+                f'{len(unread)} building(s) inside {name} lie in block groups '
+                'without land, which can reach past the area read, so those block '
+                f'groups may be compiled in part: {sorted(unread)[:10]}.'
+            )
+        chosen = block_groups[block_groups['GEOID'].isin(held['GEOID'])]
+        area = _widen(
+            shapely.union_all([boundary, *chosen.to_crs(GEOGRAPHIC_CRS).geometry]),
+            buffer_m,
+        )
+        compiled = located.loc[find_inside(read, area)]
+        unplaced = compiled['GEOID'].isna()
+        if unplaced.any():
+            notices.append(
+                f'{int(unplaced.sum())} footprint(s) of the area compiled lie in no '
+                'block group, such as across a national border or offshore, and '
+                'were left out.'
+            )
+        footprints = AssetInventory()
+        footprints.inventory = {a: read[a] for a in compiled.index[~unplaced]}
+
+        nsi_points = NSI_Parser().get_raw_data(
+            GeometryRegion(_widen(area, DEFAULT_JOIN_CAP_M), name), omit_nulls=True
+        )
+        return cls(
+            footprints=footprints,
+            nsi_points=nsi_points,
+            footprint_release=scraper.overture_release,
+            study_area='' if isinstance(region, (Polygon, MultiPolygon)) else name,
+            height_unit=scraper.units['length'],
+            block_groups=block_groups,
+            boundary=boundary,
+            buffer_m=buffer_m,
+            boundary_record=record,
+            state=state,
+            merge_stacked=True,
+            notices=tuple(notices),
+        )
 
 
 class CompilationResult(NamedTuple):
@@ -1127,11 +1370,139 @@ def _write_coded_values(
     features[SOURCE_STRING_KEY] = ''.join(codes)
 
 
+def _record_boundary(
+    region: RegionBoundary | Polygon | MultiPolygon, name: str, identifier: object
+) -> dict[str, object]:
+    """
+    Return the record of where a boundary comes from, for the report's settings.
+
+    Args:
+        region (RegionBoundary | Polygon | MultiPolygon):
+            The region, as :func:`~brails.utils.region_filter.resolve_region`
+            returns it.
+        name (str):
+            The region's name, as its boundary gives it.
+        identifier (object):
+            The id the region's boundary gives.
+
+    Returns:
+        dict[str, object]:
+            :attr:`~brails.types.census_boundary.CensusBoundary.record` for a census
+            boundary; ``provider`` ``'osm'`` with the ``name`` and ``osm_id`` for a
+            name looked up in OpenStreetMap; ``provider`` ``'polygon'`` otherwise.
+    """
+    if isinstance(region, CensusBoundary):
+        return dict(region.record)
+    if getattr(region, 'input_type', None) == 'locationName':
+        return {'provider': 'osm', 'name': name, 'osm_id': identifier}
+    return {'provider': 'polygon'}
+
+
+def _find_state(
+    boundary: Polygon | MultiPolygon,
+    name: str,
+    record: Mapping[str, object],
+    vintage: int,
+    compiler: HazusEQInventoryCompiler | None,
+) -> str:
+    """
+    Return the one state a boundary lies in, after the refusals its state calls for.
+
+    A census boundary lies in the state its record names. Another boundary lies in
+    each state that holds at least :data:`STATE_AREA_SHARE` of its area, measured in
+    an equal-area projection against the TIGER/Line state polygons. A boundary that
+    encloses no area, or that lies in no state or in two, is refused first. Then,
+    without ``compiler``, a state the compiler cannot take is refused, and with it,
+    what :meth:`HazusEQInventoryCompiler.check_state` refuses, in its order: a state
+    other than the compiler's, a state it cannot take, a missing zone.
+
+    Args:
+        boundary (Polygon | MultiPolygon):
+            The boundary, in EPSG:4326.
+        name (str):
+            The region's name, for the error messages.
+        record (Mapping[str, object]):
+            Where the boundary comes from, as
+            :func:`_record_boundary` returns it.
+        vintage (int):
+            The year of the TIGER/Line release of the state file.
+        compiler (HazusEQInventoryCompiler | None):
+            The compiler whose state and seismic zone are checked against each
+            state, or ``None`` to check only that the compiler can take it.
+
+    Returns:
+        str:
+            The state's full name.
+
+    Raises:
+        ValueError:
+            If the boundary encloses no area; if no state holds
+            :data:`STATE_AREA_SHARE` of the area of a boundary that is not a census
+            one; or for the refusals above.
+    """
+    if boundary.area == 0:
+        msg = (
+            f'The boundary of {name} encloses no area, even as repaired. Pass a '
+            'polygon that encloses the place.'
+        )
+        raise ValueError(msg)
+    if record['provider'] == 'census':
+        states = [str(record['state'])]
+    else:
+        frame = read_tiger_file('STATE', 'us', vintage)
+        shape = gpd.GeoSeries([boundary], crs=GEOGRAPHIC_CRS).to_crs(_EQUAL_AREA_CRS)
+        shares = (
+            frame.to_crs(_EQUAL_AREA_CRS).intersection(shape.iloc[0]).area
+            / shape.iloc[0].area
+        )
+        states = frame.loc[shares >= STATE_AREA_SHARE, 'NAME'].tolist()
+    if not states:
+        msg = (
+            f'Less than {STATE_AREA_SHARE:.0%} of the area of {name} lies in any '
+            f'state of the TIGER/Line {vintage} state file. Check that the boundary '
+            'is in longitude and latitude (EPSG:4326) and lies in the United '
+            'States.'
+        )
+        raise ValueError(msg)
+    if len(states) > 1:
+        msg = (
+            f'{name[0].upper()}{name[1:]} has {STATE_AREA_SHARE:.0%} or more of its '
+            f'area in each of {" and ".join(states)}, and a compilation covers one '
+            'state. Pass the part of the boundary that lies in one state.'
+        )
+        raise ValueError(msg)
+    (state,) = states
+    if compiler is None:
+        _check_state(state, DEFAULT_SEISMIC_ZONE, DEFAULT_DESIGN_LEVEL_METHOD, 0)
+    else:
+        compiler.check_state(state)
+    return state
+
+
+def _widen(geometry: BaseGeometry, meters: float) -> BaseGeometry:
+    """
+    Return a geometry in EPSG:4326 widened by a distance, in its UTM zone.
+
+    Args:
+        geometry (BaseGeometry):
+            The geometry, in longitude and latitude.
+        meters (float):
+            How far to widen the geometry, in meters.
+
+    Returns:
+        BaseGeometry:
+            The widened geometry, in longitude and latitude.
+    """
+    series = gpd.GeoSeries([geometry], crs=GEOGRAPHIC_CRS)
+    widened = series.to_crs(series.estimate_utm_crs()).buffer(meters)
+    return widened.to_crs(GEOGRAPHIC_CRS).iloc[0]
+
+
 def _check_state(
     state: str, seismic_zone: str, design_level_method: str, seed: int
 ) -> None:
     """
-    Refuse a state, zone or method that the inferers a compilation builds refuse.
+    Raise if the inferers a compilation builds would refuse the state or zone.
 
     The inferers are built only for the check. Each world builds its own.
 
@@ -1190,8 +1561,8 @@ class HazusEQInventoryCompiler:
         n_worlds: int = DEFAULT_N_WORLDS,
         state: str | None = None,
         seismic_zone: str | None = None,
-        design_level_method: str = '5.1',
-        join_cap_m: float = 15.0,
+        design_level_method: str = DEFAULT_DESIGN_LEVEL_METHOD,
+        join_cap_m: float = DEFAULT_JOIN_CAP_M,
         projected_crs: object = None,
         imputer_options: Mapping[str, object] | None = None,
         budget_options: Mapping[str, object] | None = None,
@@ -1379,6 +1750,41 @@ class HazusEQInventoryCompiler:
         )
         self.sampler_options = MappingProxyType(resolved['sampler_options'])
 
+    def compile_place(
+        self,
+        place: str | RegionBoundary | Polygon | MultiPolygon,
+        **from_place_options: object,
+    ) -> CompilationResult:
+        """
+        Compile a place from its name or boundary.
+
+        The call is ``compile(CompilerInputs.from_place(place, compiler=self,
+        **from_place_options))``, so a state or zone the compiler would refuse stops
+        it before the footprints are read. ``buffer_m`` defaults to the imputer's
+        ``cap_m``. The Census key is checked by both calls. No inputs are kept, so a
+        compilation that fails loses the downloads; call
+        :meth:`CompilerInputs.from_place` and :meth:`compile` apart to keep them.
+        It raises what those two raise.
+
+        Args:
+            place (str | RegionBoundary | Polygon | MultiPolygon):
+                The place, as :meth:`CompilerInputs.from_place` takes it.
+            **from_place_options:
+                The keyword arguments of :meth:`CompilerInputs.from_place` other
+                than ``compiler``.
+
+        Returns:
+            CompilationResult:
+                The compiled inventory of the place, with the report, frozen stages
+                and logs of the run.
+        """
+        from_place_options.setdefault(
+            'buffer_m', self.imputer_options.get('cap_m', DEFAULT_DONOR_CAP_M)
+        )
+        return self.compile(
+            CompilerInputs.from_place(place, compiler=self, **from_place_options)
+        )
+
     def compile(self, inputs: CompilerInputs) -> CompilationResult:
         """
         Compile the study area's building inventory over :attr:`n_worlds` worlds.
@@ -1396,8 +1802,9 @@ class HazusEQInventoryCompiler:
 
         Raises:
             TypeError:
-                If a footprint's asset id is not a string, or the boundary is not
-                a Shapely Polygon or MultiPolygon.
+                If a footprint's asset id is not a string, the boundary is not a
+                Shapely Polygon or MultiPolygon, or the notices are not a tuple of
+                strings.
             ValueError:
                 If the local inventory holds an asset that the footprints
                 lack, a feature of :data:`RESERVED_LOCAL_FEATURES` or more
@@ -1685,14 +2092,15 @@ class HazusEQInventoryCompiler:
         Returns:
             tuple[str, str, bool, list[str]]:
                 The state, the seismic zone and ``merge_stacked`` the compilation
-                applies, and its notices about them: one naming the zone where the
-                inputs name :data:`DEFAULT_STATE` and the compiler was built without
-                a zone.
+                applies, and the notices for the report: those of the inputs, and one
+                naming the zone where the inputs name :data:`DEFAULT_STATE` and the
+                compiler was built without a zone.
 
         Raises:
             TypeError:
-                If a footprint's asset id is not a string, or the boundary is not a
-                Shapely Polygon or MultiPolygon.
+                If a footprint's asset id is not a string, the boundary is not a
+                Shapely Polygon or MultiPolygon, or the notices are not a tuple of
+                strings.
             ValueError:
                 If the local inventory holds an asset that the footprints lack, a
                 feature of :data:`RESERVED_LOCAL_FEATURES` or more than one possible
@@ -1711,6 +2119,14 @@ class HazusEQInventoryCompiler:
                 f'{type(inputs.boundary).__name__}.'
             )
             raise TypeError(msg)
+        if not isinstance(inputs.notices, tuple) or not all(
+            isinstance(notice, str) for notice in inputs.notices
+        ):
+            msg = (
+                'CompilerInputs.notices must be a tuple of strings, not '
+                f'{inputs.notices!r}.'
+            )
+            raise TypeError(msg)
         state, seismic_zone = self.check_state(inputs.state)
         merge_stacked = (
             inputs.merge_stacked
@@ -1719,7 +2135,7 @@ class HazusEQInventoryCompiler:
         )
         if inputs.local is not None:
             self._check_local(inputs, merge_stacked=merge_stacked)
-        notices = []
+        notices = list(inputs.notices)
         if inputs.state == DEFAULT_STATE and self.seismic_zone is None:
             notices.append(
                 f'The inputs name {DEFAULT_STATE} and the compiler was built '
@@ -2020,15 +2436,10 @@ class HazusEQInventoryCompiler:
                 f'Reading the mobile-home park points within {radius:g} m of the '
                 "footprints' bounding box from the HIFLD archive."
             )
-            extent = gpd.GeoSeries(
-                [inputs.footprints.get_extent(buffer='none')], crs=GEOGRAPHIC_CRS
-            )
-            area = extent.to_crs(extent.estimate_utm_crs()).buffer(radius)
+            area = _widen(inputs.footprints.get_extent(buffer='none'), radius)
             parks = MobileHomeParkScraper()
             try:
-                points = parks.get_assets(
-                    GeometryRegion(area.to_crs(GEOGRAPHIC_CRS).iloc[0])
-                )
+                points = parks.get_assets(GeometryRegion(area))
             except (requests.RequestException, RuntimeError) as error:
                 msg = (
                     'Reading the mobile-home park points from the HIFLD archive '
