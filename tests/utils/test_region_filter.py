@@ -55,7 +55,12 @@ from brails.types.census_boundary import CensusBoundary
 from brails.types.housing_unit_inventory import HousingUnitInventory
 from brails.types.region_boundary import RegionBoundary
 from brails.utils import region_filter
-from brails.utils.region_filter import filter_to_region, reference_point
+from brails.utils.region_filter import (
+    filter_to_region,
+    find_inside,
+    read_boundary,
+    reference_point,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -1313,3 +1318,37 @@ class TestSource:
         with pytest.raises(ValueError, match=message):
             filter_to_region(three_worlds(), region, source=source)
         assert lookups == []
+
+
+def test_find_inside_strictly_and_in_order() -> None:
+    """A point on the boundary is outside, and the ids keep the assets' order."""
+    assets = {
+        name: Asset(name, [[x, 38.0]], {})
+        for name, x in (('c', -122.0), ('edge', -122.01), ('a', -122.005))
+    }
+    assert find_inside(assets, REGION) == ['c', 'a']
+
+
+def test_read_boundary_keeps_the_polygonal_parts_of_a_repair() -> None:
+    """An invalid polygon's repair keeps its polygonal parts, a polygon its name."""
+    spiked = Polygon([(0, 0), (2, 0), (2, 2), (3, 3), (2, 2), (0, 2)])
+    assert not spiked.is_valid
+    boundary, name, identifier = read_boundary(spiked)
+    assert isinstance(boundary, Polygon)
+    assert boundary.equals(box(0, 0, 2, 2))
+    assert (name, identifier) == ('the region', None)
+    with pytest.raises(TypeError, match='not str'):
+        read_boundary('Berkeley, CA')
+
+
+def test_ring_that_encloses_no_area_keeps_no_asset() -> None:
+    """A ring that doubles back keeps its repair, and no asset, on its line or off."""
+    folded = Polygon([(-122.0, 38.0), (-121.99, 38.0), (-122.0, 38.0)])
+    assert not folded.is_valid
+    boundary, _, _ = read_boundary(folded)
+    assert boundary.length > 0
+    assert boundary.area == 0
+    inventory = AssetInventory()
+    inventory.add_asset_coordinates('A', [[-121.995, 38.0005]])
+    inventory.add_asset_coordinates('B', [[-121.995, 38.0]])
+    assert filter_to_region(inventory, folded).get_asset_ids() == []

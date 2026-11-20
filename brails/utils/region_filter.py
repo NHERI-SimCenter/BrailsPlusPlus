@@ -41,6 +41,8 @@ The module is imported by its full path,
 .. autosummary::
 
       filter_to_region
+      find_inside
+      read_boundary
       reference_point
       resolve_region
 """
@@ -70,7 +72,9 @@ from brails.utils.console import print_ascii_fallback
 from brails.utils.geo_tools import GeoTools
 
 if TYPE_CHECKING:
-    from collections.abc import Hashable, Iterator
+    from collections.abc import Hashable, Iterator, Mapping
+
+    from shapely.geometry.base import BaseGeometry
 
 READ_CHUNK_CHARS = 1 << 24
 """Characters :func:`filter_to_region` reads from a GeoJSON file at a time."""
@@ -253,8 +257,8 @@ def filter_to_region(  # noqa: C901
             once as ``source`` selects, and the lookup prints the name it
             found; a :class:`RegionBoundary` of any kind, whose boundary is
             fetched; or a Shapely polygon or multipolygon in longitude and
-            latitude (WGS84), taken as given and repaired with
-            :func:`shapely.make_valid` if invalid.
+            latitude (WGS84), taken as given and repaired as
+            :func:`read_boundary` repairs it if invalid.
         source (str, optional):
             Where a place name is looked up: ``'census'`` among the
             TIGER/Line places and counties with
@@ -347,17 +351,7 @@ def filter_to_region(  # noqa: C901
                 )
             raise TypeError(msg)
 
-    region = resolve_region(region, source)
-    if isinstance(region, RegionBoundary):
-        boundary, name, _ = region.get_boundary()
-    elif isinstance(region, (Polygon, MultiPolygon)):
-        boundary, name = region, 'the region'
-    else:
-        msg = (
-            'region must be a place name, a RegionBoundary, or a Shapely '
-            f'Polygon or MultiPolygon, not {type(region).__name__}.'
-        )
-        raise TypeError(msg)
+    boundary, name, _ = read_boundary(resolve_region(region, source))
     west, south, east, north = boundary.bounds
     if not (
         LONGITUDE_RANGE[0] <= west <= east <= LONGITUDE_RANGE[1]
@@ -369,8 +363,6 @@ def filter_to_region(  # noqa: C901
             'example with shapely.ops.transform and a pyproj Transformer.'
         )
         raise ValueError(msg)
-    if not boundary.is_valid:
-        boundary = shapely.make_valid(boundary)
     shapely.prepare(boundary)
 
     result = AssetInventory()
@@ -392,19 +384,9 @@ def filter_to_region(  # noqa: C901
                     'first with remove_housing_unit_inventory().'
                 )
                 raise ValueError(msg)
-            asset_ids = list(inventory_or_path.inventory)
-            points = np.array(
-                [
-                    reference_point(inventory_or_path.inventory[a], a)
-                    for a in asset_ids
-                ],
-                dtype=float,
-            ).reshape(-1, 2)
-            inside = shapely.contains_xy(boundary, points[:, 0], points[:, 1])
-            for asset_id, is_inside in zip(asset_ids, inside):
-                if is_inside:
-                    kept[asset_id] = deepcopy(inventory_or_path.inventory[asset_id])
-            count = len(asset_ids)
+            for asset_id in find_inside(inventory_or_path.inventory, boundary):
+                kept[asset_id] = deepcopy(inventory_or_path.inventory[asset_id])
+            count = len(inventory_or_path.inventory)
             worlds[label] = inventory_or_path.n_pw
             vector_features[label] = list(inventory_or_path.vector_features)
         else:
@@ -487,8 +469,7 @@ def filter_to_region(  # noqa: C901
                         f'cannot read as longitude and latitude. {remedy}'
                     )
                     raise ValueError(msg)
-                lon, lat = reference_point(asset, asset_id)
-                if not shapely.contains_xy(boundary, lon, lat):
+                if not find_inside({asset_id: asset}, boundary):
                     continue
                 if asset_id in kept:
                     field = 'unique_id' if has_unique_id else 'id'
@@ -609,6 +590,85 @@ def filter_to_region(  # noqa: C901
     for message in messages:
         print_ascii_fallback(message)
     return result
+
+
+def find_inside(
+    assets: Mapping[Hashable, Asset], boundary: BaseGeometry
+) -> list[Hashable]:
+    """
+    Return the ids of the assets whose reference point lies inside a boundary.
+
+    The point is :func:`reference_point`'s, and :func:`shapely.contains_xy` decides,
+    so a point on the boundary is outside. A boundary that encloses no area, such as
+    the repair of a ring that doubles back, holds no asset.
+
+    Args:
+        assets (Mapping[Hashable, Asset]):
+            The assets, by id.
+        boundary (BaseGeometry):
+            The boundary, in longitude and latitude.
+
+    Returns:
+        list[Hashable]:
+            The ids of the assets inside, in the order of ``assets``.
+
+    Raises:
+        ValueError:
+            As :func:`reference_point` raises.
+    """
+    if boundary.area == 0:
+        return []
+    ids = list(assets)
+    points = np.array(
+        [reference_point(assets[a], a) for a in ids], dtype=float
+    ).reshape(-1, 2)
+    inside = shapely.contains_xy(boundary, points[:, 0], points[:, 1])
+    return [a for a, is_inside in zip(ids, inside) if is_inside]
+
+
+def read_boundary(
+    region: RegionBoundary | Polygon | MultiPolygon,
+) -> tuple[BaseGeometry, str, object]:
+    """
+    Return the boundary of a region, the name it is printed by, and its id.
+
+    A :class:`RegionBoundary` is asked for its boundary once. An invalid boundary is
+    repaired with :func:`shapely.make_valid`, of which the polygonal parts are kept;
+    a repair without them, which encloses no area, is kept whole.
+
+    Args:
+        region (RegionBoundary | Polygon | MultiPolygon):
+            The region, as :func:`resolve_region` returns it.
+
+    Returns:
+        tuple[BaseGeometry, str, object]:
+            The boundary; the name printed for the region, ``'the region'`` for a
+            polygon; and the id the region's ``get_boundary`` gives, such as a
+            GEOID or an OpenStreetMap id, ``None`` for a polygon.
+
+    Raises:
+        TypeError:
+            If ``region`` is neither a region nor a Shapely polygon or multipolygon.
+    """
+    if isinstance(region, RegionBoundary):
+        boundary, name, identifier = region.get_boundary()
+    elif isinstance(region, (Polygon, MultiPolygon)):
+        boundary, name, identifier = region, 'the region', None
+    else:
+        msg = (
+            'region must be a place name, a RegionBoundary, or a Shapely '
+            f'Polygon or MultiPolygon, not {type(region).__name__}.'
+        )
+        raise TypeError(msg)
+    if not boundary.is_valid:
+        repaired = shapely.make_valid(boundary)
+        parts = [
+            part
+            for part in shapely.get_parts(repaired)
+            if isinstance(part, (Polygon, MultiPolygon))
+        ]
+        boundary = shapely.union_all(parts) if parts else repaired
+    return boundary, name, identifier
 
 
 def resolve_region(

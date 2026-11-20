@@ -11,7 +11,7 @@ and ``ComposedScreen`` and ``ResolutionLoop`` in ``resolution_loop.py``. This
 page states what the compiler produces and from which inputs, the settings it
 gives the observed-donor imputer, the run step by step in the order the code
 runs it, the frozen stages, the possible worlds, the local inputs, the block
-groups, the written file and the scope, and then the three classes. The terms
+groups, a boundary, the written file and the scope, then the three classes. The terms
 this page shares with the general compilers page, such as possible world,
 stage, part, record, view, computed stage, source and donor, are defined in the
 section "Concepts" of ``brails/compilers/README.rst``. Its section "Composition
@@ -58,6 +58,8 @@ The caller gives the data of the study area in a ``CompilerInputs``:
   precedence over every other source (see "Local inputs" below);
 - optionally, the polygons of the census block groups (see "Block groups"
   below);
+- optionally, a boundary, the place to compile inside the area the footprints
+  cover (see "A boundary" below);
 - the Overture release of the footprints, the length unit of their heights
   and a label of the study area for the report.
 
@@ -87,6 +89,8 @@ as ``gross_area`` and ``schema_check``. Its ``seed`` is the seed of the run's
 random draws. ``write`` saves the inventory as GeoJSON with the report's
 summary and exclusions and the manifest beside it, and with ``detailed=True``
 the report's actions and the logs too (see "The written file" below).
+Given a boundary, ``inventory`` holds the buildings inside it and
+``area_inventory`` every building (see "A boundary" below).
 
 The imputer's settings
 ----------------------
@@ -777,6 +781,37 @@ therefore refuses a ``block_group_vintage`` whose decade differs from that of
 ``acs_vintage``. Give the polygons to avoid the download, or give nothing. Either
 way, every footprint must lie in a block group.
 
+A boundary
+----------
+
+``CompilerInputs.boundary`` is a place to compile inside the area the footprints
+cover, a Shapely Polygon or MultiPolygon in longitude and latitude whose holes are
+kept. A building's values depend on the other buildings of its block group and on
+donors within the imputer's ``cap_m``, so the footprints are given for an area around
+the place, and the buildings around it are compiled for the sake of those inside.
+``buffer_m`` states how far the area reaches past the place, and ``boundary_record``
+where the boundary comes from. The report's settings record both, with the boundary
+as a GeoJSON geometry.
+
+Right after ``s01_footprints``, ``compile`` marks the footprints whose centroid, as
+``s01_footprints`` computes it, lies strictly inside the boundary. ``find_inside`` in
+``brails/utils/region_filter.py`` holds this rule, which ``filter_to_region`` applies
+too. A run with no footprint inside stops there with ``ValueError``. The report
+records the footprints inside, and a notice is added where ``buffer_m`` is not given
+or is less than the donor cap. Every step then runs on every footprint, and the
+frozen stages and the manifest cover them all.
+
+The result's ``inventory`` holds the buildings inside the boundary, its
+``area_inventory`` every building, and its ``boundary_assets`` the ids of the
+footprints inside. Its report's summary counts the actions, exclusions and schema
+refusals of the buildings inside, holds the number of footprints inside and outside
+as ``boundary``, and says in a notice which of its counts are of the inside.
+``write`` saves the buildings inside, with their report rows and that summary, and
+refuses a file for a missing default property of those buildings only. With
+``keep_outside=True`` it saves every building and every row. The logs that
+``detailed=True`` saves hold every building either way, since several of them are
+keyed by block group.
+
 The written file
 ----------------
 
@@ -793,7 +828,9 @@ which also writes ``Excluded``. Such a building may lack its default
 properties in the worlds it is excluded from. With ``integer_ids`` the file
 takes the form the R2D tools read: the features are numbered within each
 value of ``type``, which each footprint must carry, and each building holds
-its asset id as ``unique_id``.
+its asset id as ``unique_id``. After a compilation with a boundary, the file
+holds the buildings inside it unless ``keep_outside`` is given (see "A boundary"
+above).
 
 Each building holds the properties of ``DEFAULT_PROPERTIES`` that apply to
 it, the features listed under "The inventory and its inputs" above.

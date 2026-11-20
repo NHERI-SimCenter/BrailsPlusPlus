@@ -584,6 +584,74 @@ def test_save_keeps_the_rows_of_the_selected_worlds(tmp_path: Path) -> None:
     }
 
 
+def test_a_boundary_keeps_the_rows_inside(tmp_path: Path) -> None:
+    """set_boundary makes the report read the rows inside, unless keep_outside."""
+    report = new_report(11)
+    report.set_world_count(2)
+    for asset_id in ('a', 'b'):
+        report.record_action(
+            asset_id, STORIES_KEY, stage='redraw', action='redrawn', world=0
+        )
+    report.record_exclusion('a', world=1, stage='screen', category='unsupported')
+    report.record_exclusion('c', world=0, stage='allocate', category='dropped')
+    report.record_exclusion('c', world=1, stage='allocate', category='dropped')
+    whole = report.summary()
+    report.set_boundary(['a', 'd'], footprints=4)
+
+    report.save(tmp_path / 'report.parquet')
+
+    assert list(report.exclusion_groups()['asset_id']) == ['a']
+    assert len(report.exclusion_groups(keep_outside=True)) == 3
+    assert len(report.records) == 2
+    summary = report.summary()
+    assert summary['actions']['by_action'] == {'redrawn': 1}
+    assert summary['assets_excluded'] == {
+        'total': 1,
+        'dropped': 0,
+        'every': 0,
+        'some': 1,
+    }
+    assert summary['boundary'] == {'footprints': 4, 'inside': 2, 'outside': 2}
+    assert summary['notices'] == [
+        'The actions, exclusions and schema check count the 2 assets inside the '
+        'boundary. The counts in the notices cover the whole area compiled unless a '
+        'notice names the inside.'
+    ]
+    outside = report.summary(keep_outside=True)
+    assert outside.pop('boundary') == summary['boundary']
+    assert outside == whole
+    records = pd.read_parquet(tmp_path / 'report.parquet')
+    exclusions = pd.read_parquet(tmp_path / 'report_exclusions.parquet')
+    assert list(records['asset_id']) == ['a']
+    assert list(exclusions['asset_id']) == ['a']
+    assert json.loads(
+        (tmp_path / 'report_summary.json').read_text('utf-8')
+    ) == json.loads(json.dumps(summary))
+
+
+def test_schema_refusals_counted_of_the_assets_read() -> None:
+    """The schema check counts the refusals inside, or all with keep_outside."""
+    report = new_report(11)
+    report.set_world_count(2)
+    refused = pd.DataFrame({'asset_id': ['a', 'b', 'a'], 'world': [0, 0, 1]})
+    report.set_schema_check({'dataset': 'd'}, refused=refused)
+
+    assert report.summary()['schema_check'] == {
+        'dataset': 'd',
+        'excluded_by_world': {0: 2, 1: 1},
+    }
+    report.set_boundary(['a'], footprints=2)
+    assert report.summary()['schema_check']['excluded_by_world'] == {0: 1, 1: 1}
+    assert report.summary(keep_outside=True)['schema_check'][
+        'excluded_by_world'
+    ] == {
+        0: 2,
+        1: 1,
+    }
+    with pytest.raises(ValueError, match='fewer than the 1 assets'):
+        report.set_boundary(['a'], footprints=0)
+
+
 def test_save_without_actions_writes_the_other_two_files(tmp_path: Path) -> None:
     """Without the action rows, the exclusions and the summary are written alone."""
     report = new_report(11)

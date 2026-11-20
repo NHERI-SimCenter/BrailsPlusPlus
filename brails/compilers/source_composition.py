@@ -65,14 +65,15 @@ def _select_assets(
     ids: Iterable[Hashable],
     *,
     vector_features: Iterable[str] | None = None,
+    n_pw: int = 1,
 ) -> AssetInventory:
     """
     Return a new inventory holding the given assets of ``source`` themselves.
 
     The result holds the source's own :class:`Asset` objects, not copies, so
-    a change to an asset's coordinates or features shows in both.
-    ``source`` must hold one possible world: the result declares one world
-    whatever ``source`` holds.
+    a change to an asset's coordinates or features shows in both. It declares
+    ``n_pw`` worlds whatever ``source`` holds, so a source of several worlds
+    needs ``n_pw`` given.
 
     Args:
         source (AssetInventory):
@@ -83,6 +84,8 @@ def _select_assets(
         vector_features (Iterable[str], optional):
             The features whose values are vectors in the result. ``None``
             declares those of ``source``.
+        n_pw (int, optional):
+            The number of possible worlds the result declares. Defaults to 1.
 
     Returns:
         AssetInventory:
@@ -94,6 +97,7 @@ def _select_assets(
         )
     )
     selected.inventory = {asset_id: source.inventory[asset_id] for asset_id in ids}
+    selected.n_pw = n_pw
     return selected
 
 

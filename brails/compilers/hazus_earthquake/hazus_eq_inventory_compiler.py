@@ -61,6 +61,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import requests
+import shapely
+from shapely.geometry import MultiPolygon, Polygon, mapping
 
 from brails.aggregators.points_to_polygons.nsi_footprint_join import NSIFootprintJoin
 from brails.aggregators.stacked_footprints.stacked_footprints import (
@@ -123,6 +125,7 @@ from brails.imputers.observed_donor_imputer.donor_records import (
     OUTCOME_NO_DONOR,
 )
 from brails.imputers.observed_donor_imputer.observed_donor_imputer import (
+    DEFAULT_DONOR_CAP_M,
     ObservedDonorImputer,
     imputation_donors_from_log,
 )
@@ -206,6 +209,7 @@ from brails.types.asset_inventory import (
     read_source_string,
 )
 from brails.types.geometry_region import GeometryRegion
+from brails.utils.region_filter import find_inside, read_boundary
 from brails.utils.stage_freeze import StageFreeze
 from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE
 from brails.utils.unit_converter import UNIT_TO_METER
@@ -519,6 +523,18 @@ class CompilerInputs(NamedTuple):
             the block groups that intersect the footprints' bounding box from the
             TIGER/Line files of its ``block_group_vintage``, which needs network
             access. Every footprint must lie in a block group either way.
+        boundary (shapely.geometry.Polygon | shapely.geometry.MultiPolygon | None):
+            The place to compile, in EPSG:4326, holes kept. Give the footprints of
+            the place and of an area around it. The result's inventory and the
+            files :meth:`CompilationResult.write` saves hold the buildings inside
+            the place. ``None``, the default, keeps every footprint.
+        buffer_m (float | None):
+            How far in meters the area around ``boundary`` reaches past it, which
+            the report records and compares with the donor cap. Read only with
+            ``boundary``.
+        boundary_record (Mapping[str, object] | None):
+            Where ``boundary`` comes from, such as the provider and the GEOID of a
+            census place, which the report records. Read only with ``boundary``.
     """
 
     footprints: AssetInventory
@@ -533,6 +549,9 @@ class CompilerInputs(NamedTuple):
     study_area: str = ''
     height_unit: str = DEFAULT_UNITS['length']
     block_groups: gpd.GeoDataFrame | None = None
+    boundary: Polygon | MultiPolygon | None = None
+    buffer_m: float | None = None
+    boundary_record: Mapping[str, object] | None = None
 
 
 class CompilationResult(NamedTuple):
@@ -541,17 +560,18 @@ class CompilationResult(NamedTuple):
 
     Attributes:
         inventory (AssetInventory):
-            Every footprint the run kept, over the worlds 0 to
-            ``n_worlds - 1``, with every feature the run gave it. A feature
-            equal in every world is held as a scalar and otherwise as a list
-            in world order. Each asset holds
-            :data:`~brails.constants.EXCLUDED_KEY`, true in a world it was
-            excluded from. A run that keeps no footprint gives an inventory
-            without assets, which holds one world. :meth:`write` still
-            writes the report rows of every world the run computed.
+            Every footprint the run kept inside the inputs' ``boundary``, or every
+            footprint it kept where the inputs give none, over the worlds 0 to
+            ``n_worlds - 1``, with every feature the run gave it. A feature equal in
+            every world is held as a scalar and otherwise as a list in world order.
+            Each asset holds :data:`~brails.constants.EXCLUDED_KEY`, true in a world
+            it was excluded from. A run that keeps no footprint gives an inventory
+            without assets, which holds one world. :meth:`write` still writes the
+            report rows of every world the run computed.
         report (CompilationReport):
             The actions, the exclusions, the timings and the summary of the
-            run.
+            run. With a boundary, its summary, the rows it saves and its exclusion
+            groups are those of the buildings inside, unless given ``keep_outside``.
         freeze (StageFreeze):
             Every frozen stage, in freeze order.
         manifest (dict):
@@ -560,6 +580,14 @@ class CompilationResult(NamedTuple):
             The components' logs, by name.
         seed (int):
             The seed every component drew from.
+        area_inventory (AssetInventory):
+            Every footprint the run kept, inside the boundary and around it, in the
+            form of :attr:`inventory`. The assets of :attr:`inventory` are this
+            inventory's assets, not copies. Without a boundary it is
+            :attr:`inventory`.
+        boundary_assets (frozenset[str] | None):
+            The ids of the footprints of ``s01_footprints`` inside the boundary,
+            those the run kept and those it dropped. ``None`` without a boundary.
     """
 
     inventory: AssetInventory
@@ -568,6 +596,8 @@ class CompilationResult(NamedTuple):
     manifest: dict
     logs: Mapping[str, pd.DataFrame]
     seed: int
+    area_inventory: AssetInventory
+    boundary_assets: frozenset[str] | None
 
     def write(  # noqa: C901
         self,
@@ -578,6 +608,7 @@ class CompilationResult(NamedTuple):
         keep_partly_excluded: bool = False,
         extra_properties: str | Sequence[str] = (),
         detailed: bool = False,
+        keep_outside: bool = False,
     ) -> None:
         """
         Write every world, or one, as GeoJSON, with the report and the manifest.
@@ -623,6 +654,14 @@ class CompilationResult(NamedTuple):
         timings and schema check cover every world the run computed.
         :attr:`logs` holds every log whatever ``detailed`` says.
 
+        After a compilation with a boundary, :meth:`write` writes the buildings of
+        :attr:`inventory`, those inside the boundary, and saves the report rows and
+        the summary of those buildings. The refusal for a missing default property
+        concerns them only. With ``keep_outside`` it writes :attr:`area_inventory`
+        and the rows of every building, as after a compilation without a boundary.
+        The logs saved with ``detailed`` hold every building either way, since
+        several of them are keyed by block group.
+
         Args:
             path (str or os.PathLike):
                 The GeoJSON file to write.
@@ -636,12 +675,15 @@ class CompilationResult(NamedTuple):
                 Whether to write the buildings excluded in some, but not
                 all, of the written worlds.
             extra_properties (str or Sequence[str], optional):
-                Features of :attr:`inventory` to write beside the default
+                Features of the written inventory to write beside the default
                 properties, or :data:`ALL_PROPERTIES` for every feature it
                 holds. They change no value of the default properties.
             detailed (bool, optional):
                 Whether to save the report's action rows and the logs too.
                 Defaults to ``False``. A refused file saves them either way.
+            keep_outside (bool, optional):
+                Whether to write the buildings around the boundary too. Defaults to
+                ``False``. Without a boundary it changes nothing.
 
         Raises:
             TypeError:
@@ -650,8 +692,8 @@ class CompilationResult(NamedTuple):
                 :data:`ALL_PROPERTIES`; nothing is then written.
             ValueError:
                 If ``world`` is not one of the worlds the run computed, or
-                ``extra_properties`` names a feature no building of
-                :attr:`inventory` holds or names
+                ``extra_properties`` names a feature no building of the
+                written inventory holds or names
                 :data:`~brails.constants.EXCLUDED_KEY`; nothing is then
                 written.
             RuntimeError:
@@ -667,13 +709,14 @@ class CompilationResult(NamedTuple):
                 is written. The message names the file, and the files
                 removed before it stay removed.
         """
+        compiled = self.area_inventory if keep_outside else self.inventory
         # The report holds the run's worlds and checks world numbers against
         # them. An inventory without assets holds one world, whatever the run
         # computed, so the worlds are not read from the inventory.
         worlds = (
             tuple(
                 self.report._selected_worlds(None)  # noqa: SLF001
-                or range(self.inventory.n_pw)
+                or range(compiled.n_pw)
             )
             if world is None
             else (self.report._checked_world(world),)  # noqa: SLF001
@@ -693,9 +736,7 @@ class CompilationResult(NamedTuple):
             )
             raise ValueError(msg)
         held = {
-            key
-            for asset in self.inventory.inventory.values()
-            for key in asset.features
+            key for asset in compiled.inventory.values() for key in asset.features
         }
         unknown = sorted(set(extra) - held)
         if unknown:
@@ -711,6 +752,8 @@ class CompilationResult(NamedTuple):
         path = Path(path)
         missing = self.logs[MISSING_DEFAULTS_LOG]
         lacking = missing[missing['world'].isin(worlds)]
+        if self.boundary_assets is not None and not keep_outside:
+            lacking = lacking[lacking['asset_id'].isin(self.boundary_assets)]
         # Every call removes the logs of another run, which this result does
         # not hold, and a lean call also the action rows and every log, all
         # before it writes anything.
@@ -731,7 +774,9 @@ class CompilationResult(NamedTuple):
                 raise OSError(msg) from error
         if not lacking.empty:
             self.report.save(
-                path.with_name(f'{path.stem}_report.parquet'), worlds=worlds
+                path.with_name(f'{path.stem}_report.parquet'),
+                worlds=worlds,
+                keep_outside=keep_outside,
             )
             self.report.save_logs(path.parent, path.stem, self.logs, worlds=worlds)
             self.freeze.save_manifest(path.with_name(f'{path.stem}_manifest.json'))
@@ -744,7 +789,9 @@ class CompilationResult(NamedTuple):
                 'is written.'
             )
             raise RuntimeError(msg)
-        groups = self.report.exclusion_groups(worlds=worlds)
+        groups = self.report.exclusion_groups(
+            worlds=worlds, keep_outside=keep_outside
+        )
         groups = groups[groups['group'] != 'dropped']
         left_out = set(groups.loc[groups['group'] == 'every', 'asset_id'])
         if not keep_partly_excluded:
@@ -760,7 +807,7 @@ class CompilationResult(NamedTuple):
         # taken from the report.
         written = {
             asset_id: asset
-            for asset_id, asset in self.inventory.inventory.items()
+            for asset_id, asset in compiled.inventory.items()
             if asset_id not in left_out
         }
         as_is = world is None
@@ -777,7 +824,7 @@ class CompilationResult(NamedTuple):
         if not as_is:
             assembled = AssetInventory()
             for w in worlds:
-                realization = self.inventory.get_world_realization(w)
+                realization = compiled.get_world_realization(w)
                 for asset_id in left_out:
                     realization.inventory.pop(asset_id, None)
                 excluded = excluded_in.get(w, set())
@@ -801,13 +848,14 @@ class CompilationResult(NamedTuple):
                 for asset_id, asset in written.items()
             },
             n_pw=len(worlds),
-            vector_features=self.inventory.vector_features,
+            vector_features=compiled.vector_features,
         )
         inventory.write_to_geojson(str(path), integer_ids=integer_ids)
         self.report.save(
             path.with_name(f'{path.stem}_report.parquet'),
             worlds=worlds,
             actions=detailed,
+            keep_outside=keep_outside,
         )
         if detailed:
             self.report.save_logs(path.parent, path.stem, self.logs, worlds=worlds)
@@ -1281,11 +1329,14 @@ class HazusEQInventoryCompiler:
 
         Raises:
             TypeError:
-                If a footprint's asset id is not a string.
+                If a footprint's asset id is not a string, or the boundary is not
+                a Shapely Polygon or MultiPolygon.
             ValueError:
                 If the local inventory holds an asset that the footprints
                 lack, a feature of :data:`RESERVED_LOCAL_FEATURES` or more
                 than one possible world, or is given with ``merge_stacked``;
+                if no footprint lies inside the boundary, found right after
+                ``s01_footprints`` and before the census tables are read;
                 or as the components raise, among them a footprint outside
                 every block group and, with ``merge_stacked``, a footprint
                 that is not Overture's; or, for a census table given as ``None``, if
@@ -1309,50 +1360,7 @@ class HazusEQInventoryCompiler:
                 download of a TIGER/Line file of block groups or of the park points
                 fails.
         """
-        not_strings = [
-            a for a in inputs.footprints.inventory if not isinstance(a, str)
-        ]
-        if not_strings:
-            msg = f'Footprint asset ids must be strings, not {not_strings[:10]!r}.'
-            raise TypeError(msg)
-        if inputs.local is not None:
-            if self.merge_stacked:
-                msg = (
-                    'A local inventory cannot be given with merge_stacked: its '
-                    'ids are those of the footprints, which the merge re-keys.'
-                )
-                raise ValueError(msg)
-            stray = sorted(
-                set(inputs.local.inventory) - set(inputs.footprints.inventory),
-                key=str,
-            )
-            if stray:
-                msg = (
-                    f'The local inventory holds {len(stray)} asset(s) the '
-                    f'footprints lack: {stray[:10]!r}.'
-                )
-                raise ValueError(msg)
-            if inputs.local.n_pw != 1:
-                msg = (
-                    'The local inventory must hold one possible world, not '
-                    f'{inputs.local.n_pw}.'
-                )
-                raise ValueError(msg)
-            reserved = sorted(
-                {
-                    key
-                    for asset in inputs.local.inventory.values()
-                    for key in asset.features
-                }
-                & set(RESERVED_LOCAL_FEATURES)
-            )
-            if reserved:
-                msg = (
-                    f'The local inventory holds {reserved}, of '
-                    f'RESERVED_LOCAL_FEATURES {list(RESERVED_LOCAL_FEATURES)}, '
-                    'which the compiler writes for itself and reads back.'
-                )
-                raise ValueError(msg)
+        self._check_inputs(inputs)
 
         n_computed = self.n_worlds
         settings = {
@@ -1387,6 +1395,7 @@ class HazusEQInventoryCompiler:
         inputs, acs_scraper = self._read_inputs_before_s01(inputs, report)
         started = time.perf_counter()
         centroids = self._prepare_footprints(inputs, sources, logs, report)
+        boundary_assets = self._select_inside_boundary(inputs, freeze, report)
         report.set_timing(STAGE_S01_FOOTPRINTS, time.perf_counter() - started)
         inputs = self._read_census_tables(inputs, acs_scraper, freeze, report)
 
@@ -1512,13 +1521,7 @@ class HazusEQInventoryCompiler:
         # s11: the schema's violations and the count of each world's refusals.
         logs['schema_check'] = pd.concat(violations, ignore_index=True)
         report.set_schema_check(
-            {
-                'dataset': DLML_DATASET,
-                'excluded_by_world': {
-                    world: int(frame['asset_id'].nunique())
-                    for world, frame in enumerate(violations)
-                },
-            }
+            {'dataset': DLML_DATASET}, refused=logs['schema_check']
         )
         # s12: the source of each area, in every world.
         logs['gross_area'] = pd.DataFrame(
@@ -1531,10 +1534,21 @@ class HazusEQInventoryCompiler:
             lacking, columns=['asset_id', 'world', 'property'], dtype=object
         )
         if lacking:
+            of_inside = (
+                ''
+                if boundary_assets is None
+                else f', {sum(a in boundary_assets for a, _, _ in lacking)} of them '
+                'of buildings inside the boundary'
+            )
             report.note(
                 f'{len(lacking)} default value(s) that apply to compiled '
-                f'buildings are missing; the log {MISSING_DEFAULTS_LOG} names '
-                'them, and write refuses the file.'
+                f'buildings are missing{of_inside}; the log {MISSING_DEFAULTS_LOG} '
+                'names them, and write refuses '
+                + (
+                    'the file.'
+                    if boundary_assets is None
+                    else 'a file that holds them.'
+                )
             )
         # The stages of s12 to s15, over the worlds.
         for stage, assembled in (
@@ -1551,14 +1565,91 @@ class HazusEQInventoryCompiler:
         manifest = freeze.manifest()
         report.set_timing('manifest', time.perf_counter() - started)
         report.set_manifest_stages(entry['stage'] for entry in manifest['stages'])
+        inside = inventory
+        if boundary_assets is not None:
+            inside = _select_assets(
+                inventory,
+                [a for a in inventory.inventory if a in boundary_assets],
+                n_pw=inventory.n_pw,
+            )
         return CompilationResult(
-            inventory=inventory,
+            inventory=inside,
             report=report,
             freeze=freeze,
             manifest=manifest,
             logs=MappingProxyType(logs),
             seed=self.seed,
+            area_inventory=inventory,
+            boundary_assets=boundary_assets,
         )
+
+    def _check_inputs(self, inputs: CompilerInputs) -> None:
+        """
+        Refuse inputs the compiler cannot compile, before anything is read.
+
+        Args:
+            inputs (CompilerInputs):
+                The study area's data.
+
+        Raises:
+            TypeError:
+                If a footprint's asset id is not a string, or the boundary is not a
+                Shapely Polygon or MultiPolygon.
+            ValueError:
+                If the local inventory holds an asset that the footprints lack, a
+                feature of :data:`RESERVED_LOCAL_FEATURES` or more than one possible
+                world, or is given with ``merge_stacked``.
+        """
+        not_strings = [
+            a for a in inputs.footprints.inventory if not isinstance(a, str)
+        ]
+        if not_strings:
+            msg = f'Footprint asset ids must be strings, not {not_strings[:10]!r}.'
+            raise TypeError(msg)
+        if not isinstance(inputs.boundary, (Polygon, MultiPolygon, type(None))):
+            msg = (
+                'The boundary must be a Shapely Polygon or MultiPolygon, not '
+                f'{type(inputs.boundary).__name__}.'
+            )
+            raise TypeError(msg)
+        if inputs.local is not None:
+            if self.merge_stacked:
+                msg = (
+                    'A local inventory cannot be given with merge_stacked: its '
+                    'ids are those of the footprints, which the merge re-keys.'
+                )
+                raise ValueError(msg)
+            stray = sorted(
+                set(inputs.local.inventory) - set(inputs.footprints.inventory),
+                key=str,
+            )
+            if stray:
+                msg = (
+                    f'The local inventory holds {len(stray)} asset(s) the '
+                    f'footprints lack: {stray[:10]!r}.'
+                )
+                raise ValueError(msg)
+            if inputs.local.n_pw != 1:
+                msg = (
+                    'The local inventory must hold one possible world, not '
+                    f'{inputs.local.n_pw}.'
+                )
+                raise ValueError(msg)
+            reserved = sorted(
+                {
+                    key
+                    for asset in inputs.local.inventory.values()
+                    for key in asset.features
+                }
+                & set(RESERVED_LOCAL_FEATURES)
+            )
+            if reserved:
+                msg = (
+                    f'The local inventory holds {reserved}, of '
+                    f'RESERVED_LOCAL_FEATURES {list(RESERVED_LOCAL_FEATURES)}, '
+                    'which the compiler writes for itself and reads back.'
+                )
+                raise ValueError(msg)
 
     def _prepare_footprints(
         self,
@@ -1792,6 +1883,69 @@ class HazusEQInventoryCompiler:
             )
             report.set_timing('s01_block_groups', time.perf_counter() - started)
         return inputs, scraper
+
+    def _select_inside_boundary(
+        self, inputs: CompilerInputs, freeze: StageFreeze, report: CompilationReport
+    ) -> frozenset[str] | None:
+        """
+        Find the footprints of ``s01_footprints`` that lie inside the boundary.
+
+        A footprint is inside by the rule of
+        :func:`~brails.utils.region_filter.find_inside`, which
+        :func:`~brails.utils.region_filter.filter_to_region` applies too.
+
+        Args:
+            inputs (CompilerInputs):
+                The study area's data.
+            freeze (StageFreeze):
+                The freeze holding :data:`STAGE_S01_FOOTPRINTS`.
+            report (CompilationReport):
+                The report, which receives the footprints inside the boundary, the
+                boundary among its settings, and a notice of an area narrower than
+                the donor cap.
+
+        Returns:
+            frozenset[str] | None:
+                The ids of the footprints inside the boundary, or ``None`` where the
+                inputs give no boundary.
+
+        Raises:
+            ValueError:
+                If no footprint lies inside the boundary.
+        """
+        if inputs.boundary is None:
+            return None
+        spine = freeze.read(STAGE_S01_FOOTPRINTS).inventory
+        boundary, _, _ = read_boundary(inputs.boundary)
+        inside = frozenset(find_inside(spine, boundary))
+        if not inside:
+            msg = (
+                f'None of the {len(spine)} footprints lies inside the boundary. '
+                'Pass a boundary and footprints of one place, both in longitude '
+                'and latitude (EPSG:4326).'
+            )
+            raise ValueError(msg)
+        report.set_boundary(inside, len(spine))
+        report.settings.update(
+            boundary=mapping(inputs.boundary),
+            buffer_m=inputs.buffer_m,
+            boundary_record=None
+            if inputs.boundary_record is None
+            else dict(inputs.boundary_record),
+        )
+        cap = self.imputer_options.get('cap_m', DEFAULT_DONOR_CAP_M)
+        if inputs.buffer_m is None or inputs.buffer_m < cap:
+            width = (
+                'of unknown width'
+                if inputs.buffer_m is None
+                else f'{inputs.buffer_m:g} m wide'
+            )
+            report.note(
+                f'The area around the boundary is {width}, and the donor cap is '
+                f'{cap:g} m, so a building near the boundary may take values other '
+                'than those a compilation of a wider area gives it.'
+            )
+        return inside
 
     def _read_census_tables(
         self,

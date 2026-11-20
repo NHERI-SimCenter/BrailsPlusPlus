@@ -241,9 +241,12 @@ class CompilationReport:
         self._notices: list[str] = []
         self._coverage: dict[str, float] = {}
         self._schema_check: object = None
+        self._schema_refusals: pd.DataFrame | None = None
         self._timings: dict[tuple[str, int | None], float] = {}
         self._computed: int | None = None
         self._manifest_stages: list[str] = []
+        self._inside: frozenset[str | int] | None = None
+        self._footprints = 0
 
     def record_action(
         self,
@@ -394,7 +397,9 @@ class CompilationReport:
         """
         self._coverage = dict(mapping)
 
-    def set_schema_check(self, verdict: object) -> None:
+    def set_schema_check(
+        self, verdict: object, *, refused: pd.DataFrame | None = None
+    ) -> None:
         """
         Store the result of checking buildings against a loss model's input schema.
 
@@ -407,8 +412,14 @@ class CompilationReport:
                 The result of the check, stored as given, such as the
                 schema's dataset and the number of buildings it refused in
                 each world.
+            refused (pandas.DataFrame, optional):
+                The buildings the check refused, with an ``asset_id`` and a
+                ``world`` column. Given, the verdict is a mapping, to which
+                :meth:`summary` adds ``excluded_by_world``: the number of the
+                buildings it reads that the check refused in each world.
         """
         self._schema_check = verdict
+        self._schema_refusals = refused
 
     def set_timing(
         self, stage: str, seconds: float, *, world: int | None = None
@@ -465,6 +476,35 @@ class CompilationReport:
             )
         self._computed = count
 
+    def set_boundary(self, inside: Iterable[str | int], footprints: int) -> None:
+        """
+        Name the assets inside a boundary, so that the report reads only their rows.
+
+        After this call, :meth:`summary`, :meth:`save` and :meth:`exclusion_groups`
+        read the rows of the assets inside unless given ``keep_outside``, and the
+        summary counts the assets inside and around the boundary.
+
+        Args:
+            inside (Iterable[str or int]):
+                The ids of the assets inside the boundary.
+            footprints (int):
+                The number of assets compiled, inside the boundary and around it.
+
+        Raises:
+            ValueError:
+                If ``footprints`` is less than the number of assets inside.
+        """
+        inside = frozenset(inside)
+        footprints = operator.index(footprints)
+        if footprints < len(inside):
+            msg = (
+                f'footprints is {footprints}, fewer than the {len(inside)} assets '
+                'inside the boundary.'
+            )
+            raise ValueError(msg)
+        self._inside = inside
+        self._footprints = footprints
+
     def set_manifest_stages(self, stages: Iterable[str]) -> None:
         """
         Record the run's stages in the order of its manifest.
@@ -507,7 +547,7 @@ class CompilationReport:
         ).astype(EXCLUSION_DTYPES)
 
     def exclusion_groups(
-        self, *, worlds: Iterable[int] | None = None
+        self, *, worlds: Iterable[int] | None = None, keep_outside: bool = False
     ) -> pd.DataFrame:
         """
         Return the exclusion rows of the selected worlds, each with its group.
@@ -522,6 +562,9 @@ class CompilationReport:
             worlds (Iterable[int] or None):
                 The worlds to read. ``None`` reads the worlds counted by
                 :meth:`set_world_count`.
+            keep_outside (bool, optional):
+                Whether to read the rows of the assets outside the boundary of
+                :meth:`set_boundary` too. Defaults to ``False``.
 
         Returns:
             pd.DataFrame:
@@ -541,7 +584,7 @@ class CompilationReport:
             raise ValueError(
                 'The worlds are unknown: pass worlds or call set_world_count first.'
             )
-        frame = self.exclusions
+        frame = self._select_inside(self.exclusions, keep_outside=keep_outside)
         frame = frame[frame['world'].isin(selected)].reset_index(drop=True)
         dropped = frame['category'] == DROPPED_CATEGORY
         worlds_per_asset = (
@@ -556,7 +599,9 @@ class CompilationReport:
         frame.loc[dropped, 'group'] = 'dropped'
         return frame
 
-    def summary(self, *, worlds: Iterable[int] | None = None) -> dict[str, object]:
+    def summary(
+        self, *, worlds: Iterable[int] | None = None, keep_outside: bool = False
+    ) -> dict[str, object]:
         """
         Summarize the run as a plain dictionary.
 
@@ -565,6 +610,10 @@ class CompilationReport:
                 The worlds whose actions and exclusions are counted.
                 ``None`` counts every row. The timings are those of the
                 whole run either way.
+            keep_outside (bool, optional):
+                Whether to count the actions, exclusions and schema refusals of
+                the assets outside the boundary of :meth:`set_boundary` too.
+                Defaults to ``False``.
 
         Returns:
             dict[str, object]:
@@ -577,7 +626,10 @@ class CompilationReport:
                 If a selected world is outside the run's worlds.
         """
         selected = self._selected_worlds(worlds)
-        records, exclusions = self.records, self.exclusions
+        records, exclusions = (
+            self._select_inside(frame, keep_outside=keep_outside)
+            for frame in (self.records, self.exclusions)
+        )
         if worlds is not None:
             records = records[records['world'].isin(selected)]
             exclusions = exclusions[exclusions['world'].isin(selected)]
@@ -590,7 +642,9 @@ class CompilationReport:
 
         every = some = None
         if selected is not None:
-            groups = self.exclusion_groups(worlds=selected)
+            groups = self.exclusion_groups(
+                worlds=selected, keep_outside=keep_outside
+            )
             groups = groups.drop_duplicates(['asset_id', 'group'])['group']
             every = int((groups == 'every').sum())
             some = int((groups == 'some').sum())
@@ -598,7 +652,29 @@ class CompilationReport:
             exclusions['category'] == DROPPED_CATEGORY, 'asset_id'
         ]
 
-        return {
+        notices = list(self._notices)
+        if self._inside is not None and not keep_outside:
+            notices.append(
+                'The actions, exclusions and schema check count the '
+                f'{len(self._inside)} assets inside the boundary. The counts in the '
+                'notices cover the whole area compiled unless a notice names the '
+                'inside.'
+            )
+        schema_check = self._schema_check
+        if self._schema_refusals is not None:
+            refused = self._select_inside(
+                self._schema_refusals, keep_outside=keep_outside
+            )
+            schema_check = {
+                **schema_check,
+                'excluded_by_world': {
+                    world: int(
+                        refused.loc[refused['world'] == world, 'asset_id'].nunique()
+                    )
+                    for world in range(self._computed or 0)
+                },
+            }
+        summary = {
             'seed': self.seed,
             'settings': dict(self.settings),
             'worlds': {'computed': self._computed, 'written': selected},
@@ -625,10 +701,17 @@ class CompilationReport:
                 'every': every,
                 'some': some,
             },
-            'notices': list(self._notices),
+            'notices': notices,
             'coverage': dict(self._coverage),
-            'schema_check': self._schema_check,
+            'schema_check': schema_check,
         }
+        if self._inside is not None:
+            summary['boundary'] = {
+                'footprints': self._footprints,
+                'inside': len(self._inside),
+                'outside': self._footprints - len(self._inside),
+            }
+        return summary
 
     def save(
         self,
@@ -636,6 +719,7 @@ class CompilationReport:
         *,
         worlds: Iterable[int] | None = None,
         actions: bool = True,
+        keep_outside: bool = False,
     ) -> None:
         """
         Write the report's rows and summary from one path.
@@ -659,6 +743,9 @@ class CompilationReport:
                 every row.
             actions (bool, optional):
                 Whether to write the action rows. Defaults to ``True``.
+            keep_outside (bool, optional):
+                Whether to write and count the rows of the assets outside the
+                boundary of :meth:`set_boundary` too. Defaults to ``False``.
 
         Raises:
             ValueError:
@@ -668,11 +755,11 @@ class CompilationReport:
         selected = None if worlds is None else self._selected_worlds(worlds)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        exclusions = self.exclusions
+        exclusions = self._select_inside(self.exclusions, keep_outside=keep_outside)
         if selected is not None:
             exclusions = exclusions[exclusions['world'].isin(selected)]
         if actions:
-            records = self.records
+            records = self._select_inside(self.records, keep_outside=keep_outside)
             if selected is not None:
                 records = records[records['world'].isin(selected)]
             records.to_parquet(path, index=False)
@@ -681,7 +768,11 @@ class CompilationReport:
             index=False,
         )
         path.with_name(f'{path.stem}_summary.json').write_text(
-            json.dumps(self.summary(worlds=selected), indent=2, default=str),
+            json.dumps(
+                self.summary(worlds=selected, keep_outside=keep_outside),
+                indent=2,
+                default=str,
+            ),
             encoding='utf-8',
         )
 
@@ -740,6 +831,27 @@ class CompilationReport:
             if selected is not None and 'world' in log.columns:
                 kept = log[log['world'].isin(selected)]
             kept.to_parquet(directory / f'{stem}_{name}.parquet', index=False)
+
+    def _select_inside(
+        self, frame: pd.DataFrame, *, keep_outside: bool
+    ) -> pd.DataFrame:
+        """
+        Keep the rows of the assets inside the boundary of :meth:`set_boundary`.
+
+        Args:
+            frame (pd.DataFrame):
+                Action or exclusion rows, with an ``asset_id`` column.
+            keep_outside (bool):
+                Whether to keep the rows of the assets outside the boundary too.
+
+        Returns:
+            pd.DataFrame:
+                ``frame`` itself without a boundary or with ``keep_outside``, and
+                otherwise its rows of the assets inside.
+        """
+        if self._inside is None or keep_outside:
+            return frame
+        return frame[frame['asset_id'].isin(self._inside)]
 
     def _checked_world(self, world: int) -> int:
         """

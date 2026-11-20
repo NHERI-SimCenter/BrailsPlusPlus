@@ -471,3 +471,12 @@ rows. Its keys are these:
 Counts are keyed in sorted order. ``save`` writes a setting or a schema
 check result that JSON cannot hold as its ``str`` text, and JSON writes the
 world keys of ``by_world`` as text.
+
+After ``set_boundary``, which names the assets inside a boundary, ``summary``,
+``save`` and ``exclusion_groups`` read the rows of those assets only, unless given
+``keep_outside=True``. The summary then holds ``boundary``: the number of assets
+compiled as ``footprints``, and those ``inside`` and ``outside`` the boundary. A
+schema check given with its refusals to ``set_schema_check`` counts the refusals of
+the same assets, and without ``keep_outside`` a notice says which counts are of the
+inside. The properties ``records`` and ``exclusions`` hold every row, and the
+settings and timings are those of the whole run either way.
