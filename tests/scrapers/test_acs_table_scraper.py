@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import json
 import logging
-import socket
 import traceback
 from typing import TYPE_CHECKING, Any
 
@@ -122,16 +121,7 @@ BLOCK_GROUP_ROWS = [
 ]
 
 
-@pytest.fixture(autouse=True)
-def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Refuse every connection and name lookup, so no test reaches a service."""
-
-    def refuse(*_args: object, **_kwargs: object) -> None:
-        msg = 'A test tried to open a network connection.'
-        raise OSError(msg)
-
-    monkeypatch.setattr(socket.socket, 'connect', refuse)
-    monkeypatch.setattr(socket, 'getaddrinfo', refuse)
+pytestmark = pytest.mark.usefixtures('no_network')
 
 
 def tract_rows(county: str, tract: str, total: str) -> list[list[str | None]]:

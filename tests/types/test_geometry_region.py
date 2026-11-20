@@ -35,8 +35,6 @@
 
 from __future__ import annotations
 
-import socket
-
 import pytest
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
 
@@ -59,16 +57,7 @@ class PastTheCheck(Exception):  # noqa: N818
     """Raised where a scraper builds its ArcGIS helper, after its region check."""
 
 
-@pytest.fixture(autouse=True)
-def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Refuse every connection and name lookup, so no test reaches a service."""
-
-    def refuse(*_args: object, **_kwargs: object) -> None:
-        msg = 'A test tried to open a network connection.'
-        raise OSError(msg)
-
-    monkeypatch.setattr(socket.socket, 'connect', refuse)
-    monkeypatch.setattr(socket, 'getaddrinfo', refuse)
+pytestmark = pytest.mark.usefixtures('no_network')
 
 
 def test_boundary_is_the_geometry_given() -> None:

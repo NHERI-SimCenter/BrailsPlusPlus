@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import getpass
 import os
-import socket
 import stat
 import sys
 import traceback
@@ -65,16 +64,7 @@ if TYPE_CHECKING:
 COLAB_MODULE = 'google.colab.userdata'
 
 
-@pytest.fixture(autouse=True)
-def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Refuse every connection and name lookup, so no test reaches a service."""
-
-    def refuse(*_args: object, **_kwargs: object) -> None:
-        msg = 'A test tried to open a network connection.'
-        raise OSError(msg)
-
-    monkeypatch.setattr(socket.socket, 'connect', refuse)
-    monkeypatch.setattr(socket, 'getaddrinfo', refuse)
+pytestmark = pytest.mark.usefixtures('no_network')
 
 
 def save_typed(monkeypatch: pytest.MonkeyPatch, answer: str) -> Path:

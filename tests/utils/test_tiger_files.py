@@ -37,7 +37,6 @@
 from __future__ import annotations
 
 import io
-import socket
 import zipfile
 from typing import TYPE_CHECKING
 
@@ -56,16 +55,7 @@ if TYPE_CHECKING:
 PLACE_URL = 'https://www2.census.gov/geo/tiger/TIGER2023/PLACE/tl_2023_06_place.zip'
 
 
-@pytest.fixture(autouse=True)
-def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Refuse every connection and name lookup, so no test reaches a service."""
-
-    def refuse(*_args: object, **_kwargs: object) -> None:
-        msg = 'A test tried to open a network connection.'
-        raise OSError(msg)
-
-    monkeypatch.setattr(socket.socket, 'connect', refuse)
-    monkeypatch.setattr(socket, 'getaddrinfo', refuse)
+pytestmark = pytest.mark.usefixtures('no_network')
 
 
 @pytest.fixture

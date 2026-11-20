@@ -35,6 +35,7 @@
 
 from __future__ import annotations
 
+import socket
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -42,7 +43,7 @@ import pytest
 from brails.types.asset_inventory import Asset, AssetInventory
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
 # Coordinates for test assets whose location does not matter.
 PLACEHOLDER_COORDINATES = [[-122.4, 37.8]]
@@ -101,3 +102,30 @@ def build_inventory() -> Callable[..., AssetInventory]:
         return inventory
 
     return _build
+
+
+@pytest.fixture(scope='module')
+def no_network() -> Iterator[None]:
+    """
+    Refuse every connection and name lookup while a test module runs.
+
+    A test module that must not reach the network asks for it with
+    ``pytestmark = pytest.mark.usefixtures('no_network')``. Set up per module, it is
+    in place before the module's own module-scoped fixtures, but not before a
+    session-scoped fixture, which must reach no network itself. It covers Python's
+    ``socket`` only, not pyarrow's S3 client or GDAL, which connect outside it. A test
+    marked ``live`` must sit in a module that does not ask for it.
+
+    Yields:
+        None:
+            While ``socket.socket.connect`` and ``socket.getaddrinfo`` refuse.
+    """
+
+    def refuse(*_args: object, **_kwargs: object) -> None:
+        msg = 'A test tried to open a network connection.'
+        raise OSError(msg)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(socket.socket, 'connect', refuse)
+        patch.setattr(socket, 'getaddrinfo', refuse)
+        yield

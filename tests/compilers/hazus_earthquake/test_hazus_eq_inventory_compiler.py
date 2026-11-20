@@ -137,6 +137,8 @@ from tests.compilers.hazus_earthquake.compiler_fixtures import (
 if TYPE_CHECKING:
     from brails.compilers.compilation_report import CompilationReport
 
+pytestmark = pytest.mark.usefixtures('no_network')
+
 STORIES_CODE = HAZUS_EQ_SOURCE_FEATURES.index(STORIES_KEY)
 # Values carried on some footprints, as a caller's footprints may carry them:
 # f01 and u08 are excluded in every world, h05 and u03 are not.

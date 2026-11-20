@@ -38,7 +38,6 @@ from __future__ import annotations
 
 import io
 import json
-import socket
 import sys
 from typing import TYPE_CHECKING, Any
 
@@ -68,16 +67,7 @@ REGION = box(-122.01, 37.99, -121.99, 38.01)
 POINT = '{"type": "Point", "coordinates": [-122.0, 38.0]}'
 
 
-@pytest.fixture(autouse=True)
-def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Refuse every connection and name lookup, so no test reaches a service."""
-
-    def refuse(*_args: object, **_kwargs: object) -> None:
-        msg = 'A test tried to open a network connection.'
-        raise OSError(msg)
-
-    monkeypatch.setattr(socket.socket, 'connect', refuse)
-    monkeypatch.setattr(socket, 'getaddrinfo', refuse)
+pytestmark = pytest.mark.usefixtures('no_network')
 
 
 def square(lon: float, lat: float, half: float = 0.0001) -> list[list[float]]:

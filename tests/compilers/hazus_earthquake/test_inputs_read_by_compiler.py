@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import functools
 import json
-import socket
 import sys
 from typing import TYPE_CHECKING, Callable
 from unittest import mock
@@ -91,16 +90,7 @@ CODED_ESTIMATE = -666666666.0
 KEY_CHECK = {'get': 'NAME', 'for': 'state:01'}
 
 
-@pytest.fixture(autouse=True)
-def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Refuse every connection and name lookup, so no test reaches a service."""
-
-    def refuse(*_args: object, **_kwargs: object) -> None:
-        msg = 'A test tried to open a network connection.'
-        raise OSError(msg)
-
-    monkeypatch.setattr(socket.socket, 'connect', refuse)
-    monkeypatch.setattr(socket, 'getaddrinfo', refuse)
+pytestmark = pytest.mark.usefixtures('no_network')
 
 
 @pytest.fixture(scope='module')
