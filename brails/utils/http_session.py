@@ -55,11 +55,11 @@ from urllib3.exceptions import TimeoutError as Urllib3Timeout
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+# Answers a request is tried again after: too many requests and server errors.
 RETRIED_STATUSES = (429, 500, 502, 503, 504)
-"""Answers a request is tried again after: too many requests and server errors."""
 
+# The longest wait, in seconds, a ``Retry-After`` header can ask for.
 MAX_RETRY_AFTER_S = 120
-"""The longest wait, in seconds, a ``Retry-After`` header can ask for."""
 
 
 def address_without_query(url: str) -> str:

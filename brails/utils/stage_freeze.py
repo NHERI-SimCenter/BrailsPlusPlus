@@ -54,8 +54,8 @@ from brails.types.asset_inventory import AssetInventory, _merge_id_order
 if TYPE_CHECKING:
     import os
 
+# Name of the digest algorithm.
 DIGEST_ALGORITHM = 'blake2b-128'
-"""Name of the digest algorithm."""
 
 _DIGEST_SIZE = 16
 

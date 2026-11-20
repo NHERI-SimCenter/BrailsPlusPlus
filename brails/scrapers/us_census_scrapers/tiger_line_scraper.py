@@ -52,8 +52,8 @@ from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE, read_tiger_file
 if TYPE_CHECKING:
     from brails.types.region_boundary import RegionBoundary
 
+# The column of the block groups that holds the name of their state.
 STATE_NAME_COLUMN = 'STATE_NAME'
-"""The column of the block groups that holds the name of their state."""
 
 
 class TIGERLineScraper:

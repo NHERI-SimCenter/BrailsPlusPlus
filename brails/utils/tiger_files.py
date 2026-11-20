@@ -50,11 +50,11 @@ import requests
 
 from brails.utils.http_session import create_retrying_session, get_whole_body
 
+# The year of the TIGER/Line release read when no vintage is given.
 DEFAULT_TIGER_VINTAGE = 2023
-"""The year of the TIGER/Line release read when no vintage is given."""
 
+# The folder of the TIGER/Line releases on the Census Bureau's server.
 TIGER_ROOT = 'https://www2.census.gov/geo/tiger'
-"""The folder of the TIGER/Line releases on the Census Bureau's server."""
 
 _downloads: dict[str, bytes] = {}
 

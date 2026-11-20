@@ -77,9 +77,10 @@ if TYPE_CHECKING:
 
     from shapely.geometry.base import BaseGeometry
 
+# Characters :func:`filter_to_region` reads from a GeoJSON file at a time.
 READ_CHUNK_CHARS = 1 << 24
-"""Characters :func:`filter_to_region` reads from a GeoJSON file at a time."""
 
+# Names a GeoJSON ``crs`` member may give for longitude and latitude in WGS84.
 GEOGRAPHIC_CRS_NAMES = (
     'urn:ogc:def:crs:OGC:1.3:CRS84',
     'urn:ogc:def:crs:OGC::CRS84',
@@ -88,8 +89,8 @@ GEOGRAPHIC_CRS_NAMES = (
     'urn:ogc:def:crs:EPSG::4326',
     'EPSG:4326',
 )
-"""Names a GeoJSON ``crs`` member may give for longitude and latitude in WGS84."""
 
+# Names a GeoJSON ``crs`` member may give for longitude and latitude in NAD83.
 NAD83_CRS_NAMES = (
     'urn:ogc:def:crs:EPSG::4269',
     'EPSG:4269',
@@ -98,7 +99,6 @@ NAD83_CRS_NAMES = (
     'OGC:CRS83',
     'CRS83',
 )
-"""Names a GeoJSON ``crs`` member may give for longitude and latitude in NAD83."""
 
 _WHITESPACE = ' \t\n\r'
 

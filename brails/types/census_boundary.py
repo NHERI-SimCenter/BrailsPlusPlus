@@ -61,6 +61,7 @@ if TYPE_CHECKING:
     import geopandas as gpd
     from shapely.geometry.base import BaseGeometry
 
+# FIPS code, USPS code and name of each row of the TIGER/Line state file.
 STATES: tuple[tuple[str, str, str], ...] = (
     ('01', 'AL', 'Alabama'),
     ('02', 'AK', 'Alaska'),
@@ -119,8 +120,10 @@ STATES: tuple[tuple[str, str, str], ...] = (
     ('72', 'PR', 'Puerto Rico'),
     ('78', 'VI', 'United States Virgin Islands'),
 )
-"""FIPS code, USPS code and name of each row of the TIGER/Line state file."""
 
+# The last words of a county's ``NAMELSAD``.
+#
+# A name that ends in one of them is also looked up in the national county file.
 COUNTY_DESCRIPTORS = (
     'county',
     'parish',
@@ -132,30 +135,23 @@ COUNTY_DESCRIPTORS = (
     'island',
     'district',
 )
-"""
-The last words of a county's ``NAMELSAD``.
 
-A name that ends in one of them is also looked up in the national county file.
-"""
-
+# Trailing parts of a place's text that name the country and are dropped.
 COUNTRY_NAMES = ('usa', 'us', 'united states', 'united states of america')
-"""Trailing parts of a place's text that name the country and are dropped."""
 
+# ``FUNCSTAT`` codes of inactive and nonfunctioning places.
+#
+# The match by ``NAME`` and the near matches leave such places out.
 NONFUNCTIONING_STATUSES = ('I', 'N')
-"""
-``FUNCSTAT`` codes of inactive and nonfunctioning places.
 
-The match by ``NAME`` and the near matches leave such places out.
-"""
-
+# The number of digits of a census place's GEOID.
 PLACE_GEOID_LENGTH = 7
-"""The number of digits of a census place's GEOID."""
 
+# The largest number of near matches listed when no place or county matches.
 MAX_NEAR_MATCHES = 5
-"""The largest number of near matches listed when no place or county matches."""
 
+# The ``cutoff`` of :func:`difflib.get_close_matches` for the near matches.
 NEAR_MATCH_CUTOFF = 0.6
-"""The ``cutoff`` of :func:`difflib.get_close_matches` for the near matches."""
 
 _COUNTY_ADVICE = (
     'A county is written with the word that ends its census name, such as County '
