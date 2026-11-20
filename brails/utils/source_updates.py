@@ -54,8 +54,8 @@ if TYPE_CHECKING:
 # Source labels whose values are never withheld.
 FIXED_SOURCES = ('local', 'footprint')
 
-# Columns of a table of withheld values. ``source`` holds the label of the
-# source the value came from.
+# Columns of a table of withheld values. ``source`` holds the label of the source the
+# value came from.
 WITHHELD_COLUMNS = ('asset_id', 'feature', 'source', 'value')
 
 
@@ -70,21 +70,19 @@ def apply_to_sources(
     """
     Withhold replaced values and write their replacements as imputed.
 
-    Each row of ``withheld`` removes one value from the source it names,
-    whether or not ``updates`` replaces it, and each entry of ``updates``
-    is written as given into the ``imputed_label`` source, which is
-    created when absent. The :data:`FIXED_SOURCES` are never changed. A
-    source that changes is returned as a new inventory that shares its
-    unchanged assets with the input. The other sources are returned as
-    they are. Merging the result (:meth:`AssetInventory.merge`) codes the
-    written values as imputed and, where a withheld value has no
-    replacement, takes the feature from the next source that holds it.
+    Each row of ``withheld`` removes one value from the source it names, whether or
+    not ``updates`` replaces it, and each entry of ``updates`` is written as given
+    into the ``imputed_label`` source, which is created when absent. The
+    :data:`FIXED_SOURCES` are never changed. A source that changes is returned as a
+    new inventory that shares its unchanged assets with the input. The other sources
+    are returned as they are. Merging the result (:meth:`AssetInventory.merge`) codes
+    the written values as imputed and, where a withheld value has no replacement,
+    takes the feature from the next source that holds it.
 
     Args:
         sources (Mapping[str, AssetInventory]):
-            The per-source inventories of one possible world, keyed by
-            their merge labels, the spine among them. None of them is
-            modified.
+            The per-source inventories of one possible world, keyed by their merge
+            labels, the spine among them. None of them is modified.
         updates (Mapping[Hashable, Mapping[str, Any]]):
             The replacement values per asset id.
         withheld (pandas.DataFrame):
@@ -92,10 +90,9 @@ def apply_to_sources(
         imputed_label (str, optional):
             The label of the imputed source. Defaults to ``'imputed'``.
         precedence (Sequence[str], optional):
-            The merge precedence, highest first. When given, a source
-            ranked above ``imputed_label`` that still holds a written
-            feature of the asset raises, since the merge would take its
-            value over the replacement.
+            The merge precedence, highest first. When given, a source ranked above
+            ``imputed_label`` that still holds a written feature of the asset raises,
+            since the merge would take its value over the replacement.
 
     Returns:
         dict[str, AssetInventory]:
@@ -103,13 +100,12 @@ def apply_to_sources(
 
     Raises:
         ValueError:
-            If a withheld row names a fixed source, the imputed source or
-            a label the sources do not hold, or a value its source does
-            not hold; if the imputed source already holds a written value;
-            if no source holds an asset new to the imputed source; if a
-            changed source holds more than one possible world; or if,
-            under ``precedence``, a higher-ranked source holds a written
-            feature.
+            If a withheld row names a fixed source, the imputed source or a label the
+            sources do not hold, or a value its source does not hold; if the imputed
+            source already holds a written value; if no source holds an asset new to
+            the imputed source; if a changed source holds more than one possible
+            world; or if, under ``precedence``, a higher-ranked source holds a
+            written feature.
     """
     out = dict(sources)
     copied: dict[str, set] = {}
@@ -173,17 +169,16 @@ def _editable_asset(
     """
     Return an asset of a source that may be changed, copying on first use.
 
-    The first call for a source replaces it in ``out`` with a shallow copy
-    whose asset table is its own, and the first call for an asset replaces
-    the asset with a copy whose features are its own. The input's
-    inventories and assets are never changed.
+    The first call for a source replaces it in ``out`` with a shallow copy whose
+    asset table is its own, and the first call for an asset replaces the asset with a
+    copy whose features are its own. The input's inventories and assets are never
+    changed.
 
     Args:
         out (dict[str, AssetInventory]):
             The sources being written, updated in place.
         copied (dict[str, set]):
-            The asset ids already copied per copied source, updated in
-            place.
+            The asset ids already copied per copied source, updated in place.
         label (str):
             The source.
         asset_id (Hashable):
@@ -269,8 +264,8 @@ def _check_precedence(
 
     Raises:
         ValueError:
-            If the imputed label is not in ``precedence``, or a higher
-            source holds a written feature of the asset.
+            If the imputed label is not in ``precedence``, or a higher source holds a
+            written feature of the asset.
     """
     if imputed_label not in precedence:
         msg = f'The precedence {list(precedence)} lacks {imputed_label!r}.'

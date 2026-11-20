@@ -114,8 +114,8 @@ def _clean_key(value: str, source: str) -> CensusApiKey:
     Raises:
         ValueError:
             If what remains holds a character other than an ASCII letter or digit,
-            which no Census API key holds. The message names the source and not
-            the value.
+            which no Census API key holds. The message names the source and not the
+            value.
     """
     # Every holder of the text is a CensusApiKey, so a frame shown with its values
     # hides it, a text that is refused below included.

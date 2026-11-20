@@ -50,17 +50,17 @@ import numpy as np
 
 # The housing classes, the classes whose records carry a unit count: the
 # single-family, mobile home and multi-family classes of the Hazus Inventory
-# Technical Manual, Hazus 7.0 (FEMA, June 2025), Table 4-1, p. 4-2, which
-# Hazus 6.1 prints alike in its own Table 4-1. The table's other residential
-# classes, RES4 to RES6, carry no unit count here. The two year samplers, the
-# unit budget, the pair re-draw and the observed-donor imputer's default
-# status read the same tuple as their residential classes.
+# Technical Manual, Hazus 7.0 (FEMA, June 2025), Table 4-1, p. 4-2, which Hazus 6.1
+# prints alike in its own Table 4-1. The table's other residential classes, RES4 to
+# RES6, carry no unit count here. The two year samplers, the unit budget, the pair
+# re-draw and the observed-donor imputer's default status read the same tuple as
+# their residential classes.
 RES3_CLASSES = ('RES3A', 'RES3B', 'RES3C', 'RES3D', 'RES3E', 'RES3F')
 UNIT_COUNT_CLASSES = ('RES1', 'RES2', *RES3_CLASSES)
 
-# Lower bound of each count band, the unit ranges of the occupancy classes in
-# the Hazus Inventory Technical Manual, Hazus 7.0 (FEMA, June 2025), Table 4-1,
-# p. 4-2. A unit count falls in the band whose lower bound it has reached.
+# Lower bound of each count band, the unit ranges of the occupancy classes in the
+# Hazus Inventory Technical Manual, Hazus 7.0 (FEMA, June 2025), Table 4-1, p. 4-2. A
+# unit count falls in the band whose lower bound it has reached.
 COUNT_BANDS = (
     (50, 'RES3F'),
     (20, 'RES3E'),
@@ -71,13 +71,13 @@ COUNT_BANDS = (
     (0, 'RES1'),
 )
 
-# Families whose class is the count band of the unit count. A RES2 record
-# keeps RES2 whatever its unit count.
+# Families whose class is the count band of the unit count. A RES2 record keeps RES2
+# whatever its unit count.
 COUNTED_FAMILIES = ('RES1', 'RES3')
 
-# Units a housing record contributes when its resunits is zero, negative or
-# missing: the midpoint of its class's unit band, one dwelling for RES1 and
-# RES2, and a fixed count for the open RES3F band.
+# Units a housing record contributes when its resunits is zero, negative or missing:
+# the midpoint of its class's unit band, one dwelling for RES1 and RES2, and a fixed
+# count for the open RES3F band.
 UNIT_MIDPOINTS = {
     'RES1': 1.0,
     'RES2': 1.0,
@@ -100,8 +100,8 @@ def stated_number(value: object) -> float | int | None:
 
     Returns:
         float or int or None:
-            The value itself where it is a finite int or float (a bool is
-            not), otherwise None.
+            The value itself where it is a finite int or float (a bool is not),
+            otherwise None.
     """
     if isinstance(value, bool) or not isinstance(value, (int, float, np.number)):
         return None
@@ -141,10 +141,9 @@ def unit_contribution(
 
     Returns:
         tuple[float or int or None, bool]:
-            For a housing class (:data:`UNIT_COUNT_CLASSES`), its
-            ``resunits`` where that is a positive number, otherwise the
-            class midpoint, and whether the midpoint was used. For any
-            other class, None and False.
+            For a housing class (:data:`UNIT_COUNT_CLASSES`), its ``resunits`` where
+            that is a positive number, otherwise the class midpoint, and whether the
+            midpoint was used. For any other class, None and False.
     """
     if occupancy_class not in UNIT_COUNT_CLASSES:
         return None, False
@@ -166,8 +165,8 @@ def point_class(occupancy_class: str, units: float | None) -> str:
 
     Returns:
         str:
-            The count band of ``units`` (:func:`count_band`) for a record
-            of :data:`COUNTED_FAMILIES`, otherwise the class itself.
+            The count band of ``units`` (:func:`count_band`) for a record of
+            :data:`COUNTED_FAMILIES`, otherwise the class itself.
     """
     # RES3A to RES3F count as RES3
     family = 'RES3' if occupancy_class in RES3_CLASSES else occupancy_class

@@ -254,10 +254,9 @@ def test_the_largest_uniform_stays_inside_its_own_categories() -> None:
     """
     The top of a row is where a draw would spill past its last category.
 
-    Rows of different widths sit in one padded array, so the widest one
-    decides how much padding the others carry. The largest uniform a
-    keyed draw can produce has to land on the last real category of each
-    of them, but never on the padding.
+    Rows of different widths sit in one padded array, so the widest one decides how
+    much padding the others carry. The largest uniform a keyed draw can produce has
+    to land on the last real category of each of them, but never on the padding.
     """
     largest = np.nextafter(1.0, 0.0)
     weights = [[1.0], [1.0, 1.0], [3.0, 0.0, 1.0], [1.0] * 16]
@@ -285,9 +284,8 @@ def test_a_trailing_zero_weight_category_is_never_drawn() -> None:
     """
     A row that normalizes to just under one may end in zero weights.
 
-    The uniforms between the last positive cumulative value and one have
-    to land on the last category of positive weight, not on the
-    zero-weight categories after it.
+    The uniforms between the last positive cumulative value and one have to land on
+    the last category of positive weight, not on the zero-weight categories after it.
     """
     row = [0.1] * 10 + [0.0, 0.0]
     assert np.cumsum(row)[9] / np.sum(row) < 1.0
@@ -371,8 +369,8 @@ def test_each_asset_is_compared_against_its_own_row() -> None:
     """
     A draw must read the distribution its group code names.
 
-    Neighboring rows here are opposites, so a code that lands one row off
-    draws the other category every time.
+    Neighboring rows here are opposites, so a code that lands one row off draws the
+    other category every time.
     """
     group_count = 50
     weights = [

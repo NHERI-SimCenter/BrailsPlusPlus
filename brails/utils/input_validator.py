@@ -543,8 +543,7 @@ class InputValidator:
             >>> InputValidator.is_inventory('not an inventory')
             False
         """
-        # Imported inside the function because AssetInventory imports
-        # this module:
+        # Imported inside the function because AssetInventory imports this module:
         from brails.types.asset_inventory import AssetInventory
 
         return isinstance(inventory, AssetInventory)

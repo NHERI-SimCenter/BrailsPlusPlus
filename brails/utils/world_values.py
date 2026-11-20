@@ -34,8 +34,8 @@
 """
 The per-world storage rule of imputed values.
 
-The observed-donor imputer, the unit budget and the value imputer store
-per-world values by this rule.
+The observed-donor imputer, the unit budget and the value imputer store per-world
+values by this rule.
 
 .. autosummary::
 
@@ -60,8 +60,8 @@ def collapse_realizations(realizations: Sequence[Any]) -> Any:  # noqa: ANN401
 
     Returns:
         Any:
-            The common value when every world holds the same value and it
-            is not ``None``, otherwise the values as a list in world order.
+            The common value when every world holds the same value and it is not
+            ``None``, otherwise the values as a list in world order.
     """
     first = realizations[0]
     if first is not None and all(value == first for value in realizations[1:]):

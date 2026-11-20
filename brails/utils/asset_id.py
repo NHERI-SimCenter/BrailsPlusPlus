@@ -35,12 +35,11 @@
 """
 Assign building footprints an asset id computed from their geometry.
 
-The id of a footprint is the geohash of the planar centroid of its exterior
-rings in EPSG:4326, with collisions resolved as :func:`assign_asset_ids`
-describes. A change to any routine here changes ids. The module imports the
-standard library only, so a copy of it used outside BRAILS gives the same ids.
-Its centroid and area routines are private;
-:class:`~brails.types.asset_inventory.AssetInventory` exposes them as the
+The id of a footprint is the geohash of the planar centroid of its exterior rings in
+EPSG:4326, with collisions resolved as :func:`assign_asset_ids` describes. A change
+to any routine here changes ids. The module imports the standard library only, so a
+copy of it used outside BRAILS gives the same ids. Its centroid and area routines are
+private; :class:`~brails.types.asset_inventory.AssetInventory` exposes them as the
 static methods ``has_area`` and ``centroid_and_plan_area``.
 
 .. autosummary::
@@ -59,8 +58,8 @@ from typing import Any, NamedTuple
 
 GEOHASH_PRECISION = 10
 SUFFIX_SEPARATOR = '-'
-# brails.constants.EARTH_RADIUS_M, repeated so that the module imports the
-# standard library only.
+# brails.constants.EARTH_RADIUS_M, repeated so that the module imports the standard
+# library only.
 _EARTH_RADIUS_M = 6371008.8
 
 GEOHASH_ALPHABET = '0123456789bcdefghjkmnpqrstuvwxyz'
@@ -84,11 +83,11 @@ class AssetIdResult(NamedTuple):
         ids (list[str]):
             One id per input geometry, in input order.
         log (list[dict]):
-            One entry per member of a collision set, in input order, with the
-            keys ``position``, ``geohash``, ``area_m2``, ``rank``, ``id`` and
-            ``reason``. ``rank`` is ``None`` unless the member shares its
-            rounded area with another member of its set. ``reason`` is one of
-            the ``REASON_*`` constants.
+            One entry per member of a collision set, in input order, with the keys
+            ``position``, ``geohash``, ``area_m2``, ``rank``, ``id`` and ``reason``.
+            ``rank`` is ``None`` unless the member shares its rounded area with
+            another member of its set. ``reason`` is one of the ``REASON_*``
+            constants.
     """
 
     ids: list[str]
@@ -114,18 +113,17 @@ def _to_ring(points: Sequence[Any]) -> Ring:
 
     Args:
         points (Sequence):
-            Coordinate pairs ``[lon, lat]``, with any further values, such as
-            an altitude, ignored.
+            Coordinate pairs ``[lon, lat]``, with any further values, such as an
+            altitude, ignored.
 
     Returns:
         list[tuple[float, float]]:
-            The vertices as floats, without a closing vertex equal to the
-            first.
+            The vertices as floats, without a closing vertex equal to the first.
 
     Raises:
         ValueError:
-            If a vertex is not a coordinate pair, is not finite, or lies
-            outside the longitude and latitude ranges of EPSG:4326.
+            If a vertex is not a coordinate pair, is not finite, or lies outside the
+            longitude and latitude ranges of EPSG:4326.
     """
     ring: Ring = []
     for point in points:
@@ -157,10 +155,10 @@ def _exterior_rings(geometry: object) -> list[Ring]:
 
     Args:
         geometry (object):
-            A BRAILS coordinate list (a list of ``[lon, lat]`` for a polygon,
-            a list of such rings for a multipolygon), a GeoJSON mapping of
-            type ``Polygon`` or ``MultiPolygon``, or an object with
-            ``__geo_interface__``, such as a shapely geometry.
+            A BRAILS coordinate list (a list of ``[lon, lat]`` for a polygon, a list
+            of such rings for a multipolygon), a GeoJSON mapping of type ``Polygon``
+            or ``MultiPolygon``, or an object with ``__geo_interface__``, such as a
+            shapely geometry.
 
     Returns:
         list[list[tuple[float, float]]]:
@@ -168,8 +166,7 @@ def _exterior_rings(geometry: object) -> list[Ring]:
 
     Raises:
         ValueError:
-            If the geometry is not one of the accepted forms or a vertex is
-            invalid.
+            If the geometry is not one of the accepted forms or a vertex is invalid.
     """
     if hasattr(geometry, '__geo_interface__'):
         geometry = geometry.__geo_interface__
@@ -184,7 +181,8 @@ def _exterior_rings(geometry: object) -> list[Ring]:
         if geometry_type == 'MultiPolygon':
             return [_to_ring(polygon[0]) for polygon in coordinates if polygon]
         raise ValueError(
-            f'A footprint must be a Polygon or a MultiPolygon, not {geometry_type!r}.'
+            'A footprint must be a Polygon or a MultiPolygon, '
+            f'not {geometry_type!r}.'
         )
 
     if (
@@ -221,10 +219,9 @@ def _ring_moments(ring: Ring, origin: Point) -> tuple[float, float, float]:
 
     Returns:
         tuple[float, float, float]:
-            Twice the signed area, and six times the signed area multiplied
-            by the centroid's translated longitude and latitude. Each is an
-            exactly rounded sum over the ring's edges, so it does not depend
-            on the starting vertex.
+            Twice the signed area, and six times the signed area multiplied by the
+            centroid's translated longitude and latitude. Each is an exactly rounded
+            sum over the ring's edges, so it does not depend on the starting vertex.
     """
     x0, y0 = origin
     points = [(lon - x0, lat - y0) for lon, lat in ring]
@@ -303,23 +300,23 @@ def _centroid_and_plan_area(geometry: object) -> tuple[float, float, float]:
     """
     Compute the planar centroid and the plan area of a footprint's exterior rings.
 
-    The public contract is that of ``AssetInventory.centroid_and_plan_area``
-    in BRAILS.
+    The public contract is that of ``AssetInventory.centroid_and_plan_area`` in
+    BRAILS.
 
     Args:
         geometry (object):
-            A footprint in any form :func:`_exterior_rings` accepts, with
-            longitude and latitude in EPSG:4326.
+            A footprint in any form :func:`_exterior_rings` accepts, with longitude
+            and latitude in EPSG:4326.
 
     Returns:
         tuple[float, float, float]:
-            The centroid's longitude and latitude, and the plan area in
-            square meters, unrounded.
+            The centroid's longitude and latitude, and the plan area in square
+            meters, unrounded.
 
     Raises:
         ValueError:
-            If the geometry is not an accepted form, a vertex is invalid, or
-            the exterior rings enclose no area.
+            If the geometry is not an accepted form, a vertex is invalid, or the
+            exterior rings enclose no area.
     """
     _, origin, moments = _parts(geometry)
     longitude, latitude = _centroid_of(origin, moments)
@@ -335,9 +332,8 @@ def geohash(lon: float, lat: float, precision: int = GEOHASH_PRECISION) -> str:
     """
     Encode a longitude and latitude as a geohash.
 
-    The standard bisection: longitude first, a bit of 1 when the value is at
-    or above the midpoint of its interval. No rounding is applied before
-    hashing.
+    The standard bisection: longitude first, a bit of 1 when the value is at or above
+    the midpoint of its interval. No rounding is applied before hashing.
 
     Args:
         lon (float):
@@ -353,8 +349,8 @@ def geohash(lon: float, lat: float, precision: int = GEOHASH_PRECISION) -> str:
 
     Raises:
         ValueError:
-            If a coordinate is outside its range or the precision is not a
-            positive integer.
+            If a coordinate is outside its range or the precision is not a positive
+            integer.
     """
     if (
         not isinstance(precision, int)
@@ -418,37 +414,35 @@ def assign_asset_ids(
     """
     Assign each footprint of a set its asset id.
 
-    A footprint's id is the geohash of its centroid.
-    Footprints of this call that share a geohash form a collision set, and
-    each member is suffixed with its plan area in whole square meters,
-    rounded half up, as ``<geohash>-<area>``. Members whose rounded areas are
-    also equal are suffixed ``<geohash>-<area>-<rank>``, ranked from 1 by their
-    normalized coordinates and then by ``tiebreak``. Input order decides a rank
-    only between members equal in both. A geohash contains no
+    A footprint's id is the geohash of its centroid. Footprints of this call that
+    share a geohash form a collision set, and each member is suffixed with its plan
+    area in whole square meters, rounded half up, as ``<geohash>-<area>``. Members
+    whose rounded areas are also equal are suffixed ``<geohash>-<area>-<rank>``,
+    ranked from 1 by their normalized coordinates and then by ``tiebreak``. Input
+    order decides a rank only between members equal in both. A geohash contains no
     ``SUFFIX_SEPARATOR``, so a suffixed id never equals a bare one.
 
-    The id of a footprint outside every collision set does not depend on the
-    other footprints passed. The id of a colliding footprint does, so a
-    caller removes the footprints it does not want before the call.
+    The id of a footprint outside every collision set does not depend on the other
+    footprints passed. The id of a colliding footprint does, so a caller removes the
+    footprints it does not want before the call.
 
     Args:
         geometries (Sequence[object]):
             Footprints in any form :func:`_exterior_rings` accepts.
         tiebreak (Sequence[str | None], optional):
             One string per footprint that orders members equal in normalized
-            geometry, such as a provider's id. Defaults to None, so identical
-            members rank by input order.
+            geometry, such as a provider's id. Defaults to None, so identical members
+            rank by input order.
 
     Raises:
         ValueError:
-            If ``tiebreak`` does not match ``geometries`` in length, a
-            geometry is not an accepted form, a vertex is invalid, or a
-            footprint encloses no area.
+            If ``tiebreak`` does not match ``geometries`` in length, a geometry is
+            not an accepted form, a vertex is invalid, or a footprint encloses no
+            area.
 
     Returns:
         AssetIdResult:
-            The ids in input order and one log entry per member of a collision
-            set.
+            The ids in input order and one log entry per member of a collision set.
     """
     count = len(geometries)
     if tiebreak is None:

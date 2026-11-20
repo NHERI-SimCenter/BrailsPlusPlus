@@ -53,9 +53,9 @@ from brails.utils.asset_id import (
     geohash,
 )
 
-# A 0.0002 by 0.0002 degree footprint in San Francisco and its pinned id. The
-# id fixes the coordinate reference system, the centroid routine and the
-# geohash precision together. A change to any of them changes it.
+# A 0.0002 by 0.0002 degree footprint in San Francisco and its pinned id. The id
+# fixes the coordinate reference system, the centroid routine and the geohash
+# precision together. A change to any of them changes it.
 GOLDEN_RING = [
     [-122.4194, 37.7749],
     [-122.4192, 37.7749],

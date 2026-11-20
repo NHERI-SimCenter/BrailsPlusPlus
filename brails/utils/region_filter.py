@@ -111,9 +111,9 @@ def reference_point(asset: Asset, asset_id: Hashable) -> tuple[float, float]:
     Return the point an asset is located by.
 
     :func:`filter_to_region` and the census tract scraper's
-    ``CensusTractScraper.get_census_geographies`` locate an asset by this
-    point, so an asset that the filter keeps inside a census polygon lies in
-    that polygon's tract or block group.
+    ``CensusTractScraper.get_census_geographies`` locate an asset by this point, so
+    an asset that the filter keeps inside a census polygon lies in that polygon's
+    tract or block group.
 
     Args:
         asset (Asset):
@@ -123,14 +123,13 @@ def reference_point(asset: Asset, asset_id: Hashable) -> tuple[float, float]:
 
     Returns:
         tuple[float, float]:
-            The longitude and latitude of the centroid of the asset's
-            exterior rings, of the point for a point asset, or of the
-            Shapely centroid for a geometry enclosing no area.
+            The longitude and latitude of the centroid of the asset's exterior rings,
+            of the point for a point asset, or of the Shapely centroid for a geometry
+            enclosing no area.
 
     Raises:
         ValueError:
-            If the asset has no coordinates or its coordinates form no
-            geometry.
+            If the asset has no coordinates or its coordinates form no geometry.
     """
     coordinates = asset.coordinates
     if not coordinates:
@@ -162,55 +161,52 @@ def filter_to_region(  # noqa: C901
     Return the assets of an inventory whose reference point lies inside a region.
 
     An asset is inside when its :func:`reference_point` lies strictly inside the
-    region's boundary, so an asset on the line two neighboring places share
-    belongs to neither, and one whose outline crosses the boundary is kept or left
-    out whole. The kept assets are copies, so a change to the returned inventory
-    leaves the source as it was.
+    region's boundary, so an asset on the line two neighboring places share belongs
+    to neither, and one whose outline crosses the boundary is kept or left out whole.
+    The kept assets are copies, so a change to the returned inventory leaves the
+    source as it was.
 
-    A place name is looked up among the census places and counties of its state
-    with :class:`~brails.types.census_boundary.CensusBoundary`, whose boundary
-    keeps its holes: the assets of an enclave, such as Piedmont inside Oakland,
-    are left out. With ``place_source='osm'`` the name is looked up in OpenStreetMap
-    with :class:`RegionBoundary`, whose boundary has no holes, so those assets are
-    kept.
+    A place name is looked up among the census places and counties of its state with
+    :class:`~brails.types.census_boundary.CensusBoundary`, whose boundary keeps its
+    holes: the assets of an enclave, such as Piedmont inside Oakland, are left out.
+    With ``place_source='osm'`` the name is looked up in OpenStreetMap with
+    :class:`RegionBoundary`, whose boundary has no holes, so those assets are kept.
 
     The source is an inventory, the path of a GeoJSON file that
-    :meth:`AssetInventory.write_to_geojson` wrote, or a list or tuple of them,
-    such as the county files of a city that spans several counties. A file is
-    read one feature at a time, so memory grows with the assets kept, and each
-    kept feature becomes an asset keyed by its ``id``, or by its ``unique_id`` in
-    a file written with ``integer_ids=True``. The sources of a list are filtered
-    in the order given into one inventory, with one lookup of the boundary. They
-    must hold the same number of worlds and the same vector features, and no
-    asset id may lie inside the region in two of them.
+    :meth:`AssetInventory.write_to_geojson` wrote, or a list or tuple of them, such
+    as the county files of a city that spans several counties. A file is read one
+    feature at a time, so memory grows with the assets kept, and each kept feature
+    becomes an asset keyed by its ``id``, or by its ``unique_id`` in a file written
+    with ``integer_ids=True``. The sources of a list are filtered in the order given
+    into one inventory, with one lookup of the boundary. They must hold the same
+    number of worlds and the same vector features, and no asset id may lie inside the
+    region in two of them.
 
     The result takes its ``n_pw`` and ``vector_features`` from the sources. For a
     file, the number of worlds is its ``n_worlds`` or, without that member, the
-    number of values of its kept lists. A file with neither takes the number of
-    the other sources, or 1. A file of 1 world is refused beside a source of more.
+    number of values of its kept lists. A file with neither takes the number of the
+    other sources, or 1. A file of 1 world is refused beside a source of more.
 
-    The function prints the number of assets kept, and for several sources the
-    number kept from each. It also prints a line for a file whose ``crs`` is
-    NAD83, whose coordinates it reads as WGS84 ones.
+    The function prints the number of assets kept, and for several sources the number
+    kept from each. It also prints a line for a file whose ``crs`` is NAD83, whose
+    coordinates it reads as WGS84 ones.
 
     Args:
         inventory_or_geojson_path (AssetInventory | str | PathLike | list | tuple):
-            The inventory, the path of a GeoJSON FeatureCollection in
-            longitude and latitude (WGS84), or a list or tuple of them.
+            The inventory, the path of a GeoJSON FeatureCollection in longitude and
+            latitude (WGS84), or a list or tuple of them.
         region (str | RegionBoundary | Polygon | MultiPolygon):
-            A place name with its state, as in ``'Berkeley, CA'``, looked up
-            once as ``place_source`` selects, and the lookup prints the name it
-            found; a :class:`RegionBoundary` of any kind, whose boundary is
-            fetched; or a Shapely polygon or multipolygon in longitude and
-            latitude (WGS84), taken as given and repaired as
-            :func:`read_boundary` repairs it if invalid.
+            A place name with its state, as in ``'Berkeley, CA'``, looked up once as
+            ``place_source`` selects, and the lookup prints the name it found; a
+            :class:`RegionBoundary` of any kind, whose boundary is fetched; or a
+            Shapely polygon or multipolygon in longitude and latitude (WGS84), taken
+            as given and repaired as :func:`read_boundary` repairs it if invalid.
         place_source (str, optional):
-            Where a place name is looked up, ``'census'`` among the
-            TIGER/Line places and counties with
-            :class:`~brails.types.census_boundary.CensusBoundary` or
-            ``'osm'`` in OpenStreetMap with :class:`RegionBoundary`; checked,
-            and otherwise ignored, for a region that is not a place name.
-            Defaults to ``'census'``.
+            Where a place name is looked up, ``'census'`` among the TIGER/Line places
+            and counties with :class:`~brails.types.census_boundary.CensusBoundary`
+            or ``'osm'`` in OpenStreetMap with :class:`RegionBoundary`; checked, and
+            otherwise ignored, for a region that is not a place name. Defaults to
+            ``'census'``.
 
     Returns:
         AssetInventory:
@@ -220,25 +216,23 @@ def filter_to_region(  # noqa: C901
         FileNotFoundError:
             If a path is given and is not a file, before any lookup.
         TypeError:
-            If ``region`` is none of the accepted types, or a source is
-            neither an inventory nor a path.
+            If ``region`` is none of the accepted types, or a source is neither an
+            inventory nor a path.
         ValueError:
-            If the list of sources is empty, the sources hold different
-            numbers of worlds or different vector features, or two kept
-            asset ids, of one source or of two, have the same string form.
-            If the region's bounds are not longitude and latitude, or a
-            source inventory holds a housing-unit inventory. For a file, if
-            it is not a GeoJSON FeatureCollection, names a ``crs`` other than
-            WGS84 or NAD83 longitude and latitude, gives an ``n_worlds`` that
-            is not an integer of at least 1, holds a feature without an
-            ``id``, with an id that is not a string or a number, with
-            properties that are not an object, or with a geometry or
-            coordinates BRAILS cannot read, or holds kept features with the
-            same ``id``, with an empty list, or with lists of different
-            lengths or of a length other than its ``n_worlds``. Also if an
-            asset of an inventory has no coordinates or its coordinates form
-            no geometry (:func:`reference_point`). Also as :func:`resolve_region`
-            raises, for ``place_source`` and the place name.
+            If the list of sources is empty, the sources hold different numbers of
+            worlds or different vector features, or two kept asset ids, of one source
+            or of two, have the same string form. If the region's bounds are not
+            longitude and latitude, or a source inventory holds a housing-unit
+            inventory. For a file, if it is not a GeoJSON FeatureCollection, names a
+            ``crs`` other than WGS84 or NAD83 longitude and latitude, gives an
+            ``n_worlds`` that is not an integer of at least 1, holds a feature
+            without an ``id``, with an id that is not a string or a number, with
+            properties that are not an object, or with a geometry or coordinates
+            BRAILS cannot read, or holds kept features with the same ``id``, with an
+            empty list, or with lists of different lengths or of a length other than
+            its ``n_worlds``. Also if an asset of an inventory has no coordinates or
+            its coordinates form no geometry (:func:`reference_point`). Also as
+            :func:`resolve_region` raises, for ``place_source`` and the place name.
 
     Examples:
         >>> from shapely.geometry import box
@@ -367,8 +361,8 @@ def filter_to_region(  # noqa: C901
                         'object.'
                     )
                     raise ValueError(msg)  # noqa: TRY004, a malformed file
-                # A feature of the integer-id form, an integer id beside a
-                # string unique_id, is keyed by its unique_id.
+                # A feature of the integer-id form, an integer id beside a string
+                # unique_id, is keyed by its unique_id.
                 has_unique_id = (
                     isinstance(asset_id, int)
                     and not isinstance(asset_id, bool)
@@ -448,8 +442,8 @@ def filter_to_region(  # noqa: C901
                     'file again with write_to_geojson, in one form.'
                 )
                 raise ValueError(msg)
-            # The file's n_worlds and the lengths of its kept lists, which
-            # must agree.
+            # The file's n_worlds and the lengths of its kept lists, which must
+            # agree.
             counts = lengths | set(stated.values())
             if len(counts) > 1:
                 msg = (
@@ -586,8 +580,8 @@ def read_boundary(
     Returns:
         tuple[BaseGeometry, str, object]:
             The boundary; the name printed for the region, ``'the region'`` for a
-            polygon; and the id the region's ``get_boundary`` gives, such as a
-            GEOID or an OpenStreetMap id, ``None`` for a polygon.
+            polygon; and the id the region's ``get_boundary`` gives, such as a GEOID
+            or an OpenStreetMap id, ``None`` for a polygon.
 
     Raises:
         TypeError:
@@ -625,13 +619,13 @@ def resolve_region(
 
     Args:
         region (str | RegionBoundary | Polygon | MultiPolygon):
-            A place name with its state, or a region, which is returned as it is
-            for the caller to check, a value of another type included.
+            A place name with its state, or a region, which is returned as it is for
+            the caller to check, a value of another type included.
         place_source (str, optional):
             Where a place name is looked up, ``'census'`` for
             :class:`~brails.types.census_boundary.CensusBoundary` or ``'osm'`` for
-            :class:`RegionBoundary` of the name; checked, and otherwise ignored,
-            for a region that is not a place name. Defaults to ``'census'``.
+            :class:`RegionBoundary` of the name; checked, and otherwise ignored, for
+            a region that is not a place name. Defaults to ``'census'``.
         vintage (int, optional):
             The year of the TIGER/Line release a census lookup reads. Defaults to
             :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
@@ -639,8 +633,7 @@ def resolve_region(
     Returns:
         RegionBoundary | Polygon | MultiPolygon:
             The :class:`~brails.types.census_boundary.CensusBoundary` or the
-            :class:`RegionBoundary` of a place name, and ``region`` itself
-            otherwise.
+            :class:`RegionBoundary` of a place name, and ``region`` itself otherwise.
 
     Raises:
         ValueError:
@@ -664,22 +657,20 @@ def _stream_features(  # noqa: C901
     Yield the features of a GeoJSON FeatureCollection one at a time.
 
     The file is read as UTF-8, with or without a byte order mark,
-    :data:`READ_CHUNK_CHARS` characters at a time, and each value is parsed
-    with :meth:`json.JSONDecoder.raw_decode`, so the top-level members may
-    come in any order. A value that ends at the end of what has been read, or
-    before a character that could continue a number, is parsed again with
-    more of the file, so a number cut at a chunk's edge is not taken short.
-    The members ``type``, ``crs`` and ``n_worlds`` are checked when they are
-    read, so a file that writes them before ``features``, as
-    ``write_to_geojson`` does, is refused before its first feature is
-    yielded.
+    :data:`READ_CHUNK_CHARS` characters at a time, and each value is parsed with
+    :meth:`json.JSONDecoder.raw_decode`, so the top-level members may come in any
+    order. A value that ends at the end of what has been read, or before a character
+    that could continue a number, is parsed again with more of the file, so a number
+    cut at a chunk's edge is not taken short. The members ``type``, ``crs`` and
+    ``n_worlds`` are checked when they are read, so a file that writes them before
+    ``features``, as ``write_to_geojson`` does, is refused before its first feature
+    is yielded.
 
     Args:
         path (Path):
             The file.
         stated (dict[str, int]):
-            Receives the file's ``n_worlds`` under that key, if the file gives
-            one.
+            Receives the file's ``n_worlds`` under that key, if the file gives one.
 
     Yields:
         dict[str, Any]:
@@ -687,12 +678,12 @@ def _stream_features(  # noqa: C901
 
     Raises:
         ValueError:
-            If the file is not a JSON object, holds invalid JSON (a trailing
-            comma or a member name that is not a string among it), has no
-            ``features`` member or two, has a ``type`` other than
-            ``FeatureCollection``, has a ``crs`` other than one of
-            :data:`GEOGRAPHIC_CRS_NAMES` and :data:`NAD83_CRS_NAMES`, or has
-            an ``n_worlds`` that is not an integer of at least 1.
+            If the file is not a JSON object, holds invalid JSON (a trailing comma or
+            a member name that is not a string among it), has no ``features`` member
+            or two, has a ``type`` other than ``FeatureCollection``, has a ``crs``
+            other than one of :data:`GEOGRAPHIC_CRS_NAMES` and
+            :data:`NAD83_CRS_NAMES`, or has an ``n_worlds`` that is not an integer of
+            at least 1.
     """
     decoder = json.JSONDecoder()
     buffer = ''
@@ -746,9 +737,9 @@ def _stream_features(  # noqa: C901
                     if read_more():
                         continue
                     raise refuse(str(error)) from error
-                # A number that ends where the text read so far ends, or
-                # before a character that could continue it, may be cut short
-                # at a chunk's edge, so it is parsed again with more text.
+                # A number that ends where the text read so far ends, or before a
+                # character that could continue it, may be cut short at a chunk's
+                # edge, so it is parsed again with more text.
                 cut = end == len(buffer) or buffer[end] in _NUMBER_TAIL
                 if cut and not at_end and read_more():
                     continue
@@ -790,8 +781,8 @@ def _stream_features(  # noqa: C901
                             'FeatureCollection of the inventory.'
                         )
                         raise ValueError(msg)
-                    # A null crs, which the 2008 GeoJSON specification
-                    # allowed, is taken as no crs.
+                    # A null crs, which the 2008 GeoJSON specification allowed, is
+                    # taken as no crs.
                     if key == 'crs' and member is not None:
                         properties = (
                             member.get('properties')

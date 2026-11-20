@@ -64,12 +64,11 @@ class StageFreeze:
     """
     Hold the frozen output of each stage and the order the stages were frozen in.
 
-    A stage is frozen once, under a name. The freeze holds the output by
-    reference and :meth:`read` returns it, so a stage must not change a
-    frozen output. A stage that needs to change one copies it first.
-    :meth:`manifest` recomputes each held output's digest and raises if
-    one no longer matches the digest recorded at freeze. Frozen outputs
-    are held in memory only.
+    A stage is frozen once, under a name. The freeze holds the output by reference
+    and :meth:`read` returns it, so a stage must not change a frozen output. A stage
+    that needs to change one copies it first. :meth:`manifest` recomputes each held
+    output's digest and raises if one no longer matches the digest recorded at
+    freeze. Frozen outputs are held in memory only.
 
     Example:
         >>> from brails.types.asset_inventory import Asset, AssetInventory
@@ -113,8 +112,8 @@ class StageFreeze:
         Raises:
             TypeError:
                 If ``stage`` is not a string, ``output`` is not an
-                :class:`AssetInventory`, or the output holds a value the
-                digest cannot represent.
+                :class:`AssetInventory`, or the output holds a value the digest
+                cannot represent.
             ValueError:
                 If ``stage`` is empty or already frozen.
         """
@@ -183,20 +182,18 @@ class StageFreeze:
         """
         Return the recorded order and each digest.
 
-        Each call recomputes the digest of every held output and builds a
-        new dict.
+        Each call recomputes the digest of every held output and builds a new dict.
 
         Returns:
             dict[str, Any]:
-                ``{'digest_algorithm': ..., 'stages': [...]}``, where each
-                entry of ``stages`` is a dict with keys ``stage`` and
-                ``digest``, and the list is in the order the stages were
-                frozen.
+                ``{'digest_algorithm': ..., 'stages': [...]}``, where each entry of
+                ``stages`` is a dict with keys ``stage`` and ``digest``, and the list
+                is in the order the stages were frozen.
 
         Raises:
             RuntimeError:
-                If a held output changed after it was frozen. The message
-                names the first such stage.
+                If a held output changed after it was frozen. The message names the
+                first such stage.
         """
         for name in self._order:
             self._check_unchanged(name)
@@ -218,8 +215,8 @@ class StageFreeze:
 
         Raises:
             RuntimeError:
-                If a held output changed after it was frozen, in which case
-                nothing is written.
+                If a held output changed after it was frozen, in which case nothing
+                is written.
         """
         text = json.dumps(self.manifest(), indent=2)
         Path(path).write_text(text + '\n', encoding='utf-8')
@@ -239,10 +236,9 @@ class StageFreeze:
 
         Raises:
             ValueError:
-                If the file's ``digest_algorithm`` is not
-                :data:`DIGEST_ALGORITHM`, it has no ``stages`` list, an entry
-                lacks a string ``stage`` or a string ``digest``, or a stage
-                appears twice.
+                If the file's ``digest_algorithm`` is not :data:`DIGEST_ALGORITHM`,
+                it has no ``stages`` list, an entry lacks a string ``stage`` or a
+                string ``digest``, or a stage appears twice.
         """
         manifest = json.loads(Path(path).read_text(encoding='utf-8'))
         _check_manifest(manifest, str(path))
@@ -264,8 +260,8 @@ class StageFreeze:
 
         Raises:
             RuntimeError:
-                If the output can no longer be digested, or its digest
-                differs from the one recorded at freeze.
+                If the output can no longer be digested, or its digest differs from
+                the one recorded at freeze.
         """
         try:
             current = _inventory_digest(self._outputs[stage])
@@ -300,8 +296,8 @@ def _check_manifest(manifest: Any, source: str) -> None:  # noqa: ANN401
         ValueError:
             If any of those checks fails.
     """
-    # A malformed file is a bad value, as json's own decode error is, so it
-    # raises ValueError where ruff's TRY004 asks for TypeError.
+    # A malformed file is a bad value, as json's own decode error is, so it raises
+    # ValueError where ruff's TRY004 asks for TypeError.
     if not isinstance(manifest, dict) or not isinstance(
         manifest.get('stages'), list
     ):
@@ -334,9 +330,9 @@ def _inventory_digest(inventory: AssetInventory) -> str:
     """
     Return the digest of an inventory's canonical JSON.
 
-    Assets and keys are sorted, so the digest does not depend on insertion
-    order. The text is hashed one asset or housing unit at a time, so
-    computing the digest holds no copy of the whole inventory.
+    Assets and keys are sorted, so the digest does not depend on insertion order. The
+    text is hashed one asset or housing unit at a time, so computing the digest holds
+    no copy of the whole inventory.
 
     Args:
         inventory (AssetInventory):
@@ -363,8 +359,8 @@ def _inventory_digest(inventory: AssetInventory) -> str:
     ):
         text = encode(_entry(asset_id, inventory.inventory[asset_id], 'asset'))
         hasher.update(((',' if index else '') + text).encode('utf-8'))
-    # Canonicalize n_pw and the vector features before the housing units, so
-    # that a refused value among them raises before one in a housing unit.
+    # Canonicalize n_pw and the vector features before the housing units, so that a
+    # refused value among them raises before one in a housing unit.
     n_pw = encode(_canonical(inventory.n_pw, 'n_pw'))
     vector_features = encode(
         sorted(_canonical(list(inventory.vector_features), 'vector_features'))
@@ -414,8 +410,8 @@ def _canonical(value: Any, where: str) -> Any:  # noqa: ANN401
     """
     Convert a value to the plain JSON types the digest serializes.
 
-    Floats keep their value, so a NaN stays NaN and a float32 keeps its
-    float32 rounding. An integer and a float of equal value stay distinct.
+    Floats keep their value, so a NaN stays NaN and a float32 keeps its float32
+    rounding. An integer and a float of equal value stay distinct.
 
     Args:
         value (Any):
@@ -425,13 +421,13 @@ def _canonical(value: Any, where: str) -> Any:  # noqa: ANN401
 
     Returns:
         Any:
-            The value as ``None``, ``bool``, ``int``, ``float``, ``str``,
-            ``list`` or ``dict`` with string keys.
+            The value as ``None``, ``bool``, ``int``, ``float``, ``str``, ``list`` or
+            ``dict`` with string keys.
 
     Raises:
         TypeError:
-            If the value, or anything inside it, is of another type, or a
-            mapping has a key that is not a string.
+            If the value, or anything inside it, is of another type, or a mapping has
+            a key that is not a string.
     """
     if isinstance(value, np.ndarray):
         value = value.tolist()

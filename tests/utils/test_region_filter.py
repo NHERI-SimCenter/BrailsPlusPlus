@@ -133,8 +133,8 @@ def three_worlds() -> AssetInventory:
 
     Returns:
         AssetInventory:
-            Assets ``in_a`` and ``in_b`` inside :data:`REGION`, ``out``
-            outside it, with list-valued, scalar and vector features.
+            Assets ``in_a`` and ``in_b`` inside :data:`REGION`, ``out`` outside it,
+            with list-valued, scalar and vector features.
     """
     return inventory(
         {
@@ -201,8 +201,8 @@ class TestInside:
                 'mostly_in': (square(-121.9905, 38.0, half=0.0015), {}),
                 # Two thirds outside, centroid outside, first vertex inside.
                 'mostly_out': (square(-121.9895, 38.0, half=0.0015), {}),
-                # An L whose arm reaches east past the boundary: the centroid
-                # of its ring is inside, the center of its bounds outside.
+                # An L whose arm reaches east past the boundary: the centroid of its
+                # ring is inside, the center of its bounds outside.
                 'l_shape': (
                     [
                         [-121.992, 37.999],
@@ -910,9 +910,9 @@ class TestRegion:
 
     def test_invalid_polygon_repaired(self) -> None:
         """An invalid region is used as shapely.make_valid repairs it."""
-        # A hole that reaches past its shell. make_valid turns the part of the
-        # hole outside the shell into a part of the region, which the invalid
-        # polygon does not contain.
+        # A hole that reaches past its shell. make_valid turns the part of the hole
+        # outside the shell into a part of the region, which the invalid polygon does
+        # not contain.
         hole = [
             (-121.995, 37.995),
             (-121.98, 37.995),
@@ -997,8 +997,8 @@ def two_counties(tmp_path: Path) -> tuple[Path, Path]:
 
     Returns:
         tuple[Path, Path]:
-            The west file, with ``w_in`` inside :data:`REGION` and ``w_out``
-            outside, and the east file, with ``e_in`` and ``e_out``.
+            The west file, with ``w_in`` inside :data:`REGION` and ``w_out`` outside,
+            and the east file, with ``e_in`` and ``e_out``.
     """
     west = inventory(
         {

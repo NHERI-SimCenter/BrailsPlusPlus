@@ -60,8 +60,8 @@ def meter_crs(value: object) -> CRS:
 
     Raises:
         ValueError:
-            If the value is not a CRS, is not projected, has an axis in a
-            unit other than the meter, or is Web Mercator (EPSG:3857).
+            If the value is not a CRS, is not projected, has an axis in a unit other
+            than the meter, or is Web Mercator (EPSG:3857).
     """
     try:
         crs = CRS.from_user_input(value)

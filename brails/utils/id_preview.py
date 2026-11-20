@@ -35,9 +35,8 @@
 """
 Format asset ids for an error message.
 
-An error about many assets names the first :data:`PREVIEW_LIMIT` and counts
-the rest, so an inventory-wide failure does not print an inventory-wide
-message.
+An error about many assets names the first :data:`PREVIEW_LIMIT` and counts the rest,
+so an inventory-wide failure does not print an inventory-wide message.
 
 .. autosummary::
 
@@ -87,8 +86,8 @@ def preview_ids(asset_ids: Iterable) -> str:
 
     Returns:
         str:
-            A comma-separated preview of the first :data:`PREVIEW_LIMIT`
-            with a count of any remainder.
+            A comma-separated preview of the first :data:`PREVIEW_LIMIT` with a count
+            of any remainder.
     """
     ids = list(asset_ids)
     return join_preview(

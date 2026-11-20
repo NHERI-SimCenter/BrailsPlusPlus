@@ -54,34 +54,32 @@ def union_disjoint(*inventories: AssetInventory) -> AssetInventory:
     """
     Join inventories that hold disjoint features of their assets.
 
-    The result holds every asset of any input with every value the inputs
-    hold for it, and raises where two inputs hold a value of the same
-    feature of one asset. Missing values follow
-    :func:`~brails.types.asset_inventory.is_missing_value` and are not
-    values. Unlike :meth:`AssetInventory.merge`, the join takes no spine:
-    its asset set is the union of the inputs' asset sets. It resolves no
-    feature by precedence, since the features must be disjoint per asset,
-    writes no source string, and drops a feature no input holds a value
-    for, where ``merge`` keeps the missing marker of the first source.
+    The result holds every asset of any input with every value the inputs hold for
+    it, and raises where two inputs hold a value of the same feature of one asset.
+    Missing values follow :func:`~brails.types.asset_inventory.is_missing_value` and
+    are not values. Unlike :meth:`AssetInventory.merge`, the join takes no spine:
+    its asset set is the union of the inputs' asset sets. It resolves no feature by
+    precedence, since the features must be disjoint per asset, writes no source
+    string, and drops a feature no input holds a value for, where ``merge`` keeps the
+    missing marker of the first source.
 
     Args:
         *inventories (AssetInventory):
-            The inventories, each with one possible world or a common
-            number of them. The inputs are not modified.
+            The inventories, each with one possible world or a common number of them.
+            The inputs are not modified.
 
     Returns:
         AssetInventory:
-            One asset per asset of any input, with deep copies of every
-            value the inputs hold for it and of the coordinates of the
-            first input holding it, in ascending order of the id as a
-            string, with the inputs' vector features and the common number
-            of worlds.
+            One asset per asset of any input, with deep copies of every value the
+            inputs hold for it and of the coordinates of the first input holding it,
+            in ascending order of the id as a string, with the inputs' vector
+            features and the common number of worlds.
 
     Raises:
         ValueError:
-            If two inputs hold a value of the same feature of one asset,
-            naming up to ten such assets, or if the inputs hold different
-            numbers of worlds above one.
+            If two inputs hold a value of the same feature of one asset, naming up to
+            ten such assets, or if the inputs hold different numbers of worlds above
+            one.
     """
     worlds = {inventory.n_pw for inventory in inventories} - {1}
     if len(worlds) > 1:

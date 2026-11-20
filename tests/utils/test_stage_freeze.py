@@ -598,13 +598,13 @@ def nearest_donor(
 
     Args:
         target_lon (float):
-            The target's longitude. Distance is in longitude alone, and a tie
-            goes to the lower asset id.
+            The target's longitude. Distance is in longitude alone, and a tie goes to
+            the lower asset id.
         pool (AssetInventory):
             One world's donors, observed and imputed.
         world (int):
-            The world the pool holds, added to the year so that each world's
-            value differs.
+            The world the pool holds, added to the year so that each world's value
+            differs.
 
     Returns:
         tuple[str, int]:
@@ -634,13 +634,12 @@ class TestImputerBatchOption:
 
         Args:
             reverse (bool, optional):
-                Insert the observed donors in reverse order. Defaults to
-                False.
+                Insert the observed donors in reverse order. Defaults to False.
 
         Returns:
             tuple[StageFreeze, list[set[str]], dict[str, list[str]]]:
-                The freeze, each batch's donor ids, and each target's donor
-                in every world.
+                The freeze, each batch's donor ids, and each target's donor in every
+                world.
         """
         # two observed donors, one year in every world
         records = [

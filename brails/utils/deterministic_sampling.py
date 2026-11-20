@@ -34,9 +34,9 @@
 """
 Derive reproducible random draws from asset identity, not from order.
 
-A draw depends on the asset, world, purpose and iteration it is keyed
-by, never on the asset's position in a sequence, so it reproduces bit
-for bit under reordering, subsetting and reruns.
+A draw depends on the asset, world, purpose and iteration it is keyed by, never on
+the asset's position in a sequence, so it reproduces bit for bit under reordering,
+subsetting and reruns.
 
 .. autosummary::
 
@@ -58,12 +58,11 @@ from scipy.special import ndtr, ndtri
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-# SplitMix64, used as a finalizer: the scrambling is what is wanted here,
-# not the sequence. The algorithm and its golden-ratio additive constant are
-# Steele, Lea, and Flood (2014); the multipliers and shift widths are the
-# variant of the MurmurHash3 finalizer that the reference splitmix64
-# implementation carries. Taken here for their avalanche behavior: every
-# input bit reaches every output bit.
+# SplitMix64, used as a finalizer: the scrambling is what is wanted here, not the
+# sequence. The algorithm and its golden-ratio additive constant are Steele, Lea, and
+# Flood (2014); the multipliers and shift widths are the variant of the MurmurHash3
+# finalizer that the reference splitmix64 implementation carries. Taken here for
+# their avalanche behavior: every input bit reaches every output bit.
 _GOLDEN_GAMMA = np.uint64(0x9E3779B97F4A7C15)
 _MULTIPLIER_A = np.uint64(0xBF58476D1CE4E5B9)
 _MULTIPLIER_B = np.uint64(0x94D049BB133111EB)
@@ -71,17 +70,17 @@ _SHIFT_A = np.uint64(30)
 _SHIFT_B = np.uint64(27)
 _SHIFT_C = np.uint64(31)
 
-# A uniform is the top 53 bits of the hash scaled into [0, 1), 53 being
-# the number of bits a float64 mantissa holds exactly.
+# A uniform is the top 53 bits of the hash scaled into [0, 1), 53 being the number of
+# bits a float64 mantissa holds exactly.
 _MANTISSA_SHIFT = np.uint64(11)
 _MANTISSA_SCALE = 2.0**-53
 
 _MASK_64 = 0xFFFFFFFFFFFFFFFF
 _DIGEST_BYTES = 8
 
-# ndtri maps 0 and 1 to infinities, and a uniform of exactly 0 is drawn
-# once in 2**53. Nudging the probability inside the open interval keeps
-# the inverse finite; the caller's clip puts it back on the bounds.
+# ndtri maps 0 and 1 to infinities, and a uniform of exactly 0 is drawn once in
+# 2**53. Nudging the probability inside the open interval keeps the inverse finite;
+# the caller's clip puts it back on the bounds.
 _PROBABILITY_FLOOR = float(np.nextafter(0.0, 1.0))
 _PROBABILITY_CEILING = float(np.nextafter(1.0, 0.0))
 
@@ -93,10 +92,9 @@ def require_run_seed(world: int, seed: int | None) -> None:
     """
     Refuse a world other than the default without the seed of its run.
 
-    The samplers of one run draw each world with its own instance, and the
-    worlds are one run only when every instance has the same seed, so a
-    sampler of a world other than :data:`DEFAULT_WORLD` takes the seed
-    explicitly.
+    The samplers of one run draw each world with its own instance, and the worlds are
+    one run only when every instance has the same seed, so a sampler of a world other
+    than :data:`DEFAULT_WORLD` takes the seed explicitly.
 
     Args:
         world (int):
@@ -106,8 +104,7 @@ def require_run_seed(world: int, seed: int | None) -> None:
 
     Raises:
         ValueError:
-            If ``world`` is not :data:`DEFAULT_WORLD` and ``seed`` is
-            ``None``.
+            If ``world`` is not :data:`DEFAULT_WORLD` and ``seed`` is ``None``.
     """
     if int(world) != DEFAULT_WORLD and seed is None:
         raise ValueError(
@@ -155,10 +152,10 @@ def asset_key_digest(asset_ids: Iterable[str | int]) -> np.ndarray:
     """
     Turn asset ids into stable 64-bit keys.
 
-    Ids are canonicalized to strings before hashing, so an inventory keeps
-    its draws when integer ids return as strings from a GeoJSON round
-    trip. Digest once and reuse the result: hashing dominates the cost
-    of a draw, and callers commonly redraw the same assets many times.
+    Ids are canonicalized to strings before hashing, so an inventory keeps its draws
+    when integer ids return as strings from a GeoJSON round trip. Digest once and
+    reuse the result: hashing dominates the cost of a draw, and callers commonly
+    redraw the same assets many times.
 
     Args:
         asset_ids (Iterable[str | int]):
@@ -184,9 +181,8 @@ def keyed_uniforms(
     """
     Draw one uniform per asset from its key.
 
-    The seed, key, world, purpose, and iteration are folded through the
-    mixer one at a time, so a change in any one of them gives the asset
-    an unrelated uniform.
+    The seed, key, world, purpose, and iteration are folded through the mixer one at
+    a time, so a change in any one of them gives the asset an unrelated uniform.
 
     Args:
         asset_keys (np.ndarray):
@@ -194,9 +190,9 @@ def keyed_uniforms(
         seed (int):
             The user's seed for the compilation.
         purpose (str):
-            What the uniform is for. Purpose labels are part of the
-            reproducibility contract: renaming one changes every draw it
-            governs, so treat them as constants, not as free text.
+            What the uniform is for. Purpose labels are part of the reproducibility
+            contract: renaming one changes every draw it governs, so treat them as
+            constants, not as free text.
         world (int):
             Possible-world index.
         iteration (int):
@@ -226,8 +222,8 @@ def truncated_normal(
     """
     Invert uniforms through a truncated normal.
 
-    The uniform is mapped into the CDF interval the bounds carve out and
-    inverted there.
+    The uniform is mapped into the CDF interval the bounds carve out and inverted
+    there.
 
     Args:
         uniforms (np.ndarray):
@@ -247,9 +243,8 @@ def truncated_normal(
 
     Raises:
         ValueError:
-            If sigma is not positive, if a bound pair is inverted, or if
-            an interval sits so far into a tail that it carries no
-            representable probability.
+            If sigma is not positive, if a bound pair is inverted, or if an interval
+            sits so far into a tail that it carries no representable probability.
     """
     if sigma <= 0:
         raise ValueError(f'sigma must be positive, got {sigma!r}.')
@@ -279,11 +274,10 @@ def grouped_categorical(
     """
     Invert uniforms through per-group categorical distributions.
 
-    Assets drawing from the same distribution share a group. Each group
-    carries its own weight vector, which need not sum to anything in
-    particular: the weights are normalized here, so a manual table that
-    prints 101 draws the same as one that prints 100. A category of
-    weight zero is never drawn.
+    Assets drawing from the same distribution share a group. Each group carries its
+    own weight vector, which need not sum to anything in particular: the weights are
+    normalized here, so a manual table that prints 101 draws the same as one that
+    prints 100. A category of weight zero is never drawn.
 
     Args:
         uniforms (np.ndarray):
@@ -299,9 +293,8 @@ def grouped_categorical(
 
     Raises:
         ValueError:
-            If the uniforms and group codes disagree in shape, if a code
-            has no weight vector, or if a vector is empty, negative, or
-            sums to zero.
+            If the uniforms and group codes disagree in shape, if a code has no
+            weight vector, or if a vector is empty, negative, or sums to zero.
     """
     uniform_values = np.asarray(uniforms, dtype=np.float64)
     group_codes = np.asarray(groups, dtype=np.int64)
@@ -323,10 +316,10 @@ def grouped_categorical(
     ]
     if not cumulative_rows:
         return np.zeros(group_codes.shape, dtype=np.int64)
-    # The distributions are laid out as one rectangular array, padded with
-    # ones, so every asset is compared against its own row and nothing it
-    # draws depends on the codes around it. Padding of one is never at or
-    # below a uniform, so a draw stays inside its own categories.
+    # The distributions are laid out as one rectangular array, padded with ones, so
+    # every asset is compared against its own row and nothing it draws depends on the
+    # codes around it. Padding of one is never at or below a uniform, so a draw stays
+    # inside its own categories.
     width = max(row.size for row in cumulative_rows)
     grid = np.ones((len(cumulative_rows), width), dtype=np.float64)
     for code, cumulative in enumerate(cumulative_rows):
@@ -350,13 +343,13 @@ def _cumulative_weights(row: Sequence[float], code: int) -> np.ndarray:
 
     Returns:
         np.ndarray:
-            Cumulative probabilities that reach exactly one at the last
-            category of positive weight and stay there.
+            Cumulative probabilities that reach exactly one at the last category of
+            positive weight and stay there.
 
     Raises:
         ValueError:
-            If the vector is empty, holds a negative or non-finite
-            weight, or sums to zero.
+            If the vector is empty, holds a negative or non-finite weight, or sums to
+            zero.
     """
     values = np.asarray(row, dtype=np.float64)
     if values.size == 0:
@@ -374,9 +367,9 @@ def _cumulative_weights(row: Sequence[float], code: int) -> np.ndarray:
             f'Weight vector {code} sums to {total}, so no category can be drawn.'
         )
     cumulative = np.cumsum(values) / total
-    # Every entry from the last category of positive weight onward is
-    # pinned to one. A cumulative sum of normalized weights can land a
-    # fraction below it, and a uniform above that would then draw a
-    # trailing category of weight zero, or the padding past the row.
+    # Every entry from the last category of positive weight onward is pinned to one.
+    # A cumulative sum of normalized weights can land a fraction below it, and a
+    # uniform above that would then draw a trailing category of weight zero, or the
+    # padding past the row.
     cumulative[np.flatnonzero(values)[-1] :] = 1.0
     return cumulative
