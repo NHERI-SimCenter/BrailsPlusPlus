@@ -876,54 +876,15 @@ class CompilationResult(NamedTuple):
         """
         Write every world, or one, as GeoJSON, with the report and the manifest.
 
-        The GeoJSON at ``path`` holds every world the run computed, a
-        property whose worlds differ as a list in which position ``i`` is
-        world ``i``. Given ``world``, it holds that one world only, and a
-        building's property whose value is ``None`` in that world is left
-        out, so that the file does not depend on how many worlds the run
-        computed. A building excluded in every written world, by the
-        report's exclusion rows of those worlds, is not written, and one
-        excluded in some is written only with ``keep_partly_excluded``. With
-        ``keep_partly_excluded``, and only then, each building also holds
-        :data:`~brails.constants.EXCLUDED_KEY`; for one world, the option
-        only adds that property, false for every building written.
-        Each building holds every property of :data:`DEFAULT_PROPERTIES`
-        that applies to it, as the section "The run" of the README beside
-        this module states, and those of ``extra_properties``. In a world
-        it is excluded from, a kept building may lack them. With
-        ``integer_ids`` the file takes the form the R2D tools read: each
-        building also holds
-        ``type``, within which :meth:`AssetInventory.write_to_geojson`
-        numbers the features, and its asset id as ``unique_id``.
-
-        Beside the GeoJSON, under the stem of ``path``, :meth:`write` saves
-        the report's summary as ``<stem>_report_summary.json`` and its
-        exclusion rows as ``<stem>_report_exclusions.parquet``, through
-        :meth:`CompilationReport.save`, and the manifest through
-        :meth:`StageFreeze.save_manifest` as ``<stem>_manifest.json``. With
-        ``detailed`` it also saves the report's action rows as
-        ``<stem>_report.parquet`` and every log of :attr:`logs` through
-        :meth:`CompilationReport.save_logs` as ``<stem>_<name>.parquet``.
-        Before anything is written, every call removes the file at
-        ``<stem>_<name>.parquet`` for each name of :data:`LOG_NAMES` that
-        :attr:`logs` does not hold, and a call without ``detailed`` that is not
-        refused also removes ``<stem>_report.parquet`` and the files of every
-        other name of :data:`LOG_NAMES`, whoever wrote them. The stem then
-        holds no action rows and no log beside the files this call writes. A
-        refused file leaves a GeoJSON that an earlier call wrote at ``path`` in
-        place. Where a write fails after the removal, the stem keeps what an
-        earlier call wrote there, less the removed files. The report and the
-        logs keep the rows of the written worlds. The summary's notices,
-        timings and schema check cover every world the run computed.
-        :attr:`logs` holds every log whatever ``detailed`` says.
-
-        After a compilation with a boundary, :meth:`write` writes the buildings of
-        :attr:`inventory`, those inside the boundary, and saves the report rows and
-        the summary of those buildings. The refusal for a missing default property
-        concerns them only. With ``keep_outside`` it writes :attr:`area_inventory`
-        and the rows of every building, as after a compilation without a boundary.
-        The logs saved with ``detailed`` hold every building either way, since
-        several of them are keyed by block group.
+        The GeoJSON at ``path`` holds the compiled buildings, in every world the
+        run computed or in ``world`` alone, each with the properties of
+        :data:`DEFAULT_PROPERTIES` that apply to it and those of
+        ``extra_properties``. Beside it, under the stem of ``path``, the call
+        saves the report's summary and exclusion rows and the manifest, and with
+        ``detailed`` the report's action rows and the logs. Before it writes
+        anything, it removes the files of action rows and logs at the stem that
+        it will not write. The section "The written file" of the README beside
+        this module describes each file and when it is written.
 
         Args:
             path (str or os.PathLike):
@@ -933,20 +894,26 @@ class CompilationResult(NamedTuple):
                 than the compiler's ``n_worlds``. ``None`` writes every world.
             integer_ids (bool, optional):
                 Whether to number the features, as
-                :meth:`AssetInventory.write_to_geojson` does with it.
+                :meth:`AssetInventory.write_to_geojson` does with it, which
+                also writes each building's ``type`` and its asset id as
+                ``unique_id``.
             keep_partly_excluded (bool, optional):
-                Whether to write the buildings excluded in some, but not
-                all, of the written worlds.
+                Whether to write the buildings excluded in some, but not all,
+                of the written worlds, with
+                :data:`~brails.constants.EXCLUDED_KEY` for every building
+                written.
             extra_properties (str or Sequence[str], optional):
                 Features of the written inventory to write beside the default
                 properties, or :data:`ALL_PROPERTIES` for every feature it
                 holds. They change no value of the default properties.
             detailed (bool, optional):
                 Whether to save the report's action rows and the logs too.
-                Defaults to ``False``. A refused file saves them either way.
+                Defaults to ``False``. A call that refuses the GeoJSON for a
+                missing default property saves them without ``detailed`` too
+                (see ``RuntimeError`` below).
             keep_outside (bool, optional):
-                Whether to write the buildings around the boundary too. Defaults to
-                ``False``. Without a boundary it changes nothing.
+                Whether to write the buildings around the boundary too.
+                Defaults to ``False``. Without a boundary it changes nothing.
 
         Raises:
             TypeError:
@@ -961,12 +928,11 @@ class CompilationResult(NamedTuple):
                 written.
             RuntimeError:
                 If the log :data:`MISSING_DEFAULTS_LOG` names a default
-                property that a compiled building lacks in a written world,
-                once the report with its action rows, every log and the
-                manifest are written, whatever ``detailed`` says, and before
-                the GeoJSON is; or if a frozen stage changed after it was
-                frozen, in which case every file this call writes but the
-                manifest has been written.
+                property that a compiled building lacks in a written world.
+                The call then writes the summary, the exclusion rows, the
+                action rows, every log and the manifest, and no GeoJSON.
+                Also if a frozen stage changed after it was frozen, in which
+                case every file the call writes but the manifest is written.
             OSError:
                 If a file the call removes cannot be removed, before anything
                 is written. The message names the file, and the files

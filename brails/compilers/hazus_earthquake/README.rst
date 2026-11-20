@@ -887,32 +887,82 @@ it, the features listed under "The inventory and its inputs" above.
 and its provenance, such as ``footprint_provider`` and ``height``; the values
 the NSI join adds, such as ``NSIOccupancyClass``, ``NSIRecords``,
 ``NSIReach`` and ``NSIGrossArea``; ``StoriesFromHeight``; and
-``LocalGrossArea``. An extra property changes no value of a default one.
+``LocalGrossArea``. An extra property changes no value of a default one. A
+building's ``ReplacementCost`` divided by its ``GrossArea`` is the rate per
+square foot that ``s13_replacement_cost`` gave it, except for a building that
+keeps a local ``ReplacementCost``, whose rate the step computes from
+``NSIGrossArea``.
 
-Beside the GeoJSON, under the stem of its path, ``write`` saves three files by
-default: the report's summary as ``<stem>_report_summary.json``, its exclusion
-rows as ``<stem>_report_exclusions.parquet``, which list each excluded building
-with its reason in each written world, whether or not the GeoJSON holds the
-building, and the manifest as ``<stem>_manifest.json``. With ``detailed=True``
-it also saves the report's action rows as ``<stem>_report.parquet`` and each
-log of the result's ``logs`` as ``<stem>_<name>.parquet``, the log
-``gross_area`` among them. A file that ``write`` refuses for a missing default
-property saves the action rows and every log whatever ``detailed`` says, since
-they explain the refusal. Before it writes anything, every write removes the
-file at ``<stem>_<name>.parquet`` for each name of ``LOG_NAMES``, every log a
-run can hold, that its result does not hold. A write without ``detailed`` that
-is not refused also removes ``<stem>_report.parquet`` and the files of every
-other name of ``LOG_NAMES``, whoever wrote them. The stem then holds no action
-rows and no log beside the files of that write. A file that cannot be removed
-stops the write, with ``OSError``, before it writes anything. A refused write
-leaves a GeoJSON that an earlier write left at its path, and a write that fails
-after the removal leaves what an earlier write left, less the removed files.
-The result holds every log in memory either way. The saved report keeps the
-rows of the written worlds, and so does each log with a ``world`` column. A log
-without a ``world`` column is written whole. A building's ``ReplacementCost``
-divided by its ``GrossArea`` is the rate per square foot that
-``s13_replacement_cost`` gave it, except for a building that keeps a local
-``ReplacementCost``, whose rate the step computes from ``NSIGrossArea``.
+The files of a write
+~~~~~~~~~~~~~~~~~~~~
+
+``write`` names each file it saves beside the GeoJSON after the stem of the GeoJSON's
+path, its file name without the extension: given ``out/berkeley.geojson``, it saves
+the summary as ``out/berkeley_report_summary.json``. A call whose ``world`` or
+``extra_properties`` is refused writes nothing. Otherwise a call writes these files:
+
+The path given (``<stem>.geojson`` in the example)
+    The buildings, as stated above. Every call writes it, unless it refuses the file
+    (see "A refused file" below). It is written under a temporary name that then
+    replaces the file.
+``<stem>_report_summary.json``
+    The report's summary, whose keys the section "The summary" of
+    ``brails/compilers/README.rst`` lists. Its counts of actions and exclusions are
+    those of the written worlds, and its notices, timings and schema check those of
+    every world the run computed. Every call writes it.
+``<stem>_report_exclusions.parquet``
+    The report's exclusion rows of the written worlds: each excluded building with
+    its reason in each written world, whether or not the GeoJSON holds the building.
+    Every call writes it.
+``<stem>_manifest.json``
+    The manifest: the digest of each frozen stage, in the order the stages were
+    frozen. Every call writes it last. A call that finds a frozen stage changed after
+    it was frozen raises ``RuntimeError`` in its place, once the other files are
+    written.
+``<stem>_report.parquet``
+    The report's action rows of the written worlds, as the section "Rows" of
+    ``brails/compilers/README.rst`` states. A call writes it with ``detailed=True``,
+    and a refused call without it too.
+``<stem>_<name>.parquet``
+    The log ``<name>`` of the result's ``logs``, one file for each log the result
+    holds, such as ``<stem>_gross_area.parquet``. A log with a ``world`` column keeps
+    the rows of the written worlds, and a log without one is written whole. A call
+    writes the logs with ``detailed=True``, and a refused call without it too. The
+    result holds every log in memory either way.
+
+After a compilation with a boundary, the GeoJSON, the summary and the report rows
+hold the buildings inside it unless ``keep_outside`` is given, and the logs hold
+every building (see "A boundary" above).
+
+What a call removes
+~~~~~~~~~~~~~~~~~~~
+
+Before it writes anything, a call removes the files of action rows and of logs at the
+stem that it will not write, whoever wrote them. Every call removes
+``<stem>_<name>.parquet`` for each name of ``LOG_NAMES``, every log a run can hold,
+that its result does not hold. A call without ``detailed`` that is not refused also
+removes ``<stem>_report.parquet`` and the files of every other name of ``LOG_NAMES``.
+The stem then holds no action rows and no log beside the files of that call. A call
+removes no other file, and it replaces the GeoJSON, the summary, the exclusion rows
+and the manifest as it writes them.
+
+A file that cannot be removed stops the call with ``OSError``, before it writes
+anything, and the files removed before it stay removed. A call that fails after the
+removal leaves the files it has written so far beside those an earlier call wrote,
+less the removed files.
+
+A refused file
+~~~~~~~~~~~~~~
+
+``write`` refuses the GeoJSON when the log ``MISSING_DEFAULTS_LOG`` names a default
+property that a compiled building lacks in a written world (see ``s15_output``).
+After a compilation with a boundary, only the buildings inside it count, unless
+``keep_outside`` is given. A refused call writes the summary, the exclusion rows, the
+action rows, every log the result holds and the manifest, whatever ``detailed`` says,
+since the action rows and the logs show how a building came to lack the property. It
+then raises ``RuntimeError``, whose message counts the missing values by property and
+names up to ten of them, and it writes no GeoJSON. A GeoJSON that an earlier call
+wrote at the path stays there.
 
 Scope
 -----
