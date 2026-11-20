@@ -3063,15 +3063,16 @@ class AssetInventory:
                 again; ``read_from_geojson`` turns digit-string ids into
                 integers. Defaults to ``False``.
             asset_type (str, optional):
-                With ``integer_ids``, the ``type`` written for an asset whose
+                The ``type`` written, in either form, for an asset whose
                 ``type`` is missing, ``None``, NaN or an empty string, the
                 rule ``read_from_geojson`` follows for ``asset_type`` with
-                ``key_by_unique_id``. An asset with a ``type`` keeps it, and
-                the inventory is not changed. Defaults to ``None``, under
-                which such an asset is refused. It is refused without
-                ``integer_ids``, whose features are written as the inventory
-                holds them, and when it is blank or names a missing value
-                (``'nan'``, ``'none'`` or ``'null'``, in any case).
+                ``key_by_unique_id``. An asset with a ``type`` keeps it,
+                ``asset_type`` changes no asset id, and the inventory is not
+                changed. Defaults to ``None``, which writes each ``type`` as
+                the inventory holds it, so that with ``integer_ids`` an asset
+                without one is refused. It is refused when it is blank or
+                names a missing value (``'nan'``, ``'none'`` or ``'null'``, in
+                any case).
 
         Returns:
             dict:
@@ -3085,8 +3086,8 @@ class AssetInventory:
                 carries a ``unique_id`` or ``AIM_id`` feature, has no
                 ``type`` or a ``type`` that is ``None``, NaN or an empty
                 string while ``asset_type`` is ``None``, or if two asset ids
-                have the same string form. Also if ``asset_type`` is given
-                without ``integer_ids``, or is not a string that names a type.
+                have the same string form. Also if ``asset_type`` is not a
+                string that names a type.
 
         Examples:
             Define an AssetInventory consisting of a single asset.
@@ -3122,32 +3123,24 @@ class AssetInventory:
             >>> geojson_written = inventory.write_to_geojson('output.geojson')
             Wrote 1 asset to {../output.geojson}
         """
-        if asset_type is not None:
-            if not integer_ids:
-                raise ValueError(
-                    'asset_type applies only with integer_ids=True. Without '
-                    'it, set the type of the assets in the inventory.'
-                )
-            if not isinstance(asset_type, str) or asset_type.strip().lower() in (
-                '',
-                'nan',
-                'none',
-                'null',
-            ):
-                raise ValueError(
-                    'asset_type must be a string that names a type, such as '
-                    f"'building', not {asset_type!r}."
-                )
+        if asset_type is not None and (
+            not isinstance(asset_type, str)
+            or asset_type.strip().lower() in ('', 'nan', 'none', 'null')
+        ):
+            raise ValueError(
+                'asset_type must be a string that names a type, such as '
+                f"'building', not {asset_type!r}."
+            )
 
         geojson = self.get_geojson()
 
+        if asset_type is not None:
+            # The properties are copies made by get_geojson, so the inventory
+            # keeps its own values.
+            for feature in geojson['features']:
+                if _is_blank_type(feature['properties'].get('type')):
+                    feature['properties']['type'] = asset_type
         if integer_ids:
-            if asset_type is not None:
-                # The properties are copies made by get_geojson, so the
-                # inventory keeps its own values.
-                for feature in geojson['features']:
-                    if _is_blank_type(feature['properties'].get('type')):
-                        feature['properties']['type'] = asset_type
             geojson['features'] = _number_features_by_type(geojson['features'])
         else:
             # Ensure each feature has its asset id, as a string, as its

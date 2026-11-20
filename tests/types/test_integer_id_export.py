@@ -420,8 +420,11 @@ class TestIntegerIdRejects:
 class TestAssetType:
     """asset_type gives a type to the assets without one, in the file only."""
 
+    @pytest.mark.parametrize('integer_ids', [False, True])
     @pytest.mark.parametrize('blank', [None, float('nan'), ''])
-    def test_blank_and_missing_types_take_asset_type(self, blank: object) -> None:
+    def test_blank_and_missing_types_take_asset_type(
+        self, blank: object, *, integer_ids: bool
+    ) -> None:
         """A missing or blank type is written as asset_type; others are kept."""
         inventory = make_inventory()
         inventory.add_asset_features('9q8yym1bc0', {'type': blank}, overwrite=True)
@@ -432,9 +435,11 @@ class TestAssetType:
         before = copy.deepcopy(
             {k: a.features for k, a in inventory.inventory.items()}
         )
-        written = inventory.write_to_geojson(integer_ids=True, asset_type='building')
+        written = inventory.write_to_geojson(
+            integer_ids=integer_ids, asset_type='building'
+        )
         types = {
-            f['properties']['unique_id']: f['properties']['type']
+            f['properties'].get('unique_id', f['id']): f['properties']['type']
             for f in written['features']
         }
         assert types['9q8yym1bc0'] == 'building'
@@ -443,30 +448,33 @@ class TestAssetType:
         after = {k: a.features for k, a in inventory.inventory.items()}
         assert repr(after) == repr(before)
 
-    def test_same_file_as_types_set_in_the_inventory(self) -> None:
+    @pytest.mark.parametrize('integer_ids', [False, True])
+    def test_same_file_as_types_set_in_the_inventory(
+        self, *, integer_ids: bool
+    ) -> None:
         """asset_type writes what setting the type in the inventory writes."""
         given = make_inventory()
         given.remove_features(['type'])
         set_first = make_inventory()
         assert (
-            given.write_to_geojson(integer_ids=True, asset_type='building')[
+            given.write_to_geojson(integer_ids=integer_ids, asset_type='building')[
                 'features'
             ]
-            == set_first.write_to_geojson(integer_ids=True)['features']
+            == set_first.write_to_geojson(integer_ids=integer_ids)['features']
         )
 
-    def test_refused_without_integer_ids(self) -> None:
-        """asset_type is never ignored: without integer_ids it is refused."""
-        with pytest.raises(ValueError, match='only with integer_ids=True'):
-            make_inventory().write_to_geojson(asset_type='building')
-
+    @pytest.mark.parametrize('integer_ids', [False, True])
     @pytest.mark.parametrize(
         'value', ['', ' ', 'nan', 'NaN', 'None', 'null', 7, float('nan')]
     )
-    def test_blank_or_other_asset_type_refused(self, value: object) -> None:
+    def test_blank_or_other_asset_type_refused(
+        self, value: object, *, integer_ids: bool
+    ) -> None:
         """asset_type must be a string that names a type."""
         with pytest.raises(ValueError, match='a string that names a type'):
-            make_inventory().write_to_geojson(integer_ids=True, asset_type=value)
+            make_inventory().write_to_geojson(
+                integer_ids=integer_ids, asset_type=value
+            )
 
 
 class TestReadByUniqueId:
