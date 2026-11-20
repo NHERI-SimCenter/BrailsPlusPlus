@@ -505,6 +505,32 @@ _LETTER_OF_TYPE = {
 }
 
 
+def _record_xy(
+    asset_id: object, features: Mapping[str, object]
+) -> list[list[float]]:
+    """
+    Return the coordinates of an NSI record's x and y, refusing a record without them.
+
+    Args:
+        asset_id (object):
+            The record's id, for the message.
+        features (Mapping[str, object]):
+            The record's features, which hold ``x`` and ``y``.
+
+    Returns:
+        list[list[float]]:
+            The one coordinate pair of the record's point.
+
+    Raises:
+        ValueError:
+            If the record has no ``x`` or no ``y``.
+    """
+    if features.get('x') is None or features.get('y') is None:
+        msg = f'NSI record {asset_id} has no x or y to place its point at.'
+        raise ValueError(msg)
+    return [[features['x'], features['y']]]
+
+
 class CompilerInputs(NamedTuple):
     """
     The data of one study area.
@@ -799,6 +825,10 @@ class CompilerInputs(NamedTuple):
         nsi_points = NSI_Parser().get_raw_data(
             GeometryRegion(_widen(area, DEFAULT_JOIN_CAP_M), name), omit_nulls=True
         )
+        # NSI serves each point rounded to six decimals, which can move it across
+        # a footprint's edge, beside the record's x and y, which are not rounded.
+        for asset_id, asset in nsi_points.inventory.items():
+            asset.coordinates = _record_xy(asset_id, asset.features)
         return cls(
             footprints=footprints,
             nsi_points=nsi_points,
