@@ -1,0 +1,21 @@
+{
+ "length_unit": "m",
+ "providers": {
+  "overture": {
+   "sources": {
+    "Microsoft ML Buildings": {
+     "scale": 3.93,
+     "max_stories": 2
+    },
+    "OpenStreetMap": {
+     "scale": 4.01,
+     "max_stories": null
+    },
+    "USGS Lidar": {
+     "scale": 4.25,
+     "max_stories": null
+    }
+   }
+  }
+ }
+}

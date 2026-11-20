@@ -48,7 +48,6 @@ This module defines abstract SpatialJoinMethods class.
 from abc import ABC, abstractmethod
 from typing import Union, List, Dict, TYPE_CHECKING
 from brails.utils.input_validator import InputValidator
-from brails.validators.inventory_validator import InventoryValidator
 
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
@@ -90,8 +89,8 @@ class SpatialJoinMethods(ABC):
             TypeError: If either input is not an instance of AssetInventory.
         """
         # Input validation in the abstract class:
-        if not (InventoryValidator.is_inventory(inventory1) and
-                InventoryValidator.is_inventory(inventory2)):
+        if not (InputValidator.is_inventory(inventory1) and
+                InputValidator.is_inventory(inventory2)):
             raise TypeError('Both inputs must be instances of AssetInventory.')
 
         # Call the concrete class implementation:
@@ -192,7 +191,7 @@ class SpatialJoinMethods(ABC):
             TypeError:
                 If the provided inventory is not an instance of AssetInventory.
         """
-        if not InventoryValidator.is_inventory(inventory):
+        if not InputValidator.is_inventory(inventory):
             raise TypeError('Expected an instance of AssetInventory for inventory input.')
 
         return [key for key, asset in inventory.inventory.items()
@@ -217,7 +216,7 @@ class SpatialJoinMethods(ABC):
             TypeError:
                 If the provided inventory is not an instance of AssetInventory.
         """
-        if not InventoryValidator.is_inventory(inventory):
+        if not InputValidator.is_inventory(inventory):
             raise TypeError('Expected an instance of AssetInventory for inventory input.')
 
         return [key for key, asset in inventory.inventory.items()
@@ -242,7 +241,7 @@ class SpatialJoinMethods(ABC):
             TypeError:
                 If the provided inventory is not an instance of AssetInventory.
         """
-        if not InventoryValidator.is_inventory(inventory):
+        if not InputValidator.is_inventory(inventory):
             raise TypeError('Expected an instance of AssetInventory for inventory input.')
 
         return [key for key, asset in inventory.inventory.items()

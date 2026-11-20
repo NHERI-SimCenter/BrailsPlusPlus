@@ -552,6 +552,29 @@ def test_inventory_to_json_populated_and_file_write(tmp_path: Path) -> None:
     assert on_disk['housing_units'] == data['housing_units']
 
 
+def test_inventory_to_json_writes_nan_as_null(tmp_path: Path) -> None:
+    """A NaN feature value is written as null, so the file is strict JSON."""
+    inv = HousingUnitInventory()
+    inv.add_housing_unit('A', HousingUnit(features={'IncomeSample': float('nan')}))
+    out_path = tmp_path / 'inventory.json'
+    inv.to_json(str(out_path))
+    on_disk = json.loads(out_path.read_text(encoding='utf-8'))
+    assert on_disk['housing_units']['A'] == {'IncomeSample': None}
+
+
+def test_inventory_to_json_infinite_value_leaves_existing_file(
+    tmp_path: Path,
+) -> None:
+    """An infinite value raises before the file is opened, so it stays intact."""
+    out_path = tmp_path / 'inventory.json'
+    out_path.write_text('earlier', encoding='utf-8')
+    inv = HousingUnitInventory()
+    inv.add_housing_unit('A', HousingUnit(features={'IncomeSample': float('inf')}))
+    with pytest.raises(ValueError, match='infinite'):
+        inv.to_json(str(out_path))
+    assert out_path.read_text(encoding='utf-8') == 'earlier'
+
+
 def test_inventory_to_json_sets_brails_version_NA_when_package_missing() -> None:  # noqa: N802
     """Test that missing BRAILS package sets brails_version to 'NA'."""
     inv = HousingUnitInventory()

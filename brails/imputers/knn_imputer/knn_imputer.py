@@ -52,6 +52,7 @@ from sklearn.preprocessing import Normalizer
 
 from brails.types.asset_inventory import AssetInventory
 from brails.imputers.imputation import Imputation
+from brails.constants import PROVIDER_FEATURES
 
 # To be replaced with old brails ++ codes
 import warnings
@@ -80,6 +81,10 @@ class KnnImputer(Imputation):
             faster but does not generate the spatial correlation
         seed (int):
             For reproducibility
+        exclude_provider_ids (bool):
+            If True (the default), the features in
+            :data:`brails.constants.PROVIDER_FEATURES` are not used as predictors.
+            They stay in the output inventory unchanged.
     """
 
     def __init__(
@@ -92,8 +97,10 @@ class KnnImputer(Imputation):
         batch_size=50,
         k_nn=5,
         nbldg_per_cluster=500,
+        exclude_provider_ids=True,
     ):
         self.input_inventory = input_inventory
+        self.exclude_provider_ids = exclude_provider_ids
         self.n_possible_worlds = n_possible_worlds
         self.create_correlation = create_correlation
         self.exclude_features = exclude_features
@@ -198,6 +205,19 @@ class KnnImputer(Imputation):
 
                 bldg_properties_df = bldg_properties_df.drop(
                     columns=exclude_features
+                )
+                column_names = bldg_properties_df.columns
+
+            # This runs after exclude_features, so a provider feature named there is
+            # still present when that list is checked.
+            if self.exclude_provider_ids:
+                provider_columns = [
+                    feature
+                    for feature in PROVIDER_FEATURES
+                    if feature in column_names
+                ]
+                bldg_properties_df = bldg_properties_df.drop(
+                    columns=provider_columns
                 )
                 column_names = bldg_properties_df.columns
 

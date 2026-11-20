@@ -95,9 +95,12 @@ class MS_FootprintScraper(FootprintScraper):
         Args:
             input (dict):
                 A dictionary that may contain the 'length' unit. If 'length'
-                unit is not provided, feet ('ft') is used by default.
+                unit is not provided, feet ('ft') is used by default. It may
+                also set ``'id_scheme'`` and ``'min_area'``, described in
+                :class:`~brails.scrapers.footprint_scraper.FootprintScraper`.
         """
         self.length_unit = input_data.get('length', 'ft')
+        super().__init__('MS_FootprintScraper', input_data, self.length_unit)
 
     def get_footprints(self, region: RegionBoundary) -> AssetInventory:
         """
@@ -141,7 +144,8 @@ class MS_FootprintScraper(FootprintScraper):
         # footprints and attributes:
         return self._create_asset_inventory(footprints,
                                             attributes,
-                                            self.length_unit)
+                                            self.length_unit,
+                                            provider='microsoft')
 
     def _download_ms_tiles(
         self,

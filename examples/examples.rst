@@ -74,6 +74,24 @@ Create Regional-Scale Inventories
      
       Generate comprehensive inventories of power networks.
 
+   .. grid-item-card:: Filter a County Inventory to a Place
+      :link: https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/hazus_eq_compiler/filter_inventory_to_place.py
+      :text-align: center
+
+      Keep the buildings of a county inventory, such as a county of the SimCenter San Francisco Bay Area testbed, that lie inside a city or another place given by its name. For a place that spans several counties, several county files can be filtered into one inventory. A census boundary looked up by name keeps its holes, so the buildings of an enclave, such as Piedmont inside Oakland, are left out.
+
+   .. grid-item-card:: Compile a Hazus Earthquake Inventory of a City
+      :link: https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/hazus_eq_compiler/compile_city_inventory.ipynb
+      :text-align: center
+
+      Build the building inventory of a city for a Hazus earthquake assessment from its name and seismic zone, with ten possible worlds, from public data: census boundaries and tables, Overture Maps footprints, the National Structure Inventory and mobile home park locations.
+
+   .. grid-item-card:: Cut a County Inventory to a City for R2D
+      :link: https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/hazus_eq_compiler/filter_county_file_for_r2d.ipynb
+      :text-align: center
+
+      Keep the buildings of a city from a county inventory of ten possible worlds, see how the worlds are stored, and write one world for the R2D tool with integer ids, the asset type ``building`` and the class RES3 for multifamily housing.
+
 Data Scraping
 ^^^^^^^^^^^^^
 

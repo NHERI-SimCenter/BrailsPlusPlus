@@ -31,20 +31,26 @@
 # You should have received a copy of the BSD 3-Clause License along with
 # BRAILS. If not, see <http://www.opensource.org/licenses/>.
 
-"""Tests for CensusScraper in brails.scrapers.us_census_scrapers."""
+"""Tests for CensusTractScraper in brails.scrapers.us_census_scrapers."""
 
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 import geopandas as gpd
 import pytest
 from requests import Response, exceptions
-from shapely.geometry import Polygon, mapping
+from shapely.geometry import Polygon, box, mapping
 
+from brails.constants import BLOCK_GROUP_KEY, TRACT_KEY
 from brails.scrapers.us_census_scrapers.census_tract_scraper import (
+    CENSUS_BLOCK_GROUP_QUERY_URL,
+    CENSUS_TRACT_QUERY_URL,
+    LEVEL_BLOCK_GROUP,
+    LEVEL_TRACT,
     CensusTractScraper,
 )
 from brails.types.asset_inventory import Asset, AssetInventory
@@ -76,7 +82,7 @@ def _make_http_error(status_code: int) -> exceptions.HTTPError:
 
 
 # ---------------------
-# Unit tests for _fetch_tract_geometry
+# Unit tests for _fetch_features
 # ---------------------
 
 
@@ -86,8 +92,8 @@ def test_fetch_success_contract(
     """Verify method parses a known, canned API response correctly.
 
     Arrange: mock requests.get to return the loaded fixture JSON.
-    Act: call _fetch_tract_geometry with dummy coords.
-    Assert: first feature dict is returned and requests.get was called once.
+    Act: call _fetch_features with dummy coords.
+    Assert: the features are returned and requests.get was called once.
     """
     scraper = CensusTractScraper()
 
@@ -97,15 +103,17 @@ def test_fetch_success_contract(
 
     mock_get = mocker.patch('requests.get', return_value=mock_response)
 
-    feature = scraper._fetch_tract_geometry(
+    features = scraper._fetch_features(
         lon=-122.2585, lat=37.8719, retries=3, timeout=5, delay=0
     )
 
-    assert isinstance(feature, dict)
+    assert features == census_api_response['features']
+    feature = features[0]
     assert 'type' in feature
     assert 'geometry' in feature
     assert 'properties' in feature
     assert mock_get.call_count == 1
+    assert mock_get.call_args.args[0] == CENSUS_TRACT_QUERY_URL
 
 
 @pytest.mark.parametrize(
@@ -145,61 +153,45 @@ def test_fetch_retries_on_transient_errors(
         return_value=None,
     )
 
-    feature = scraper._fetch_tract_geometry(
+    features = scraper._fetch_features(
         lon=-120.0, lat=35.0, retries=3, timeout=5, delay=0
     )
 
-    assert isinstance(feature, dict)
+    assert features == census_api_response['features']
     assert mock_get.call_count == 2
 
 
-@pytest.mark.parametrize(
-    ('side_effect', 'expected_exception'),
-    [
-        (_make_http_error(400), exceptions.HTTPError),  # 4xx should fail fast
-        (None, ValueError),  # successful 2xx but empty features
-    ],
-)
-def test_fetch_fails_fast_on_permanent_errors(
-    mocker: MockerFixture,
-    side_effect: Any,
-    expected_exception: type[BaseException],
-) -> None:
-    """Ensure method fails immediately on unrecoverable errors.
-
-    Cases:
-    - 4xx HTTPError raised on first call -> should propagate immediately.
-    - 2xx response with empty features -> should raise ValueError without retry.
-    """
+def test_fetch_fails_fast_on_a_client_error(mocker: MockerFixture) -> None:
+    """A 4xx HTTPError raised on the first call propagates without a retry."""
     scraper = CensusTractScraper()
-
-    if side_effect is not None:
-        # Simulate 4xx client error
-        mock_get = mocker.patch('requests.get', side_effect=side_effect)
-    else:
-        # Simulate 2xx with empty features list using a Mock response
-        mock_response = mocker.Mock()
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            'type': 'FeatureCollection',
-            'features': [],
-        }
-
-        mock_get = mocker.patch('requests.get', return_value=mock_response)
-
+    mock_get = mocker.patch('requests.get', side_effect=_make_http_error(400))
     # Avoid real sleep even though we do not expect retries
     mocker.patch(
         'brails.scrapers.us_census_scrapers.census_tract_scraper.time.sleep',
         return_value=None,
     )
 
-    with pytest.raises(expected_exception):
-        scraper._fetch_tract_geometry(
-            lon=-77.0, lat=38.9, retries=3, timeout=5, delay=0
-        )
+    with pytest.raises(exceptions.HTTPError):
+        scraper._fetch_features(lon=-77.0, lat=38.9, retries=3, timeout=5, delay=0)
 
-    # Only one attempt should have been made
     assert mock_get.call_count == 1
+
+
+def test_fetch_returns_no_features_outside_the_layer(mocker: MockerFixture) -> None:
+    """A 2xx response without features gives an empty list without a retry."""
+    scraper = CensusTractScraper()
+    mock_response = mocker.Mock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {'type': 'FeatureCollection', 'features': []}
+    mock_get = mocker.patch('requests.get', return_value=mock_response)
+
+    features = scraper._fetch_features(
+        lon=-77.0, lat=38.9, url=CENSUS_BLOCK_GROUP_QUERY_URL, delay=0
+    )
+
+    assert features == []
+    assert mock_get.call_count == 1
+    assert mock_get.call_args.args[0] == CENSUS_BLOCK_GROUP_QUERY_URL
 
 
 def test_fetch_exhausts_retries(mocker: MockerFixture) -> None:
@@ -220,9 +212,7 @@ def test_fetch_exhausts_retries(mocker: MockerFixture) -> None:
     )
 
     with pytest.raises(exceptions.ConnectionError):
-        scraper._fetch_tract_geometry(
-            lon=-100.0, lat=40.0, retries=3, timeout=5, delay=0
-        )
+        scraper._fetch_features(lon=-100.0, lat=40.0, retries=3, timeout=5, delay=0)
 
     assert mock_get.call_count == 3
 
@@ -316,7 +306,7 @@ def test_get_tracts_happy_path(
     """End-to-end success: assets across two tracts are updated and cached.
 
     Assertions:
-    1. _fetch_tract_geometry is called once per unique tract (2 calls).
+    1. _fetch_features is called once per unique tract (2 calls).
     2. Each asset gains the correct TRACT_GEOID.
     3. The returned cache includes GEOIDs with shapely geometries.
     """
@@ -333,8 +323,8 @@ def test_get_tracts_happy_path(
     # second call returns T2 (covers the remaining point)
     mock_fetch = mocker.patch.object(
         CensusTractScraper,
-        '_fetch_tract_geometry',
-        side_effect=[feature_t1, feature_t2],
+        '_fetch_features',
+        side_effect=[[feature_t1], [feature_t2]],
     )
 
     scraper = CensusTractScraper()
@@ -352,7 +342,7 @@ def test_get_tracts_happy_path(
     for asset_id, geoid in expected.items():
         found, features = inv.get_asset_features(asset_id)
         assert found is True
-        assert features.get('TRACT_GEOID') == geoid
+        assert features.get(TRACT_KEY) == geoid
 
     # 3. Cache contains shapely geometries keyed by GEOID and matches expected polygons
     assert set(downloaded.keys()) == {'06001400100', '11001006202'}
@@ -369,8 +359,8 @@ def test_get_tracts_uses_cache_correctly(
 
     mock_fetch = mocker.patch.object(
         CensusTractScraper,
-        '_fetch_tract_geometry',
-        return_value=feature,
+        '_fetch_features',
+        return_value=[feature],
     )
 
     scraper = CensusTractScraper()
@@ -384,50 +374,42 @@ def test_get_tracts_uses_cache_correctly(
     for asset_id in inv.get_asset_ids():
         found, features = inv.get_asset_features(asset_id)
         assert found is True
-        assert features.get('TRACT_GEOID') == '06001400100'
+        assert features.get(TRACT_KEY) == '06001400100'
 
 
-def test_get_tracts_handles_api_failure_gracefully(
+@pytest.mark.parametrize(
+    ('fetch', 'expected_exception', 'match'),
+    [
+        (
+            {'return_value': []},
+            ValueError,
+            r'2 asset\(s\) lie outside every tract polygon: a1, a2\.',
+        ),
+        (
+            {'side_effect': exceptions.ConnectionError('dns failure')},
+            exceptions.ConnectionError,
+            'dns failure',
+        ),
+    ],
+)
+def test_get_tracts_raises_and_writes_nothing(
     mocker: MockerFixture,
     single_tract_inventory: AssetInventory,
-    capsys: Any,
+    fetch: dict[str, Any],
+    expected_exception: type[BaseException],
+    match: str,
 ) -> None:
-    """If fetching fails permanently, method should halt gracefully without modification.
+    """A point outside every tract, or a failed query, raises before any write."""
+    mocker.patch.object(CensusTractScraper, '_fetch_features', **fetch)
+    before = deepcopy(single_tract_inventory.inventory)
 
-    Also verify that the new failure-path messages are printed to stdout.
-    """
-    mocker.patch.object(
-        CensusTractScraper,
-        '_fetch_tract_geometry',
-        side_effect=ValueError('no features for point'),
-    )
+    with pytest.raises(expected_exception, match=match):
+        CensusTractScraper().get_census_tracts(single_tract_inventory)
 
-    scraper = CensusTractScraper()
-
-    # Snapshot original features (should be empty dicts) to compare after call
-    before = {
-        aid: single_tract_inventory.get_asset_features(aid)[1].copy()
-        for aid in single_tract_inventory.get_asset_ids()
-    }
-
-    # The method is expected to complete without raising
-    try:
-        _ = scraper.get_census_tracts(single_tract_inventory)
-    except Exception as exc:  # noqa: BLE001 - test must capture unexpected crash
-        pytest.fail(f'get_census_tracts raised unexpectedly: {exc}')
-
-    # Verify no mutation of inventory features
-    after = {
-        aid: single_tract_inventory.get_asset_features(aid)[1].copy()
-        for aid in single_tract_inventory.get_asset_ids()
-    }
-    assert after == before
-
-    # Verify failure-path stdout contains the critical markers
-    out = capsys.readouterr().out
-    assert '--- CRITICAL ERROR ---' in out
-    assert '--- Job Halted ---' in out
-    assert 'Total points successfully processed: 0' in out
+    assert {
+        asset_id: asset.features
+        for asset_id, asset in single_tract_inventory.inventory.items()
+    } == {asset_id: asset.features for asset_id, asset in before.items()}
 
 
 def test_get_tracts_with_empty_inventory(
@@ -435,7 +417,7 @@ def test_get_tracts_with_empty_inventory(
 ) -> None:
     """Empty inventory should result in zero API calls and an empty cache."""
     mock_fetch = mocker.patch.object(
-        CensusTractScraper, '_fetch_tract_geometry', autospec=True
+        CensusTractScraper, '_fetch_features', autospec=True
     )
 
     scraper = CensusTractScraper()
@@ -470,7 +452,7 @@ def test_get_tracts_live_api_call() -> None:
     geoid_length = 11
     found, features = inv.get_asset_features('live1')
     assert found is True
-    geoid = features.get('TRACT_GEOID')
+    geoid = features.get(TRACT_KEY)
     assert isinstance(geoid, str)
     assert len(geoid) == geoid_length
     assert geoid.isdigit()
@@ -554,7 +536,7 @@ def test_get_census_tracts_handles_various_geometries(
 ) -> None:
     """Ensure TRACT_GEOID is assigned correctly for Point, Polygon, and mixed inventories.
 
-    Mock _fetch_tract_geometry to return a tract polygon that covers the centroids
+    Mock _fetch_features to return a tract polygon that covers the centroids
     of all assets so that a single GEOID is assigned to all assets regardless of
     original geometry type.
     """
@@ -576,7 +558,7 @@ def test_get_census_tracts_handles_various_geometries(
     feature = _feature_for_polygon(geoid, covering_poly)
 
     mocker.patch.object(
-        CensusTractScraper, '_fetch_tract_geometry', return_value=feature
+        CensusTractScraper, '_fetch_features', return_value=[feature]
     )
 
     scraper = CensusTractScraper()
@@ -586,4 +568,381 @@ def test_get_census_tracts_handles_various_geometries(
     for asset_id in inv.get_asset_ids():
         found, features = inv.get_asset_features(asset_id)
         assert found is True
-        assert features.get('TRACT_GEOID') == geoid
+        assert features.get(TRACT_KEY) == geoid
+
+
+# -------------------------------------------------
+# get_census_geographies: given polygons and mocked TIGERweb block groups
+# -------------------------------------------------
+
+WEST = '060010001001'
+EAST = '060010001002'
+
+
+def block_groups(
+    polygons: dict[str, Any], crs: str | None = 'EPSG:4326'
+) -> gpd.GeoDataFrame:
+    """
+    Build a census polygon frame from GEOIDs and polygons.
+
+    Args:
+        polygons (dict[str, Any]):
+            GEOID to Shapely polygon in EPSG:4326.
+        crs (str | None, optional):
+            The CRS to declare. Defaults to EPSG:4326.
+
+    Returns:
+        geopandas.GeoDataFrame:
+            One row per polygon with a ``GEOID`` column.
+    """
+    return gpd.GeoDataFrame(
+        {'GEOID': list(polygons)}, geometry=list(polygons.values()), crs=crs
+    )
+
+
+def two_halves() -> dict[str, Polygon]:
+    """
+    Return two block groups sharing the meridian -122.0.
+
+    Returns:
+        dict[str, shapely.geometry.Polygon]:
+            West of the meridian :data:`WEST`, east of it :data:`EAST`.
+    """
+    return {
+        EAST: box(-122.0, 37.99, -121.99, 38.01),
+        WEST: box(-122.01, 37.99, -122.0, 38.01),
+    }
+
+
+def square(lon: float, lat: float, half: float = 0.0001) -> list[list[float]]:
+    """
+    Return a closed square ring centered on a point.
+
+    Args:
+        lon (float):
+            Center longitude.
+        lat (float):
+            Center latitude.
+        half (float, optional):
+            Half the side in degrees. Defaults to 0.0001.
+
+    Returns:
+        list[list[float]]:
+            The ring in BRAILS coordinates.
+    """
+    return [list(point) for point in _square_polygon(lon, lat, half).exterior.coords]
+
+
+def inventory(records: dict[str, list]) -> AssetInventory:
+    """
+    Build an inventory from ids and coordinates.
+
+    Args:
+        records (dict[str, list]):
+            Asset id to coordinates.
+
+    Returns:
+        AssetInventory:
+            The inventory, each asset with one feature ``name``.
+    """
+    inv = AssetInventory()
+    for asset_id, coordinates in records.items():
+        inv.add_asset(asset_id, Asset(asset_id, coordinates, {'name': asset_id}))
+    return inv
+
+
+def assigned(inv: AssetInventory, key: str = BLOCK_GROUP_KEY) -> dict[str, str]:
+    """
+    Return each asset's GEOID under one key.
+
+    Args:
+        inv (AssetInventory):
+            An inventory after :meth:`CensusTractScraper.get_census_geographies`.
+        key (str, optional):
+            The feature read. Defaults to the block-group key.
+
+    Returns:
+        dict[str, str]:
+            Asset id to GEOID.
+    """
+    return {
+        asset_id: inv.get_asset_features(asset_id)[1][key]
+        for asset_id in inv.get_asset_ids()
+    }
+
+
+class TestContainment:
+    """A point takes the GEOID of the polygon holding it, the lowest on a shared edge."""
+
+    def test_inside_one_polygon(self) -> None:
+        """A centroid inside one polygon takes its GEOID and its tract."""
+        inv = inventory({'w': square(-122.005, 38.0), 'e': square(-121.995, 38.0)})
+        result, table = CensusTractScraper().get_census_geographies(
+            inv, polygons=block_groups(two_halves())
+        )
+        assert assigned(result) == {'w': WEST, 'e': EAST}
+        assert assigned(result, TRACT_KEY) == {'w': WEST[:11], 'e': EAST[:11]}
+        assert table.empty
+
+    def test_shared_edge_takes_lowest_geoid(self) -> None:
+        """A centroid on the shared edge takes the lowest GEOID and is listed."""
+        inv = inventory({'edge': square(-122.0, 38.0)})
+        result, table = CensusTractScraper().get_census_geographies(
+            inv, polygons=block_groups(two_halves())
+        )
+        assert assigned(result) == {'edge': min(WEST, EAST)}
+        assert table.to_dict('records') == [
+            {'asset_id': 'edge', 'geoid': min(WEST, EAST), 'polygons': 2}
+        ]
+
+    def test_point_asset_uses_the_point(self) -> None:
+        """A point asset is located by the point itself."""
+        inv = inventory({'p': [[-121.995, 38.0]]})
+        result, _ = CensusTractScraper().get_census_geographies(
+            inv, polygons=block_groups(two_halves())
+        )
+        assert assigned(result) == {'p': EAST}
+
+    def test_levels_select_the_columns(self) -> None:
+        """Each level writes its own key and no other."""
+        inv = inventory({'w': square(-122.005, 38.0)})
+        result, _ = CensusTractScraper().get_census_geographies(
+            inv,
+            levels=(LEVEL_TRACT,),
+            polygons=block_groups(two_halves()),
+            tract_key='tract',
+        )
+        assert result.inventory['w'].features == {'name': 'w', 'tract': WEST[:11]}
+
+    def test_tract_polygons_give_tracts(self) -> None:
+        """Polygons with tract GEOIDs are read as tracts."""
+        inv = inventory({'w': square(-122.005, 38.0)})
+        tracts = block_groups({WEST[:11]: two_halves()[WEST]})
+        result, _ = CensusTractScraper().get_census_geographies(
+            inv, levels=(LEVEL_TRACT,), polygons=tracts
+        )
+        assert assigned(result, TRACT_KEY) == {'w': WEST[:11]}
+
+
+class TestOutside:
+    """A point in no polygon raises and names the assets."""
+
+    def test_outside_raises_and_names_the_assets(self) -> None:
+        """Centroids outside every polygon raise with their ids and a count."""
+        records = {f'out{index:02d}': square(-121.985, 38.0) for index in range(12)}
+        records['w'] = square(-122.005, 38.0)
+        with pytest.raises(
+            ValueError,
+            match=(
+                r'12 asset\(s\) lie outside every block group polygon: '
+                r'out00, out01, .*, out09 and 2 more\.'
+            ),
+        ):
+            CensusTractScraper().get_census_geographies(
+                inventory(records), polygons=block_groups(two_halves())
+            )
+
+
+class TestInputs:
+    """Inputs are checked, reprojected, and not mutated."""
+
+    @pytest.mark.parametrize(
+        ('polygons', 'match'),
+        [
+            ({'0600100010': two_halves()[WEST]}, '11 digits'),
+            ({WEST: two_halves()[WEST], EAST[:11]: two_halves()[EAST]}, 'mixes'),
+        ],
+    )
+    def test_geoid_lengths_are_checked(
+        self, polygons: dict[str, Polygon], match: str
+    ) -> None:
+        """A GEOID of neither length, or of both lengths at once, raises."""
+        with pytest.raises(ValueError, match=match):
+            CensusTractScraper().get_census_geographies(
+                inventory({'w': square(-122.005, 38.0)}),
+                polygons=block_groups(polygons),
+            )
+
+    def test_numeric_geoid_raises(self) -> None:
+        """A numeric GEOID column raises."""
+        frame = block_groups(two_halves())
+        frame['GEOID'] = frame['GEOID'].astype('int64')
+        with pytest.raises(ValueError, match='numeric'):
+            CensusTractScraper().get_census_geographies(
+                inventory({'w': square(-122.005, 38.0)}), polygons=frame
+            )
+
+    def test_missing_crs_raises(self) -> None:
+        """Polygons without a CRS raise."""
+        with pytest.raises(ValueError, match='no CRS'):
+            CensusTractScraper().get_census_geographies(
+                inventory({'w': square(-122.005, 38.0)}),
+                polygons=block_groups(two_halves(), crs=None),
+            )
+
+    def test_tracts_cannot_give_block_groups(self) -> None:
+        """Tract polygons with the block-group level raise."""
+        tracts = block_groups({WEST[:11]: two_halves()[WEST]})
+        with pytest.raises(ValueError, match='are tracts'):
+            CensusTractScraper().get_census_geographies(
+                inventory({'w': square(-122.005, 38.0)}), polygons=tracts
+            )
+
+    @pytest.mark.parametrize('levels', [(), ('county',), (LEVEL_TRACT, LEVEL_TRACT)])
+    def test_levels_are_checked(self, levels: tuple[str, ...]) -> None:
+        """Levels outside the two, none, or a repeated level raise."""
+        with pytest.raises(ValueError, match='levels'):
+            CensusTractScraper().get_census_geographies(
+                inventory({'w': square(-122.005, 38.0)}), levels=levels
+            )
+
+    def test_projected_polygons_give_the_same_result(self) -> None:
+        """Polygons in a projected CRS are reprojected to the same result."""
+        inv = inventory(
+            {
+                'w': square(-122.005, 38.0),
+                'e': square(-121.995, 38.0),
+                'edge': square(-122.0, 38.0),
+            }
+        )
+        scraper = CensusTractScraper()
+        expected, expected_table = scraper.get_census_geographies(
+            inv, polygons=block_groups(two_halves())
+        )
+        projected = block_groups(two_halves()).to_crs('EPSG:32610')
+        result, table = scraper.get_census_geographies(inv, polygons=projected)
+        assert assigned(result) == assigned(expected)
+        assert table['geoid'].tolist() == expected_table['geoid'].tolist()
+
+    def test_inputs_not_mutated(self) -> None:
+        """Neither the inventory nor the frame changes."""
+        inv = inventory({'w': square(-122.005, 38.0)})
+        frame = block_groups(two_halves())
+        before_features = deepcopy(inv.inventory['w'].features)
+        before_frame = frame.copy()
+        CensusTractScraper().get_census_geographies(inv, polygons=frame)
+        assert inv.inventory['w'].features == before_features
+        assert frame.equals(before_frame)
+
+
+class TestTigerwebBlockGroups:
+    """Without polygons, block groups come from TIGERweb's block-group layer."""
+
+    def test_block_groups_and_tracts_from_one_layer(
+        self, mocker: MockerFixture
+    ) -> None:
+        """One query per block group serves its assets, and the tract is its prefix."""
+        features = {
+            geoid: _feature_for_polygon(geoid, polygon)
+            for geoid, polygon in two_halves().items()
+        }
+        mock_fetch = mocker.patch.object(
+            CensusTractScraper,
+            '_fetch_features',
+            side_effect=[[features[EAST]], [features[WEST]]],
+        )
+        inv = inventory(
+            {
+                'a': square(-121.995, 38.0),
+                'b': square(-121.996, 38.001),
+                'c': square(-122.005, 38.0),
+            }
+        )
+        result, table = CensusTractScraper().get_census_geographies(inv)
+
+        assert mock_fetch.call_count == 2
+        assert {call.kwargs['url'] for call in mock_fetch.call_args_list} == {
+            CENSUS_BLOCK_GROUP_QUERY_URL
+        }
+        assert assigned(result) == {'a': EAST, 'b': EAST, 'c': WEST}
+        assert assigned(result, TRACT_KEY) == {
+            'a': EAST[:11],
+            'b': EAST[:11],
+            'c': WEST[:11],
+        }
+        assert table.empty
+        assert BLOCK_GROUP_KEY not in inv.inventory['a'].features
+
+    def test_tract_level_queries_the_tract_layer(
+        self, mocker: MockerFixture
+    ) -> None:
+        """With the tract level alone, the tract layer is queried."""
+        tract = _feature_for_polygon(EAST[:11], two_halves()[EAST])
+        mock_fetch = mocker.patch.object(
+            CensusTractScraper, '_fetch_features', return_value=[tract]
+        )
+        result, _ = CensusTractScraper().get_census_geographies(
+            inventory({'a': square(-121.995, 38.0)}), levels=(LEVEL_TRACT,)
+        )
+        assert mock_fetch.call_args.kwargs['url'] == CENSUS_TRACT_QUERY_URL
+        assert result.inventory['a'].features == {'name': 'a', TRACT_KEY: EAST[:11]}
+
+    @pytest.mark.parametrize(
+        ('inside', 'queries'), [('a_inside', 2), ('z_inside', 1)]
+    )
+    def test_shared_edge_does_not_depend_on_order(
+        self, mocker: MockerFixture, inside: str, queries: int
+    ) -> None:
+        """
+        An asset on a shared edge takes the lowest GEOID in either order.
+
+        Queried first, the edge asset fetches both block groups and settles the
+        interior asset; queried after it, it fetches both itself.
+        """
+        features = {
+            geoid: _feature_for_polygon(geoid, polygon)
+            for geoid, polygon in two_halves().items()
+        }
+        mock_fetch = mocker.patch.object(
+            CensusTractScraper,
+            '_fetch_features',
+            side_effect=lambda **kwargs: (
+                [features[EAST], features[WEST]]
+                if kwargs['lon'] == pytest.approx(-122.0)
+                else [features[EAST]]
+            ),
+        )
+        inv = inventory(
+            {inside: square(-121.995, 38.0), 'm_edge': square(-122.0, 38.0)}
+        )
+        result, table = CensusTractScraper().get_census_geographies(inv)
+
+        assert assigned(result) == {inside: EAST, 'm_edge': min(WEST, EAST)}
+        assert table.to_dict('records') == [
+            {'asset_id': 'm_edge', 'geoid': min(WEST, EAST), 'polygons': 2}
+        ]
+        assert mock_fetch.call_count == queries
+
+    def test_get_census_tracts_returns_only_tracts_with_an_asset(
+        self, mocker: MockerFixture
+    ) -> None:
+        """A tract fetched only because an edge asset touches it is not returned."""
+        halves = two_halves()
+        low, high = '06001000100', '06001000200'
+        features = {
+            low: _feature_for_polygon(low, halves[WEST]),
+            high: _feature_for_polygon(high, halves[EAST]),
+        }
+        mocker.patch.object(
+            CensusTractScraper,
+            '_fetch_features',
+            side_effect=lambda **kwargs: (
+                [features[high], features[low]]
+                if kwargs['lon'] == pytest.approx(-122.0)
+                else [features[low]]
+            ),
+        )
+        inv = inventory({'a': square(-122.005, 38.0), 'edge': square(-122.0, 38.0)})
+        tracts = CensusTractScraper().get_census_tracts(inv)
+
+        assert list(tracts) == [low]
+        assert tracts[low].equals(halves[WEST])
+        assert assigned(inv, TRACT_KEY) == {'a': low, 'edge': low}
+
+    def test_outside_the_layer_raises(self, mocker: MockerFixture) -> None:
+        """A point TIGERweb places in no block group raises with its id."""
+        mocker.patch.object(CensusTractScraper, '_fetch_features', return_value=[])
+        with pytest.raises(ValueError, match=r'1 asset\(s\) .*: far\.'):
+            CensusTractScraper().get_census_geographies(
+                inventory({'far': square(10.0, 50.0)})
+            )

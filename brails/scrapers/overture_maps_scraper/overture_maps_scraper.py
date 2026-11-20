@@ -38,7 +38,7 @@
 # 07-13-2025
 
 """
-This module define the base class for scraping OvertureMaps data.
+Base class for reading Overture Maps data.
 
 .. autosummary::
 
@@ -48,10 +48,9 @@ This module define the base class for scraping OvertureMaps data.
 from abc import ABC
 import re
 import urllib.request
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Sequence, Tuple, Union
 from tqdm import tqdm
 
-import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
@@ -64,6 +63,8 @@ from shapely.geometry.base import BaseGeometry
 
 
 import numpy as np
+
+from brails.constants import PROVIDER_ID_FEATURES
 
 # Global constants for base paths, URLs, and type-theme mapping:
 S3_BASE_PATH = 'overturemaps-us-west-2/release'
@@ -88,35 +89,44 @@ TYPE_THEME_MAP = {
     "water": "base",
 }
 
+# The footprint_provider value of an Overture footprint, and the feature holding its
+# Overture id.
+OVERTURE_PROVIDER = 'overture'
+OVERTURE_ID_KEY = PROVIDER_ID_FEATURES[OVERTURE_PROVIDER][0]
+
+# Overture's building columns that other modules read: the height, the number of
+# floors, the class and the sources.
+HEIGHT_KEY = 'height'
+NUM_FLOORS_KEY = 'num_floors'
+CLASS_KEY = 'class'
+SOURCES_KEY = 'sources'
+
+# The separator of the entries of the sources string that _format_sources writes, and
+# the property an entry names when it is the source of the height.
+SOURCES_SEPARATOR = '; '
+HEIGHT_PROPERTY = '/properties/height'
+
 
 class OvertureMapsScraper(ABC):
     """
-    A base class for accessing and processing data from Overture Maps.
+    Base class of the Overture Maps scrapers, with the release lookup.
 
-    This is a base class and is **not intended to be instantiated directly**.
-    To use it, either:
-
-    - Import and instantiate a subclass
-      (e.g., ``Importer().get_class('OvertureMapsFootprintScraper')``)
-    - Or subclass it yourself and implement additional logic.
-
-    Direct imports of this base class are typically only needed when creating
-    new Overture Maps scrapers.
-
-    Provided static methods include:
-
-    - Fetching release version names from the Overture Maps release index.
-    - Constructing S3 paths to specific dataset partitions.
-    - Reading datasets from S3 into a Pandas DataFrame with optional
-      spatial filtering.
-    - Normalizing bounding box coordinates to a consistent format.
-    - Formatting source metadata from NumPy arrays or lists of dictionaries.
+    The class is not instantiated directly, and
+    :class:`~brails.scrapers.overture_maps_scraper.overture_maps_footprint_scraper.OvertureMapsFootprintScraper`
+    derives from it. The README beside this module, "Releases", states how a release
+    is resolved.
     """
+
+    # Releases the S3 bucket holds, cached after the first listing.
+    _available_releases: Optional[List[str]] = None
 
     @staticmethod
     def fetch_release_names(print_releases: bool = False) -> List[str]:
         """
-        Fetch the list of release names from the OvertureMaps releases YAML.
+        Fetch the release names from Overture's published release list.
+
+        The list need not match the releases the S3 bucket holds, which
+        :meth:`fetch_available_releases` gives.
 
         Args:
             print_releases (bool, optional):
@@ -125,6 +135,10 @@ class OvertureMapsScraper(ABC):
         Returns:
             List[str]:
                 A list of release version strings.
+
+        Raises:
+            OSError:
+                If the list cannot be fetched, as ``urllib.error.URLError``.
         """
         with urllib.request.urlopen(OVERTURE_RELEASES_URL) as resp:
             text = resp.read().decode("utf-8")
@@ -136,6 +150,112 @@ class OvertureMapsScraper(ABC):
                 print(f"  - {release}")
 
         return releases
+
+    @staticmethod
+    def fetch_available_releases(refresh: bool = False) -> List[str]:
+        """
+        List the releases the Overture S3 bucket currently holds.
+
+        Args:
+            refresh (bool, optional):
+                List the bucket again instead of reusing the result cached by the
+                first listing. Defaults to ``False``.
+
+        Returns:
+            List[str]:
+                Release names, in reverse order, which is newest first for date-named
+                releases.
+
+        Raises:
+            OSError:
+                If the bucket cannot be listed.
+        """
+        if OvertureMapsScraper._available_releases is not None and not refresh:
+            return list(OvertureMapsScraper._available_releases)
+
+        filesystem = fs.S3FileSystem(anonymous=True, region="us-west-2")
+        entries = filesystem.get_file_info(
+            fs.FileSelector(S3_BASE_PATH, recursive=False)
+        )
+        releases = sorted(
+            (
+                entry.base_name
+                for entry in entries
+                if entry.type == fs.FileType.Directory and entry.base_name
+            ),
+            reverse=True,
+        )
+
+        OvertureMapsScraper._available_releases = releases
+        return list(releases)
+
+    @staticmethod
+    def resolve_release(requested: Optional[str] = None) -> str:
+        """
+        Determine which release to read, checking it against the bucket.
+
+        Where the bucket cannot be listed or lists no release, a warning is printed,
+        ``requested`` is returned unchecked, and without it the first release of the
+        published list is returned.
+
+        Args:
+            requested (str, optional):
+                The release to read. When omitted, the first release
+                :meth:`fetch_available_releases` gives, with a printed notice.
+
+        Returns:
+            str:
+                The release name to read from.
+
+        Raises:
+            ValueError:
+                If the bucket holds no release named ``requested``, or if the bucket
+                cannot be listed or lists no release and the published list is empty.
+            OSError:
+                If the bucket cannot be listed or lists no release, ``requested`` is
+                omitted and the published list cannot be fetched.
+        """
+        listing_error = None
+        try:
+            available = OvertureMapsScraper.fetch_available_releases()
+        except Exception as error:  # noqa: BLE001 - any failure falls back
+            available, listing_error = [], error
+
+        if available:
+            if requested and requested not in available:
+                raise ValueError(
+                    f"Overture release '{requested}' is not available. "
+                    f"s3://{S3_BASE_PATH} currently holds: "
+                    f"{', '.join(available)}. Only the most recent releases "
+                    "are retained, so a release that worked before may have "
+                    "been removed."
+                )
+            if requested:
+                return requested
+            print(
+                "'overtureRelease' not defined in input. Falling back to the "
+                f"newest available release: {available[0]}"
+            )
+            return available[0]
+
+        # The bucket could not be listed, so nothing here can be confirmed readable.
+        # Fall back to the published list.
+        print(
+            f"WARNING: could not list s3://{S3_BASE_PATH} ({listing_error}). "
+            "Falling back to the published release list, which may name "
+            "releases that are no longer readable."
+        )
+        if requested:
+            return requested
+
+        published = OvertureMapsScraper.fetch_release_names()
+        if not published:
+            raise ValueError(
+                "No Overture release could be determined: the S3 bucket "
+                "could not be listed and the published release list is empty."
+            )
+        print(f"Falling back to published release: {published[0]}")
+        return published[0]
 
     @staticmethod
     def normalize_bbox_order(
@@ -151,6 +271,10 @@ class OvertureMapsScraper(ABC):
         Returns:
             Tuple[float, float, float, float]:
                 Bounding box reordered as (xmin, ymin, xmax, ymax).
+
+        Raises:
+            ValueError:
+                If ``bbox`` is not a tuple or list of four elements.
         """
         if not (isinstance(bbox, (tuple, list)) and len(bbox) == 4):
             raise ValueError(
@@ -168,34 +292,43 @@ class OvertureMapsScraper(ABC):
         Return the S3 path of the Overture dataset to use.
 
         Args:
-            overture_type (str):
-                The overture sub-partition type.
             release (str):
                 The release version string.
+            overture_type (str):
+                The Overture type, a key of ``TYPE_THEME_MAP``.
 
         Returns:
             str:
                 The full S3 path string.
+
+        Raises:
+            KeyError:
+                If ``overture_type`` is not a key of ``TYPE_THEME_MAP``.
         """
         theme = TYPE_THEME_MAP[overture_type]
         return f"{S3_BASE_PATH}/{release}/theme={theme}/type={overture_type}/"
 
     @staticmethod
-    def _read_to_pandas(
+    def _read_table(
         overture_release: str,
         overture_type: str,
         bbox: Optional[Tuple[float, float, float, float]] = None,
         connect_timeout: Optional[int] = None,
         request_timeout: Optional[int] = None,
-    ) -> pd.DataFrame:
+        paths: Optional[Sequence[str]] = None,
+    ) -> pa.Table:
         """
-        Read an Overture dataset from S3 into a Pandas DataFrame.
+        Read an Overture dataset from S3, or from local files, as a table.
+
+        The rows kept are those whose ``bbox`` column overlaps ``bbox``. The same
+        filter applies to the S3 dataset and to local files.
 
         Args:
             overture_release (str):
                 Dataset release version specifying which data to retrieve.
+                Not used when ``paths`` is given.
             overture_type (str):
-                The dataset type to load.
+                The dataset type to load. Not used when ``paths`` is given.
             bbox (Optional[Tuple[float, float, float, float]]):
                 Optional bounding box (xmin, ymin, xmax, ymax) to filter data
                 spatially.
@@ -203,15 +336,15 @@ class OvertureMapsScraper(ABC):
                 Timeout in seconds for establishing the S3 connection.
             request_timeout (Optional[int]):
                 Timeout in seconds for data requests.
+            paths (Optional[Sequence[str]]):
+                Local Parquet files to read in place of the S3 dataset. Each file
+                must hold Overture's ``bbox`` column when ``bbox`` is given.
 
         Returns:
-            pd.DataFrame:
-                The dataset content as a Pandas DataFrame.
+            pa.Table:
+                The rows read, with the columns and the schema metadata of the
+                dataset.
         """
-        path = OvertureMapsScraper._dataset_path(
-            overture_release, overture_type
-        )
-
         if bbox is not None:
             bbox = OvertureMapsScraper.normalize_bbox_order(bbox)
             xmin, ymin, xmax, ymax = bbox
@@ -224,14 +357,21 @@ class OvertureMapsScraper(ABC):
         else:
             filter_expr = None
 
-        filesystem = fs.S3FileSystem(
-            anonymous=True,
-            region="us-west-2",
-            connect_timeout=connect_timeout,
-            request_timeout=request_timeout,
-        )
-
-        dataset = ds.dataset(path, filesystem=filesystem)
+        if paths is not None:
+            dataset = ds.dataset(
+                list(paths), filesystem=fs.LocalFileSystem(), format="parquet"
+            )
+        else:
+            path = OvertureMapsScraper._dataset_path(
+                overture_release, overture_type
+            )
+            filesystem = fs.S3FileSystem(
+                anonymous=True,
+                region="us-west-2",
+                connect_timeout=connect_timeout,
+                request_timeout=request_timeout,
+            )
+            dataset = ds.dataset(path, filesystem=filesystem)
 
         batches = []
         batch_iterator = dataset.to_batches(
@@ -240,8 +380,7 @@ class OvertureMapsScraper(ABC):
         for batch in tqdm(batch_iterator, desc="Reading dataset batches"):
             batches.append(batch)
 
-        table = pa.Table.from_batches(batches)
-        return table.to_pandas()
+        return pa.Table.from_batches(batches)
 
     @staticmethod
     def _format_sources(sources_array):
@@ -249,7 +388,8 @@ class OvertureMapsScraper(ABC):
         Format a NumPy array or list of dictionaries into a single string.
 
         Each dictionary's non-empty values are formatted as key: value pairs,
-        separated by commas. Multiple dictionaries are separated by semicolons.
+        joined by a comma and a space. Multiple dictionaries are joined by
+        SOURCES_SEPARATOR.
 
         Args:
             sources_array (Union[np.ndarray, List[Dict]]):
@@ -281,4 +421,4 @@ class OvertureMapsScraper(ABC):
                 if parts:
                     formatted_parts.append(", ".join(parts))
 
-        return "; ".join(formatted_parts) if formatted_parts else None
+        return SOURCES_SEPARATOR.join(formatted_parts) if formatted_parts else None

@@ -52,10 +52,17 @@ import json
 from shapely.geometry import Point, Polygon
 from shapely.wkt import loads
 import logging
+from pathlib import Path
+from typing import Optional, Union
 
 from brails.utils import GeoTools
-from brails.types.asset_inventory import Asset, AssetInventory
+from brails.types.asset_inventory import AssetInventory
 from brails.types.region_boundary import RegionBoundary
+from brails.scrapers.nsi_parser.nsi_conventions import ASSET_TYPE  # noqa: F401
+from brails.scrapers.nsi_parser.nsi_file_reader import (
+    record_to_asset,
+    write_raw_records,
+)
 
 # Configure logging:
 logging.basicConfig(level=logging.INFO)
@@ -63,17 +70,51 @@ logger = logging.getLogger(__name__)
 
 # Define global variables:
 API_ENDPOINT = 'https://nsi.sec.usace.army.mil/nsiapi/structures?bbox='
-ASSET_TYPE = 'building'
+
+
+def _record_points(features: list[dict]) -> list[Point]:
+    """
+    Return the point of each served NSI feature, at its record's x and y.
+
+    NSI serves each feature's point rounded to six decimals, beside the record's
+    ``x`` and ``y``, which are not rounded. The rounding can move a point across a
+    footprint's edge. A record without ``x`` or ``y`` keeps the served point, and the
+    number of such records is printed.
+
+    Args:
+        features (list[dict]):
+            GeoJSON features as NSI serves them.
+
+    Returns:
+        list[Point]:
+            The point of each record, in the order of ``features``.
+    """
+    points = []
+    served = 0
+    for feature in features:
+        properties = feature['properties']
+        if properties.get('x') is None or properties.get('y') is None:
+            points.append(Point(feature['geometry']['coordinates']))
+            served += 1
+        else:
+            points.append(Point(properties['x'], properties['y']))
+    if served:
+        print(
+            f'NSI records without x or y, placed at the point NSI serves: {served}'
+        )
+    return points
 
 
 class NSI_Parser:
     """
-    A class for interacting with the National Structural Inventory (NSI) data.
+    A class for interacting with the National Structure Inventory (NSI) data.
 
     This class provides methods for fetching and processing NSI data,
     including mapping the data to building footprints, extracting relevant
     attributes, and generating inventory outputs in formats compatible with
     BRAILS and other GIS applications.
+
+    BRAILS is compatible with the records of the NSI 2026 Base only.
 
     Key responsibilities of this class include:
     - Fetching NSI data for given bounding box coordinates.
@@ -221,10 +262,9 @@ class NSI_Parser:
             data = response.json().get('features', [])
 
             # Convert GeoJSON features to a dictionary with (lon, lat) as keys
-            return {
-                Point(feat['geometry']['coordinates']): feat['properties']
-                for feat in data
-            }
+            return dict(
+                zip(_record_points(data), (feat['properties'] for feat in data))
+            )
 
         except requests.exceptions.RequestException as e:
             logging.error(f'Request failed: {e}')
@@ -301,9 +341,9 @@ class NSI_Parser:
                 base = 'NA'
                 if 'RES1' in occtype:
                     if 'NB' in occtype:
-                        base = 'Yes'
-                    elif 'WB' in occtype:
                         base = 'No'
+                    elif 'WB' in occtype:
+                        base = 'Yes'
 
                 return base
 
@@ -369,8 +409,8 @@ class NSI_Parser:
                 fp = loads(fp_wkt)
                 # Get the coordinates back in list format for the attributes
                 # dict. This handles both simple polygons and those with holes:
-                fp_coords = [list(poly_obj.exterior.coords)] + \
-                    [list(ring.coords) for ring in poly_obj.interiors]
+                fp_coords = [list(fp.exterior.coords)] + \
+                    [list(ring.coords) for ring in fp.interiors]
                 pt = fp2ptmap[fp_wkt]
                 ptres = datadict[pt]
                 attributes['fp'].append(fp_coords)
@@ -478,13 +518,36 @@ class NSI_Parser:
 
         return geojson, points_keep_footprint_index
 
-    def get_raw_data(self, region: RegionBoundary) -> AssetInventory:
+    def get_raw_data(
+        self,
+        region: RegionBoundary,
+        *,
+        simcenter_format: bool = False,
+        raw_parquet_path: Optional[Union[str, Path]] = None,
+        omit_nulls: bool = False,
+    ) -> AssetInventory:
         """
         Retrieve raw NSI data for a specified region.
 
         Args:
             region (RegionBoundary):
                 The region boundary object defining the area of interest.
+            simcenter_format (bool):
+                When True, each record's fields are renamed to SimCenter conventions
+                and its packed occupancy code is decoded; see
+                :func:`brails.scrapers.nsi_parser.nsi_conventions.to_simcenter`.
+                Defaults to False, which keeps the NSI names and values untouched.
+            raw_parquet_path (str or Path, optional):
+                When given, the records inside the region are also written to this
+                parquet file under their NSI names, as served and before any
+                SimCenter conversion, in ascending ``fd_id``; see
+                :func:`~brails.scrapers.nsi_parser.nsi_file_reader.write_raw_records`.
+                :meth:`NSIFileReader.read
+                <brails.scrapers.nsi_parser.nsi_file_reader.NSIFileReader.read>` can
+                read the file back as the inventory returned.
+            omit_nulls (bool):
+                When True, a field whose value is null is left out of an asset's
+                features, as ``NSIFileReader`` leaves it out. Defaults to False.
 
         Returns:
             AssetInventory:
@@ -507,32 +570,39 @@ class NSI_Parser:
         bpoly, _, _ = region.get_boundary()
         bbox = bpoly.bounds
 
-        # Get NBI data for the computed bounding box:
+        # Get NSI data for the computed bounding box:
         datadict = self._get_nsi_data(bbox)
 
-        points = list(datadict.keys())
+        # Keep the records whose point falls inside bpoly:
+        datadict = {
+            fd_id: record
+            for fd_id, record in datadict.items()
+            if bpoly.contains(record[0])
+        }
 
-        # Find the NBI points contained in bpoly:
-        points_to_keep = set()
-        for pt in points:
-            if bpoly.contains(pt):
-                points_to_keep.add(pt)
-        datadict = {pt: datadict[pt] for pt in points_to_keep}
-
-        # Display the number of NSI points that are within roi:
+        # Display the number of NSI records that are within roi:
         print(
-            f'\nFound a total of {len(points_to_keep)} building points in'
+            f'\nFound a total of {len(datadict)} building points in'
             ' NSI that are within the entered region of interest'
         )
 
+        # Write the records as served:
+        if raw_parquet_path is not None:
+            write_raw_records(
+                (datadict[fd_id][1] for fd_id in sorted(datadict)),
+                raw_parquet_path,
+            )
+
         # Save the results in the inventory:
         inventory = AssetInventory()
-        for geometry, features in datadict.items():
-            index = features['fd_id']
-            coordinates = [[geometry.x, geometry.y]]
-            features['type'] = ASSET_TYPE
-            asset = Asset(index, coordinates, features)
-            inventory.add_asset(index, asset)
+        for fd_id, (geometry, properties) in datadict.items():
+            asset = record_to_asset(
+                properties,
+                [[geometry.x, geometry.y]],
+                simcenter_format=simcenter_format,
+                omit_nulls=omit_nulls,
+            )
+            inventory.add_asset(fd_id, asset)
 
         return inventory
 
@@ -602,8 +672,11 @@ class NSI_Parser:
             bbox (tuple) Tuple containing the minimum and maximum latitude and
                 longitude values.
         Returns:
-            dict: Dictionary containing extracted NBI data keyed using the
-                NBI point coordinates
+            dict: Dictionary containing extracted NSI data keyed using the fd_id of
+                each record, with the record's point geometry and its properties as
+                the value. NSI serves one record per occupancy of a mixed-use
+                structure, all of them on the same coordinate; keying by record id
+                keeps every record.
         """
         # Unpack the bounding box coordinates:
         (minlon, minlat, maxlon, maxlat) = bbox
@@ -652,12 +725,6 @@ class NSI_Parser:
 
             data = response.json().get('features', [])
 
-            # Convert GeoJSON features to a dictionary with (lon, lat) as keys
-            return {
-                Point(feat['geometry']['coordinates']): feat['properties']
-                for feat in data
-            }
-
         except requests.exceptions.RequestException as e:
             logging.error(f'NSI Network Request failed: {e}')
             return {}
@@ -670,3 +737,18 @@ class NSI_Parser:
                 f'Failed to parse NSI JSON: {e}. \nResponse snippet: {snippet}'
             )
             return {}
+
+        # Keyed by record id, and built outside the request handling so that a record
+        # NSI serves without one raises here rather than being reported as a failed
+        # download and returned as an empty pull.
+        records = {
+            feat['properties']['fd_id']: (point, feat['properties'])
+            for feat, point in zip(data, _record_points(data))
+        }
+        if len(records) != len(data):
+            message = (
+                f'NSI served {len(data)} records under {len(records)} distinct '
+                'fd_id values, so records would be lost'
+            )
+            raise ValueError(message)
+        return records

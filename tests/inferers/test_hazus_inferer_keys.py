@@ -1,0 +1,60 @@
+# Copyright (c) 2026 The Regents of the University of California
+#
+# This file is part of BRAILS++.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# You should have received a copy of the BSD 3-Clause License along with
+# BRAILS++. If not, see <http://www.opensource.org/licenses/>.
+
+"""Tests for the area keyword of the earthquake and legacy Hazus inferers."""
+
+from __future__ import annotations
+
+import pytest
+
+from brails.inferers.hazus_inferer.hazus_inferer import HazusInferer
+from brails.inferers.hazus_inferer_earthquake.hazus_inferer_earthquake import (
+    HazusInfererEarthquake,
+)
+from brails.types.asset_inventory import AssetInventory
+
+
+def test_area_key_defaults_to_gross_area() -> None:
+    """Both inferers read the gross area from ``GrossArea`` by default."""
+    inventory = AssetInventory()
+    assert HazusInferer(inventory).grossArea_key == 'GrossArea'
+    assert HazusInfererEarthquake(inventory).grossArea_key == 'GrossArea'
+
+
+def test_old_area_keyword_is_rejected() -> None:
+    """Both inferers raise ``TypeError`` for the removed ``planArea_key``."""
+    inventory = AssetInventory()
+    with pytest.raises(TypeError):
+        HazusInferer(inventory, planArea_key='PlanArea')
+    with pytest.raises(TypeError):
+        HazusInfererEarthquake(inventory, planArea_key='PlanArea')

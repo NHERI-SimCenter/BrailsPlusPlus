@@ -75,7 +75,7 @@ class HazusInfererEarthquake(InferenceEngine):
         occupancyClass_key="OccupancyClass",
         numberOfStories_key="NumberOfStories",
         income_key="Income",
-        planArea_key="PlanArea",
+        grossArea_key="GrossArea",
         splitLevel_key="SplitLevel",
         heightClass_key="HeightClass",
         garageType_key="GarageType",  # optional
@@ -99,7 +99,7 @@ class HazusInfererEarthquake(InferenceEngine):
         self.occupancyClass_key = occupancyClass_key
         self.numberOfStories_key = numberOfStories_key
         self.income_key = income_key
-        self.planArea_key = planArea_key
+        self.grossArea_key = grossArea_key
         self.splitLevel_key = splitLevel_key
         self.garageType_key = garageType_key
         self.constructionClass_key = constructionClass_key
@@ -192,7 +192,7 @@ class HazusInfererEarthquake(InferenceEngine):
                 occupancyClass_key=self.occupancyClass_key,
                 numberOfStories_key=self.numberOfStories_key,
                 income_key=self.income_key,
-                planArea_key=self.planArea_key,
+                grossArea_key=self.grossArea_key,
                 splitLevel_key=self.splitLevel_key,
                 structureType_key=self.structureType_key,
                 replacementCost_key=self.replacementCost_key,

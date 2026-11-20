@@ -1,0 +1,129 @@
+# Copyright (c) 2025 The Regents of the University of California
+#
+# This file is part of BRAILS++.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# You should have received a copy of the BSD 3-Clause License along with
+# BRAILS++. If not, see <http://www.opensource.org/licenses/>.
+
+
+"""
+Report what an inferer can and cannot do with an asset.
+
+The verdicts, columns and helpers here are the parts of the per-asset diagnosis
+vocabulary of inferers that no peril owns. The module holds only the verdicts a check
+returns, ``no_donor`` among them, which an imputer's check gives where no donor
+serves. A label that a compiler gives an exclusion that no check refused belongs
+beside the compiler's categories.
+
+.. autosummary::
+
+      diagnosis_frame
+      preview_failures
+
+``preview_ids`` and ``PREVIEW_LIMIT`` (from :mod:`brails.utils.id_preview`) can also
+be imported from this module.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pandas as pd
+
+from brails.utils.id_preview import PREVIEW_LIMIT, join_preview, preview_ids
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+# The verdict for an asset the inferer can process.
+DIAGNOSIS_OK = 'OK'
+
+# A driver is absent, or present with a value the inferer cannot use. The caller
+# obtains the data, corrects it, or imputes a replacement.
+DIAGNOSIS_INVALID = 'invalid'
+
+# A driver is present and real, in a shape the inferer does not handle yet. The
+# caller excludes the asset. Imputing over it would replace data the inventory holds
+# with data the inferer preferred.
+DIAGNOSIS_UNSUPPORTED = 'unsupported'
+
+# Every driver is usable and the inferer still has nothing to produce. The caller
+# relaxes one of the features in ``resolvable_by``.
+DIAGNOSIS_INFEASIBLE = 'infeasible'
+
+# Every driver is usable and no asset could serve as the donor of the value. The
+# caller widens the search for donors, or relaxes one of the features in
+# ``resolvable_by``.
+DIAGNOSIS_NO_DONOR = 'no_donor'
+
+# The columns of a diagnosis frame. ``diagnosis`` is one of the five verdicts above,
+# the only values a check returns, ``detail`` says what happened in words, and
+# ``resolvable_by`` names the features that would each, alone, let the inferer
+# produce a value. An unsupported asset names none. An invalid asset names the driver
+# a caller could supply or redraw, where the inferer reads one driver and can say
+# which.
+DIAGNOSIS_COLUMNS = ('diagnosis', 'detail', 'resolvable_by')
+
+
+def diagnosis_frame(rows: dict) -> pd.DataFrame:
+    """
+    Build a diagnosis frame from per-asset verdicts.
+
+    Args:
+        rows (dict):
+            Asset id to its diagnosis, detail, and resolvable features.
+
+    Returns:
+        pd.DataFrame:
+            One row per asset id, with the columns of :data:`DIAGNOSIS_COLUMNS`.
+    """
+    if not rows:
+        return pd.DataFrame(columns=list(DIAGNOSIS_COLUMNS), dtype=object)
+    return pd.DataFrame.from_dict(
+        rows, orient='index', columns=list(DIAGNOSIS_COLUMNS)
+    )
+
+
+def preview_failures(failures: pd.Series) -> str:
+    """
+    Format failing assets and their reasons for an error message.
+
+    Args:
+        failures (pd.Series):
+            The ``detail`` column of a diagnosis frame, indexed by asset id.
+
+    Returns:
+        str:
+            A comma-separated preview with a count of any remainder.
+    """
+    entries = [
+        f'{asset_id} ({reason})'
+        for asset_id, reason in list(failures.items())[:PREVIEW_LIMIT]
+    ]
+    return join_preview(entries, len(failures))

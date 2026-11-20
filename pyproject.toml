@@ -11,7 +11,7 @@ authors = [
   { name = "NHERI SimCenter", email = "nheri-simcenter@berkeley.edu" }
 ]
 license = { text = "BSD-3-Clause" }
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 classifiers = [
     "Programming Language :: Python",
     "Development Status :: 5 - Production/Stable",
@@ -24,7 +24,6 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: Unix",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -47,8 +46,10 @@ dependencies = [
     "reverse-geocode",
     "requests",
     "scikit-learn",
+    "scipy",
     "seaborn",
     "shapely",
+    "simcenter-dlml>=3.1,<4",
     "simcenter-pyncoda-fork==3.0.0.post2",
     "supervision",
     "numpy",
@@ -97,7 +98,22 @@ brails = [
     "processors/foundation_classifier/csail_segmentation_tool/csail_seg/data/color150.mat",
     "processors/foundation_classifier/csail_segmentation_tool/csail_seg/config/*.yaml",
     "aggregators/housing_units/pyncoda/supporting_data/*.json",
-    "inferers/hazus_inferer_wind/input_schema.json"
+    "aggregators/stacked_footprints/README.rst",
+    "inferers/hazus_inferer_wind/input_schema.json",
+    "inferers/stories_from_height_inferer/height_scales.json",
+    "inferers/stories_from_height_inferer/README.rst",
+    "inferers/acs_unit_budget/README.rst",
+    "inferers/acs_year_built_sampler/README.rst",
+    "inferers/README.rst",
+    "imputers/residential_neighbor_year_sampler/README.rst",
+    "imputers/replacement_cost/README.rst",
+    "imputers/observed_donor_imputer/README.rst",
+    "imputers/README.rst",
+    "inferers/hazus_inferer_earthquake/README.rst",
+    "compilers/README.rst",
+    "compilers/hazus_earthquake/README.rst",
+    "scrapers/overture_maps_scraper/README.rst",
+    "scrapers/nsi_parser/README.rst"
     
 ]
 
@@ -109,9 +125,24 @@ include = [
 
     "brails/types/housing_unit_inventory.py",
     "tests/types/test_housing_unit_inventory.py",
+    "tests/types/test_asset_inventory_possible_worlds.py",
+    "tests/types/test_asset_inventory_add_world.py",
+    "tests/types/test_inventory_merge.py",
+    "tests/types/test_integer_id_export.py",
+    "tests/types/test_geojson_n_worlds.py",
+    "brails/types/census_boundary.py",
+    "tests/types/test_census_boundary.py",
+    "tests/types/test_asset_inventory_geometry.py",
+    "tests/utils/test_input_validator.py",
+    "tests/conftest.py",
+    "tests/local_files.py",
 
     "brails/aggregators/points_to_polygons/basic/basic_points_to_polygons.py",
     "tests/aggregators/points_to_polygons/basic/test_basic_points_to_polygons.py",
+    "brails/aggregators/points_to_polygons/nsi_footprint_join.py",
+    "tests/aggregators/points_to_polygons/test_nsi_footprint_join.py",
+    "brails/aggregators/stacked_footprints/stacked_footprints.py",
+    "tests/aggregators/stacked_footprints/test_stacked_footprints.py",
 
     "brails/aggregators/housing_units/pyncoda/pyncoda_housing_units.py",
     "brails/aggregators/housing_units/pyncoda/supporting_data/FIPS_lookup_generator.py",
@@ -119,6 +150,81 @@ include = [
 
     "brails/scrapers/us_census_scrapers/census_tract_scraper.py",
     "tests/scrapers/test_census_tract_scraper.py",
+    "brails/utils/census_api_key.py",
+    "tests/utils/test_census_api_key.py",
+    "brails/scrapers/us_census_scrapers/acs_table_scraper.py",
+    "tests/scrapers/test_acs_table_scraper.py",
+    "brails/types/geometry_region.py",
+    "tests/types/test_geometry_region.py",
+    "brails/scrapers/us_census_scrapers/tiger_line_scraper.py",
+    "tests/scrapers/test_tiger_line_scraper.py",
+    "brails/scrapers/mobile_home_park_scraper/mobile_home_park_scraper.py",
+    "tests/scrapers/test_mobile_home_park_scraper.py",
+
+    "brails/scrapers/nsi_parser/nsi_conventions.py",
+    "brails/scrapers/nsi_parser/nsi_file_reader.py",
+    "tests/scrapers/conftest.py",
+    "tests/scrapers/test_nsi_parser.py",
+    "tests/scrapers/test_nsi_file_reader.py",
+    "tests/scrapers/data/nsi_fixture_generator.py",
+    "tests/scrapers/data/nsi_pooled_fixture_generator.py",
+
+    "tests/scrapers/test_overture_release_resolution.py",
+    "tests/scrapers/test_overture_local_path.py",
+
+    "brails/inferers/inference_diagnosis.py",
+    "brails/inferers/hazus_inferer_earthquake/hazus_eq_design_level_inferer.py",
+    "brails/inferers/hazus_inferer_earthquake/hazus_eq_height_class_inferer.py",
+    "brails/inferers/hazus_inferer_earthquake/hazus_eq_structure_type_inferer.py",
+    "brails/inferers/hazus_inferer_earthquake/hazus_rulesets.py",
+    "brails/inferers/hazus_inferer_earthquake/hazus_table_completion.py",
+    "brails/inferers/year_built_sampler/year_built_sampler.py",
+    "brails/inferers/acs_year_built_sampler/acs_year_built_sampler.py",
+    "brails/inferers/acs_unit_budget/acs_unit_budget.py",
+    "brails/inferers/stories_from_height_inferer/stories_from_height_inferer.py",
+    "tests/inferers/**/*.py",
+
+    "brails/utils/deterministic_sampling.py",
+    "tests/utils/test_deterministic_sampling.py",
+    "brails/utils/stage_freeze.py",
+    "tests/utils/test_stage_freeze.py",
+
+    "brails/utils/asset_id.py",
+    "tests/utils/test_asset_id.py",
+    "brails/utils/region_filter.py",
+    "tests/utils/test_region_filter.py",
+    "brails/utils/console.py",
+    "brails/utils/http_session.py",
+    "tests/utils/test_http_session.py",
+    "brails/scrapers/us_census_scrapers/tiger_files.py",
+    "tests/scrapers/test_tiger_files.py",
+    "tests/scrapers/test_footprint_asset_ids.py",
+    "tests/imputers/**/*.py",
+    "brails/imputers/observed_donor_imputer/donor_pool.py",
+    "brails/imputers/observed_donor_imputer/donor_records.py",
+    "brails/imputers/observed_donor_imputer/donor_search.py",
+    "brails/imputers/observed_donor_imputer/observed_donor_imputer.py",
+    "brails/imputers/replacement_cost/replacement_cost_imputer.py",
+    "brails/imputers/residential_neighbor_year_sampler/residential_neighbor_year_sampler.py",
+    "brails/utils/metric_crs.py",
+    "brails/utils/id_preview.py",
+    "tests/utils/test_metric_crs.py",
+    "brails/utils/source_updates.py",
+    "brails/utils/unit_count_rules.py",
+    "brails/utils/world_values.py",
+    "brails/utils/inventory_union.py",
+    "tests/utils/test_source_updates.py",
+    "tests/utils/test_inventory_union.py",
+    "tests/utils/test_unit_count_rules.py",
+
+    "brails/validators/**/*.py",
+    "tests/validators/**/*.py",
+
+    "brails/fixers/**/*.py",
+    "tests/fixers/**/*.py",
+
+    "brails/compilers/**/*.py",
+    "tests/compilers/**/*.py",
 ]
 
 [tool.ruff.lint]
