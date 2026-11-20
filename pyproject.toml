@@ -157,6 +157,8 @@ include = [
     "tests/types/test_geometry_region.py",
     "brails/scrapers/us_census_scrapers/tiger_line_scraper.py",
     "tests/scrapers/test_tiger_line_scraper.py",
+    "brails/scrapers/mobile_home_park_scraper/mobile_home_park_scraper.py",
+    "tests/scrapers/test_mobile_home_park_scraper.py",
 
     "brails/scrapers/nsi_parser/nsi_conventions.py",
     "brails/scrapers/nsi_parser/nsi_file_reader.py",

@@ -39,3 +39,4 @@ from .nsi_parser.nsi_file_reader import NSIFileReader
 from .us_census_scrapers.census_tract_scraper import CensusTractScraper
 from .us_census_scrapers.acs_table_scraper import ACSTableScraper
 from .us_census_scrapers.tiger_line_scraper import TIGERLineScraper
+from .mobile_home_park_scraper.mobile_home_park_scraper import MobileHomeParkScraper
