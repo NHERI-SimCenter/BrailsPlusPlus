@@ -54,6 +54,7 @@ from brails.scrapers.overture_maps_scraper.overture_maps_footprint_scraper impor
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
     OvertureMapsScraper,
 )
+from tests.local_files import overture_table
 from tests.scrapers.conftest import Region
 
 if TYPE_CHECKING:
@@ -84,23 +85,6 @@ FOOTPRINTS = [
 IDS = [f'ov-{index}' for index in range(len(FOOTPRINTS))]
 INSIDE = IDS[:5]
 
-NAMES_TYPE = pa.struct(
-    [('primary', pa.string()), ('common', pa.map_(pa.string(), pa.string()))]
-)
-SOURCES_TYPE = pa.list_(
-    pa.struct(
-        [
-            ('property', pa.string()),
-            ('dataset', pa.string()),
-            ('record_id', pa.string()),
-            ('confidence', pa.float64()),
-        ]
-    )
-)
-BBOX_TYPE = pa.struct(
-    [(key, pa.float64()) for key in ('xmin', 'xmax', 'ymin', 'ymax')]
-)
-
 
 def building_table(
     indices: list[int], overture_type: str = 'building', release: str | None = None
@@ -123,60 +107,32 @@ def building_table(
         pa.Table:
             The rows, with GeoParquet metadata.
     """
-    count = len(indices)
-    columns = {
-        'id': pa.array([IDS[index] for index in indices]),
-        'names': pa.array(
-            [{'primary': 'Hall', 'common': [('en', 'Hall')]}, *[None] * (count - 1)],
-            NAMES_TYPE,
-        ),
-        'sources': pa.array(
+    return overture_table(
+        [IDS[index] for index in indices],
+        [FOOTPRINTS[index] for index in indices],
+        heights=[4.0 + index for index in indices],
+        names=[
+            {'primary': 'Hall', 'common': [('en', 'Hall')]},
+            *[None] * (len(indices) - 1),
+        ],
+        sources=[
             [
-                [
-                    {
-                        'property': '',
-                        'dataset': 'OpenStreetMap',
-                        'record_id': f'w{index}',
-                        'confidence': None,
-                    }
-                ]
-                for index in indices
-            ],
-            SOURCES_TYPE,
-        ),
-        'height': pa.array([4.0 + index for index in indices], pa.float64()),
-        'class': pa.array(['house'] * count),
-        'has_parts': pa.array([False] * count),
-        'geometry': pa.array(
-            [FOOTPRINTS[index].wkb for index in indices], pa.binary()
-        ),
-        'bbox': pa.array(
-            [
-                dict(zip(('xmin', 'ymin', 'xmax', 'ymax'), FOOTPRINTS[index].bounds))
-                for index in indices
-            ],
-            BBOX_TYPE,
-        ),
-        'theme': pa.array(['buildings'] * count),
-        'type': pa.array([overture_type] * count),
-    }
-    metadata = {
-        b'schema_versions': b'{"overture-schema-system": "2.0.0"}',
-        b'geo': json.dumps(
-            {
-                'version': '1.1.0',
-                'primary_column': 'geometry',
-                'columns': {
-                    'geometry': {'encoding': 'WKB', 'geometry_types': ['Polygon']}
-                },
-            }
-        ).encode(),
-    }
-    if release is not None:
-        metadata[BRAILS_METADATA_KEY] = json.dumps(
-            {'overture_release': release}
-        ).encode()
-    return pa.table(columns).replace_schema_metadata(metadata)
+                {
+                    'property': '',
+                    'dataset': 'OpenStreetMap',
+                    'record_id': f'w{index}',
+                    'confidence': None,
+                }
+            ]
+            for index in indices
+        ],
+        overture_type=overture_type,
+        metadata=None
+        if release is None
+        else {
+            BRAILS_METADATA_KEY: json.dumps({'overture_release': release}).encode()
+        },
+    )
 
 
 @pytest.fixture(autouse=True)

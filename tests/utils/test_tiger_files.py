@@ -36,8 +36,6 @@
 
 from __future__ import annotations
 
-import io
-import zipfile
 from typing import TYPE_CHECKING
 
 import geopandas as gpd
@@ -48,6 +46,7 @@ from shapely.geometry import box
 
 from brails.utils import tiger_files
 from brails.utils.tiger_files import read_tiger_file, tiger_file_url
+from tests.local_files import zip_shapefile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -116,12 +115,7 @@ def zipped_places(folder: Path) -> bytes:
         geometry=[box(-118.2, 34.2, -118.1, 34.3), box(-122.3, 37.8, -122.2, 37.9)],
         crs='EPSG:4269',
     )
-    places.to_file(folder / 'tl_2023_06_place.shp', encoding='UTF-8')
-    archive = io.BytesIO()
-    with zipfile.ZipFile(archive, 'w') as zipped:
-        for part in sorted(folder.iterdir()):
-            zipped.write(part, part.name)
-    return archive.getvalue()
+    return zip_shapefile(places, folder, 'tl_2023_06_place')
 
 
 def test_reads_names_and_crs_from_bytes(server: tuple, tmp_path: Path) -> None:
