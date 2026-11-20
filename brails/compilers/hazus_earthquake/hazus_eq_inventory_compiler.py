@@ -640,7 +640,7 @@ class CompilerInputs(NamedTuple):
         cls,
         place: str | RegionBoundary | Polygon | MultiPolygon,
         *,
-        source: str | None = None,
+        source: str = 'census',
         buffer_m: float = DEFAULT_DONOR_CAP_M,
         overture_options: Mapping[str, object] | None = None,
         block_group_vintage: int = DEFAULT_TIGER_VINTAGE,
@@ -665,8 +665,9 @@ class CompilerInputs(NamedTuple):
                 where ``source`` says; a :class:`RegionBoundary` of any kind; or a
                 Shapely polygon or multipolygon in longitude and latitude.
             source (str, optional):
-                Where a place name is looked up: ``None`` or ``'census'`` for the
-                census places and counties, ``'osm'`` for OpenStreetMap.
+                Where a place name is looked up: ``'census'`` for the census places
+                and counties, ``'osm'`` for OpenStreetMap. Not consulted for a
+                region that is not a place name. Defaults to ``'census'``.
             buffer_m (float, optional):
                 How far in meters both areas reach past the place and its block
                 groups. Defaults to the observed-donor imputer's default ``cap_m``.
@@ -1783,25 +1784,30 @@ class HazusEQInventoryCompiler:
     def compile_place(
         self,
         place: str | RegionBoundary | Polygon | MultiPolygon,
+        *,
+        source: str = 'census',
         **from_place_options: object,
     ) -> CompilationResult:
         """
         Compile a place from its name or boundary.
 
-        The call is ``compile(CompilerInputs.from_place(place, compiler=self,
-        **from_place_options))``, so a state or zone the compiler would refuse stops
-        it before the footprints are read. ``buffer_m`` defaults to the imputer's
-        ``cap_m``. The Census key is checked by both calls. No inputs are kept, so a
-        compilation that fails loses the downloads; call
+        The call is ``compile(CompilerInputs.from_place(place, source=source,
+        compiler=self, **from_place_options))``, so a state or zone the compiler
+        would refuse stops it before the footprints are read. ``buffer_m`` defaults
+        to the imputer's ``cap_m``. The Census key is checked by both calls. No inputs are
+        kept, so a compilation that fails loses the downloads; call
         :meth:`CompilerInputs.from_place` and :meth:`compile` apart to keep them.
         It raises what those two raise.
 
         Args:
             place (str | RegionBoundary | Polygon | MultiPolygon):
                 The place, as :meth:`CompilerInputs.from_place` takes it.
+            source (str, optional):
+                Where a place name is looked up, as :meth:`CompilerInputs.from_place`
+                takes it. Defaults to ``'census'``.
             **from_place_options:
-                The keyword arguments of :meth:`CompilerInputs.from_place` other
-                than ``compiler``.
+                The other keyword arguments of :meth:`CompilerInputs.from_place`,
+                except ``compiler``.
 
         Returns:
             CompilationResult:
@@ -1812,7 +1818,9 @@ class HazusEQInventoryCompiler:
             'buffer_m', self.imputer_options.get('cap_m', DEFAULT_DONOR_CAP_M)
         )
         return self.compile(
-            CompilerInputs.from_place(place, compiler=self, **from_place_options)
+            CompilerInputs.from_place(
+                place, source=source, compiler=self, **from_place_options
+            )
         )
 
     def compile(self, inputs: CompilerInputs) -> CompilationResult:

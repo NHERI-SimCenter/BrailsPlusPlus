@@ -1248,15 +1248,15 @@ class TestSource:
         monkeypatch.setattr(RegionBoundary, 'get_boundary', osm)
         return calls
 
-    @pytest.mark.parametrize('source', [None, 'census'])
+    @pytest.mark.parametrize('options', [{}, {'source': 'census'}])
     def test_name_goes_to_the_census(
         self,
         lookups: list,
         capsys: pytest.CaptureFixture[str],
-        source: str | None,
+        options: dict[str, str],
     ) -> None:
         """A name goes once to the census lookup, and the name found is printed."""
-        result = filter_to_region(three_worlds(), 'Testville, CA', source=source)
+        result = filter_to_region(three_worlds(), 'Testville, CA', **options)
         assert lookups == [('census', 'Testville, CA')]
         assert sorted(result.inventory) == ['in_a', 'in_b']
         assert capsys.readouterr().out == (
@@ -1294,28 +1294,33 @@ class TestSource:
             filter_to_region(three_worlds(), 'Testville, CA')
         assert lookups == [('census', 'refused')]
 
-    @pytest.mark.parametrize(
-        ('region', 'source', 'message'),
-        [
-            ('Testville, CA', 'nominatim', "source must be 'census' or 'osm'"),
-            (REGION, 'osm', "source='osm' applies to a place name, and the region"),
-            (
-                RegionBoundary(
-                    {
-                        'type': 'locationPolygon',
-                        'data': (-122.01, 37.99, -121.99, 38.01),
-                    }
-                ),
-                'census',
-                "source='census' applies to a place name",
-            ),
-        ],
-    )
-    def test_source_refused(
-        self, lookups: list, region: object, source: str, message: str
+    @pytest.mark.parametrize('source', ['census', 'osm'])
+    def test_source_beside_a_polygon_not_consulted(
+        self, lookups: list, source: str
     ) -> None:
-        """An unknown source, or a source beside a polygon or region, is refused."""
-        with pytest.raises(ValueError, match=message):
+        """Either source beside a polygon is accepted and looks nothing up."""
+        result = filter_to_region(three_worlds(), REGION, source=source)
+        assert sorted(result.inventory) == ['in_a', 'in_b']
+        assert lookups == []
+
+    @pytest.mark.parametrize('source', ['census', 'osm'])
+    def test_source_beside_a_region_boundary_not_consulted(
+        self, lookups: list, source: str
+    ) -> None:
+        """Either source beside a RegionBoundary reads only the region's boundary."""
+        data = (-122.01, 37.99, -121.99, 38.01)
+        region = RegionBoundary({'type': 'locationPolygon', 'data': data})
+        result = filter_to_region(three_worlds(), region, source=source)
+        assert sorted(result.inventory) == ['in_a', 'in_b']
+        assert lookups == [('osm', data)]
+
+    @pytest.mark.parametrize('region', ['Testville, CA', REGION])
+    @pytest.mark.parametrize('source', ['nominatim', None])
+    def test_unknown_source_refused(
+        self, lookups: list, region: object, source: object
+    ) -> None:
+        """A source other than 'census' or 'osm' is refused, whatever the region."""
+        with pytest.raises(ValueError, match="source must be 'census' or 'osm'"):
             filter_to_region(three_worlds(), region, source=source)
         assert lookups == []
 

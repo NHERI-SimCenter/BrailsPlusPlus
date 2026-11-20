@@ -707,6 +707,19 @@ class TestCompilePlace:
         } == {a: asset.features for a, asset in expected.inventory.inventory.items()}
         assert result.report.summary()['notices'][0] == 'A notice of the inputs.'
 
+    def test_compile_place_source_defaults_to_census(self) -> None:
+        """compile_place without source passes source='census' to from_place."""
+        compiler = HazusEQInventoryCompiler(seed=SEED, n_worlds=1)
+        with (
+            mock.patch.object(
+                CompilerInputs, 'from_place', return_value=build_inputs()
+            ) as gather_inputs,
+            mock.patch.object(compiler, 'compile'),
+        ):
+            compiler.compile_place('Placeville, CA')
+
+        assert gather_inputs.call_args.kwargs['source'] == 'census'
+
     def test_zone_refused_before_footprints(self, services: Services) -> None:
         """A place outside California without a zone stops before footprints."""
         services.states['06'] = ('Oregon', services.states['06'][1])
