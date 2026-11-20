@@ -49,13 +49,9 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
+from brails.constants import DEFAULT_TIGER_VINTAGE
 from brails.types.region_boundary import RegionBoundary
 from brails.utils.console import print_ascii_fallback
-from brails.utils.tiger_files import (
-    DEFAULT_TIGER_VINTAGE,
-    read_tiger_file,
-    tiger_file_url,
-)
 
 if TYPE_CHECKING:
     import geopandas as gpd
@@ -187,8 +183,8 @@ class CensusBoundary(RegionBoundary):
     A county is matched only by its name with its descriptor, so ``'Marin, CA'``
     finds no county. The boundary keeps its holes, such as Piedmont inside
     Oakland. The files are read with
-    :func:`~brails.utils.tiger_files.read_tiger_file`, which downloads each once per
-    process.
+    :func:`~brails.scrapers.us_census_scrapers.tiger_files.read_tiger_file`, which
+    downloads each once per process.
 
     Attributes:
         place (str):
@@ -212,7 +208,7 @@ class CensusBoundary(RegionBoundary):
                 GEOID.
             vintage (int, optional):
                 The year of the TIGER/Line release to read. Defaults to
-                :data:`~brails.utils.tiger_files.DEFAULT_TIGER_VINTAGE`.
+                :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
 
         Raises:
             TypeError:
@@ -308,6 +304,14 @@ class CensusBoundary(RegionBoundary):
             requests.RequestException:
                 If a download fails otherwise.
         """
+        # Imported here, since importing the scrapers while brails.types loads is
+        # circular: brails.scrapers imports from brails.utils, whose package
+        # imports brails.types.
+        from brails.scrapers.us_census_scrapers.tiger_files import (  # noqa: PLC0415
+            read_tiger_file,
+            tiger_file_url,
+        )
+
         fips, _, state = self._state
         places = read_tiger_file('PLACE', fips, self.vintage)
         if self._geoid:
@@ -410,6 +414,10 @@ class CensusBoundary(RegionBoundary):
                 functioning places for a name that ends in a county descriptor,
                 and its functioning places otherwise.
         """
+        from brails.scrapers.us_census_scrapers.tiger_files import (  # noqa: PLC0415
+            read_tiger_file,
+        )
+
         fips, _, state = self._state
         key = _normalize(self._name)
         hits = places[places['NAMELSAD'].map(_normalize) == key]

@@ -50,7 +50,7 @@ from brails.compilers.hazus_earthquake.hazus_eq_inventory_compiler import (
     CompilerInputs,
     HazusEQInventoryCompiler,
 )
-from brails.constants import GEOGRAPHIC_CRS
+from brails.constants import DEFAULT_TIGER_VINTAGE, GEOGRAPHIC_CRS
 from brails.scrapers.nsi_parser.nsi_parser import NSI_Parser
 from brails.scrapers.overture_maps_scraper import overture_maps_scraper
 from brails.scrapers.overture_maps_scraper.overture_maps_footprint_scraper import (
@@ -59,12 +59,11 @@ from brails.scrapers.overture_maps_scraper.overture_maps_footprint_scraper impor
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
     OVERTURE_ID_KEY,
 )
+from brails.scrapers.us_census_scrapers import tiger_files
 from brails.scrapers.us_census_scrapers.tiger_line_scraper import TIGERLineScraper
 from brails.types.census_boundary import CensusBoundary
 from brails.types.region_boundary import RegionBoundary
-from brails.utils import tiger_files
 from brails.utils.census_api_key import CENSUS_API_KEY_NAME
-from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE
 from tests.compilers.hazus_earthquake.compiler_fixtures import (
     BG_EAST,
     BG_FAR,

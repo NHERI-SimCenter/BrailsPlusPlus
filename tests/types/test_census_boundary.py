@@ -36,13 +36,19 @@
 
 from __future__ import annotations
 
+import os
 import re
+import subprocess
+import sys
+from pathlib import Path
 
 import geopandas as gpd
 import pytest
 from shapely.geometry import Point, Polygon, box
 
-from brails.types import CensusBoundary, census_boundary
+import brails
+from brails.scrapers.us_census_scrapers import tiger_files
+from brails.types import CensusBoundary
 from brails.types.region_boundary import RegionBoundary
 from brails.utils import Importer
 
@@ -134,7 +140,7 @@ def files_read(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str, int, str
 
     Args:
         monkeypatch (pytest.MonkeyPatch):
-            Replaces the reader the module calls.
+            Replaces the reader the module calls, in its own module.
 
     Returns:
         list[tuple[str, str, int, str]]:
@@ -148,7 +154,7 @@ def files_read(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str, int, str
         read.append((layer, area, vintage, notice))
         return {'PLACE': PLACES, 'COUNTY': COUNTIES}[layer].copy()
 
-    monkeypatch.setattr(census_boundary, 'read_tiger_file', read_tiger_file)
+    monkeypatch.setattr(tiger_files, 'read_tiger_file', read_tiger_file)
     return read
 
 
@@ -401,7 +407,7 @@ def test_boundary_in_wgs84(monkeypatch: pytest.MonkeyPatch) -> None:
     """A file in another CRS gives the boundary in longitude and latitude."""
     projected = PLACES.to_crs('EPSG:3310')
     monkeypatch.setattr(
-        census_boundary, 'read_tiger_file', lambda *_args: projected.copy()
+        tiger_files, 'read_tiger_file', lambda *_args: projected.copy()
     )
     boundary, _, _ = CensusBoundary('Berkeley, CA').get_boundary()
     assert boundary.bounds == pytest.approx((-122.3, 37.8, -122.2, 37.9), abs=1e-6)
@@ -421,3 +427,18 @@ def test_a_region_boundary_the_importer_finds() -> None:
     """A CensusBoundary is a RegionBoundary, and the Importer finds it."""
     assert isinstance(CensusBoundary('Berkeley, CA'), RegionBoundary)
     assert Importer().get_class('CensusBoundary') is CensusBoundary
+
+
+def test_types_load_without_the_scrapers() -> None:
+    """Importing brails.types loads no scraper, which would make it circular."""
+    root = Path(brails.__file__).resolve().parents[1]
+    code = 'import sys, brails.types; print("brails.scrapers" in sys.modules)'
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, '-c', code],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=root,
+        env={**os.environ, 'PYTHONPATH': str(root)},
+    )
+    assert result.stdout.strip() == 'False'

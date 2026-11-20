@@ -44,8 +44,11 @@ import requests
 from pyogrio.errors import DataSourceError
 from shapely.geometry import box
 
-from brails.utils import tiger_files
-from brails.utils.tiger_files import read_tiger_file, tiger_file_url
+from brails.scrapers.us_census_scrapers import tiger_files
+from brails.scrapers.us_census_scrapers.tiger_files import (
+    read_tiger_file,
+    tiger_file_url,
+)
 from tests.local_files import zip_shapefile
 
 if TYPE_CHECKING:

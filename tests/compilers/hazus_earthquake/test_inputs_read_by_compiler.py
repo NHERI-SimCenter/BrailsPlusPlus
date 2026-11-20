@@ -53,12 +53,11 @@ from brails.compilers.hazus_earthquake.hazus_eq_inventory_compiler import (
     CompilerInputs,
     HazusEQInventoryCompiler,
 )
-from brails.constants import BLOCK_GROUP_KEY, GEOGRAPHIC_CRS
+from brails.constants import BLOCK_GROUP_KEY, DEFAULT_TIGER_VINTAGE, GEOGRAPHIC_CRS
 from brails.scrapers.us_census_scrapers.acs_table_scraper import ACS5_URL
 from brails.scrapers.us_census_scrapers.tiger_line_scraper import STATE_NAME_COLUMN
 from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.census_api_key import CENSUS_API_KEY_NAME
-from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE
 from tests.compilers.hazus_earthquake.compiler_fixtures import (
     BG_EAST,
     BG_WEST,

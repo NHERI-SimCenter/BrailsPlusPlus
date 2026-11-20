@@ -39,6 +39,7 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import box
 
+from brails.constants import DEFAULT_TIGER_VINTAGE
 from brails.scrapers import TIGERLineScraper as ExportedScraper
 from brails.scrapers.us_census_scrapers import tiger_line_scraper
 from brails.scrapers.us_census_scrapers.tiger_line_scraper import (
@@ -47,7 +48,6 @@ from brails.scrapers.us_census_scrapers.tiger_line_scraper import (
 )
 from brails.types.geometry_region import GeometryRegion
 from brails.utils import Importer
-from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE
 
 # Two states side by side, split at longitude -120, each with two block groups. A
 # third state lies far to the east. The frames are projected, as a reader must

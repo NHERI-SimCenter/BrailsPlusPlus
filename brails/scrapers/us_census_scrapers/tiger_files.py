@@ -48,10 +48,8 @@ import io
 import geopandas as gpd
 import requests
 
+from brails.constants import DEFAULT_TIGER_VINTAGE
 from brails.utils.http_session import create_retrying_session, get_whole_body
-
-# The year of the TIGER/Line release read when no vintage is given.
-DEFAULT_TIGER_VINTAGE = 2023
 
 # The folder of the TIGER/Line releases on the Census Bureau's server.
 TIGER_ROOT = 'https://www2.census.gov/geo/tiger'
@@ -78,7 +76,7 @@ def tiger_file_url(
             as ``'06'``, or ``'us'`` for a national file.
         vintage (int, optional):
             The year of the TIGER/Line release. Defaults to
-            :data:`DEFAULT_TIGER_VINTAGE`.
+            :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
 
     Returns:
         str:
@@ -115,7 +113,7 @@ def read_tiger_file(
             The state's FIPS code or ``'us'``, as for :func:`tiger_file_url`.
         vintage (int, optional):
             The year of the TIGER/Line release. Defaults to
-            :data:`DEFAULT_TIGER_VINTAGE`.
+            :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
         timeout (float, optional):
             Seconds to wait for the server to answer. Defaults to 120.
         retries (int, optional):

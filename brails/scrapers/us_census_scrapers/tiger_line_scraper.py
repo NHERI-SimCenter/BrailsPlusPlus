@@ -47,7 +47,8 @@ from typing import TYPE_CHECKING
 import geopandas as gpd
 import pandas as pd
 
-from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE, read_tiger_file
+from brails.constants import DEFAULT_TIGER_VINTAGE
+from brails.scrapers.us_census_scrapers.tiger_files import read_tiger_file
 
 if TYPE_CHECKING:
     from brails.types.region_boundary import RegionBoundary
@@ -61,19 +62,22 @@ class TIGERLineScraper:
     Read the census block groups of a region from the TIGER/Line files of a release.
 
     The national state file and the block-group file of each state the region
-    intersects are read with :func:`~brails.utils.tiger_files.read_tiger_file`, which
+    intersects are read with
+    :func:`~brails.scrapers.us_census_scrapers.tiger_files.read_tiger_file`, which
     keeps each download in memory for the process.
 
     Args:
         vintage (int, optional):
             The year of the TIGER/Line release. Defaults to
-            :data:`~brails.utils.tiger_files.DEFAULT_TIGER_VINTAGE`.
+            :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
         timeout (float, optional):
-            Passed to :func:`~brails.utils.tiger_files.read_tiger_file`. Defaults to
-            120.
+            Passed to
+            :func:`~brails.scrapers.us_census_scrapers.tiger_files.read_tiger_file`.
+            Defaults to 120.
         retries (int, optional):
-            Passed to :func:`~brails.utils.tiger_files.read_tiger_file`. Defaults to
-            3.
+            Passed to
+            :func:`~brails.scrapers.us_census_scrapers.tiger_files.read_tiger_file`.
+            Defaults to 3.
     """
 
     def __init__(
@@ -113,7 +117,8 @@ class TIGERLineScraper:
                 the server has no file of the release, naming its URL and vintage.
             requests.RequestException:
                 If a download fails otherwise, as
-                :func:`~brails.utils.tiger_files.read_tiger_file` raises it.
+                :func:`~brails.scrapers.us_census_scrapers.tiger_files.read_tiger_file`
+                raises it.
         """
         boundary, _, _ = region.get_boundary()
         download = {

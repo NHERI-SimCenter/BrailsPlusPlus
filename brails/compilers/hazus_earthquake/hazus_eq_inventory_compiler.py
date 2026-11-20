@@ -99,6 +99,7 @@ from brails.compilers.source_composition import (
 from brails.constants import (
     BLOCK_GROUP_KEY,
     BUILDING_TYPE_KEY,
+    DEFAULT_TIGER_VINTAGE,
     DEFAULT_UNITS,
     DESIGN_LEVEL_KEY,
     DROPPED_KEY,
@@ -205,6 +206,7 @@ from brails.scrapers.us_census_scrapers.census_tract_scraper import (
     LEVEL_TRACT,
     CensusTractScraper,
 )
+from brails.scrapers.us_census_scrapers.tiger_files import read_tiger_file
 from brails.scrapers.us_census_scrapers.tiger_line_scraper import (
     STATE_NAME_COLUMN,
     TIGERLineScraper,
@@ -227,7 +229,6 @@ from brails.utils.region_filter import (
     resolve_region,
 )
 from brails.utils.stage_freeze import StageFreeze
-from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE, read_tiger_file
 from brails.utils.unit_converter import UNIT_TO_METER
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from brails.validators.schema_validator import SchemaValidator
@@ -679,7 +680,7 @@ class CompilerInputs(NamedTuple):
             block_group_vintage (int, optional):
                 The year of the TIGER/Line release of the block groups and of a
                 census boundary looked up by name. Defaults to
-                :data:`~brails.utils.tiger_files.DEFAULT_TIGER_VINTAGE`.
+                :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
             max_block_groups (int | None, optional):
                 The most block groups the area read may intersect, counted before
                 the footprints are read. ``None`` sets no limit. Defaults to
@@ -1671,7 +1672,7 @@ class HazusEQInventoryCompiler:
                 the block groups when :class:`CompilerInputs` gives none. Where the
                 census tables are read too, it must be of the decade of
                 ``acs_vintage``. Defaults to
-                :data:`~brails.utils.tiger_files.DEFAULT_TIGER_VINTAGE`.
+                :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
 
         Raises:
             TypeError:

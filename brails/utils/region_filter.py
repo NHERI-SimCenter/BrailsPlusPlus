@@ -59,6 +59,7 @@ import numpy as np
 import shapely
 from shapely.geometry import MultiPolygon, Polygon
 
+from brails.constants import DEFAULT_TIGER_VINTAGE
 from brails.types.asset_inventory import (
     Asset,
     AssetInventory,
@@ -70,7 +71,6 @@ from brails.types.region_boundary import RegionBoundary
 from brails.utils.asset_id import LATITUDE_RANGE, LONGITUDE_RANGE
 from brails.utils.console import print_ascii_fallback
 from brails.utils.geo_tools import GeoTools
-from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Iterator, Mapping
@@ -692,7 +692,7 @@ def resolve_region(
             is not a place name. Defaults to ``'census'``.
         vintage (int, optional):
             The year of the TIGER/Line release a census lookup reads. Defaults to
-            :data:`~brails.utils.tiger_files.DEFAULT_TIGER_VINTAGE`.
+            :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
 
     Returns:
         RegionBoundary | Polygon | MultiPolygon:

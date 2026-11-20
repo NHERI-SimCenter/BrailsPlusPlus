@@ -151,3 +151,6 @@ AREA_FROM_GROSS_AREA = 'gross_area'
 AREA_FROM_STORIES = 'stories'
 AREA_FROM_PLAN_AREA = 'plan_area'
 AREA_FROM_FEATURE = 'feature'
+
+# The year of the TIGER/Line release read when no vintage is given.
+DEFAULT_TIGER_VINTAGE = 2023
