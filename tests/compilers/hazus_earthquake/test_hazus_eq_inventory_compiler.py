@@ -40,7 +40,6 @@ import contextlib
 import functools
 import json
 import math
-import time
 from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
@@ -1160,6 +1159,9 @@ class TestReport:
     def test_s09_and_s10_are_timed_apart(self, study_area: object) -> None:
         """In a world, s09's time and s10's are each counted under its own key."""
         pause = 0.2
+        # The compiler reads this clock, which only the two pauses advance, so
+        # the times do not depend on the speed of the machine.
+        now = 0.0
         structure = hc.HazusEQInventoryCompiler._assign_structure
         draw = hc.ResidentialNeighborYearSampler.draw_details
 
@@ -1167,7 +1169,7 @@ class TestReport:
             compiler: object, *args: object, **kwargs: object
         ) -> object:
             """
-            Run the structure operations, pausing first when s10 runs them.
+            Run the structure operations, after a pause when s10 runs them.
 
             Args:
                 compiler (object):
@@ -1181,8 +1183,9 @@ class TestReport:
                 object:
                     What the method returns.
             """
+            nonlocal now
             if kwargs.get('step') == 's10':
-                time.sleep(pause)
+                now += pause
             return structure(compiler, *args, **kwargs)
 
         def slow_draw(sampler: object, *args: object) -> object:
@@ -1199,10 +1202,12 @@ class TestReport:
                 object:
                     What the method returns.
             """
-            time.sleep(pause)
+            nonlocal now
+            now += pause
             return draw(sampler, *args)
 
         with (
+            mock.patch.object(hc, 'time', mock.Mock(perf_counter=lambda: now)),
             mock.patch.object(
                 hc.HazusEQInventoryCompiler,
                 '_assign_structure',
@@ -1225,7 +1230,7 @@ class TestReport:
             if entry['world'] == 0
         }
         for key in ('s09_nonresidential_year', 's10_nonresidential_structure'):
-            assert pause <= seconds[key] < 2 * pause, key
+            assert seconds[key] == pytest.approx(pause), key
 
     @pytest.mark.parametrize('n_worlds', [3, 10])
     def test_every_exclusion_has_a_diagnosis(
