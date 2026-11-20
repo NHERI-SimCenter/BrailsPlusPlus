@@ -34,10 +34,9 @@
 """
 Hazus rulesets transcribed from the FEMA Hazus Inventory Technical Manual.
 
-Structure type distributions, region groupings, and replacement cost
-data, each returned by a getter whose docstring names the manual tables
-it transcribes. The README beside this module states which editions of
-the manual the tables come from.
+Structure type distributions, region groupings, and replacement cost data, each
+returned by a getter whose docstring names the manual tables it transcribes. The
+README beside this module states which editions of the manual the tables come from.
 
 .. autosummary::
 
@@ -64,12 +63,12 @@ import math
 # The region group whose Appendix A tables are stratified by era.
 WEST_COAST = 'West Coast'
 
-# The types the Appendix A footnote of the FEMA Hazus Inventory Technical
-# Manual 7.0 calls unreinforced: "Unreinforced SBTs URM, C3 and S5 are not
-# allowed in West Coast Region where Design Levels are higher than Pre-Code"
-# (West Coast tables pp. A-2 to A-12), with Low-Code in place of Pre-Code
-# elsewhere. Which levels admit them by region comes from
-# get_hazus_unreinforced_design_levels, whose docstring carries the rest.
+# The types the Appendix A footnote of the FEMA Hazus Inventory Technical Manual 7.0
+# calls unreinforced: "Unreinforced SBTs URM, C3 and S5 are not allowed in West Coast
+# Region where Design Levels are higher than Pre-Code" (West Coast tables pp. A-2 to
+# A-12), with Low-Code in place of Pre-Code elsewhere. Which levels admit them by
+# region comes from get_hazus_unreinforced_design_levels, whose docstring carries the
+# rest.
 UNREINFORCED_MASONRY_TYPES = ('S5', 'C3', 'URM')
 
 
@@ -77,29 +76,28 @@ def get_hazus_occ_type_mapping() -> tuple[dict, dict]:
     """
     Return the Appendix A structure type lists and sampling weights.
 
-    The weights give the percentage of each structure type by occupancy
-    class and height band. West Coast tables are further stratified by
-    building era, and RES1 tables are organized by state instead of
-    height band. Each weight vector aligns position by position with the
-    type list of its band.
+    The weights give the percentage of each structure type by occupancy class and
+    height band. West Coast tables are further stratified by building era, and RES1
+    tables are organized by state instead of height band. Each weight vector aligns
+    position by position with the type list of its band.
 
-    Sources, all in Appendix A of the 6.0 edition (the 6.1 appendix no
-    longer prints these weights):
+    Sources, all in Appendix A of the 6.0 edition (the 6.1 appendix no longer prints
+    these weights):
 
     - West Coast non-RES1: Tables A-2 (low-rise) to A-10 (high-rise).
     - West Coast RES1: Tables A-17 to A-19, one per era.
     - Mid-West non-RES1: Tables A-11 to A-13; RES1: Table A-20.
     - East Coast non-RES1: Tables A-14 to A-16; RES1: Table A-21.
 
-    An empty weight list means the manual table has no row for that
-    occupancy and band, so no such stock was observed in the region.
+    An empty weight list means the manual table has no row for that occupancy and
+    band, so no such stock was observed in the region.
 
     Returns:
         tuple[dict, dict]:
-            (type_lists, type_weights), each keyed by region group
-            ('West Coast', 'Mid-West', 'East Coast'). type_lists maps
-            height bands to structure type rows; type_weights maps
-            occupancy classes to percentage vectors over those rows.
+            (type_lists, type_weights), each keyed by region group ('West Coast',
+            'Mid-West', 'East Coast'). type_lists maps height bands to structure type
+            rows; type_weights maps occupancy classes to percentage vectors over
+            those rows.
     """
     #
     # The global hierarchy of json components are REGION - OCC_CLASS - (HEIGHT_CLASS) - (YEAR_CLASS) - (STATE)
@@ -1143,15 +1141,14 @@ def get_hazus_state_region_mapping() -> dict[str, dict[str, str]]:
     """
     Return the census region, division, and Hazus region group by state.
 
-    CensusRegion and CensusDivision transcribe Table 3-1 of the manual
-    and feed the building value tables. RegionGroup transcribes Table
-    A-22 of the 6.0 edition (A-21 in 6.1) and selects the Appendix A
-    structure type tables.
+    CensusRegion and CensusDivision transcribe Table 3-1 of the manual and feed the
+    building value tables. RegionGroup transcribes Table A-22 of the 6.0 edition
+    (A-21 in 6.1) and selects the Appendix A structure type tables.
 
     Returns:
         dict[str, dict[str, str]]:
-            State name to a dict with keys 'CensusRegion',
-            'CensusDivision', and 'RegionGroup'.
+            State name to a dict with keys 'CensusRegion', 'CensusDivision', and
+            'RegionGroup'.
     """
     return {
         'Connecticut': {
@@ -1441,11 +1438,10 @@ def get_hazus_height_classes() -> dict[str, list[int]]:
     """
     Return the legacy story bands used to pick Appendix A weight rows.
 
-    These bands (1-3, 4-6, 7 and up) do not match the manual, whose
-    tables split at 1-3, 4-7, and 8 and up (Table 4-2 in 6.1). They are kept
-    unchanged for the legacy HazusInferer; new code uses
-    get_hazus_sampling_height_bands. Buildings over 199 stories fall
-    outside every band.
+    These bands (1-3, 4-6, 7 and up) do not match the manual, whose tables split at
+    1-3, 4-7, and 8 and up (Table 4-2 in 6.1). They are kept unchanged for the legacy
+    HazusInferer; new code uses get_hazus_sampling_height_bands. Buildings over 199
+    stories fall outside every band.
 
     Returns:
         dict[str, list[int]]:
@@ -1462,8 +1458,8 @@ def get_hazus_year_classes() -> dict[str, list[int]]:
     """
     Return the building era bands of the West Coast Appendix A tables.
 
-    The eras (pre-1950, 1950-1970, post 1970) stratify the West Coast
-    structure type tables. Years from 2030 on fall outside every band.
+    The eras (pre-1950, 1950-1970, post 1970) stratify the West Coast structure type
+    tables. Years from 2030 on fall outside every band.
 
     Returns:
         dict[str, list[int]]:
@@ -1481,16 +1477,15 @@ def get_hazus_sampling_height_bands() -> dict[str, tuple[int, int | None]]:
     Return the story bands of the Appendix A structure type tables.
 
     These are the bands the manual uses to split the non-RES1 tables:
-    low-rise 1-3, mid-rise 4-7, high-rise 8 and up (Table 4-2 of the 6.1
-    edition, matching the Appendix A table captions). They pick the
-    Appendix A weight row for a story count and are distinct from
-    the Table 5-1 height classes assigned to a drawn structure type
-    (see get_hazus_height_classes_by_type).
+    low-rise 1-3, mid-rise 4-7, high-rise 8 and up (Table 4-2 of the 6.1 edition,
+    matching the Appendix A table captions). They pick the Appendix A weight row for
+    a story count and are distinct from the Table 5-1 height classes assigned to a
+    drawn structure type (see get_hazus_height_classes_by_type).
 
     Returns:
         dict[str, tuple[int, int | None]]:
-            Band name to an inclusive (lowest, highest) story range,
-            with None for no upper bound.
+            Band name to an inclusive (lowest, highest) story range, with None for no
+            upper bound.
     """
     return {
         'low_rise': (1, 3),
@@ -1509,8 +1504,8 @@ def get_hazus_sampling_height_band(stories: int) -> str:
 
     Returns:
         str:
-            The band of :func:`get_hazus_sampling_height_bands` that
-            covers the count.
+            The band of :func:`get_hazus_sampling_height_bands` that covers the
+            count.
 
     Raises:
         ValueError:
@@ -1557,20 +1552,18 @@ def get_hazus_height_classes_by_type() -> dict[
     """
     Return the Hazus height class of each structure type by story count.
 
-    Transcribed from Table 5-1 of the FEMA Hazus Earthquake Model
-    Technical Manual 6.1. Height class is a function of structure type
-    and story count, and its bands differ from the sampling bands of
-    the Appendix A tables. URM splits at two stories, the mid-rise
-    classes of RM1 and URM absorb every taller building, and W1, W2,
-    S3, PC1, and MH carry no height class at all (None; the damage
-    models for these types ignore height).
+    Transcribed from Table 5-1 of the FEMA Hazus Earthquake Model Technical Manual
+    6.1. Height class is a function of structure type and story count, and its bands
+    differ from the sampling bands of the Appendix A tables. URM splits at two
+    stories, the mid-rise classes of RM1 and URM absorb every taller building, and
+    W1, W2, S3, PC1, and MH carry no height class at all (None; the damage models for
+    these types ignore height).
 
     Returns:
         dict[str, dict[str, tuple[int, int | None]] | None]:
-            Structure type to either None or a dict mapping height
-            class ('Low-Rise', 'Mid-Rise', 'High-Rise') to an inclusive
-            (lowest, highest) story range, with None for no upper
-            bound.
+            Structure type to either None or a dict mapping height class ('Low-Rise',
+            'Mid-Rise', 'High-Rise') to an inclusive (lowest, highest) story range,
+            with None for no upper bound.
     """
     full_grid = {
         'Low-Rise': (1, 3),
@@ -1601,11 +1594,11 @@ def get_hazus_unreinforced_design_levels() -> dict[str, tuple[str, ...]]:
     """
     Return the design levels each region allows for URM, C3 and S5.
 
-    Transcribed from the footnote under the Appendix A structure type
-    tables of the FEMA Hazus Inventory Technical Manual 7.0:
-    "Unreinforced SBTs URM, C3 and S5 are not allowed in West Coast
-    Region where Design Levels are higher than Pre-Code", with Low-Code
-    in place of Pre-Code for the other two regions.
+    Transcribed from the footnote under the Appendix A structure type tables of the
+    FEMA Hazus Inventory Technical Manual 7.0:
+    "Unreinforced SBTs URM, C3 and S5 are not allowed in West Coast Region where
+    Design Levels are higher than Pre-Code", with Low-Code in place of Pre-Code for
+    the other two regions.
 
     Returns:
         dict[str, tuple[str, ...]]:
@@ -1622,11 +1615,10 @@ def get_hazus_general_type_membership() -> dict[str, list[str]]:
     """
     Return the Hazus specific types under each general building type.
 
-    The keys follow the NSI BuildingType letters (NSI's H arrives as MH
-    after the conventions rename): W wood, S steel, C concrete
-    including precast, M masonry both reinforced and unreinforced, MH
-    manufactured housing. An observed general type restricts the
-    structure type draw to its members.
+    The keys follow the NSI BuildingType letters (NSI's H arrives as MH after the
+    conventions rename): W wood, S steel, C concrete including precast, M masonry
+    both reinforced and unreinforced, MH manufactured housing. An observed general
+    type restricts the structure type draw to its members.
 
     Returns:
         dict[str, list[str]]:
@@ -1650,20 +1642,18 @@ def get_hazus_base_replacement_cost() -> tuple[dict, dict]:
     """
     Return base replacement costs per square foot and garage costs.
 
-    Transcribed from the 6.1 edition. RES1 costs by construction class,
-    story count, and basement finish come from Table 6-3; the single
-    costs for the other occupancies from Table 6-2; the RES2 costs by
-    census region from Table 6-6, in 2020 dollars where the other
-    tables are 2022; and the garage costs per residence from Table 6-4,
-    whose Carport and None zeros are implied by the manual rather than
-    printed.
+    Transcribed from the 6.1 edition. RES1 costs by construction class, story count,
+    and basement finish come from Table 6-3; the single costs for the other
+    occupancies from Table 6-2; the RES2 costs by census region from Table 6-6, in
+    2020 dollars where the other tables are 2022; and the garage costs per residence
+    from Table 6-4, whose Carport and None zeros are implied by the manual rather
+    than printed.
 
     Returns:
         tuple[dict, dict]:
-            (replacement_cost_per_ft2, garage_cost_per_residence). The
-            first maps occupancy class to cost, with nested dicts for
-            RES1 and RES2. The second maps construction class to cost by
-            garage type.
+            (replacement_cost_per_ft2, garage_cost_per_residence). The first maps
+            occupancy class to cost, with nested dicts for RES1 and RES2. The second
+            maps construction class to cost by garage type.
     """
     replacement_cost_per_ft2_res1 = {
         'Economy': {
@@ -1765,8 +1755,7 @@ def get_hazus_base_replacement_cost() -> tuple[dict, dict]:
         'EDU2': 197.10,
     }
 
-    # TODO(adam): what does per residence mean here?
-    # Table 6-4
+    # TODO(adam): what does per residence mean here? Table 6-4
     garage_cost_per_residence = {
         'Economy': {
             'One-car': 19394,
@@ -1810,8 +1799,8 @@ def get_hazus_region_to_garage() -> tuple[list[str], dict[str, list[int]]]:
 
     Returns:
         tuple[list[str], dict[str, list[int]]]:
-            (garage_type_list, census_to_garage_weight), the latter
-            keyed by census region.
+            (garage_type_list, census_to_garage_weight), the latter keyed by census
+            region.
     """
     garage_type_list = ['One-car', 'Two-car', 'Three-car', 'Carport', 'None']
     census_to_garage_weight = {
@@ -1830,16 +1819,16 @@ def get_hazus_income_to_const_class() -> tuple[
     """
     Return the income group definitions and construction class weights.
 
-    The income ratio thresholds and the weights mapping income groups to
-    RES1 construction classes transcribe Table 6-5 of the 6.1 edition;
-    the final threshold is a sentinel for the manual's open-ended top
-    band. The state median household incomes transcribe Table 5-39.
+    The income ratio thresholds and the weights mapping income groups to RES1
+    construction classes transcribe Table 6-5 of the 6.1 edition; the final threshold
+    is a sentinel for the manual's open-ended top band. The state median household
+    incomes transcribe Table 5-39.
 
     Returns:
         tuple[list[float], list[str], list[str], dict, dict]:
             (income_ratio_thres, income_group_list, const_class_list,
-            income_to_const_class_weight, state_average_income). The
-            weights are percentages aligned with const_class_list.
+            income_to_const_class_weight, state_average_income). The weights are
+            percentages aligned with const_class_list.
     """
     # Table 6-5
     income_ratio_thres = [0, 0.5, 0.85, 1.25, 2.0, 1.0e15]
@@ -1922,10 +1911,10 @@ def get_hazus_height_classes_RES1() -> dict[str, list[int]]:  # noqa: N802
     """
     Return story bands for the RES1 replacement cost table rows.
 
-    The bands map story counts onto the RES1 replacement cost rows of
-    the manual. Three or more stories fall into the Three-story row, and
-    the Split level row cannot be reached from a story count. The name
-    keeps its legacy capitalization for the legacy HazusInferer.
+    The bands map story counts onto the RES1 replacement cost rows of the manual.
+    Three or more stories fall into the Three-story row, and the Split level row
+    cannot be reached from a story count. The name keeps its legacy capitalization
+    for the legacy HazusInferer.
 
     Returns:
         dict[str, list[int]]:

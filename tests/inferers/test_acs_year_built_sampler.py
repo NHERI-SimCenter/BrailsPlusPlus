@@ -74,8 +74,8 @@ SEED = 20261102
 # The year the golden test's asset draws under SEED.
 GOLDEN_YEAR = 1975
 
-# Two tracts of one county in every table, a third absent from B25127, a
-# fourth absent from every table, and a block group of a second county.
+# Two tracts of one county in every table, a third absent from B25127, a fourth
+# absent from every table, and a block group of a second county.
 TRACT_1 = '06001000100'
 TRACT_2 = '06001000200'
 TRACT_3 = '06001000300'
@@ -106,8 +106,8 @@ B25034_TRACT = {
     TRACT_3: [4, 6, 12, 10, 8, 6, 4, 3, 2, 1],
 }
 
-# B25127 units, one row per class of SIZE_CLASSES, one column per year
-# bin of COARSE_YEARS.
+# B25127 units, one row per class of SIZE_CLASSES, one column per year bin of
+# COARSE_YEARS.
 B25127_TRACT_1 = [
     [30, 50, 80, 40, 20, 2],
     [10, 5, 20, 15, 5, 0],
@@ -136,8 +136,8 @@ def _b25034(rows: dict[str, list[float]]) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame:
-            The table indexed by GEOID, with the total and an unrelated
-            column beside the bin variables.
+            The table indexed by GEOID, with the total and an unrelated column beside
+            the bin variables.
     """
     variables = [row[3] for row in B25034_BINS]
     frame = pd.DataFrame(
@@ -261,8 +261,8 @@ def _neighborhood() -> dict[str, dict]:
     Returns:
         dict[str, dict]:
             Asset id to features. BG_A holds one-unit, two-to-four and
-            five-to-nineteen assets with fractional counts; BG_B holds
-            one-unit assets and a manufactured home.
+            five-to-nineteen assets with fractional counts; BG_B holds one-unit
+            assets and a manufactured home.
     """
     assets = {}
     for k in range(12):
@@ -296,8 +296,7 @@ def _hand_vectors(class_units: np.ndarray) -> np.ndarray:
     """
     Compute BG_A's raked rows independently of the sampler.
 
-    The computation uses the default smoothing and rakes in the linear
-    domain.
+    The computation uses the default smoothing and rakes in the linear domain.
 
     Args:
         class_units (np.ndarray):
@@ -604,8 +603,8 @@ def test_draws_are_local_to_the_block_group(
     """
     Assets elsewhere leave draws unchanged; a block group's own change its rows.
 
-    Changing another block group's assets leaves the draws unchanged, and
-    changing the block group's own assets changes its fitted rows.
+    Changing another block group's assets leaves the draws unchanged, and changing
+    the block group's own assets changes its fitted rows.
     """
     assets = _neighborhood()
     in_a = [k for k, v in assets.items() if v['BLOCKGROUP_GEOID'] == BG_A]
@@ -671,8 +670,8 @@ def test_one_asset_calls_match_the_full_inventory(
     """
     One-asset calls see the distribution of the fitted inventory.
 
-    A one-asset check under a placeholder id matches the check under the
-    real id, and a one-asset draw matches the full-inventory draw.
+    A one-asset check under a placeholder id matches the check under the real id, and
+    a one-asset draw matches the full-inventory draw.
     """
     assets = _neighborhood()
     full = build_inventory(assets)
@@ -768,9 +767,9 @@ def test_each_diagnosis_names_its_feature(
     """
     Each refusal has its category and names what alone would admit it.
 
-    A driver that fails alone is named, whether it is unusable, a class
-    outside the sampler's coverage or an unfitted block group. Two failing
-    drivers name nothing, and a usable asset is OK and names none.
+    A driver that fails alone is named, whether it is unusable, a class outside the
+    sampler's coverage or an unfitted block group. Two failing drivers name nothing,
+    and a usable asset is OK and names none.
     """
     sampler = _sampler().fit(build_inventory({'a': _asset('RES1', 1, BG_A)}))
     verdicts = sampler.check(build_inventory({'x': features}))

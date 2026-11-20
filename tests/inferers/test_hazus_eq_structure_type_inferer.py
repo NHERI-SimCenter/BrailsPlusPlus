@@ -83,8 +83,8 @@ STORE = {
     'DesignLevel': 'Moderate-Code',
 }
 
-# A mid-rise cell whose only masonry type is URM, so a design level above
-# Low-Code leaves a masonry-tagged building with nothing to draw.
+# A mid-rise cell whose only masonry type is URM, so a design level above Low-Code
+# leaves a masonry-tagged building with nothing to draw.
 MASONRY_WALKUP = {
     'OccupancyClass': 'COM8',
     'NumberOfStories': 5,
@@ -108,8 +108,8 @@ HOME = {
     'DesignLevel': 'Pre-Code',
 }
 
-# A five-story school built 1950 to 1970, whose West Coast cell the tables
-# print no row for.
+# A five-story school built 1950 to 1970, whose West Coast cell the tables print no
+# row for.
 SCHOOL = dict(STORE, OccupancyClass='EDU1', NumberOfStories=5)
 
 
@@ -343,10 +343,10 @@ def test_the_west_coast_allows_the_unreinforced_types_at_pre_code_only(
     """
     The Appendix A footnote is stricter on the West Coast than elsewhere.
 
-    Low-Code admits URM, C3 and S5 in the Mid-West and on the East
-    Coast, and does not on the West Coast. California cannot show it:
-    its own design level table has no Low-Code era, so the fixture is a
-    generic-zone West Coast state.
+    Low-Code admits URM, C3 and S5 in the Mid-West and on the East Coast, and does
+    not on the West Coast. California cannot show it:
+    its own design level table has no Low-Code era, so the fixture is a generic-zone
+    West Coast state.
     """
     masonry = {
         'OccupancyClass': 'COM8',
@@ -440,9 +440,8 @@ def test_a_legality_set_the_year_cannot_reach_is_refused() -> None:
     """
     The year is offered on the strength of the earliest design level.
 
-    A set that leaves it out would make that offer false, so the
-    constructor refuses one rather than reporting years that resolve
-    nothing.
+    A set that leaves it out would make that offer false, so the constructor refuses
+    one rather than reporting years that resolve nothing.
     """
     with pytest.raises(ValueError, match='must admit Pre-Code'):
         _inferer(unreinforced_design_levels=('Low-Code',))
@@ -477,9 +476,9 @@ def test_every_design_level_table_starts_at_an_admitting_level() -> None:
     """
     The year is offered as resolvable on the strength of this.
 
-    An early enough year reaches the oldest design level of whatever
-    table governs the site, and the inferer relies on that level
-    admitting the unreinforced types in every region.
+    An early enough year reaches the oldest design level of whatever table governs
+    the site, and the inferer relies on that level admitting the unreinforced types
+    in every region.
     """
     tables = dict(CA_DESIGN_LEVELS)
     tables.update(GENERIC_DESIGN_LEVELS)
@@ -538,8 +537,8 @@ def _any_value_works(
         else:
             varied[key] = value
         if key == 'YearBuilt':
-            # The design level is derived from the year, so a change of
-            # year carries it along, as it would in the compiler.
+            # The design level is derived from the year, so a change of year carries
+            # it along, as it would in the compiler.
             varied['DesignLevel'] = _design_level(value)
         if varied == features:
             continue
@@ -555,10 +554,10 @@ def test_every_resolvable_feature_admits_the_asset_on_its_own(
     """
     A feature the caller can change without effect should not be named.
 
-    Sweeps every cell of the region against every general type and, for
-    each feature the diagnosis offers, changes that feature alone and
-    checks the asset becomes drawable. Then changes each feature the
-    diagnosis withholds and checks it does not.
+    Sweeps every cell of the region against every general type and, for each feature
+    the diagnosis offers, changes that feature alone and checks the asset becomes
+    drawable. Then changes each feature the diagnosis withholds and checks it does
+    not.
     """
     type_lists, type_weights = get_hazus_occ_type_mapping()
     membership = get_hazus_general_type_membership()
@@ -626,8 +625,8 @@ def test_a_home_without_a_story_count_cannot_change_occupancy(
     """
     RES1 is drawn without a story band, and every other class needs one.
 
-    So a change of occupancy resolves nothing for a home that carries no
-    story count, while for one that does it opens the other tables.
+    So a change of occupancy resolves nothing for a home that carries no story count,
+    while for one that does it opens the other tables.
     """
     inventory = build_inventory(
         {
@@ -661,9 +660,9 @@ def test_a_state_without_a_home_row_is_refused(state: str) -> None:
     """
     A state whose homes cannot be drawn is not one we can serve.
 
-    These three sit in the West Coast group and the Appendix A RES1
-    tables carry no row for any of them, so an inventory built for one
-    would silently hold no single-family homes.
+    These three sit in the West Coast group and the Appendix A RES1 tables carry no
+    row for any of them, so an inventory built for one would silently hold no
+    single-family homes.
     """
     with pytest.raises(ValueError, match='no RES1 distribution'):
         _inferer(state=state)
@@ -766,10 +765,10 @@ def test_the_tables_hold_no_cell_of_masonry_infill_alone() -> None:
     """
     Pin what makes one conflict shape unreachable.
 
-    A design level can only empty a cell that an observed building type
-    already narrowed, because no cell in the shipped tables is made up
-    of S5, C3 and URM alone. The inferer handles the case anyway; this
-    is what would change if a later edition of the manual changed the tables.
+    A design level can only empty a cell that an observed building type already
+    narrowed, because no cell in the shipped tables is made up of S5, C3 and URM
+    alone. The inferer handles the case anyway; this is what would change if a later
+    edition of the manual changed the tables.
     """
     type_lists, type_weights = get_hazus_occ_type_mapping()
     checked = 0
@@ -788,8 +787,8 @@ def test_the_tables_hold_no_cell_of_masonry_infill_alone() -> None:
                     )
                     assert infill < sum(row)
                     checked += 1
-    # Guards a vacuous pass: a flattener that returned nothing would
-    # satisfy every assertion above it.
+    # Guards a vacuous pass: a flattener that returned nothing would satisfy every
+    # assertion above it.
     assert checked > 0
 
 
@@ -818,10 +817,9 @@ def test_the_mid_rise_band_ends_at_seven_stories(
     """
     Retail is tabulated to seven stories and no further.
 
-    COM1 is retail trade, which the manual does not carry above the
-    mid-rise band. COM4, the office class, does carry a high-rise row,
-    so the eighth story is the band boundary and not a gap in the
-    tables.
+    COM1 is retail trade, which the manual does not carry above the mid-rise band.
+    COM4, the office class, does carry a high-rise row, so the eighth story is the
+    band boundary and not a gap in the tables.
     """
     inventory = build_inventory(
         {
@@ -900,8 +898,8 @@ def test_keys_may_be_passed_in(
     """
     Digesting dominates a redraw, so a caller may digest once.
 
-    Both draws come from one inferer, so the seed is the same and the
-    keys are the only difference between them.
+    Both draws come from one inferer, so the seed is the same and the keys are the
+    only difference between them.
     """
     features = {f'asset_{index}': dict(STORE) for index in range(10)}
     inventory = build_inventory(features)
@@ -1107,9 +1105,9 @@ def test_a_filled_row_emptied_by_the_features_is_told_apart(
     """
     A five-story wood school is infeasible with the completion on.
 
-    The filled mid-rise row carries no wood. With the completion on,
-    withholding the building type resolves it, which it does not with the
-    completion off, and ``cell_fill`` reports the cell as filled.
+    The filled mid-rise row carries no wood. With the completion on, withholding the
+    building type resolves it, which it does not with the completion off, and
+    ``cell_fill`` reports the cell as filled.
     """
     features = dict(SCHOOL, BuildingType='W')
     inventory = build_inventory({'a': features})

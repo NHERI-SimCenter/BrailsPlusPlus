@@ -87,9 +87,9 @@ if TYPE_CHECKING:
 # Purpose label of the per-world order in which dwellings receive bins.
 PURPOSE_UNIT_BUDGET = 'unit_budget'
 
-# The B25024 structure-size bins, by label, with the table lines each sums.
-# The table and the Hazus occupancy classes the bins take: README.rst beside
-# this module, "The census table and the occupancy classes".
+# The B25024 structure-size bins, by label, with the table lines each sums. The table
+# and the Hazus occupancy classes the bins take: README.rst beside this module, "The
+# census table and the occupancy classes".
 B25024_BINS = {
     '1': ('002', '003'),
     '2': ('004',),
@@ -100,9 +100,9 @@ B25024_BINS = {
     '50+': ('009',),
 }
 
-# The Hazus occupancy class of each bin. The unit ranges of the B25024 bins
-# are the count bands of the Hazus occupancy classes (COUNT_BANDS), so a
-# bin's range is its occupancy class's band.
+# The Hazus occupancy class of each bin. The unit ranges of the B25024 bins are the
+# count bands of the Hazus occupancy classes (COUNT_BANDS), so a bin's range is its
+# occupancy class's band.
 BIN_CLASSES = {
     '1': 'RES1',
     '2': 'RES3A',
@@ -116,8 +116,8 @@ BIN_CLASSES = {
 # The B25024 line of mobile homes. Line 011, boat, RV, van, is not used.
 MOBILE_HOME_BIN = '010'
 
-# Labels of the mobile-home bin and of the sum of the structure-size bins
-# in the diagnostic and the gaps.
+# Labels of the mobile-home bin and of the sum of the structure-size bins in the
+# diagnostic and the gaps.
 MOBILE_HOME_LABEL = 'mobile_home'
 TOTAL_LABEL = 'total'
 
@@ -125,8 +125,7 @@ TOTAL_LABEL = 'total'
 MOBILE_HOME_CLASS = 'RES2'
 MOBILE_HOME_UNITS = 1
 
-# The occupancy class of a reached footprint the mobile-home rule may
-# reclassify.
+# The occupancy class of a reached footprint the mobile-home rule may reclassify.
 RELABEL_CLASS = 'RES1'
 
 # The table name and the block-group column of the B25024 table.
@@ -137,8 +136,8 @@ GEOID_COLUMN = 'geoid'
 # may become a mobile home.
 DEFAULT_MH_PARK_RADIUS_M = 300.0
 
-# Under drop_without_acs, a small target in a block group without a budget
-# is dropped when its residential probability is below this.
+# Under drop_without_acs, a small target in a block group without a budget is dropped
+# when its residential probability is below this.
 DROP_PROBABILITY = 0.5
 
 # Outcomes of the log.
@@ -149,11 +148,11 @@ OUTCOME_DROPPED = 'dropped'
 OUTCOME_NONRESIDENTIAL = 'nonresidential'
 OUTCOME_NO_ACS = 'no_acs'
 
-# Kinds of budget gap. A candidate shortfall without a bin counts the
-# structures beyond the number of candidates, and one with a bin the
-# structures of that bin no remaining candidate can hold. Units clipped are
-# those of a bin beyond its structures' range, and units over capacity
-# those its dwellings' capacities cannot hold.
+# Kinds of budget gap. A candidate shortfall without a bin counts the structures
+# beyond the number of candidates, and one with a bin the structures of that bin no
+# remaining candidate can hold. Units clipped are those of a bin beyond its
+# structures' range, and units over capacity those its dwellings' capacities cannot
+# hold.
 GAP_NO_ACS = 'no_acs'
 GAP_MOBILE_HOME_SHORTFALL = 'mobile_home_shortfall'
 GAP_CANDIDATE_SHORTFALL = 'candidate_shortfall'
@@ -197,13 +196,12 @@ def _class_range(occupancy: str) -> tuple[int, int | None]:
 
     Args:
         occupancy (str):
-            An occupancy class of
-            :data:`~brails.utils.unit_count_rules.COUNT_BANDS`.
+            An occupancy class of :data:`~brails.utils.unit_count_rules.COUNT_BANDS`.
 
     Returns:
         tuple[int, int | None]:
-            The least count, at least one, and the greatest, ``None`` for
-            the open top band.
+            The least count, at least one, and the greatest, ``None`` for the open
+            top band.
     """
     bounds = {band: lower for lower, band in COUNT_BANDS}
     above = [lower for lower, _ in COUNT_BANDS if lower > bounds[occupancy]]
@@ -217,50 +215,46 @@ class UnitBudgetResult(NamedTuple):
     Attributes:
         imputed (AssetInventory):
             :data:`~brails.constants.OCCUPANCY_KEY` and
-            :data:`~brails.constants.UNITS_KEY` of each dwelling and mobile
-            home, and the occupancy class alone of each reached footprint made
-            a mobile home, with the allocation's number of possible worlds,
-            stored by :func:`~brails.utils.world_values.collapse_realizations`.
+            :data:`~brails.constants.UNITS_KEY` of each dwelling and mobile home, and
+            the occupancy class alone of each reached footprint made a mobile home,
+            with the allocation's number of possible worlds, stored by
+            :func:`~brails.utils.world_values.collapse_realizations`.
         withheld (pandas.DataFrame):
-            The occupancy class of each reached footprint made a mobile home,
-            which the caller removes from its source before merging, with the
-            columns of :data:`~brails.utils.source_updates.WITHHELD_COLUMNS`,
-            as :func:`~brails.utils.source_updates.apply_to_sources` takes
-            them, empty when ``allocate`` names no ``relabel_sources``.
+            The occupancy class of each reached footprint made a mobile home, which
+            the caller removes from its source before merging, with the columns of
+            :data:`~brails.utils.source_updates.WITHHELD_COLUMNS`, as
+            :func:`~brails.utils.source_updates.apply_to_sources` takes them, empty
+            when ``allocate`` names no ``relabel_sources``.
         residential (dict[Hashable, bool]):
-            The residential status of each target the budget decided: true
-            for dwellings and mobile homes, false for the targets passed to
-            the non-residential stage.
+            The residential status of each target the budget decided: true for
+            dwellings and mobile homes, false for the targets passed to the
+            non-residential stage.
         dropped (tuple):
-            The targets dropped from the inventory, in ascending order of
-            the id as a string.
+            The targets dropped from the inventory, in ascending order of the id as a
+            string.
         nonresidential (tuple):
-            The targets passed to the non-residential stage, in the same
-            order.
+            The targets passed to the non-residential stage, in the same order.
         diagnostic (pandas.DataFrame):
-            One row per block group with a budget, world and bin, the
-            mobile-home bin and :data:`TOTAL_LABEL` included, with the
-            columns of :data:`DIAGNOSTIC_COLUMNS`. ``generated_units`` holds
-            the units the budget placed in that world, ``total_units`` those
-            and the reached units, ``margin`` its margin of error, ``lower``
-            and ``upper`` the estimate less and plus
-            :attr:`ACSUnitBudget.moe_factor` times the margin, and
+            One row per block group with a budget, world and bin, the mobile-home bin
+            and :data:`TOTAL_LABEL` included, with the columns of
+            :data:`DIAGNOSTIC_COLUMNS`. ``generated_units`` holds the units the
+            budget placed in that world, ``total_units`` those and the reached units,
+            ``margin`` its margin of error, ``lower`` and ``upper`` the estimate less
+            and plus :attr:`ACSUnitBudget.moe_factor` times the margin, and
             ``outside`` whether the total lies beyond them.
         gaps (pandas.DataFrame):
-            The parts of a budget left unplaced, and the block groups
-            without one, with the columns of :data:`GAP_COLUMNS`. ``count``
-            holds structures, or targets for :data:`GAP_NO_ACS`. ``units``
-            holds units, for :data:`GAP_UNITS_OVER_CAPACITY` those left
-            over, the same in every world.
+            The parts of a budget left unplaced, and the block groups without one,
+            with the columns of :data:`GAP_COLUMNS`. ``count`` holds structures, or
+            targets for :data:`GAP_NO_ACS`. ``units`` holds units, for
+            :data:`GAP_UNITS_OVER_CAPACITY` those left over, the same in every world.
         log (pandas.DataFrame):
-            One row per target and per reached footprint made a mobile
-            home, with the columns of :data:`LOG_COLUMNS`.
-            ``gross_area_source`` says where the gross area comes from
-            (:data:`~brails.constants.AREA_FROM_GROSS_AREA`,
+            One row per target and per reached footprint made a mobile home, with the
+            columns of :data:`LOG_COLUMNS`. ``gross_area_source`` says where the
+            gross area comes from (:data:`~brails.constants.AREA_FROM_GROSS_AREA`,
             :data:`~brails.constants.AREA_FROM_STORIES` or
-            :data:`~brails.constants.AREA_FROM_PLAN_AREA`), ``stories`` is
-            the story count that multiplied the plan area, NaN where none
-            did, and ``capacity`` the units the gross area holds.
+            :data:`~brails.constants.AREA_FROM_PLAN_AREA`), ``stories`` is the story
+            count that multiplied the plan area, NaN where none did, and ``capacity``
+            the units the gross area holds.
         seed (int):
             The seed of the per-world order.
     """
@@ -301,8 +295,8 @@ class _BudgetSite(NamedTuple):
         block_group (str | None):
             The block-group GEOID.
         mh_park_m (float):
-            Distance to the nearest mobile-home park point in meters,
-            infinite without area or mobile-home park points.
+            Distance to the nearest mobile-home park point in meters, infinite
+            without area or mobile-home park points.
         gross_m2 (float):
             The gross area in square meters.
         capacity (int):
@@ -313,8 +307,7 @@ class _BudgetSite(NamedTuple):
             :data:`~brails.constants.AREA_FROM_STORIES` or
             :data:`~brails.constants.AREA_FROM_PLAN_AREA`.
         stories (float):
-            The story count that multiplied the plan area, NaN where none
-            did.
+            The story count that multiplied the plan area, NaN where none did.
     """
 
     area_m2: float
@@ -378,43 +371,40 @@ class ACSUnitBudget:
     """
     Allocate each block group's B25024 residual units to unreached footprints.
 
-    The census table B25024 counts a block group's housing units by the number
-    of units in their structure, in the structure-size bins of
-    :data:`B25024_BINS` and a mobile-home line. A footprint is reached when an
-    observed record gives it an occupancy class. The others, the targets,
-    receive what the counts leave once the reached footprints' units are
-    subtracted: :meth:`allocate` makes some of them :data:`MOBILE_HOME_CLASS`
-    mobile homes and some dwellings with an occupancy class of
-    :data:`BIN_CLASSES` in each possible world, drops the small targets left
-    and passes the others to the non-residential stage. The README beside this
-    module states the method, the tables and the defaults.
+    The census table B25024 counts a block group's housing units by the number of
+    units in their structure, in the structure-size bins of :data:`B25024_BINS` and a
+    mobile-home line. A footprint is reached when an observed record gives it an
+    occupancy class. The others, the targets, receive what the counts leave once the
+    reached footprints' units are subtracted: :meth:`allocate` makes some of them
+    :data:`MOBILE_HOME_CLASS` mobile homes and some dwellings with an occupancy class
+    of :data:`BIN_CLASSES` in each possible world, drops the small targets left and
+    passes the others to the non-residential stage. The README beside this module
+    states the method, the tables and the defaults.
 
-    Each target has a capacity, the whole number of units its gross area
-    holds at :attr:`min_unit_area_sqft` square feet per unit. The gross
-    area is the target's :data:`~brails.constants.GROSS_AREA_KEY` in square
-    feet where it holds a positive number, else its plan area times its
-    :data:`~brails.constants.STORIES_KEY` where that is a positive number, else
-    its plan area alone. No dwelling holds more units than its capacity, and no
-    bin receives more than its estimate less its reached units. The dwellings,
-    and the units each bin places, are the same in every world; which dwelling
-    holds which bin varies.
+    Each target has a capacity, the whole number of units its gross area holds at
+    :attr:`min_unit_area_sqft` square feet per unit. The gross area is the target's
+    :data:`~brails.constants.GROSS_AREA_KEY` in square feet where it holds a positive
+    number, else its plan area times its :data:`~brails.constants.STORIES_KEY` where
+    that is a positive number, else its plan area alone. No dwelling holds more units
+    than its capacity, and no bin receives more than its estimate less its reached
+    units. The dwellings, and the units each bin places, are the same in every world;
+    which dwelling holds which bin varies.
 
     What the budget cannot place is recorded in the result's ``gaps``, and
-    ``allocate`` warns where structures found no footprint able to hold
-    them or units exceeded their dwellings' capacity. A block group without
-    a B25024 row has no budget: its targets are left to the imputer's
-    residential round, and with :attr:`drop_without_acs` the small ones
-    whose residential probability is below :data:`DROP_PROBABILITY` are
-    dropped.
+    ``allocate`` warns where structures found no footprint able to hold them or units
+    exceeded their dwellings' capacity. A block group without a B25024 row has no
+    budget: its targets are left to the imputer's residential round, and with
+    :attr:`drop_without_acs` the small ones whose residential probability is below
+    :data:`DROP_PROBABILITY` are dropped.
 
-    The counts are those of the whole block group, while the budget sees
-    only the footprints passed to it, so the footprints of a block group
-    must be passed whole. A study area that cuts a block group receives
-    that block group's whole residual in the part inside.
+    The counts are those of the whole block group, while the budget sees only the
+    footprints passed to it, so the footprints of a block group must be passed whole.
+    A study area that cuts a block group receives that block group's whole residual
+    in the part inside.
 
-    Every constructor argument is stored as an attribute of the same name,
-    the table and the mobile-home park points as given. ``seed`` holds the
-    seed used, never ``None``.
+    Every constructor argument is stored as an attribute of the same name, the table
+    and the mobile-home park points as given. ``seed`` holds the seed used, never
+    ``None``.
     """
 
     def __init__(
@@ -436,53 +426,48 @@ class ACSUnitBudget:
 
         Args:
             b25024 (pandas.DataFrame):
-                B25024 at block group, with a :data:`GEOID_COLUMN` column of
-                GEOIDs as strings of digits and the estimate and margin
-                columns of lines 2 to 10 named as the Census API names
-                them, such as ``B25024_002E`` and ``B25024_002M``. A block
-                group with a negative or missing estimate on any of these
-                lines has no budget.
+                B25024 at block group, with a :data:`GEOID_COLUMN` column of GEOIDs
+                as strings of digits and the estimate and margin columns of lines 2
+                to 10 named as the Census API names them, such as ``B25024_002E`` and
+                ``B25024_002M``. A block group with a negative or missing estimate on
+                any of these lines has no budget.
             mh_park_points (Any):
-                The mobile-home park points: a GeoDataFrame or GeoSeries of
-                points, whose missing CRS is read as longitude and
-                latitude, or an array of longitude and latitude pairs.
+                The mobile-home park points: a GeoDataFrame or GeoSeries of points,
+                whose missing CRS is read as longitude and latitude, or an array of
+                longitude and latitude pairs.
             imputer (ObservedDonorImputer):
-                The imputer whose residential probability ranks the
-                candidates, with the default status.
+                The imputer whose residential probability ranks the candidates, with
+                the default status.
             seed (int, optional):
                 The seed. ``None`` draws one from system entropy.
             threshold_sqft (float, optional):
-                The plan area in square feet under which a target neither
-                a mobile home nor a dwelling is dropped.
+                The plan area in square feet under which a target neither a mobile
+                home nor a dwelling is dropped.
             mh_park_radius_m (float, optional):
-                The distance to a mobile-home park point in meters within
-                which a footprint may become a mobile home and is never
-                dropped.
+                The distance to a mobile-home park point in meters within which a
+                footprint may become a mobile home and is never dropped.
             moe_factor (float, optional):
-                The multiple of the margin of error that bounds the
-                diagnostic.
+                The multiple of the margin of error that bounds the diagnostic.
             min_unit_area_sqft (float, optional):
-                The gross area in square feet a housing unit needs,
-                which sets each target's capacity.
+                The gross area in square feet a housing unit needs, which sets each
+                target's capacity.
             drop_without_acs (bool, optional):
-                Whether, in a block group without a budget, a target under
-                the threshold, beyond the mobile-home park radius and with a
-                residential probability below :data:`DROP_PROBABILITY` is
-                dropped.
+                Whether, in a block group without a budget, a target under the
+                threshold, beyond the mobile-home park radius and with a residential
+                probability below :data:`DROP_PROBABILITY` is dropped.
             per_bin (bool, optional):
-                Whether each bin's residual stands on its own instead of
-                sharing the block group's total deficit.
+                Whether each bin's residual stands on its own instead of sharing the
+                block group's total deficit.
 
         Raises:
             ValueError:
-                If a threshold, radius or factor is negative, the gross
-                area per unit is not positive, the table lacks a column,
-                holds a GEOID that is not a string of
-                :data:`~brails.constants.GEOID_LENGTH` digits or repeats
-                one, a mobile-home park geometry is not a point, or a
-                mobile-home park array is not of longitude and latitude
-                pairs, or ``imputer`` reads a status other than the
-                residential occupancy classes, its default.
+                If a threshold, radius or factor is negative, the gross area per unit
+                is not positive, the table lacks a column, holds a GEOID that is not
+                a string of :data:`~brails.constants.GEOID_LENGTH` digits or repeats
+                one, a mobile-home park geometry is not a point, or a mobile-home
+                park array is not of longitude and latitude pairs, or ``imputer``
+                reads a status other than the residential occupancy classes, its
+                default.
         """
         status = (imputer.status_key, set(imputer.status_values))
         if status != (OCCUPANCY_KEY, set(UNIT_COUNT_CLASSES)):
@@ -532,24 +517,23 @@ class ACSUnitBudget:
 
         Args:
             targets (AssetInventory):
-                The unreached footprints, with one possible world, each
-                holding :data:`~brails.constants.BLOCK_GROUP_KEY`.
-                Not modified.
+                The unreached footprints, with one possible world, each holding
+                :data:`~brails.constants.BLOCK_GROUP_KEY`. Not modified.
             reached (AssetInventory):
-                The reached footprints with their occupancy class and unit
-                count, with one possible world, each holding
+                The reached footprints with their occupancy class and unit count,
+                with one possible world, each holding
                 :data:`~brails.constants.BLOCK_GROUP_KEY`. They are also the
                 imputer's donors. A footprint's units are counted as
-                :func:`~brails.utils.unit_count_rules.unit_contribution` counts
-                a record's. Not modified.
+                :func:`~brails.utils.unit_count_rules.unit_contribution` counts a
+                record's. Not modified.
             n_worlds (int, optional):
                 The number of possible worlds. Defaults to 1.
             relabel_sources (Mapping[Hashable, str], optional):
-                The reached footprints the mobile-home rule may reclassify,
-                each with the label of the source holding its occupancy class,
-                which the withheld row names. Only those of occupancy class
-                :data:`RELABEL_CLASS` are eligible. ``None``, the default,
-                admits none.
+                The reached footprints the mobile-home rule may reclassify, each with
+                the label of the source holding its occupancy class, which the
+                withheld row names. Only those of occupancy class
+                :data:`RELABEL_CLASS` are eligible. ``None``, the default, admits
+                none.
 
         Returns:
             UnitBudgetResult:
@@ -557,16 +541,15 @@ class ACSUnitBudget:
 
         Raises:
             ValueError:
-                If ``n_worlds`` is below 1, an inventory holds more than
-                one possible world, the two share an asset, or a
-                footprint's coordinates are not a footprint
-                :meth:`AssetInventory.has_area` reads.
+                If ``n_worlds`` is below 1, an inventory holds more than one possible
+                world, the two share an asset, or a footprint's coordinates are not a
+                footprint :meth:`AssetInventory.has_area` reads.
 
         Warns:
             UserWarning:
-                Once, if a bin's structures found no candidate able to hold
-                them or its units exceeded its dwellings' capacity, naming
-                the block groups and units concerned.
+                Once, if a bin's structures found no candidate able to hold them or
+                its units exceeded its dwellings' capacity, naming the block groups
+                and units concerned.
         """
         if n_worlds < 1:
             msg = 'n_worlds must be at least 1.'
@@ -626,9 +609,8 @@ class ACSUnitBudget:
         """
         Locate and measure every asset.
 
-        The measures are the plan area, the capacity at
-        :attr:`min_unit_area_sqft` per unit and the distance to the nearest
-        mobile-home park point.
+        The measures are the plan area, the capacity at :attr:`min_unit_area_sqft`
+        per unit and the distance to the nearest mobile-home park point.
 
         Args:
             inventory (AssetInventory):
@@ -660,8 +642,8 @@ class ACSUnitBudget:
                 )
                 ids.append(asset_id)
                 lonlat.append((lat, lon))
-            # The gross area: GrossArea, else plan area times stories,
-            # else plan area, each where a positive finite number is held.
+            # The gross area: GrossArea, else plan area times stories, else plan
+            # area, each where a positive finite number is held.
             held = {
                 key: float(value)
                 for key in (GROSS_AREA_KEY, STORIES_KEY)
@@ -718,9 +700,8 @@ class ACSUnitBudget:
 
         Returns:
             dict[Hashable, float]:
-                The probability per target with area in a block group with
-                a budget, and, with :attr:`drop_without_acs`, per small
-                target without one.
+                The probability per target with area in a block group with a budget,
+                and, with :attr:`drop_without_acs`, per small target without one.
         """
         wanted = [
             asset_id
@@ -746,9 +727,9 @@ class ACSUnitBudget:
 
         Returns:
             list[_BudgetGroup]:
-                Every block group holding a target, and every block group
-                with a budget holding a reached footprint, in ascending
-                order of the GEOID as a string.
+                Every block group holding a target, and every block group with a
+                budget holding a reached footprint, in ascending order of the GEOID
+                as a string.
         """
         members: dict[str | None, tuple[list, list]] = {}
         for asset_id in sorted(call.target_sites, key=str):
@@ -774,8 +755,8 @@ class ACSUnitBudget:
         """
         Log the targets of a block group without a budget.
 
-        The small ones are dropped under :attr:`drop_without_acs`, and the
-        rest are left to the imputer.
+        The small ones are dropped under :attr:`drop_without_acs`, and the rest are
+        left to the imputer.
 
         Args:
             call (_BudgetCall):
@@ -890,9 +871,8 @@ class ACSUnitBudget:
 
         Returns:
             tuple[dict[str, float], dict[str, float]]:
-                The reached units and the residual per bin label, the
-                residuals shared out of the total deficit unless
-                :attr:`per_bin` is set.
+                The reached units and the residual per bin label, the residuals
+                shared out of the total deficit unless :attr:`per_bin` is set.
         """
         bin_of_class = {occupancy: b for b, occupancy in BIN_CLASSES.items()}
         reached_units = dict.fromkeys(B25024_BINS, 0.0)
@@ -932,10 +912,9 @@ class ACSUnitBudget:
 
         Returns:
             list:
-                The targets with area and a capacity of at least one unit
-                that are not mobile homes, by residential probability
-                descending with NaN last, then plan area descending, then
-                the id as a string.
+                The targets with area and a capacity of at least one unit that are
+                not mobile homes, by residential probability descending with NaN
+                last, then plan area descending, then the id as a string.
         """
         candidates = [
             a
@@ -975,8 +954,8 @@ class ACSUnitBudget:
 
         Returns:
             tuple[dict[str, int], list]:
-                The structures per bin label and the dwellings in the
-                candidates' order, both the same in every world.
+                The structures per bin label and the dwellings in the candidates'
+                order, both the same in every world.
         """
         labels = list(B25024_BINS)
         # The midpoints of the Hazus occupancy classes: README.rst beside this
@@ -1004,9 +983,9 @@ class ACSUnitBudget:
                     structures[b] - kept,
                     math.nan,
                 )
-            # The highest-ranked candidates left whose capacity holds the
-            # bin's even share over the structures it can place, then the
-            # largest of those that hold its least unit count.
+            # The highest-ranked candidates left whose capacity holds the bin's even
+            # share over the structures it can place, then the largest of those that
+            # hold its least unit count.
             capacity = {a: call.target_sites[a].capacity for a in left}
             count = min(kept, sum(capacity[a] >= low for a in left))
             top = whole if high is None else high
@@ -1089,9 +1068,8 @@ class ACSUnitBudget:
                 range(len(dwellings)), key=lambda i: (-score[i], str(dwellings[i]))
             )
             for b in reversed(B25024_BINS):
-                # The first dwellings whose capacity holds the bin's even
-                # share, then the largest of those that hold its least unit
-                # count.
+                # The first dwellings whose capacity holds the bin's even share, then
+                # the largest of those that hold its least unit count.
                 low, _ = _class_range(BIN_CLASSES[b])
                 share = int(shares[b].max(initial=low))
                 fit = [i for i in free if capacity[i] >= share]
@@ -1208,11 +1186,10 @@ class ACSUnitBudget:
 
         Returns:
             Any:
-                A function of an asset id returning its occupancy class,
-                ``None`` where missing, and its units as
-                :func:`~brails.utils.unit_count_rules.unit_contribution` counts
-                them, zero for an occupancy class outside the housing occupancy
-                classes.
+                A function of an asset id returning its occupancy class, ``None``
+                where missing, and its units as
+                :func:`~brails.utils.unit_count_rules.unit_contribution` counts them,
+                zero for an occupancy class outside the housing occupancy classes.
         """
 
         def read(asset_id: Hashable) -> tuple[str | None, float]:
@@ -1235,9 +1212,8 @@ class ACSUnitBudget:
 
         Returns:
             bool:
-                Whether its plan area is under :attr:`threshold_sqft` and it
-                lies beyond :attr:`mh_park_radius_m` of every mobile-home
-                park point.
+                Whether its plan area is under :attr:`threshold_sqft` and it lies
+                beyond :attr:`mh_park_radius_m` of every mobile-home park point.
         """
         return (
             site.area_m2 / UNIT_TO_METER['ft'] ** 2 < self.threshold_sqft
@@ -1253,15 +1229,14 @@ class _BudgetAllocation:
         n_worlds (int):
             The number of worlds.
         classes (dict):
-            Per asset given an occupancy class, the occupancy class per
-            world.
+            Per asset given an occupancy class, the occupancy class per world.
         units (dict):
             Per asset given a unit count, the count per world.
         residential (dict):
             The residential status per target.
 
-    The other attributes collect the rows and ids of the result's fields of
-    the same names.
+    The other attributes collect the rows and ids of the result's fields of the same
+    names.
     """
 
     def __init__(self, n_worlds: int) -> None:
@@ -1449,8 +1424,7 @@ class _BudgetAllocation:
             kind (str):
                 The kind of gap.
             count (int):
-                The structures concerned, or the targets for
-                :data:`GAP_NO_ACS`.
+                The structures concerned, or the targets for :data:`GAP_NO_ACS`.
             units (float):
                 The units concerned, NaN where not counted.
         """
@@ -1554,9 +1528,9 @@ def _read_b25024(table: pd.DataFrame) -> dict[str, _BudgetRow]:
     """
     Read the counts of each block group with a budget.
 
-    A margin that is negative or missing reads as zero. The margin of a bin
-    that sums two lines is :func:`_sum_margin` of theirs. A block group
-    with a negative or missing estimate on any line read has no budget.
+    A margin that is negative or missing reads as zero. The margin of a bin that sums
+    two lines is :func:`_sum_margin` of theirs. A block group with a negative or
+    missing estimate on any line read has no budget.
 
     Args:
         table (pandas.DataFrame):
@@ -1569,8 +1543,7 @@ def _read_b25024(table: pd.DataFrame) -> dict[str, _BudgetRow]:
     Raises:
         ValueError:
             If a column is missing, a GEOID is not a string of
-            :data:`~brails.constants.GEOID_LENGTH` digits, or
-            a GEOID repeats.
+            :data:`~brails.constants.GEOID_LENGTH` digits, or a GEOID repeats.
     """
     lines = dict(B25024_BINS)
     lines[MOBILE_HOME_LABEL] = (MOBILE_HOME_BIN,)
@@ -1625,8 +1598,8 @@ def _sum_margin(margins: list[float]) -> float:
     """
     Return the margin of error of a sum of estimates.
 
-    The margin is the root of the summed squared margins, a negative or
-    missing margin counting as zero.
+    The margin is the root of the summed squared margins, a negative or missing
+    margin counting as zero.
 
     Args:
         margins (list[float]):
@@ -1686,8 +1659,8 @@ def _apportion(shares: list[float], total: int) -> list[int]:
 
     Returns:
         list[int]:
-            The parts, summing to ``total``, or zeros when every share is
-            zero. Equal remainders go to the earlier share.
+            The parts, summing to ``total``, or zeros when every share is zero. Equal
+            remainders go to the earlier share.
     """
     weight = math.fsum(shares)
     if total <= 0 or weight <= 0:

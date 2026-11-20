@@ -34,7 +34,9 @@
 from .hazus_inferer_wind.hazus_inferer_wind import HazusInfererWind
 from .hazus_inferer_earthquake.hazus_inferer_earthquake import HazusInfererEarthquake
 from .hazus_inferer_flood.hazus_inferer_flood import HazusInfererFlood
-from .hazus_inferer_earthquake.hazus_eq_design_level_inferer import HazusEQDesignLevelInferer
+from .hazus_inferer_earthquake.hazus_eq_design_level_inferer import (
+    HazusEQDesignLevelInferer,
+)
 from .hazus_inferer_earthquake.hazus_eq_structure_type_inferer import (
     HazusEQStructureTypeInferer,
 )

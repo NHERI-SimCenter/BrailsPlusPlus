@@ -35,19 +35,19 @@
 """
 Report what an inferer can and cannot do with an asset.
 
-The verdicts, columns and helpers here are the parts of the per-asset
-diagnosis vocabulary of inferers that no peril owns. The module holds only
-the verdicts a check returns, ``no_donor`` among them, which an imputer's
-check gives where no donor serves. A label that a compiler gives an
-exclusion that no check refused belongs beside the compiler's categories.
+The verdicts, columns and helpers here are the parts of the per-asset diagnosis
+vocabulary of inferers that no peril owns. The module holds only the verdicts a check
+returns, ``no_donor`` among them, which an imputer's check gives where no donor
+serves. A label that a compiler gives an exclusion that no check refused belongs
+beside the compiler's categories.
 
 .. autosummary::
 
       diagnosis_frame
       preview_failures
 
-``preview_ids`` and ``PREVIEW_LIMIT`` (from :mod:`brails.utils.id_preview`)
-can also be imported from this module.
+``preview_ids`` and ``PREVIEW_LIMIT`` (from :mod:`brails.utils.id_preview`) can also
+be imported from this module.
 """
 
 from __future__ import annotations
@@ -64,30 +64,30 @@ if TYPE_CHECKING:
 # The verdict for an asset the inferer can process.
 DIAGNOSIS_OK = 'OK'
 
-# A driver is absent, or present with a value the inferer cannot use. The
-# caller obtains the data, corrects it, or imputes a replacement.
+# A driver is absent, or present with a value the inferer cannot use. The caller
+# obtains the data, corrects it, or imputes a replacement.
 DIAGNOSIS_INVALID = 'invalid'
 
-# A driver is present and real, in a shape the inferer does not handle yet.
-# The caller excludes the asset. Imputing over it would replace data the
-# inventory holds with data the inferer preferred.
+# A driver is present and real, in a shape the inferer does not handle yet. The
+# caller excludes the asset. Imputing over it would replace data the inventory holds
+# with data the inferer preferred.
 DIAGNOSIS_UNSUPPORTED = 'unsupported'
 
-# Every driver is usable and the inferer still has nothing to produce. The
-# caller relaxes one of the features in ``resolvable_by``.
+# Every driver is usable and the inferer still has nothing to produce. The caller
+# relaxes one of the features in ``resolvable_by``.
 DIAGNOSIS_INFEASIBLE = 'infeasible'
 
-# Every driver is usable and no asset could serve as the donor of the value.
-# The caller widens the search for donors, or relaxes one of the features in
+# Every driver is usable and no asset could serve as the donor of the value. The
+# caller widens the search for donors, or relaxes one of the features in
 # ``resolvable_by``.
 DIAGNOSIS_NO_DONOR = 'no_donor'
 
-# The columns of a diagnosis frame. ``diagnosis`` is one of the five verdicts
-# above, the only values a check returns, ``detail`` says what happened in
-# words, and ``resolvable_by`` names the features that would each, alone, let
-# the inferer produce a value. An unsupported asset names none. An invalid
-# asset names the driver a caller could supply or redraw, where the inferer
-# reads one driver and can say which.
+# The columns of a diagnosis frame. ``diagnosis`` is one of the five verdicts above,
+# the only values a check returns, ``detail`` says what happened in words, and
+# ``resolvable_by`` names the features that would each, alone, let the inferer
+# produce a value. An unsupported asset names none. An invalid asset names the driver
+# a caller could supply or redraw, where the inferer reads one driver and can say
+# which.
 DIAGNOSIS_COLUMNS = ('diagnosis', 'detail', 'resolvable_by')
 
 
@@ -101,8 +101,7 @@ def diagnosis_frame(rows: dict) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame:
-            One row per asset id, with the columns of
-            :data:`DIAGNOSIS_COLUMNS`.
+            One row per asset id, with the columns of :data:`DIAGNOSIS_COLUMNS`.
     """
     if not rows:
         return pd.DataFrame(columns=list(DIAGNOSIS_COLUMNS), dtype=object)
@@ -117,8 +116,7 @@ def preview_failures(failures: pd.Series) -> str:
 
     Args:
         failures (pd.Series):
-            The ``detail`` column of a diagnosis frame, indexed by asset
-            id.
+            The ``detail`` column of a diagnosis frame, indexed by asset id.
 
     Returns:
         str:

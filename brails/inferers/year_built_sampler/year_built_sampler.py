@@ -73,24 +73,23 @@ if TYPE_CHECKING:
 # The oldest year the sampler will draw. It exists to bound the tail.
 DEFAULT_YEAR_FLOOR = 1800
 
-# The newest year the sampler will draw, set to the vintage of the NSI
-# 2026 data this was built against. It is a constant rather than the
-# current year on purpose: a wall-clock cap would change the draws from
-# one calendar year to the next and break the promise that a seed
-# reproduces an inventory exactly. Set it to your inventory's vintage.
+# The newest year the sampler will draw, set to the vintage of the NSI 2026 data this
+# was built against. It is a constant rather than the current year on purpose: a
+# wall-clock cap would change the draws from one calendar year to the next and break
+# the promise that a seed reproduces an inventory exactly. Set it to your inventory's
+# vintage.
 DEFAULT_YEAR_CAP = 2026
 
 # Part of the reproducibility contract; see keyed_uniforms.
 YEAR_PURPOSE = 'year_built'
 
-# Width of a generated seed, matching the key width of the sampling
-# helpers. A seed is drawn rather than fixed so that a probabilistic
-# result is visibly probabilistic; anyone who wants the same years twice
-# passes the seed they were given.
+# Width of a generated seed, matching the key width of the sampling helpers. A seed
+# is drawn rather than fixed so that a probabilistic result is visibly probabilistic;
+# anyone who wants the same years twice passes the seed they were given.
 _SEED_BITS = 64
 
-# Rounding a draw taken on the half-open-widened interval keeps every
-# integer cell the same width, including the two at the bounds.
+# Rounding a draw taken on the half-open-widened interval keeps every integer cell
+# the same width, including the two at the bounds.
 _HALF_YEAR = 0.5
 
 
@@ -104,8 +103,7 @@ def _as_center(value: object) -> float:
 
     Returns:
         float:
-            The value as a float. A value that reads as no finite number
-            gives NaN.
+            The value as a float. A value that reads as no finite number gives NaN.
     """
     try:
         number = float(value)
@@ -170,38 +168,36 @@ def sample_years(
     """
     Draw one construction year per asset around its tract median.
 
-    Each year is a truncated normal centered on the asset's median,
-    discretized by rounding. The truncation runs from half a year below
-    the floor to half a year above the cap, so every integer in
-    [floor, cap] owns a full unit of probability and none of them
-    accumulate the mass that clipping an untruncated draw would leave on
-    the bounds.
+    Each year is a truncated normal centered on the asset's median, discretized by
+    rounding. The truncation runs from half a year below the floor to half a year
+    above the cap, so every integer in [floor, cap] owns a full unit of probability
+    and none of them accumulate the mass that clipping an untruncated draw would
+    leave on the bounds.
 
     Args:
         medians (pd.Series):
-            Tract median years, indexed by asset id. Every value must
-            be one :meth:`YearBuiltSampler.check` accepts; the same
-            conditions are enforced here.
+            Tract median years, indexed by asset id. Every value must be one
+            :meth:`YearBuiltSampler.check` accepts; the same conditions are enforced
+            here.
         sigma (float):
             Standard deviation of the year deviation, in years.
         seed (int):
             Seed for the draw.
         asset_keys (np.ndarray | None):
-            Keys from :func:`asset_key_digest`, aligned with the index.
-            Digesting ids is the expensive part of a draw, so a caller
-            that draws for the same assets repeatedly should digest once
-            and pass the result. Left out, the ids are digested here.
+            Keys from :func:`asset_key_digest`, aligned with the index. Digesting ids
+            is the expensive part of a draw, so a caller that draws for the same
+            assets repeatedly should digest once and pass the result. Left out, the
+            ids are digested here.
         floor (int):
             Oldest year that can be drawn, unless overridden per asset.
         cap (int):
             Newest year that can be drawn, unless overridden per asset.
         lower (pd.Series | None):
-            Per-asset lower bounds overriding the floor, for draws
-            restricted to a legal era. Matched to the medians by asset
-            id, so the order they arrive in does not matter.
+            Per-asset lower bounds overriding the floor, for draws restricted to a
+            legal era. Matched to the medians by asset id, so the order they arrive
+            in does not matter.
         upper (pd.Series | None):
-            Per-asset upper bounds overriding the cap, matched the same
-            way.
+            Per-asset upper bounds overriding the cap, matched the same way.
         world (int):
             Possible-world index.
         iteration (int):
@@ -213,9 +209,9 @@ def sample_years(
 
     Raises:
         ValueError:
-            If any median is one check() would refuse, which means
-            check() was skipped, or if the supplied bounds or keys do
-            not cover the assets being drawn for.
+            If any median is one check() would refuse, which means check() was
+            skipped, or if the supplied bounds or keys do not cover the assets being
+            drawn for.
     """
     centers = medians.map(_as_center).to_numpy(dtype=float)
     usable = np.isfinite(centers) & (centers >= floor) & (centers <= cap)
@@ -251,8 +247,8 @@ def sample_years(
         lower=low - _HALF_YEAR,
         upper=high + _HALF_YEAR,
     )
-    # Both numpy and Python round half to even, so a half-year landing on
-    # an odd bound rounds away from it: 1800.5 with a floor of 1801 gives
+    # Both numpy and Python round half to even, so a half-year landing on an odd
+    # bound rounds away from it: 1800.5 with a floor of 1801 gives
     # 1800. The clip is what actually holds the bounds.
     years = np.clip(np.rint(drawn), low, high).astype(np.int64)
     return pd.Series(years, index=medians.index, name='YearBuilt')
@@ -263,13 +259,13 @@ class YearBuiltSampler(InferenceEngine):
     Add a sampled construction year to every asset in an inventory.
 
     Each year is drawn around the tract median the asset carries under
-    ``median_key``, through :func:`sample_years`. The class writes
-    ``YearBuilt`` whether or not one is already there. Deciding when a
-    sampled year should displace an observed one belongs to the caller.
+    ``median_key``, through :func:`sample_years`. The class writes ``YearBuilt``
+    whether or not one is already there. Deciding when a sampled year should displace
+    an observed one belongs to the caller.
 
-    Each sampler draws its own seed unless given one, so two runs over
-    the same inventory produce different years. Read ``self.seed`` to
-    learn the value a run used, and pass it back to repeat that run.
+    Each sampler draws its own seed unless given one, so two runs over the same
+    inventory produce different years. Read ``self.seed`` to learn the value a run
+    used, and pass it back to repeat that run.
     """
 
     def __init__(
@@ -289,10 +285,9 @@ class YearBuiltSampler(InferenceEngine):
             sigma (float):
                 Standard deviation of the year distribution, in years.
             seed (int | None):
-                Seed for the draw. Left out, a seed is generated at
-                random, so two runs of the same inventory give different
-                years. The value used is recorded on ``self.seed``; pass
-                it back to repeat a run exactly.
+                Seed for the draw. Left out, a seed is generated at random, so two
+                runs of the same inventory give different years. The value used is
+                recorded on ``self.seed``; pass it back to repeat a run exactly.
             floor (int):
                 Oldest year that can be drawn.
             cap (int):
@@ -302,8 +297,7 @@ class YearBuiltSampler(InferenceEngine):
             year_built_key (str):
                 Feature name the sampled year is written to.
             world (int):
-                Possible-world index. Only a single world is
-                supported at present.
+                Possible-world index. Only a single world is supported at present.
 
         Raises:
             ValueError:
@@ -334,10 +328,9 @@ class YearBuiltSampler(InferenceEngine):
         Returns:
             pd.DataFrame:
                 One row per asset id, with ``diagnosis``, ``detail`` and
-                ``resolvable_by``. A median that is absent, unreadable
-                or outside the sampler's bounds is invalid and names the
-                median feature. A median holding one value per world is
-                unsupported and names nothing.
+                ``resolvable_by``. A median that is absent, unreadable or outside the
+                sampler's bounds is invalid and names the median feature. A median
+                holding one value per world is unsupported and names nothing.
         """
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
@@ -359,8 +352,8 @@ class YearBuiltSampler(InferenceEngine):
 
         Returns:
             tuple[str, str, tuple[str, ...]]:
-                The diagnosis, the detail, and the features that would
-                each, alone, admit the asset.
+                The diagnosis, the detail, and the features that would each, alone,
+                admit the asset.
         """
         median = features.get(self.median_key)
         if median is None:
@@ -391,8 +384,7 @@ class YearBuiltSampler(InferenceEngine):
 
         Returns:
             str | None:
-                The reason the value is unusable, or ``None`` where it is
-                usable.
+                The reason the value is unusable, or ``None`` where it is usable.
         """
         if isinstance(median, bool):
             return f'{self.median_key} is a boolean: {median!r}'
@@ -436,8 +428,8 @@ class YearBuiltSampler(InferenceEngine):
 
         Raises:
             ValueError:
-                If an asset carries no usable median, which means
-                :meth:`check` was skipped.
+                If an asset carries no usable median, which means :meth:`check` was
+                skipped.
         """
         medians = {}
         for asset_id in input_inventory.get_asset_ids():
@@ -462,9 +454,9 @@ class YearBuiltSampler(InferenceEngine):
 
         Args:
             input_inventory (AssetInventory):
-                The inventory to process. Every asset must carry a usable
-                tract median; filter the inventory with :meth:`check`
-                first if that is not guaranteed.
+                The inventory to process. Every asset must carry a usable tract
+                median; filter the inventory with :meth:`check` first if that is not
+                guaranteed.
 
         Returns:
             AssetInventory:
@@ -473,8 +465,8 @@ class YearBuiltSampler(InferenceEngine):
 
         Raises:
             ValueError:
-                If any asset cannot be drawn for, naming the assets and
-                their diagnoses.
+                If any asset cannot be drawn for, naming the assets and their
+                diagnoses.
         """
         verdicts = self.check(input_inventory)
         failed = verdicts.loc[verdicts['diagnosis'] != DIAGNOSIS_OK, 'detail']

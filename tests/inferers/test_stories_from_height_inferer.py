@@ -82,16 +82,16 @@ FIXTURE_SCALES = {
 }
 STORIES = StoriesFromHeightInferer(length_unit='m', scales=FIXTURE_SCALES)
 
-# The provenance of an Overture footprint whose height is OpenStreetMap's,
-# and of one whose height is Microsoft's.
+# The provenance of an Overture footprint whose height is OpenStreetMap's, and of one
+# whose height is Microsoft's.
 OSM_HEIGHT = {'footprint_provider': 'overture', 'sources': f'dataset: {OSM}'}
 MICROSOFT_HEIGHT = {
     'footprint_provider': 'overture',
     'sources': f'dataset: {MICROSOFT}',
 }
 
-# Overture sources as a list of entries: the footprint is Microsoft's and
-# its height OpenStreetMap's.
+# Overture sources as a list of entries: the footprint is Microsoft's and its height
+# OpenStreetMap's.
 HEIGHT_FROM_OSM = [
     {'property': '', 'dataset': MICROSOFT},
     {'property': '/properties/height', 'dataset': OSM},
@@ -133,7 +133,8 @@ class TestProviderAndSource:
         """The entry whose property is the height names the source."""
         sources = (
             f'dataset: {OSM}, record_id: w1; '
-            f'property: /properties/height, dataset: {MICROSOFT}, between: [0.0, 1.0]'
+            'property: /properties/height, '
+            f'dataset: {MICROSOFT}, between: [0.0, 1.0]'
         )
         features = {
             'height': 9.9,

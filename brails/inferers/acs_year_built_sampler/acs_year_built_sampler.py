@@ -74,18 +74,17 @@ from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
 
-# First year of the open oldest B25034 bin, which the table leaves
-# without one; see the README beside this module, "Defaults and scope".
+# First year of the open oldest B25034 bin, which the table leaves without one; see
+# the README beside this module, "Defaults and scope".
 OLDEST_YEAR = 1890
 
-# Last year of the open newest B25034 bin: the final survey year of the
-# ACS 2024 five-year estimates (2020 to 2024).
+# Last year of the open newest B25034 bin: the final survey year of the ACS 2024
+# five-year estimates (2020 to 2024).
 NEWEST_YEAR = 2024
 
-# ACS 2024 five-year estimates, table B25034 "Year Structure Built": its
-# ten bins as (label, first year, last year, estimate variable),
-# oldest first. The eight inner bins are decades and the two open ones
-# are not.
+# ACS 2024 five-year estimates, table B25034 "Year Structure Built": its ten bins as
+# (label, first year, last year, estimate variable), oldest first. The eight inner
+# bins are decades and the two open ones are not.
 B25034_BINS = (
     ('1939 or earlier', OLDEST_YEAR, 1939, 'B25034_011E'),
     ('1940 to 1949', 1940, 1949, 'B25034_010E'),
@@ -99,9 +98,8 @@ B25034_BINS = (
     ('2020 or later', 2020, NEWEST_YEAR, 'B25034_002E'),
 )
 
-# ACS 2024 five-year estimates, table B25127 "Tenure by Year Structure
-# Built by Units in Structure": its six year bins and the B25034 bins
-# each holds, oldest first.
+# ACS 2024 five-year estimates, table B25127 "Tenure by Year Structure Built by Units
+# in Structure": its six year bins and the B25034 bins each holds, oldest first.
 COARSE_YEARS = (
     ('1939 or earlier', ('1939 or earlier',)),
     ('1940 to 1959', ('1940 to 1949', '1950 to 1959')),
@@ -111,9 +109,9 @@ COARSE_YEARS = (
     ('2020 or later', ('2020 or later',)),
 )
 
-# B25127's six units-in-structure classes, in this order. Its labels
-# are "1, detached or attached", "2 to 4", "5 to 19", "20 to 49", "50 or
-# more" and "Mobile home, boat, RV, van, etc.".
+# B25127's six units-in-structure classes, in this order. Its labels are "1, detached
+# or attached", "2 to 4", "5 to 19", "20 to 49", "50 or more" and "Mobile home, boat,
+# RV, van, etc.".
 SIZE_CLASSES = (
     '1 unit',
     '2 to 4',
@@ -123,19 +121,17 @@ SIZE_CLASSES = (
     'Manufactured home',
 )
 
-# Inclusive upper unit bounds of the classes of SIZE_CLASSES before
-# '50 or more', from the same B25127 labels. A count above the last bound
-# is in '50 or more'.
+# Inclusive upper unit bounds of the classes of SIZE_CLASSES before '50 or more',
+# from the same B25127 labels. A count above the last bound is in '50 or more'.
 SIZE_CLASS_BOUNDS = (1, 4, 19, 49)
 
-# The occupancy class placed in the manufactured-home class of
-# SIZE_CLASSES whatever its unit count: RES2, "Mobile Home" in Hazus
-# Inventory Technical Manual 6.1, Table 4-1 (p. 4-2).
+# The occupancy class placed in the manufactured-home class of SIZE_CLASSES whatever
+# its unit count: RES2, "Mobile Home" in Hazus Inventory Technical Manual 6.1, Table
+# 4-1 (p. 4-2).
 MANUFACTURED_CLASS = 'RES2'
 
-# B25127's cells: (year bin of COARSE_YEARS, class of SIZE_CLASSES,
-# (owner-occupied variable, renter-occupied variable)). The two tenures
-# are summed.
+# B25127's cells: (year bin of COARSE_YEARS, class of SIZE_CLASSES, (owner-occupied
+# variable, renter-occupied variable)). The two tenures are summed.
 B25127_CELLS = (
     ('1939 or earlier', '1 unit', ('B25127_039E', 'B25127_082E')),
     ('1940 to 1959', '1 unit', ('B25127_032E', 'B25127_075E')),
@@ -178,26 +174,23 @@ B25127_CELLS = (
 # Part of the reproducibility contract; see keyed_uniforms.
 ACS_YEAR_PURPOSE = 'year_built_b25034'
 
-# Pseudo-units of the county-pooled conditional distribution added to each
-# class row of a tract's B25127 counts; see the README beside this module,
-# "Defaults and scope".
+# Pseudo-units of the county-pooled conditional distribution added to each class row
+# of a tract's B25127 counts; see the README beside this module, "Defaults and
+# scope".
 DEFAULT_SMOOTHING = 20.0
 
-# The raking stops when the largest bin residual, as a share of the
-# block group's fitted units, falls below RAKE_TOLERANCE, or after
-# RAKE_ITERATIONS passes.
+# The raking stops when the largest bin residual, as a share of the block group's
+# fitted units, falls below RAKE_TOLERANCE, or after RAKE_ITERATIONS passes.
 RAKE_TOLERANCE = 1e-12
 RAKE_ITERATIONS = 10000
 
-# The county prefix of a block-group or tract GEOID (state and county FIPS
-# codes).
+# The county prefix of a block-group or tract GEOID (state and county FIPS codes).
 COUNTY_DIGITS = 5
 
 # Smallest unit count an asset may carry.
 MIN_UNITS = 1
 
-# Width of a generated seed, matching the key width of the sampling
-# helpers.
+# Width of a generated seed, matching the key width of the sampling helpers.
 _SEED_BITS = 64
 
 # Origins reported in fit_report.
@@ -242,9 +235,9 @@ def size_class(occupancy: str, units: float) -> int:
     """
     Place one residential asset in a class of :data:`SIZE_CLASSES`.
 
-    RES2 falls in the manufactured-home class whatever its count. Any other
-    class is placed by its unit count against :data:`SIZE_CLASS_BOUNDS`,
-    inclusive above. The count is not validated.
+    RES2 falls in the manufactured-home class whatever its count. Any other class is
+    placed by its unit count against :data:`SIZE_CLASS_BOUNDS`, inclusive above. The
+    count is not validated.
 
     Args:
         occupancy (str):
@@ -308,9 +301,8 @@ def _table_arrays(
 
     Raises:
         ValueError:
-            If a required column is missing, a value is not a finite
-            number, or an index entry is not a GEOID of ``digits``
-            digits or occurs twice.
+            If a required column is missing, a value is not a finite number, or an
+            index entry is not a GEOID of ``digits`` digits or occurs twice.
     """
     missing = [column for column in columns if column not in table.columns]
     if missing:
@@ -351,8 +343,7 @@ def _normalize_rows(joint: np.ndarray) -> np.ndarray:
 
     Returns:
         np.ndarray:
-            The rows divided by their sums. A row summing to zero becomes
-            uniform.
+            The rows divided by their sums. A row summing to zero becomes uniform.
     """
     totals = joint.sum(axis=1, keepdims=True)
     out = np.divide(joint, np.where(totals > 0, totals, 1.0))
@@ -366,15 +357,15 @@ def _rake(
     """
     Rake class rows so that the expected units per year bin meet a target.
 
-    Iterative proportional fitting on the logarithm of the weights: each
-    row is renormalized to one, and each bin's multiplier is updated
-    until the largest bin residual falls below :data:`RAKE_TOLERANCE`
-    or :data:`RAKE_ITERATIONS` passes are spent.
+    Iterative proportional fitting on the logarithm of the weights: each row is
+    renormalized to one, and each bin's multiplier is updated until the largest bin
+    residual falls below :data:`RAKE_TOLERANCE` or :data:`RAKE_ITERATIONS` passes are
+    spent.
 
     Args:
         seed (np.ndarray):
-            Classes by year bins, non-negative starting weights, each row
-            holding some mass on a bin whose target is positive.
+            Classes by year bins, non-negative starting weights, each row holding
+            some mass on a bin whose target is positive.
         class_units (np.ndarray):
             The units of each class, the row weights.
         target (np.ndarray):
@@ -382,8 +373,8 @@ def _rake(
 
     Returns:
         tuple[np.ndarray, int, float]:
-            The raked rows (each summing to one), the passes used, and
-            the final residual as a share of the units.
+            The raked rows (each summing to one), the passes used, and the final
+            residual as a share of the units.
     """
     active = target > 0
     with np.errstate(divide='ignore'):
@@ -411,24 +402,21 @@ class ACSYearBuiltSampler(InferenceEngine):
     """
     Draw construction years for residential assets from Census tables.
 
-    :meth:`fit` fits one distribution over the year bins of
-    :data:`B25034_BINS` per block group and class of
-    :data:`SIZE_CLASSES`, from the block group's B25034 counts and its
-    tract's B25127 counts, and :meth:`draw` draws each asset's year from
-    its distribution. Where neither a block group nor its tract holds
-    B25034 units, or the B25127 table holds no tract of its county, the
-    block group stays unfitted and :meth:`check` refuses its assets. The
-    README beside this module describes the method and the defaults.
+    :meth:`fit` fits one distribution over the year bins of :data:`B25034_BINS` per
+    block group and class of :data:`SIZE_CLASSES`, from the block group's B25034
+    counts and its tract's B25127 counts, and :meth:`draw` draws each asset's year
+    from its distribution. Where neither a block group nor its tract holds B25034
+    units, or the B25127 table holds no tract of its county, the block group stays
+    unfitted and :meth:`check` refuses its assets. The README beside this module
+    describes the method and the defaults.
 
-    :meth:`fit` reads every asset of the inventory it is given, and a draw
-    depends on the other residential assets of its block group and on
-    every tract of its county in the B25127 table. A call of :meth:`check`
-    or :meth:`draw` on a one-asset inventory reads that asset's
-    distribution in the fitted inventory.
+    :meth:`fit` reads every asset of the inventory it is given, and a draw depends on
+    the other residential assets of its block group and on every tract of its county
+    in the B25127 table. A call of :meth:`check` or :meth:`draw` on a one-asset
+    inventory reads that asset's distribution in the fitted inventory.
 
-    The sampler covers
-    :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`. It writes
-    ``year_built_key`` whether or not one is already there; keeping an
+    The sampler covers :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`. It
+    writes ``year_built_key`` whether or not one is already there; keeping an
     observed year is the caller's decision.
     """
 
@@ -452,30 +440,29 @@ class ACSYearBuiltSampler(InferenceEngine):
         Args:
             b25034_block_groups (pd.DataFrame):
                 Table B25034 per block group, indexed by GEOID string of
-                :data:`~brails.constants.GEOID_LENGTH` digits, with the
-                estimate variables of :data:`B25034_BINS` as columns.
-                Other columns are ignored. A negative value, the Census
-                placeholder for an unavailable estimate, reads as zero.
+                :data:`~brails.constants.GEOID_LENGTH` digits, with the estimate
+                variables of :data:`B25034_BINS` as columns. Other columns are
+                ignored. A negative value, the Census placeholder for an unavailable
+                estimate, reads as zero.
             b25034_tracts (pd.DataFrame):
                 Table B25034 per tract, indexed by GEOID string of
-                :data:`~brails.constants.TRACT_GEOID_LENGTH` digits, in the
-                same form.
+                :data:`~brails.constants.TRACT_GEOID_LENGTH` digits, in the same
+                form.
             b25127_tracts (pd.DataFrame):
                 Table B25127 per tract, indexed by GEOID string of
                 :data:`~brails.constants.TRACT_GEOID_LENGTH` digits, with the
                 variables of :data:`B25127_CELLS` as columns, in the same form. Each
-                county's pool sums every tract of this table in that
-                county, and a tract's conditional distribution is smoothed
-                toward it.
+                county's pool sums every tract of this table in that county, and a
+                tract's conditional distribution is smoothed toward it.
             seed (int | None):
-                Seed for the draw. If None, a seed is drawn from system
-                entropy and recorded on ``self.seed``.
+                Seed for the draw. If None, a seed is drawn from system entropy and
+                recorded on ``self.seed``.
             world (int):
-                Possible-world index. A world other than the default
-                requires an explicit seed.
+                Possible-world index. A world other than the default requires an
+                explicit seed.
             smoothing (float):
-                Pseudo-units of the county-pooled conditional added to
-                each class row of a tract's B25127 counts.
+                Pseudo-units of the county-pooled conditional added to each class row
+                of a tract's B25127 counts.
             block_group_key (str):
                 Feature holding the asset's block-group GEOID.
             occupancy_key (str):
@@ -487,11 +474,10 @@ class ACSYearBuiltSampler(InferenceEngine):
 
         Raises:
             ValueError:
-                If a table lacks a required column, holds a value in one
-                that is not a finite number, or is not indexed by unique
-                GEOID strings of its level's length; if ``smoothing`` is
-                negative or not finite; or if ``world`` is not the default
-                and no seed is given.
+                If a table lacks a required column, holds a value in one that is not
+                a finite number, or is not indexed by unique GEOID strings of its
+                level's length; if ``smoothing`` is negative or not finite; or if
+                ``world`` is not the default and no seed is given.
         """
         if not (math.isfinite(smoothing) and smoothing >= 0):
             raise ValueError(
@@ -511,8 +497,8 @@ class ACSYearBuiltSampler(InferenceEngine):
         b25127 = _table_arrays(
             b25127_tracts, _B25127_VARIABLES, TRACT_GEOID_LENGTH, 'b25127_tracts'
         )
-        # per tract: B25127 counts by size class and year bin, both tenures
-        # summed and negative values read as zero, with the negatives counted
+        # per tract: B25127 counts by size class and year bin, both tenures summed
+        # and negative values read as zero, with the negatives counted
         self._b25127_joint = {}
         for tract, values in b25127.items():
             joint = np.zeros((_N_CLASSES, _N_COARSE))
@@ -522,8 +508,8 @@ class ACSYearBuiltSampler(InferenceEngine):
                 column = _COARSE_LABELS.index(year_bin)
                 joint[row, column] = math.fsum(clean[2 * k : 2 * k + 2])
             self._b25127_joint[tract] = (joint, int((values < 0).sum()))
-        # exact (fsum) sums of the county's tract tables, each class row
-        # normalized to one
+        # exact (fsum) sums of the county's tract tables, each class row normalized
+        # to one
         by_county: dict[str, list[np.ndarray]] = {}
         for tract, (counts, _) in self._b25127_joint.items():
             by_county.setdefault(tract[:COUNTY_DIGITS], []).append(counts)
@@ -560,10 +546,9 @@ class ACSYearBuiltSampler(InferenceEngine):
 
         Returns:
             tuple[np.ndarray | None, str | None, int]:
-                The bin shares, their origin, and the count of negative
-                values read as zero. The shares and the origin are
-                ``None`` where neither the block group nor its tract holds
-                units.
+                The bin shares, their origin, and the count of negative values read
+                as zero. The shares and the origin are ``None`` where neither the
+                block group nor its tract holds units.
         """
         negatives = 0
         for origin, table, geoid in (
@@ -594,11 +579,10 @@ class ACSYearBuiltSampler(InferenceEngine):
 
         Returns:
             tuple[np.ndarray | None, str | None, int]:
-                The probability of each year bin given each class, one
-                row per class of :data:`SIZE_CLASSES`, its origin, and the
-                negative values read as zero. The conditional and origin
-                are ``None`` where the B25127 table holds no tract of the
-                county.
+                The probability of each year bin given each class, one row per class
+                of :data:`SIZE_CLASSES`, its origin, and the negative values read as
+                zero. The conditional and origin are ``None`` where the B25127 table
+                holds no tract of the county.
         """
         pool = self._county_pools.get(tract[:COUNTY_DIGITS])
         if pool is None:
@@ -641,16 +625,16 @@ class ACSYearBuiltSampler(InferenceEngine):
         """
         Fit the year distributions of every block group in an inventory.
 
-        The fit reads the occupancy, units and block group of every asset
-        and changes none. Assets with an absent or unusable occupancy, unit
-        count or block group, or a class the sampler does not cover, do
-        not enter it. An asset holding one value per world in any of the
-        three raises. A later call replaces the earlier fit.
+        The fit reads the occupancy, units and block group of every asset and changes
+        none. Assets with an absent or unusable occupancy, unit count or block group,
+        or a class the sampler does not cover, do not enter it. An asset holding one
+        value per world in any of the three raises. A later call replaces the earlier
+        fit.
 
         Args:
             input_inventory (AssetInventory):
-                One world's scalar inventory, holding every residential
-                asset of the study area.
+                One world's scalar inventory, holding every residential asset of the
+                study area.
 
         Returns:
             ACSYearBuiltSampler:
@@ -658,8 +642,8 @@ class ACSYearBuiltSampler(InferenceEngine):
 
         Raises:
             ValueError:
-                If an asset holds one value per world in the occupancy,
-                units or block-group feature.
+                If an asset holds one value per world in the occupancy, units or
+                block-group feature.
         """
         units: dict[str, list[list[float]]] = {}
         for asset_id in input_inventory.get_asset_ids():
@@ -714,15 +698,14 @@ class ACSYearBuiltSampler(InferenceEngine):
             block_group (str):
                 The block-group GEOID.
             class_units (np.ndarray):
-                The summed units of the block group's fitted assets in
-                each class of :data:`SIZE_CLASSES`.
+                The summed units of the block group's fitted assets in each class of
+                :data:`SIZE_CLASSES`.
 
         Returns:
             tuple[np.ndarray | None, dict, str | None]:
-                The raked rows, one per class over the year bins, or
-                ``None`` where a table is missing; the block group's
-                report row; and the reason it was not fitted, if it was
-                not.
+                The raked rows, one per class over the year bins, or ``None`` where a
+                table is missing; the block group's report row; and the reason it was
+                not fitted, if it was not.
         """
         fitted_units = math.fsum(class_units)
         row = {
@@ -775,9 +758,9 @@ class ACSYearBuiltSampler(InferenceEngine):
 
         Returns:
             pd.DataFrame:
-                Indexed by block group and class of :data:`SIZE_CLASSES`,
-                with the bin labels of :data:`B25034_BINS` as
-                columns, each row summing to one. A copy.
+                Indexed by block group and class of :data:`SIZE_CLASSES`, with the
+                bin labels of :data:`B25034_BINS` as columns, each row summing to
+                one. A copy.
 
         Raises:
             RuntimeError:
@@ -803,16 +786,14 @@ class ACSYearBuiltSampler(InferenceEngine):
         Returns:
             pd.DataFrame:
                 One row per block group, with the origin of the shares
-                (:data:`SHARES_FROM_BLOCK_GROUP` or
-                :data:`SHARES_FROM_TRACT`) and of the conditional
-                distribution (:data:`CONDITIONAL_FROM_TRACT` or
-                :data:`CONDITIONAL_FROM_COUNTY_POOL`), each
-                missing (NaN under pandas 3) where the table is missing;
-                the fitted assets and units; the negative table values
-                read as zero for the block group's and tract's rows; the
-                raking passes; the final residual as a share of the units;
-                and whether it met :data:`RAKE_TOLERANCE`. A block group
-                that missed the tolerance keeps its last rows. A copy.
+                (:data:`SHARES_FROM_BLOCK_GROUP` or :data:`SHARES_FROM_TRACT`) and of
+                the conditional distribution (:data:`CONDITIONAL_FROM_TRACT` or
+                :data:`CONDITIONAL_FROM_COUNTY_POOL`), each missing (NaN under
+                pandas 3) where the table is missing; the fitted assets and units;
+                the negative table values read as zero for the block group's and
+                tract's rows; the raking passes; the final residual as a share of the
+                units; and whether it met :data:`RAKE_TOLERANCE`. A block group that
+                missed the tolerance keeps its last rows. A copy.
 
         Raises:
             RuntimeError:
@@ -854,12 +835,11 @@ class ACSYearBuiltSampler(InferenceEngine):
             pd.DataFrame:
                 One row per asset id, with ``diagnosis``, ``detail`` and
                 ``resolvable_by``. A driver holding one value per world is
-                unsupported. An absent or unusable occupancy, unit count or
-                block group is invalid. A class the sampler does not cover,
-                or a block group without a fitted distribution, is
-                infeasible. ``resolvable_by`` names the failing driver
-                where it is the only one, since changing it alone would
-                admit the asset, and names nothing where several fail.
+                unsupported. An absent or unusable occupancy, unit count or block
+                group is invalid. A class the sampler does not cover, or a block
+                group without a fitted distribution, is infeasible. ``resolvable_by``
+                names the failing driver where it is the only one, since changing it
+                alone would admit the asset, and names nothing where several fail.
 
         Raises:
             RuntimeError:
@@ -884,13 +864,13 @@ class ACSYearBuiltSampler(InferenceEngine):
             vector_features (set):
                 Names of the features whose values are vectors.
             fitted (bool):
-                Whether to require a fitted distribution for the asset's
-                block group. :meth:`fit` passes ``False``.
+                Whether to require a fitted distribution for the asset's block group.
+                :meth:`fit` passes ``False``.
 
         Returns:
             tuple[str, str, tuple[str, ...]]:
-                The diagnosis, the detail, and the features that would
-                each, alone, admit the asset.
+                The diagnosis, the detail, and the features that would each, alone,
+                admit the asset.
         """
         keys = (self.occupancy_key, self.units_key, self.block_group_key)
         for key in keys:
@@ -937,9 +917,9 @@ class ACSYearBuiltSampler(InferenceEngine):
 
         Returns:
             tuple[str | None, str | None]:
-                The reason the value is absent or unusable, and the reason
-                it is a class the sampler does not cover; each ``None``
-                where it does not apply.
+                The reason the value is absent or unusable, and the reason it is a
+                class the sampler does not cover; each ``None`` where it does not
+                apply.
         """
         occupancy = features.get(self.occupancy_key)
         if not isinstance(occupancy, str):
@@ -969,9 +949,8 @@ class ACSYearBuiltSampler(InferenceEngine):
 
         Returns:
             tuple[str | None, str | None]:
-                The reason the value is absent or not a GEOID, and the
-                reason it has no fitted distribution; each ``None`` where
-                it does not apply.
+                The reason the value is absent or not a GEOID, and the reason it has
+                no fitted distribution; each ``None`` where it does not apply.
         """
         block_group = features.get(self.block_group_key)
         if not _is_geoid(block_group, GEOID_LENGTH):
@@ -1000,8 +979,7 @@ class ACSYearBuiltSampler(InferenceEngine):
 
         Returns:
             str | None:
-                The reason the value is unusable, or ``None`` where it is
-                usable.
+                The reason the value is unusable, or ``None`` where it is usable.
         """
         if units is None:
             return f'no {self.units_key}'
@@ -1029,9 +1007,9 @@ class ACSYearBuiltSampler(InferenceEngine):
         """
         Draw a year for every asset. Every asset must pass check.
 
-        Each asset inverts one keyed uniform through its fitted
-        distribution spread evenly over the years of each bin, so one
-        uniform picks both the bin and the year.
+        Each asset inverts one keyed uniform through its fitted distribution spread
+        evenly over the years of each bin, so one uniform picks both the bin and the
+        year.
 
         Args:
             input_inventory (AssetInventory):
@@ -1042,15 +1020,13 @@ class ACSYearBuiltSampler(InferenceEngine):
 
         Returns:
             pd.Series:
-                Integer years indexed by asset id, named
-                ``year_built_key``.
+                Integer years indexed by asset id, named ``year_built_key``.
 
         Raises:
             RuntimeError:
                 If the sampler has not been fitted.
             ValueError:
-                If an asset does not pass :meth:`check`, naming the
-                assets.
+                If an asset does not pass :meth:`check`, naming the assets.
         """
         fitted = self._require_fit()
         asset_ids = []
@@ -1115,9 +1091,8 @@ class ACSYearBuiltSampler(InferenceEngine):
 
         Args:
             input_inventory (AssetInventory):
-                The inventory to process. Every asset must pass
-                :meth:`check`; filter the inventory with it first if that
-                is not guaranteed.
+                The inventory to process. Every asset must pass :meth:`check`; filter
+                the inventory with it first if that is not guaranteed.
 
         Returns:
             AssetInventory:
@@ -1128,8 +1103,8 @@ class ACSYearBuiltSampler(InferenceEngine):
             RuntimeError:
                 If the sampler has not been fitted.
             ValueError:
-                If any asset cannot be drawn for, naming the assets and
-                the reason each fails.
+                If any asset cannot be drawn for, naming the assets and the reason
+                each fails.
         """
         verdicts = self.check(input_inventory)
         failed = verdicts.loc[verdicts['diagnosis'] != DIAGNOSIS_OK, 'detail']

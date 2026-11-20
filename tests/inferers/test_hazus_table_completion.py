@@ -73,8 +73,8 @@ COMPLETED = get_completed_west_coast_weights()
 BANDS = ('low_rise', 'mid_rise', 'high_rise')
 ERAS = ('pre_1950', '1950_to_1970', 'post_1970')
 
-# Four of the six design levels the inferer reads. Very High-Code and
-# Severe-Code bar URM, C3 and S5 as Moderate-Code does, so they add no case.
+# Four of the six design levels the inferer reads. Very High-Code and Severe-Code bar
+# URM, C3 and S5 as Moderate-Code does, so they add no case.
 HAZUS_DESIGN_LEVELS = ('Pre-Code', 'Low-Code', 'Moderate-Code', 'High-Code')
 
 # A story count inside each story band and a year inside each era.
@@ -105,8 +105,8 @@ def _split_routes() -> tuple[dict, dict]:
 
     Returns:
         tuple[dict, dict]:
-            The routes of the cells off the implausible list, then those
-            of the cells on it.
+            The routes of the cells off the implausible list, then those of the cells
+            on it.
     """
     plausible = {
         cell: fill
@@ -187,8 +187,8 @@ def test_the_route_counts_of_plausible_and_implausible_cells() -> None:
     """
     The plausible cells split 4, 25 and 7 over the three routes.
 
-    The routes are taken in the order adjacent era, band below and
-    fallback. The implausible cells split 0, 11 and 24.
+    The routes are taken in the order adjacent era, band below and fallback. The
+    implausible cells split 0, 11 and 24.
     """
     plausible, implausible = _split_routes()
     for routes, expected in (
@@ -264,9 +264,9 @@ def test_the_printed_implausible_agr1_row_is_never_a_source() -> None:
     assert 'COM1' in inputs
     for fill in ROUTES.values():
         assert fill.source != excluded
-    # Were it a source, it would keep 0.25 for AGR1 mid-rise 1950 to 1970
-    # and for AGR1 high-rise before 1950, under HALF_MASS, so the exclusion
-    # changes neither route. It acts on the fallback inputs above.
+    # Were it a source, it would keep 0.25 for AGR1 mid-rise 1950 to 1970 and for
+    # AGR1 high-rise before 1950, under HALF_MASS, so the exclusion changes neither
+    # route. It acts on the fallback inputs above.
     kept = hazus_table_completion._kept_mass(
         excluded, 'mid_rise', TYPE_LISTS, PRINTED
     )
@@ -345,8 +345,8 @@ def test_every_cell_draws_at_four_design_levels(
     """
     The inferer finds something to draw in every cell at each of four levels.
 
-    URM, C3 and S5 are set aside by the inferer where the West Coast bars
-    them, so the check runs the region's own legality rule.
+    URM, C3 and S5 are set aside by the inferer where the West Coast bars them, so
+    the check runs the region's own legality rule.
     """
     assets = {
         f'{occupancy}|{band}|{era}|{level}': {
@@ -400,8 +400,8 @@ def test_the_fallback_matches_values_worked_by_hand() -> None:
     """
     EDU1 high-rise from 1970 draws the combined high-rise rows of 1970 on.
 
-    The expected values are worked from the rows of Table A-10 (p. A-8)
-    of the Hazus Inventory Technical Manual 6.0.
+    The expected values are worked from the rows of Table A-10 (p. A-8) of the Hazus
+    Inventory Technical Manual 6.0.
     """
     filled = COMPLETED['EDU1']['high_rise']['post_1970']
     row = dict(zip(TYPE_LISTS['high_rise'], filled))

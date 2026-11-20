@@ -95,11 +95,11 @@ UNITS = UNITS_KEY
 STORIES = STORIES_KEY
 MH_PARK = (-500.0, 0.0)
 WORLDS = 3
-# The reached footprint of the main fixture the mobile-home rule may
-# reclassify, with the label of its source.
+# The reached footprint of the main fixture the mobile-home rule may reclassify, with
+# the label of its source.
 RELABEL = {'rp': 'nsi'}
-# The fixtures' block groups often hold more structures than candidates,
-# and the tests of the warning catch it themselves.
+# The fixtures' block groups often hold more structures than candidates, and the
+# tests of the warning catch it themselves.
 pytestmark = pytest.mark.filterwarnings(
     r'ignore:In \d+ of the block groups:UserWarning'
 )
@@ -111,8 +111,8 @@ def table(rows: dict[str, dict[str, tuple[float, float]]]) -> pd.DataFrame:
 
     Args:
         rows (dict[str, dict[str, tuple[float, float]]]):
-            Per GEOID, the estimate and margin per table line, zero where
-            a line is not given.
+            Per GEOID, the estimate and margin per table line, zero where a line is
+            not given.
 
     Returns:
         pandas.DataFrame:
@@ -182,8 +182,7 @@ def empty(east: float, north: float, side: float = 10.0, bg: str = BG_A) -> tupl
         north (float):
             Meters north.
         side (float, optional):
-            Side in meters. A 10 m side gives 1,076 sq ft and an 8 m side
-            689 sq ft.
+            Side in meters. A 10 m side gives 1,076 sq ft and an 8 m side 689 sq ft.
         bg (str, optional):
             The block group.
 
@@ -198,16 +197,15 @@ def scene() -> tuple[pd.DataFrame, list, AssetInventory, AssetInventory]:
     """
     Build the main fixture: homes in the west, shops in the east, a mobile-home park.
 
-    The mobile-home park point lies at ``MH_PARK``. Four houses, a fifth
-    house near the mobile-home park (``rp``) and five shops in the east are
-    reached. The targets are three footprints near or beyond the
-    mobile-home park, eight footprints of growing size in the west, and two
-    small and one large footprint among the shops.
+    The mobile-home park point lies at ``MH_PARK``. Four houses, a fifth house near
+    the mobile-home park (``rp``) and five shops in the east are reached. The targets
+    are three footprints near or beyond the mobile-home park, eight footprints of
+    growing size in the west, and two small and one large footprint among the shops.
 
     Returns:
         tuple[pandas.DataFrame, list, AssetInventory, AssetInventory]:
-            The table, the mobile-home park points, the targets and the
-            reached footprints.
+            The table, the mobile-home park points, the targets and the reached
+            footprints.
     """
     reached = inventory(
         {
@@ -270,8 +268,8 @@ def run(
         n_worlds (int, optional):
             The number of worlds.
         relabel_sources (Mapping[str, str] | None, optional):
-            The reached footprints the mobile-home rule may reclassify.
-            Defaults to ``RELABEL``.
+            The reached footprints the mobile-home rule may reclassify. Defaults to
+            ``RELABEL``.
         **kwargs (Any):
             Constructor overrides.
 
@@ -351,8 +349,8 @@ def random_scene(rng: random.Random) -> tuple:
 
     Returns:
         tuple:
-            The table, no mobile-home park points, the targets and the
-            reached footprints.
+            The table, no mobile-home park points, the targets and the reached
+            footprints.
     """
     reached = {}
     for i in range(rng.randint(3, 12)):
@@ -385,8 +383,8 @@ class TestBudget:
         result = run()
         for world in range(WORLDS):
             units = units_by_bin(result, world)
-            # Bin 1 holds 8 less the four reached houses, since rp became a
-            # mobile home.
+            # Bin 1 holds 8 less the four reached houses, since rp became a mobile
+            # home.
             assert units['1'] <= 4
             assert units['5-9'] <= 14
             assert sum(units.values()) == 4 + 14
@@ -430,8 +428,8 @@ class TestTotalDeficit:
         """
         Build a block group whose reached units meet the census total.
 
-        Reached duplexes hold more two-unit homes than the census counts,
-        and fewer single-family homes are reached than it counts.
+        Reached duplexes hold more two-unit homes than the census counts, and fewer
+        single-family homes are reached than it counts.
 
         Returns:
             tuple:
@@ -900,9 +898,8 @@ class TestKeyedAssignment:
 
         Returns:
             tuple:
-                The table with a row for the second block group, the
-                mobile-home park points, the targets and the reached
-                footprints.
+                The table with a row for the second block group, the mobile-home park
+                points, the targets and the reached footprints.
         """
         rows, mh_parks, targets, reached = scene()
         rows = pd.concat([rows, table({BG_B: {'002': (5, 1), '010': (4, 1)}})])
@@ -1093,8 +1090,8 @@ class TestCapacityOrder:
     def test_fallback_takes_the_largest(self) -> None:
         """Where none holds the share, the bin goes to the largest capacity."""
         rows = table({BG_A: {'006': (9, 2)}})
-        # Room for 6 on the larger plan, which ranks first, and for 7 on two
-        # stories of the smaller one.
+        # Room for 6 on the larger plan, which ranks first, and for 7 on two stories
+        # of the smaller one.
         targets = inventory(
             {
                 'wide': empty(0, 0, 13),
@@ -1108,8 +1105,8 @@ class TestCapacityOrder:
     def test_fallback_places_what_fits(self) -> None:
         """A bin short of dwellings for its share keeps the larger fallback ones."""
         rows = table({BG_A: {'002': (1, 1), '006': (18, 2)}})
-        # Room for 9, 8 and 5 units: the 5-to-9 bin's two structures need
-        # 9 each, so it takes 9 and 8 and the one-unit bin the 5.
+        # Room for 9, 8 and 5 units: the 5-to-9 bin's two structures need 9 each, so
+        # it takes 9 and 8 and the one-unit bin the 5.
         targets = inventory(
             {'a': empty(0, 0, 16), 'b': empty(100, 0, 15), 'c': empty(200, 0, 12)}
         )

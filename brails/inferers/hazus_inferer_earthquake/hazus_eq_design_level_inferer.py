@@ -66,22 +66,21 @@ from brails.types.asset_inventory import is_probabilistic_feature
 if TYPE_CHECKING:
     from brails.types.asset_inventory import AssetInventory
 
-# Design levels by construction era for California, from the FEMA Hazus
-# Inventory Technical Manual 6.1, Appendix C, Table C-10. Each zone row
-# pairs the first years of the later eras with one level per era. The
-# table runs through 1996; the v5.1 method carries its last era forward.
-# The year-to-edition ladder of Table C-9 belongs to the v6.1 method.
+# Design levels by construction era for California, from the FEMA Hazus Inventory
+# Technical Manual 6.1, Appendix C, Table C-10. Each zone row pairs the first years
+# of the later eras with one level per era. The table runs through 1996; the v5.1
+# method carries its last era forward. The year-to-edition ladder of Table C-9
+# belongs to the v6.1 method.
 CA_DESIGN_LEVELS = {
     '4': ((1941, 1976), ('Pre-Code', 'Moderate-Code', 'High-Code')),
     '3': ((1941, 1976), ('Pre-Code', 'Moderate-Code', 'Moderate-Code')),
 }
 
-# Design levels by construction era for the general building stock in
-# states without their own matrix, from the FEMA Hazus Inventory
-# Technical Manual 6.1, Table 5-12 (numbered 5-13 in the List of Tables,
-# p. 5-16), keyed by 1997 UBC seismic zone. The source bounds the last
-# era at the first IBC/IRC adoption; the v5.1 method does not consult
-# adoption years.
+# Design levels by construction era for the general building stock in states without
+# their own matrix, from the FEMA Hazus Inventory Technical Manual 6.1, Table 5-12
+# (numbered 5-13 in the List of Tables, p. 5-16), keyed by 1997 UBC seismic zone. The
+# source bounds the last era at the first IBC/IRC adoption; the v5.1 method does not
+# consult adoption years.
 GENERIC_DESIGN_LEVELS = {
     '4': ((1976, 1996), ('Pre-Code', 'Moderate-Code', 'High-Code')),
     '3': ((1976, 1996), ('Pre-Code', 'Moderate-Code', 'Moderate-Code')),
@@ -91,14 +90,13 @@ GENERIC_DESIGN_LEVELS = {
     '0': ((1976, 1996), ('Pre-Code', 'Pre-Code', 'Low-Code')),
 }
 
-# The largest magnitude the era comparison can represent. Era selection
-# casts to a 64-bit integer, and a value further from zero than this
-# casts to something else entirely, which would assign a design level to
-# a year nobody supplied.
+# The largest magnitude the era comparison can represent. Era selection casts to a
+# 64-bit integer, and a value further from zero than this casts to something else
+# entirely, which would assign a design level to a year nobody supplied.
 MAX_REPRESENTABLE_YEAR = int(np.iinfo(np.int64).max)
 
-# States with their own Appendix C matrix, keyed by the full state name
-# that Table A-22 uses.
+# States with their own Appendix C matrix, keyed by the full state name that Table
+# A-22 uses.
 STATE_DESIGN_LEVELS = {'California': CA_DESIGN_LEVELS}
 
 
@@ -113,14 +111,14 @@ def _outside_year_bounds(value: object) -> bool:
     Returns:
         bool:
             True where the value sits further from zero than
-            :data:`MAX_REPRESENTABLE_YEAR`, in either direction. A value
-            that reads as no number at all gives False.
+            :data:`MAX_REPRESENTABLE_YEAR`, in either direction. A value that reads
+            as no number at all gives False.
     """
     if isinstance(value, bool):
         return False
     try:
-        # An integer is compared as an integer. float(2**63 - 1) rounds up
-        # to 2**63, which an exact comparison against the bound refuses.
+        # An integer is compared as an integer. float(2**63 - 1) rounds up to 2**63,
+        # which an exact comparison against the bound refuses.
         return abs(int(value)) > MAX_REPRESENTABLE_YEAR
     except (TypeError, ValueError, OverflowError):
         pass
@@ -149,8 +147,8 @@ def _select_era_row(
 
     Raises:
         ValueError:
-            If the state is not in the Hazus region table, or the zone is
-            not in the selected state table.
+            If the state is not in the Hazus region table, or the zone is not in the
+            selected state table.
     """
     if state not in get_hazus_state_region_mapping():
         raise ValueError(
@@ -179,17 +177,15 @@ def assign_design_levels(
     """
     Assign Hazus v5.1 seismic design levels from construction years.
 
-    California uses its Appendix C matrix (Table C-10). Other states
-    fall back to the generic zone table (Table 5-12). Years before the
-    first era break map to the first level, and the last era of each
-    table continues to the present.
+    California uses its Appendix C matrix (Table C-10). Other states fall back to the
+    generic zone table (Table 5-12). Years before the first era break map to the
+    first level, and the last era of each table continues to the present.
 
     Args:
         year_built (pd.Series):
             Construction years indexed by asset id.
         state (str):
-            Full state name that selects the matrix, as in
-            ``'California'``.
+            Full state name that selects the matrix, as in ``'California'``.
         seismic_zone (str | int):
             1997 UBC seismic zone of the site.
         field_name (str):
@@ -202,18 +198,18 @@ def assign_design_levels(
 
     Raises:
         ValueError:
-            If the state is not in the Hazus region table, the zone is
-            not in the selected state table, or a year is missing,
-            non-numeric, non-integral, not positive, a boolean, or
-            further from zero than :data:`MAX_REPRESENTABLE_YEAR`.
+            If the state is not in the Hazus region table, the zone is not in the
+            selected state table, or a year is missing, non-numeric, non-integral,
+            not positive, a boolean, or further from zero than
+            :data:`MAX_REPRESENTABLE_YEAR`.
     """
     breaks, levels = _select_era_row(state, seismic_zone)
-    # A Python integer too large in magnitude for a float raises out of the
-    # coercion, so values outside the bounds are set aside before it runs.
+    # A Python integer too large in magnitude for a float raises out of the coercion,
+    # so values outside the bounds are set aside before it runs.
     too_large = year_built.map(_outside_year_bounds)
     years = pd.to_numeric(year_built.mask(too_large), errors='coerce')
-    # A boolean survives numeric coercion as 0 or 1 and would be dated
-    # Pre-Code, so it is refused on its type.
+    # A boolean survives numeric coercion as 0 or 1 and would be dated Pre-Code, so
+    # it is refused on its type.
     boolean = year_built.map(lambda value: isinstance(value, bool))
     invalid = years.isna() | (years <= 0) | (years % 1 != 0) | too_large | boolean
     if invalid.any():
@@ -235,11 +231,10 @@ def apply_w1_carveout(
     """
     Raise Pre-Code W1 buildings to Moderate-Code.
 
-    Table C-10 assumes Moderate-Code for W1 buildings of the Pre-Code
-    era, an assumption that "will be implemented following assignment
-    of earthquake specific building types". The function does not check
-    the state; callers apply it only where the state's table has the
-    W1 note.
+    Table C-10 assumes Moderate-Code for W1 buildings of the Pre-Code era, an
+    assumption that "will be implemented following assignment of earthquake specific
+    building types". The function does not check the state; callers apply it only
+    where the state's table has the W1 note.
 
     Args:
         design_levels (pd.Series):
@@ -249,8 +244,7 @@ def apply_w1_carveout(
 
     Returns:
         pd.Series:
-            A new series with the carve-out applied; the inputs are
-            unchanged.
+            A new series with the carve-out applied; the inputs are unchanged.
 
     Raises:
         ValueError:
@@ -271,11 +265,10 @@ class HazusEQDesignLevelInferer(InferenceEngine):
     Add a Hazus design level to every asset in an inventory.
 
     An inventory wrapper around :func:`assign_design_levels`. Run
-    :func:`apply_w1_carveout` afterwards, once structure types are
-    drawn.
+    :func:`apply_w1_carveout` afterwards, once structure types are drawn.
 
-    :meth:`check` diagnoses every asset, :meth:`draw` assumes they all
-    passed, and :meth:`infer` runs both and raises on any failure.
+    :meth:`check` diagnoses every asset, :meth:`draw` assumes they all passed, and
+    :meth:`infer` runs both and raises on any failure.
     """
 
     def __init__(
@@ -293,8 +286,7 @@ class HazusEQDesignLevelInferer(InferenceEngine):
             method (str):
                 The design level method. Only ``'5.1'`` is implemented.
             state (str):
-                Full state name that selects the matrix, as in
-                ``'California'``.
+                Full state name that selects the matrix, as in ``'California'``.
             seismic_zone (str | int):
                 1997 UBC seismic zone of the site.
             year_built_key (str):
@@ -306,9 +298,8 @@ class HazusEQDesignLevelInferer(InferenceEngine):
             NotImplementedError:
                 If ``method`` is ``'6.1'``.
             ValueError:
-                If ``method`` is unknown, the state is not in the Hazus
-                region table, or the zone is not in the selected state
-                table.
+                If ``method`` is unknown, the state is not in the Hazus region table,
+                or the zone is not in the selected state table.
         """
         if str(method) == '6.1':
             raise NotImplementedError(
@@ -336,10 +327,9 @@ class HazusEQDesignLevelInferer(InferenceEngine):
         Returns:
             pd.DataFrame:
                 One row per asset id, with ``diagnosis``, ``detail`` and
-                ``resolvable_by``. A year the table cannot read is
-                invalid and names the year feature, which a caller may
-                replace. A per-world list is unsupported and names
-                nothing.
+                ``resolvable_by``. A year the table cannot read is invalid and names
+                the year feature, which a caller may replace. A per-world list is
+                unsupported and names nothing.
         """
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
@@ -361,8 +351,8 @@ class HazusEQDesignLevelInferer(InferenceEngine):
 
         Returns:
             tuple[str, str, tuple[str, ...]]:
-                The diagnosis, the detail, and the features that would
-                each, alone, admit the asset.
+                The diagnosis, the detail, and the features that would each, alone,
+                admit the asset.
         """
         year = features.get(self.year_built_key)
         if year is None:
@@ -393,8 +383,7 @@ class HazusEQDesignLevelInferer(InferenceEngine):
 
         Returns:
             str | None:
-                The reason the value is unusable, or ``None`` where it is
-                usable.
+                The reason the value is unusable, or ``None`` where it is usable.
         """
         if isinstance(year, bool):
             return f'{self.year_built_key} is a boolean: {year!r}'
@@ -430,13 +419,12 @@ class HazusEQDesignLevelInferer(InferenceEngine):
 
         Returns:
             pd.Series:
-                Design levels indexed by asset id, named
-                ``DesignLevel``.
+                Design levels indexed by asset id, named ``DesignLevel``.
 
         Raises:
             ValueError:
-                If an asset carries no usable year, or the state or the
-                seismic zone is not in the design level tables.
+                If an asset carries no usable year, or the state or the seismic zone
+                is not in the design level tables.
         """
         years = {}
         for asset_id in input_inventory.get_asset_ids():
@@ -466,8 +454,8 @@ class HazusEQDesignLevelInferer(InferenceEngine):
 
         Raises:
             ValueError:
-                If any asset cannot be assigned a design level, naming
-                the assets and their details.
+                If any asset cannot be assigned a design level, naming the assets and
+                their details.
         """
         verdicts = self.check(input_inventory)
         failed = verdicts.loc[verdicts['diagnosis'] != DIAGNOSIS_OK, 'detail']

@@ -69,16 +69,15 @@ class HazusEQHeightClassInferer(InferenceEngine):
     """
     Assign a Hazus height class to every asset in an inventory.
 
-    Height class is a function of structure type and story count: URM
-    splits at two stories, RM1 and URM have no High-Rise class at all,
-    and W1, W2, S3, PC1 and MH carry no height class, since the damage
-    models for those types ignore height. Assets of those five types get
-    an explicit null height class, which is what the damage and loss
-    library expects to find.
+    Height class is a function of structure type and story count: URM splits at two
+    stories, RM1 and URM have no High-Rise class at all, and W1, W2, S3, PC1 and MH
+    carry no height class, since the damage models for those types ignore height.
+    Assets of those five types get an explicit null height class, which is what the
+    damage and loss library expects to find.
 
-    Nothing is drawn here. The class carries the same check, draw and
-    infer surface as the inferers that do draw, so a caller can screen
-    and apply either one the same way.
+    Nothing is drawn here. The class carries the same check, draw and infer surface
+    as the inferers that do draw, so a caller can screen and apply either one the
+    same way.
     """
 
     def __init__(
@@ -113,10 +112,9 @@ class HazusEQHeightClassInferer(InferenceEngine):
 
         Returns:
             pd.DataFrame:
-                One row per asset id, with the columns of
-                ``DIAGNOSIS_COLUMNS``. A height class follows from any
-                structure type and story count the map covers, so no
-                asset here is infeasible and none carries a resolvable
+                One row per asset id, with the columns of ``DIAGNOSIS_COLUMNS``. A
+                height class follows from any structure type and story count the map
+                covers, so no asset here is infeasible and none carries a resolvable
                 feature.
         """
         rows = {}
@@ -138,13 +136,13 @@ class HazusEQHeightClassInferer(InferenceEngine):
 
         Returns:
             pd.Series:
-                Height classes indexed by asset id, None where the
-                structure type carries none.
+                Height classes indexed by asset id, None where the structure type
+                carries none.
 
         Raises:
             ValueError:
-                If an asset cannot be classified, which means
-                :meth:`check` was skipped.
+                If an asset cannot be classified, which means :meth:`check` was
+                skipped.
         """
         classes = {}
         for asset_id in input_inventory.get_asset_ids():
@@ -167,10 +165,9 @@ class HazusEQHeightClassInferer(InferenceEngine):
 
         Args:
             input_inventory (AssetInventory):
-                The inventory to process. Every asset must carry a
-                structure type, and a story count where its type needs
-                one; screen with :meth:`check` first if that is not
-                guaranteed.
+                The inventory to process. Every asset must carry a structure type,
+                and a story count where its type needs one; screen with :meth:`check`
+                first if that is not guaranteed.
 
         Returns:
             AssetInventory:
@@ -179,8 +176,8 @@ class HazusEQHeightClassInferer(InferenceEngine):
 
         Raises:
             ValueError:
-                If any asset cannot be classified, naming the assets and
-                their diagnoses.
+                If any asset cannot be classified, naming the assets and their
+                diagnoses.
         """
         verdicts = self.check(input_inventory)
         failed = verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK]
@@ -209,14 +206,14 @@ class HazusEQHeightClassInferer(InferenceEngine):
             features (dict):
                 The asset's features.
             vector_features (set):
-                Names of the features whose values are vectors, where a
-                list is one value and not one value per world.
+                Names of the features whose values are vectors, where a list is one
+                value and not one value per world.
 
         Returns:
             tuple[str, str, str | None]:
-                The diagnosis, what happened in words, and the height
-                class, which is None both for a type that carries no
-                height class and for an asset that cannot be classified.
+                The diagnosis, what happened in words, and the height class, which is
+                None both for a type that carries no height class and for an asset
+                that cannot be classified.
         """
         structure_type = features.get(self.structure_type_key)
         if structure_type is None:

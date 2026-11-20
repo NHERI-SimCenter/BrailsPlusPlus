@@ -96,30 +96,29 @@ class StoriesFromHeightInferer(InferenceEngine):
     """
     Infer each asset's story count from its footprint height.
 
-    The count is ``max(1, floor(h / s + 0.5))`` for the height ``h`` and the
-    scale ``s`` that applies to it, in one length unit, rounded half up and at
-    least one. The scales are keyed by the footprint's provider, its
-    :data:`PROVIDER_KEY` value. A provider's entry holds one scale for all its
-    heights, or one scale per source of the height, a form only the
+    The count is ``max(1, floor(h / s + 0.5))`` for the height ``h`` and the scale
+    ``s`` that applies to it, in one length unit, rounded half up and at least one.
+    The scales are keyed by the footprint's provider, its :data:`PROVIDER_KEY` value.
+    A provider's entry holds one scale for all its heights, or one scale per source
+    of the height, a form only the
     :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OVERTURE_PROVIDER`
-    entry may take. For a provider in that form the source is the ``dataset``
-    of the
+    entry may take. For a provider in that form the source is the ``dataset`` of the
     :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.SOURCES_KEY`
     entry whose ``property`` is
     :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.HEIGHT_PROPERTY`,
-    else of the first entry without a ``property``. A footprint without a
-    provider, or whose sources name no height source, gives no count. Neither
-    does one whose provider or source the scales do not list, nor a count above
-    the trusted maximum of its scale.
+    else of the first entry without a ``property``. A footprint without a provider,
+    or whose sources name no height source, gives no count. Neither does one whose
+    provider or source the scales do not list, nor a count above the trusted maximum
+    of its scale.
 
-    The packaged scales calibrate the three sources of Overture's heights.
-    Another provider's heights take an entry of their own in ``scales``.
+    The packaged scales calibrate the three sources of Overture's heights. Another
+    provider's heights take an entry of their own in ``scales``.
 
-    The inferer writes the count under ``stories_key`` for every asset and
-    never reads what an asset holds there. Nothing is drawn.
+    The inferer writes the count under ``stories_key`` for every asset and never
+    reads what an asset holds there. Nothing is drawn.
 
-    Every constructor argument except ``scales`` is stored as an attribute
-    of the same name, read-only by convention.
+    Every constructor argument except ``scales`` is stored as an attribute of the
+    same name, read-only by convention.
     """
 
     def __init__(
@@ -142,27 +141,25 @@ class StoriesFromHeightInferer(InferenceEngine):
                 The unit of the height. Defaults to the length unit of
                 :data:`brails.constants.DEFAULT_UNITS`.
             scales (Mapping[str, Any] | str | os.PathLike[str] | None, optional):
-                ``None`` for :data:`HEIGHT_SCALES_FILE`, the path of a file of
-                that form, or a mapping of that form: exactly the keys
-                ``length_unit``, the unit of the scales, and ``providers``, a
-                mapping from :data:`PROVIDER_KEY` value to an entry. An entry
-                holds either ``scale`` and ``max_stories``, or ``sources``, a
-                mapping from source to ``{'scale': ..., 'max_stories': ...}``,
-                which only the
+                ``None`` for :data:`HEIGHT_SCALES_FILE`, the path of a file of that
+                form, or a mapping of that form: exactly the keys ``length_unit``,
+                the unit of the scales, and ``providers``, a mapping from
+                :data:`PROVIDER_KEY` value to an entry. An entry holds either
+                ``scale`` and ``max_stories``, or ``sources``, a mapping from source
+                to ``{'scale': ..., 'max_stories': ...}``, which only the
                 :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OVERTURE_PROVIDER`
-                entry may hold. ``max_stories`` is ``None`` for no trusted
-                maximum. Read once, here. Passing ``scales`` replaces the
-                packaged file, and footprints of two providers whose heights
-                differ in key or unit take two inferers.
+                entry may hold. ``max_stories`` is ``None`` for no trusted maximum.
+                Read once, here. Passing ``scales`` replaces the packaged file, and
+                footprints of two providers whose heights differ in key or unit take
+                two inferers.
 
         Raises:
             ValueError:
-                If ``length_unit`` or the scales' ``length_unit`` is not a
-                length unit, the scales hold other keys than those listed,
-                an entry holds both forms or neither, ``sources`` is not a
-                mapping or sits in an entry other than Overture's, a scale
-                is not a positive finite number, or a trusted maximum is
-                neither a positive integer nor ``None``.
+                If ``length_unit`` or the scales' ``length_unit`` is not a length
+                unit, the scales hold other keys than those listed, an entry holds
+                both forms or neither, ``sources`` is not a mapping or sits in an
+                entry other than Overture's, a scale is not a positive finite number,
+                or a trusted maximum is neither a positive integer nor ``None``.
         """
         unit = UnitConverter.normalize_unit(length_unit)
         if unit not in UNIT_TO_METER:
@@ -182,15 +179,15 @@ class StoriesFromHeightInferer(InferenceEngine):
         Diagnose every asset without writing anything.
 
         An asset is ``OK`` when its height gives a count. A missing or unusable
-        height, a missing or non-string provider, and sources that name no
-        height source where the provider's scales are per source are invalid. A
-        per-world height, provider or sources is unsupported, by the
-        inventory's rule for list values: a list under
+        height, a missing or non-string provider, and sources that name no height
+        source where the provider's scales are per source are invalid. A per-world
+        height, provider or sources is unsupported, by the inventory's rule for list
+        values: a list under
         :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.SOURCES_KEY`
-        holds one value per world unless the inventory declares that key a
-        vector feature. A provider or source without a scale and a count above
-        the trusted maximum are infeasible, with nothing to relax. What the
-        asset holds under ``stories_key`` is not read.
+        holds one value per world unless the inventory declares that key a vector
+        feature. A provider or source without a scale and a count above the trusted
+        maximum are infeasible, with nothing to relax. What the asset holds under
+        ``stories_key`` is not read.
 
         Args:
             input_inventory (AssetInventory):
@@ -198,8 +195,7 @@ class StoriesFromHeightInferer(InferenceEngine):
 
         Returns:
             pd.DataFrame:
-                One row per asset id, with the columns of
-                ``DIAGNOSIS_COLUMNS``.
+                One row per asset id, with the columns of ``DIAGNOSIS_COLUMNS``.
         """
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
@@ -220,13 +216,12 @@ class StoriesFromHeightInferer(InferenceEngine):
 
         Returns:
             pd.DataFrame:
-                One row per asset id with the one column ``stories_key``,
-                the height's count. Object dtype.
+                One row per asset id with the one column ``stories_key``, the
+                height's count. Object dtype.
 
         Raises:
             ValueError:
-                If an asset fails :meth:`check`, which means it was
-                skipped.
+                If an asset fails :meth:`check`, which means it was skipped.
         """
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
@@ -255,9 +250,9 @@ class StoriesFromHeightInferer(InferenceEngine):
 
         Args:
             input_inventory (AssetInventory):
-                The inventory to process. Every asset must pass
-                :meth:`check`; to write only the assets that have a count,
-                call :meth:`check`, then :meth:`draw` on those that pass.
+                The inventory to process. Every asset must pass :meth:`check`; to
+                write only the assets that have a count, call :meth:`check`, then
+                :meth:`draw` on those that pass.
 
         Returns:
             AssetInventory:
@@ -266,8 +261,8 @@ class StoriesFromHeightInferer(InferenceEngine):
 
         Raises:
             ValueError:
-                If any asset fails :meth:`check`, naming the assets and
-                their diagnoses.
+                If any asset fails :meth:`check`, naming the assets and their
+                diagnoses.
         """
         verdicts = self.check(input_inventory)
         failed = verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK]
@@ -297,8 +292,7 @@ class StoriesFromHeightInferer(InferenceEngine):
 
         Returns:
             int | None:
-                The count, or ``None`` wherever :meth:`check` would not
-                give ``OK``.
+                The count, or ``None`` wherever :meth:`check` would not give ``OK``.
         """
         return self._from_height(features, (SOURCES_KEY,))[2]
 
@@ -316,8 +310,8 @@ class StoriesFromHeightInferer(InferenceEngine):
 
         Returns:
             tuple[str, str, int | None]:
-                The diagnosis, what happened in words, and the count,
-                ``None`` unless the diagnosis is ``OK``.
+                The diagnosis, what happened in words, and the count, ``None`` unless
+                the diagnosis is ``OK``.
         """
         height = features.get(self.height_key)
         if is_probabilistic_feature(self.height_key, height, vector_features):
@@ -338,8 +332,8 @@ class StoriesFromHeightInferer(InferenceEngine):
         if scaled is None:
             return diagnosis, detail, None
         scale, maximum, name = scaled
-        # The provenance of the scales: README.rst beside this module, "The
-        # packaged scales".
+        # The provenance of the scales: README.rst beside this module, "The packaged
+        # scales".
         count = max(1, math.floor(height * self._meters_per_unit / scale + 0.5))
         if maximum is not None and count > maximum:
             return (
@@ -363,9 +357,9 @@ class StoriesFromHeightInferer(InferenceEngine):
 
         Returns:
             tuple[str, str, tuple[float, int | None, str] | None]:
-                The diagnosis, what happened in words, and the scale in
-                meters, its trusted maximum and the name of its provider or
-                source, ``None`` unless the diagnosis is ``OK``.
+                The diagnosis, what happened in words, and the scale in meters, its
+                trusted maximum and the name of its provider or source, ``None``
+                unless the diagnosis is ``OK``.
         """
         provider = features.get(PROVIDER_KEY)
         if is_probabilistic_feature(PROVIDER_KEY, provider, vector_features):
@@ -394,8 +388,8 @@ class StoriesFromHeightInferer(InferenceEngine):
                 f'{SOURCES_KEY} holds one value per world',
                 None,
             )
-        # The dataset of the Overture sources entry that names the height
-        # property, else of the first entry without a property.
+        # The dataset of the Overture sources entry that names the height property,
+        # else of the first entry without a property.
         entries = parse_sources(value)
         chosen = next(
             (e for e in entries if e.get('property') == HEIGHT_PROPERTY), None
@@ -424,9 +418,9 @@ def _load_scales(  # noqa: C901
 
     Returns:
         dict[str, dict[str | None, tuple[float, int | None]]]:
-            Provider to source to its scale converted to meters and its
-            trusted maximum, with the one source ``None`` for a provider
-            whose entry gives its scale directly.
+            Provider to source to its scale converted to meters and its trusted
+            maximum, with the one source ``None`` for a provider whose entry gives
+            its scale directly.
 
     Raises:
         ValueError:
@@ -515,16 +509,16 @@ def parse_sources(value: object) -> list[Mapping[str, Any]]:
     """
     Read an Overture ``sources`` value into a list of entries.
 
-    A string, the form the Overture footprint scraper writes, holds entries
-    separated by
+    A string, the form the Overture footprint scraper writes, holds entries separated
+    by
     :data:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.SOURCES_SEPARATOR`,
-    each a series of ``key: value`` pairs separated by ``, ``. A key is
-    letters and underscores at the start of an entry or after ``, ``, and
-    its value extends to the next key, so a value may contain ``, ``
-    (``between: [0.0, 1.0]``). Every value read from a string is a string,
-    and an entry with no key gives an empty dictionary. A list, tuple or
-    array, the form an Overture file holds, gives its mappings themselves,
-    not copies, and leaves out any other item. The input is not modified.
+    each a series of ``key: value`` pairs separated by ``, ``. A key is letters and
+    underscores at the start of an entry or after ``, ``, and its value extends to
+    the next key, so a value may contain ``, `` (``between: [0.0, 1.0]``). Every
+    value read from a string is a string, and an entry with no key gives an empty
+    dictionary. A list, tuple or array, the form an Overture file holds, gives its
+    mappings themselves, not copies, and leaves out any other item. The input is not
+    modified.
 
     Args:
         value (object):
@@ -532,8 +526,7 @@ def parse_sources(value: object) -> list[Mapping[str, Any]]:
 
     Returns:
         list[Mapping[str, Any]]:
-            One mapping per entry; empty for any other value, a missing
-            one included.
+            One mapping per entry; empty for any other value, a missing one included.
     """
     if isinstance(value, str):
         if _is_missing_value(value):

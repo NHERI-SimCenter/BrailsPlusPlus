@@ -90,10 +90,9 @@ if TYPE_CHECKING:
 # Part of the reproducibility contract; see keyed_uniforms.
 STRUCTURE_TYPE_PURPOSE = 'structure_type'
 
-# Design levels the Hazus earthquake models define, in increasing order of
-# seismic design strength. Every design level table starts at Pre-Code, so
-# an early enough year always reaches a level that admits the unreinforced
-# types.
+# Design levels the Hazus earthquake models define, in increasing order of seismic
+# design strength. Every design level table starts at Pre-Code, so an early enough
+# year always reaches a level that admits the unreinforced types.
 DESIGN_LEVELS = (
     'Pre-Code',
     'Low-Code',
@@ -105,8 +104,8 @@ DESIGN_LEVELS = (
 EARLIEST_DESIGN_LEVEL = DESIGN_LEVELS[0]
 
 # The multifamily classes the earthquake tables carry one RES3 row for. The
-# replacement cost tables are keyed by subtype, so the fold is local to the
-# structure type lookup and the asset keeps the class it arrived with.
+# replacement cost tables are keyed by subtype, so the fold is local to the structure
+# type lookup and the asset keeps the class it arrived with.
 MULTIFAMILY_OCCUPANCIES = (
     'RES3',
     'RES3A',
@@ -172,30 +171,28 @@ class HazusEQStructureTypeInferer(InferenceEngine):
     """
     Draw a Hazus structure type for every asset in an inventory.
 
-    The Hazus Inventory Technical Manual tabulates the structure types of
-    the general building stock as percentages, by region, occupancy
-    class, story band, and, on the West Coast, construction era. This
-    class draws one type per asset from the cell its features select.
+    The Hazus Inventory Technical Manual tabulates the structure types of the general
+    building stock as percentages, by region, occupancy class, story band, and, on
+    the West Coast, construction era. This class draws one type per asset from the
+    cell its features select.
 
-    Two restrictions narrow that cell before the draw. An observed
-    general building type keeps only the Hazus types belonging to it, and
-    a design level outside the region's legality set removes S5, C3 and
-    URM. What remains is renormalized, so a cell reduced to one type
-    draws that type with certainty.
+    Two restrictions narrow that cell before the draw. An observed general building
+    type keeps only the Hazus types belonging to it, and a design level outside the
+    region's legality set removes S5, C3 and URM. What remains is renormalized, so a
+    cell reduced to one type draws that type with certainty.
 
-    Where the cell comes out empty, ``check`` reports which features
-    would each, on their own, give the asset something to draw. It does
-    not rank them: which of them to give up is the caller's decision,
-    made against whatever trust ranking the caller holds.
+    Where the cell comes out empty, ``check`` reports which features would each, on
+    their own, give the asset something to draw. It does not rank them: which of them
+    to give up is the caller's decision, made against whatever trust ranking the
+    caller holds.
 
-    The draw belongs to the asset rather than to its position, so an
-    inventory drawn in pieces and an inventory drawn whole give the same
-    types. Each inferer draws its own seed unless given one; read
-    ``self.seed`` to learn the value a run used, and pass it back to
-    repeat that run.
+    The draw belongs to the asset rather than to its position, so an inventory drawn
+    in pieces and an inventory drawn whole give the same types. Each inferer draws
+    its own seed unless given one; read ``self.seed`` to learn the value a run used,
+    and pass it back to repeat that run.
 
-    One state per inferer. An inventory spanning several states needs one
-    inferer per state, each given the assets in it.
+    One state per inferer. An inventory spanning several states needs one inferer per
+    state, each given the assets in it.
     """
 
     def __init__(
@@ -219,33 +216,31 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Args:
             state (str):
-                Full state name, as in 'California'. It selects the
-                regional table set through Table A-22 and, for RES1, the
-                state's own row.
+                Full state name, as in 'California'. It selects the regional table
+                set through Table A-22 and, for RES1, the state's own row.
             seed (int | None):
-                Seed for the draw. Left out, a seed is generated at
-                random, so two runs of the same inventory give different
-                types. The value used is recorded on ``self.seed``.
+                Seed for the draw. Left out, a seed is generated at random, so two
+                runs of the same inventory give different types. The value used is
+                recorded on ``self.seed``.
             use_building_type (bool):
-                Whether an observed general building type restricts the
-                draw to its own Hazus types.
+                Whether an observed general building type restricts the draw to its
+                own Hazus types.
             unreinforced_design_levels (tuple[str, ...] | None):
-                Design levels that admit URM, C3 and S5, overriding the
-                manual's set for this inferer's region. Left out, the
-                manual governs: Pre-Code alone on the West Coast,
-                Pre-Code and Low-Code elsewhere. Passing
-                ``('Pre-Code', 'Low-Code')`` on the West Coast applies
-                instead the nationwide bound the fragility library
-                carries. What bears on that choice, including how much
-                of the West Coast stock the regional clause reaches, is
-                in the "Scope" section of the README beside this module.
+                Design levels that admit URM, C3 and S5, overriding the manual's set
+                for this inferer's region. Left out, the manual governs: Pre-Code
+                alone on the West Coast, Pre-Code and Low-Code elsewhere. Passing
+                ``('Pre-Code', 'Low-Code')`` on the West Coast applies instead the
+                nationwide bound the fragility library carries. What bears on that
+                choice, including how much of the West Coast stock the regional
+                clause reaches, is in the "Scope" section of the README beside this
+                module.
             occupancy_key (str):
                 Feature name the occupancy class is read from.
             stories_key (str):
                 Feature name the story count is read from.
             year_built_key (str):
-                Feature name the construction year is read from. Only
-                the West Coast tables need it.
+                Feature name the construction year is read from. Only the West Coast
+                tables need it.
             design_level_key (str):
                 Feature name the design level is read from.
             building_type_key (str):
@@ -253,28 +248,25 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             structure_type_key (str):
                 Feature name the drawn type is written to.
             world (int):
-                Possible-world index. Only a single world is supported
-                currently.
+                Possible-world index. Only a single world is supported currently.
             complete_tables (bool):
-                Whether to draw the West Coast cells no manual prints a
-                row for from the completed tables of
-                :mod:`.hazus_table_completion`, whose
-                ``get_west_coast_fill_routes`` states how each cell is
-                filled. With the default, an asset
-                in such a cell is infeasible. Printed cells draw as
-                printed either way. Whether an inventory should draw
-                from the completion is the caller's decision.
+                Whether to draw the West Coast cells no manual prints a row for from
+                the completed tables of :mod:`.hazus_table_completion`, whose
+                ``get_west_coast_fill_routes`` states how each cell is filled. With
+                the default, an asset in such a cell is infeasible. Printed cells
+                draw as printed either way. Whether an inventory should draw from the
+                completion is the caller's decision.
 
         Raises:
             ValueError:
-                If the state is not one the Hazus region table names, if
-                the tables carry no RES1 distribution for it, if the
-                legality set given is one no year could reach, or if
-                ``complete_tables`` is set outside the West Coast.
+                If the state is not one the Hazus region table names, if the tables
+                carry no RES1 distribution for it, if the legality set given is one
+                no year could reach, or if ``complete_tables`` is set outside the
+                West Coast.
 
-                A state without a RES1 distribution is refused here because
-                an inventory compiled that way would silently hold no
-                single-family homes at all.
+                A state without a RES1 distribution is refused here because an
+                inventory compiled that way would silently hold no single-family
+                homes at all.
         """
         regions = get_hazus_state_region_mapping()
         if state not in regions:
@@ -337,8 +329,8 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Raises:
             ValueError:
-                If the override names something that is not a design
-                level, or leaves out the earliest one.
+                If the override names something that is not a design level, or leaves
+                out the earliest one.
         """
         if override is None:
             return get_hazus_unreinforced_design_levels()[self.region]
@@ -393,12 +385,11 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Returns:
             pd.DataFrame:
-                One row per asset id, with the columns of
-                ``DIAGNOSIS_COLUMNS``. An infeasible asset carries in
-                ``resolvable_by`` every feature that would, on its own,
-                give it something to draw. Their order is fixed and
-                carries no preference: which feature to give up is the
-                caller's decision.
+                One row per asset id, with the columns of ``DIAGNOSIS_COLUMNS``. An
+                infeasible asset carries in ``resolvable_by`` every feature that
+                would, on its own, give it something to draw. Their order is fixed
+                and carries no preference: which feature to give up is the caller's
+                decision.
         """
         rows = {}
         for asset_id in input_inventory.get_asset_ids():
@@ -428,10 +419,9 @@ class HazusEQStructureTypeInferer(InferenceEngine):
                 Resolution-loop attempt number. Distinct iterations draw
                 independently for the same asset.
             asset_keys (np.ndarray | None):
-                Keys from :func:`asset_key_digest`, in the order
-                ``get_asset_ids`` returns them. Digesting dominates the
-                cost of a redraw, so a caller redrawing the same assets
-                should digest once and pass the keys in.
+                Keys from :func:`asset_key_digest`, in the order ``get_asset_ids``
+                returns them. Digesting dominates the cost of a redraw, so a caller
+                redrawing the same assets should digest once and pass the keys in.
 
         Returns:
             pd.Series:
@@ -439,9 +429,8 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Raises:
             ValueError:
-                If an asset cannot be drawn for, which means
-                :meth:`check` was skipped, or if the keys given do not
-                match the assets.
+                If an asset cannot be drawn for, which means :meth:`check` was
+                skipped, or if the keys given do not match the assets.
         """
         asset_ids = list(input_inventory.get_asset_ids())
         if not asset_ids:
@@ -494,9 +483,9 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Args:
             input_inventory (AssetInventory):
-                The inventory to process. Every asset must carry usable
-                drivers; screen the inventory with :meth:`check` first if
-                that is not guaranteed.
+                The inventory to process. Every asset must carry usable drivers;
+                screen the inventory with :meth:`check` first if that is not
+                guaranteed.
 
         Returns:
             AssetInventory:
@@ -505,8 +494,8 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Raises:
             ValueError:
-                If any asset cannot be drawn for, naming the assets and
-                their diagnoses.
+                If any asset cannot be drawn for, naming the assets and their
+                diagnoses.
         """
         verdicts = self.check(input_inventory)
         failed = verdicts[verdicts['diagnosis'] != DIAGNOSIS_OK]
@@ -533,8 +522,8 @@ class HazusEQStructureTypeInferer(InferenceEngine):
             features (dict):
                 The asset's features.
             vector_features (set):
-                Names of the features whose values are vectors, where a
-                list is one value and not one value per world.
+                Names of the features whose values are vectors, where a list is one
+                value and not one value per world.
 
         Returns:
             _Verdict:
@@ -566,8 +555,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Returns:
             tuple[_Frame | None, _Verdict | None]:
-                The frame and None, or None and the verdict that refuses
-                the asset.
+                The frame and None, or None and the verdict that refuses the asset.
         """
         occupancy, failure = self._read(
             features, self.occupancy_key, vector_features
@@ -603,10 +591,10 @@ class HazusEQStructureTypeInferer(InferenceEngine):
                 return None, failure
         band = ''
         if table_occupancy == 'RES1':
-            # RES1 is tabulated without a story band, so a count is not
-            # required here. It is still read, because a change of occupancy
-            # would carry the asset into whichever band the count gives it,
-            # and an unusable count simply leaves that path unavailable.
+            # RES1 is tabulated without a story band, so a count is not required
+            # here. It is still read, because a change of occupancy would carry the
+            # asset into whichever band the count gives it, and an unusable count
+            # simply leaves that path unavailable.
             band, _ = self._read_band(features, vector_features)
         else:
             band, failure = self._read_band(features, vector_features)
@@ -737,8 +725,8 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Returns:
             tuple[str, _Verdict | None]:
-                The general type and None, empty where none was observed
-                or the inferer was told to ignore it, or a verdict.
+                The general type and None, empty where none was observed or the
+                inferer was told to ignore it, or a verdict.
         """
         if not self.use_building_type:
             return '', None
@@ -784,8 +772,8 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Returns:
             tuple[tuple, tuple]:
-                Structure types and their weights, both empty where the
-                frame selects no row at all.
+                Structure types and their weights, both empty where the frame selects
+                no row at all.
         """
         # completed weights replace the printed row except for RES1
         if self._completed_weights is None or frame.occupancy == 'RES1':
@@ -818,9 +806,9 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Returns:
             tuple[tuple, tuple]:
-                The structure types of the cell and the weights printed
-                against them, before any restriction narrows them. The
-                weights are empty where the tables print no such row.
+                The structure types of the cell and the weights printed against them,
+                before any restriction narrows them. The weights are empty where the
+                tables print no such row.
         """
         if frame.occupancy == 'RES1':
             rows = self._weights['RES1']
@@ -853,8 +841,7 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Raises:
             ValueError:
-                If a driver cannot be read, since the features then
-                select no cell.
+                If a driver cannot be read, since the features then select no cell.
         """
         frame, failure = self._read_frame(features, vector_features or frozenset())
         if failure is not None:
@@ -874,11 +861,10 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         """
         Say whether the tables print no distribution for an asset's cell.
 
-        An asset the tables have no row for and an asset whose row the
-        restrictions emptied both come back infeasible from
-        :meth:`check`, and the two call for different answers: the first
-        is a gap in the published model and the second is a disagreement
-        among the asset's own features.
+        An asset the tables have no row for and an asset whose row the restrictions
+        emptied both come back infeasible from :meth:`check`, and the two call for
+        different answers: the first is a gap in the published model and the second
+        is a disagreement among the asset's own features.
 
         Args:
             features (dict):
@@ -888,13 +874,11 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Returns:
             bool:
-                True where the cell the features select carries no
-                printed row.
+                True where the cell the features select carries no printed row.
 
         Raises:
             ValueError:
-                If a driver cannot be read, since the features then
-                select no cell.
+                If a driver cannot be read, since the features then select no cell.
         """
         frame = self._frame_or_raise(
             features, vector_features, 'whether its cell is published'
@@ -911,10 +895,10 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         """
         Say how the completed tables fill an asset's cell.
 
-        With ``complete_tables`` set, :meth:`cell_is_unpublished` still
-        reports a filled cell as unprinted. For such an asset found
-        infeasible, this method shows that it had a filled row to draw
-        from, so the infeasibility comes from its own features.
+        With ``complete_tables`` set, :meth:`cell_is_unpublished` still reports a
+        filled cell as unprinted. For such an asset found infeasible, this method
+        shows that it had a filled row to draw from, so the infeasibility comes from
+        its own features.
 
         Args:
             features (dict):
@@ -924,14 +908,13 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Returns:
             CellFill or None:
-                The fill the inferer draws the cell from, or None where
-                no fill applies: a printed cell, or any cell when
-                ``complete_tables`` is not set.
+                The fill the inferer draws the cell from, or None where no fill
+                applies: a printed cell, or any cell when ``complete_tables`` is not
+                set.
 
         Raises:
             ValueError:
-                If a driver cannot be read, since the features then
-                select no cell.
+                If a driver cannot be read, since the features then select no cell.
         """
         frame = self._frame_or_raise(
             features, vector_features, 'how its cell is filled'
@@ -956,9 +939,9 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         """
         Name the features that would each, alone, make an asset drawable.
 
-        Every feature is varied with the others held where the asset has
-        them, so a name here is one the caller can act on by itself. The
-        order is fixed and carries no preference.
+        Every feature is varied with the others held where the asset has them, so a
+        name here is one the caller can act on by itself. The order is fixed and
+        carries no preference.
 
         Args:
             frame (_Frame):
@@ -987,8 +970,8 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         """
         Say whether some other occupancy class would admit the asset.
 
-        A change of occupancy carries a RES1 asset into a story band, so
-        it resolves nothing where the asset has no usable story count.
+        A change of occupancy carries a RES1 asset into a story band, so it resolves
+        nothing where the asset has no usable story count.
 
         Args:
             frame (_Frame):
@@ -1014,12 +997,11 @@ class HazusEQStructureTypeInferer(InferenceEngine):
         """
         Say whether some other construction year would admit the asset.
 
-        The year moves two things: on the West Coast it selects the era,
-        and everywhere it sets the design level. Every design level table
-        begins at Pre-Code, which every region admits, so an early enough
-        year always reaches an admitting design level; what it cannot
-        escape on the West Coast is that the same year lands the asset in
-        the earliest era.
+        The year moves two things: on the West Coast it selects the era, and
+        everywhere it sets the design level. Every design level table begins at
+        Pre-Code, which every region admits, so an early enough year always reaches
+        an admitting design level; what it cannot escape on the West Coast is that
+        the same year lands the asset in the earliest era.
 
         Args:
             frame (_Frame):
@@ -1046,8 +1028,8 @@ class HazusEQStructureTypeInferer(InferenceEngine):
 
         Returns:
             tuple:
-                Era names on the West Coast, oldest first; a single empty
-                name elsewhere.
+                Era names on the West Coast, oldest first; a single empty name
+                elsewhere.
         """
         if not self._needs_era:
             return ('',)
