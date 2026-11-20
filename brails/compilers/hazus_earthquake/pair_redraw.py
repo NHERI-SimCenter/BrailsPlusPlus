@@ -34,8 +34,8 @@
 """
 Re-draw the NSI members of implausible occupancy and story count pairs.
 
-The section "Pair re-draw" of the README beside this module states the
-action table and the procedure.
+The section "Pair re-draw" of the README beside this module states the action table
+and the procedure.
 
 .. autosummary::
 
@@ -127,8 +127,8 @@ _LOCAL_CODES = tuple(SOURCE_CODES[label] for label in FIXED_SOURCES)
 _NSI_CODE = SOURCE_CODES['nsi']
 _IMPUTED_CODE = SOURCE_CODES['imputed']
 _DERIVED_CODE = SOURCE_CODES['derived']
-# The source codes the action table covers: README.rst beside this module,
-# "The action table".
+# The source codes the action table covers: README.rst beside this module, "The
+# action table".
 _CLASS_CODES = (_NSI_CODE, *_LOCAL_CODES, _IMPUTED_CODE)
 _STORY_CODES = (_NSI_CODE, _DERIVED_CODE, *_LOCAL_CODES, _IMPUTED_CODE)
 
@@ -139,23 +139,21 @@ class PairRedrawResult(NamedTuple):
 
     Attributes:
         updates (dict[Hashable, dict[str, object]]):
-            The new values per asset id, for the assets whose re-draw found
-            a donor, in ascending order of the id as a string.
+            The new values per asset id, for the assets whose re-draw found a donor,
+            in ascending order of the id as a string.
         withheld (pandas.DataFrame):
-            One row per replaced value, the replaced story counts included,
-            with columns
-            :data:`~brails.utils.source_updates.WITHHELD_COLUMNS`. The
-            caller writes ``updates`` and ``withheld`` into the per-source
-            inventories with
+            One row per replaced value, the replaced story counts included, with
+            columns :data:`~brails.utils.source_updates.WITHHELD_COLUMNS`. The caller
+            writes ``updates`` and ``withheld`` into the per-source inventories with
             :func:`~brails.utils.source_updates.apply_to_sources`.
         log (pandas.DataFrame):
             One row per asset with an implausible pair, with columns
             :data:`LOG_COLUMNS`.
         derived (dict[Hashable, dict[str, object]]):
-            The height counts that replace story counts, per asset id in
-            ascending order of the id as a string. The caller then writes
-            them with the same function, passing them as the updates, an
-            empty withheld table and ``imputed_label='derived'``.
+            The height counts that replace story counts, per asset id in ascending
+            order of the id as a string. The caller then writes them with the same
+            function, passing them as the updates, an empty withheld table and
+            ``imputed_label='derived'``.
     """
 
     updates: dict[Hashable, dict[str, object]]
@@ -168,18 +166,16 @@ class PairRedraw:
     """
     Re-draw the implausible pairs of one world's merged inventory.
 
-    :meth:`plan` lists every asset with an implausible pair and the action
-    its sources call for, and :meth:`redraw` returns the replaced and
-    re-drawn values without changing the inventory. Local and footprint
-    values and derived story counts never change, and a pair with a local,
-    footprint or imputed class, or an imputed story count, is only logged.
-    Of a pair with an NSI class, an NSI story count is replaced by the
-    count the footprint height gives where that count falls in another
-    story band, and the class is then re-drawn from one observed donor if
-    the pair stays implausible. Without a height count the class and the
-    NSI count are re-drawn together, and otherwise the class is re-drawn.
-    The README beside this module states the action table and the
-    procedure.
+    :meth:`plan` lists every asset with an implausible pair and the action its
+    sources call for, and :meth:`redraw` returns the replaced and re-drawn values
+    without changing the inventory. Local and footprint values and derived story
+    counts never change, and a pair with a local, footprint or imputed class, or an
+    imputed story count, is only logged. Of a pair with an NSI class, an NSI story
+    count is replaced by the count the footprint height gives where that count falls
+    in another story band, and the class is then re-drawn from one observed donor if
+    the pair stays implausible. Without a height count the class and the NSI count
+    are re-drawn together, and otherwise the class is re-drawn. The README beside
+    this module states the action table and the procedure.
     """
 
     def __init__(
@@ -200,16 +196,14 @@ class PairRedraw:
 
         Args:
             imputer (ObservedDonorImputer):
-                The imputer whose :meth:`~ObservedDonorImputer.draw` supplies
-                the donors. Its status must be the default,
-                ``occupancy_key`` among
+                The imputer whose :meth:`~ObservedDonorImputer.draw` supplies the
+                donors. Its status must be the default, ``occupancy_key`` among
                 :data:`~brails.utils.unit_count_rules.UNIT_COUNT_CLASSES`.
             donors (AssetInventory):
                 The observed donors of the world, with one possible world.
             stories_inferer (StoriesFromHeightInferer):
-                The inferer whose
-                :meth:`~StoriesFromHeightInferer.stories_of` gives the
-                count an asset's footprint height implies.
+                The inferer whose :meth:`~StoriesFromHeightInferer.stories_of` gives
+                the count an asset's footprint height implies.
             occupancy_key (str, optional):
                 The occupancy class feature. Defaults to ``'OccupancyClass'``.
             stories_key (str, optional):
@@ -220,19 +214,17 @@ class PairRedraw:
                 The feature holding the source string. Defaults to
                 :data:`SOURCE_STRING_KEY`.
             source_features (Sequence[str], optional):
-                The features the source string covers, in its order.
-                Defaults to :data:`HAZUS_EQ_SOURCE_FEATURES`.
+                The features the source string covers, in its order. Defaults to
+                :data:`HAZUS_EQ_SOURCE_FEATURES`.
             world (int, optional):
-                The world the inventory realizes. Defaults to
-                :data:`DEFAULT_WORLD`.
+                The world the inventory realizes. Defaults to :data:`DEFAULT_WORLD`.
 
         Raises:
             TypeError:
                 If ``source_features`` is a single string.
             ValueError:
-                If ``source_features`` repeats a feature or lacks the
-                occupancy or story count feature, or the imputer reads
-                another status.
+                If ``source_features`` repeats a feature or lacks the occupancy or
+                story count feature, or the imputer reads another status.
         """
         if isinstance(source_features, str):
             msg = 'source_features must be a sequence of feature names.'
@@ -268,29 +260,27 @@ class PairRedraw:
         """
         List the assets with an implausible pair and the action for each.
 
-        The plan changes nothing. An asset whose class is not a string, or
-        whose story count cannot be read, is not listed.
+        The plan changes nothing. An asset whose class is not a string, or whose
+        story count cannot be read, is not listed.
 
         Args:
             inventory (AssetInventory):
-                A merged inventory of one possible world whose every asset
-                carries the source string.
+                A merged inventory of one possible world whose every asset carries
+                the source string.
 
         Returns:
             pandas.DataFrame:
-                One row per implausible asset with columns
-                :data:`PLAN_COLUMNS`, in ascending order of the asset id
-                as a string, holding the values as read (object dtype).
-                ``stories`` is the count read, and ``height_stories`` the
-                count the footprint height gives, or None.
+                One row per implausible asset with columns :data:`PLAN_COLUMNS`, in
+                ascending order of the asset id as a string, holding the values as
+                read (object dtype). ``stories`` is the count read, and
+                ``height_stories`` the count the footprint height gives, or None.
 
         Raises:
             ValueError:
-                If the inventory holds more than one possible world, an
-                asset carries no source string that
-                :func:`~brails.types.asset_inventory.read_source_string`
-                reads, or an implausible pair's source codes fit no row of
-                the action table.
+                If the inventory holds more than one possible world, an asset carries
+                no source string that
+                :func:`~brails.types.asset_inventory.read_source_string` reads, or an
+                implausible pair's source codes fit no row of the action table.
         """
         if inventory.n_pw != 1:
             msg = (
@@ -318,20 +308,19 @@ class PairRedraw:
 
         Args:
             inventory (AssetInventory):
-                A merged inventory of one possible world whose every asset
-                carries the source string. It is not modified.
+                A merged inventory of one possible world whose every asset carries
+                the source string. It is not modified.
 
         Returns:
             PairRedrawResult:
-                The new values, the withheld values, the log and the
-                height counts.
+                The new values, the withheld values, the log and the height counts.
 
         Raises:
             ValueError:
                 As :meth:`plan` raises.
             RuntimeError:
-                If a draw returns a donor whose values lack a re-drawn
-                feature, which its test excludes.
+                If a draw returns a donor whose values lack a re-drawn feature, which
+                its test excludes.
         """
         plan = self.plan(inventory)
         pool = None
@@ -427,13 +416,13 @@ class PairRedraw:
             features (Mapping[str, Any]):
                 The asset's features in the merged inventory.
             codes (str):
-                The asset's source string, whose codes for the occupancy
-                class and the story count select the action.
+                The asset's source string, whose codes for the occupancy class and
+                the story count select the action.
 
         Returns:
             dict[str, Any] | None:
-                The row keyed by :data:`PLAN_COLUMNS`, or None where the
-                asset forms no implausible pair.
+                The row keyed by :data:`PLAN_COLUMNS`, or None where the asset forms
+                no implausible pair.
 
         Raises:
             ValueError:
@@ -489,8 +478,8 @@ class PairRedraw:
         Call the imputer's draw for one planned asset.
 
         The draw is given the asset's residential status and the test
-        :meth:`_build_admission_test` builds, and may not change the asset's
-        local and footprint features.
+        :meth:`_build_admission_test` builds, and may not change the asset's local
+        and footprint features.
 
         Args:
             pool (DonorPool):
@@ -500,20 +489,20 @@ class PairRedraw:
             features (Mapping[str, Any]):
                 The asset's features in the world the re-draw runs in.
             codes (str):
-                The asset's source string, whose codes tell which features
-                are local or footprint values the draw may not change.
+                The asset's source string, whose codes tell which features are local
+                or footprint values the draw may not change.
             row (Mapping[str, Any]):
                 The asset's row of the plan.
             drawn_features (tuple[str, ...]):
                 The features whose values the draw replaces.
             kept_stories (int):
-                The story count the class must pair with when the count is
-                not re-drawn: the asset's, or the height count replacing it.
+                The story count the class must pair with when the count is not
+                re-drawn: the asset's, or the height count replacing it.
 
         Returns:
             DonorDraw:
-                The draw as :meth:`ObservedDonorImputer.draw` returns it,
-                with the donor, its values, the attempts and the outcome.
+                The draw as :meth:`ObservedDonorImputer.draw` returns it, with the
+                donor, its values, the attempts and the outcome.
         """
         residential = row['occupancy'] in UNIT_COUNT_CLASSES
         protected = tuple(
@@ -558,8 +547,8 @@ class PairRedraw:
             drawn_features (tuple[str, ...]):
                 The features whose values the draw replaces.
             kept_stories (int):
-                The story count kept when ``drawn_features`` does not hold
-                the story count feature.
+                The story count kept when ``drawn_features`` does not hold the story
+                count feature.
             residential (bool):
                 Whether the asset is residential.
             units (object):
@@ -567,8 +556,8 @@ class PairRedraw:
 
         Returns:
             Callable[[Mapping[str, Any]], bool]:
-                A function that takes a candidate's values for the re-drawn
-                features and returns whether the candidate passes.
+                A function that takes a candidate's values for the re-drawn features
+                and returns whether the candidate passes.
         """
 
         def admit(values: Mapping[str, Any]) -> bool:
@@ -626,20 +615,20 @@ def _select_action(
         corroborated (bool):
             Whether the footprint height corroborates the story count.
         height_pair_implausible (bool | None):
-            Whether the class and the count the footprint height gives form
-            an implausible pair, None when the height gives no count.
+            Whether the class and the count the footprint height gives form an
+            implausible pair, None when the height gives no count.
 
     Returns:
         str:
-            One of :data:`ACTION_REDRAW_OCCUPANCY`,
-            :data:`ACTION_REDRAW_PAIR`, :data:`ACTION_REPLACE_STORIES`,
-            :data:`ACTION_REPLACE_STORIES_REDRAW_OCCUPANCY`,
-            :data:`ACTION_LOG_LOCAL` and :data:`ACTION_LOG_IMPUTED`.
+            One of :data:`ACTION_REDRAW_OCCUPANCY`, :data:`ACTION_REDRAW_PAIR`,
+            :data:`ACTION_REPLACE_STORIES`,
+            :data:`ACTION_REPLACE_STORIES_REDRAW_OCCUPANCY`, :data:`ACTION_LOG_LOCAL`
+            and :data:`ACTION_LOG_IMPUTED`.
 
     Raises:
         ValueError:
-            If either code is outside the table, as a class coded ``R``,
-            ``D`` or ``-``, or a story count coded ``D`` or ``-``.
+            If either code is outside the table, as a class coded ``R``, ``D`` or
+            ``-``, or a story count coded ``D`` or ``-``.
     """
     if occupancy_code not in _CLASS_CODES or stories_code not in _STORY_CODES:
         msg = (

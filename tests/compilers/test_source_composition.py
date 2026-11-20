@@ -92,8 +92,7 @@ def features(source: AssetInventory) -> dict[str, dict[str, Any]]:
 
     Args:
         source (AssetInventory):
-            The inventory whose features are returned, shared and not
-            copied.
+            The inventory whose features are returned, shared and not copied.
 
     Returns:
         dict[str, dict[str, Any]]:
@@ -202,7 +201,10 @@ class TestComposeSource:
         parts = ['drawn', 'later', 'clashing']
         with pytest.raises(
             ValueError,
-            match=r"1 feature.* world 1: asset 'a', feature 'YearBuilt' \('clashing'",
+            match=(
+                r"1 feature.* world 1: asset 'a', "
+                r"feature 'YearBuilt' \('clashing'"
+            ),
         ):
             compose_source_parts(freeze, parts, world=1, label='nsi')
         world_0 = features(compose_source_parts(freeze, parts, world=0, label='nsi'))

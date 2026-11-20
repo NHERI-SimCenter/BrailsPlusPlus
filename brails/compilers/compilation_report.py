@@ -55,29 +55,27 @@ from brails.types.asset_inventory import SOURCE_CODES
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping
 
-# What a step did to a feature: ``withheld``, a value kept out of a draw or
-# removed from its source; ``restored``, a withheld value put back after a
-# failed attempt; ``redrawn``, a value a new draw replaced; ``derived``, a
-# value computed from other features of the asset. The README beside this
-# module gives examples.
+# What a step did to a feature: ``withheld``, a value kept out of a draw or removed
+# from its source; ``restored``, a withheld value put back after a failed attempt;
+# ``redrawn``, a value a new draw replaced; ``derived``, a value computed from other
+# features of the asset. The README beside this module gives examples.
 ACTIONS = ('withheld', 'restored', 'redrawn', 'derived')
 
-# The exclusion category every report accepts besides its compiler's: a
-# footprint a step removes in every world. The report counts these
-# footprints in a group of their own, apart from the assets excluded in
-# every world and from those excluded in some.
+# The exclusion category every report accepts besides its compiler's: a footprint a
+# step removes in every world. The report counts these footprints in a group of their
+# own, apart from the assets excluded in every world and from those excluded in some.
 DROPPED_CATEGORY = 'dropped'
 
-# The diagnosis of an exclusion that no component refused, where a step that
-# keeps some assets and drops others did not keep the asset, as the unit
-# budget of the Hazus earthquake compiler drops a footprint it makes no
-# dwelling. No check returns it, so it is not one of the verdicts of
+# The diagnosis of an exclusion that no component refused, where a step that keeps
+# some assets and drops others did not keep the asset, as the unit budget of the
+# Hazus earthquake compiler drops a footprint it makes no dwelling. No check returns
+# it, so it is not one of the verdicts of
 # :mod:`~brails.inferers.inference_diagnosis`.
 DIAGNOSIS_NOT_SELECTED = 'not_selected'
 
-# The exclusion categories the Hazus earthquake compiler and its resolution
-# loop file under, besides DROPPED_CATEGORY. The section "Exclusion
-# categories" of the compilers' README defines each.
+# The exclusion categories the Hazus earthquake compiler and its resolution loop file
+# under, besides DROPPED_CATEGORY. The section "Exclusion categories" of the
+# compilers' README defines each.
 MISSING_INPUT_CATEGORY = 'missing_input'
 UNSUPPORTED_CATEGORY = 'unsupported'
 CONFLICT_CATEGORY = 'conflict'
@@ -85,9 +83,8 @@ NO_PLAUSIBLE_VALUE_CATEGORY = 'no_plausible_value'
 UNDETERMINED_CATEGORY = 'undetermined'
 FAILS_SCHEMA_CATEGORY = 'fails_schema'
 
-# The columns of the frame :attr:`CompilationReport.records` returns, in
-# order, with the dtype each one carries. A report holding no rows
-# carries these same dtypes.
+# The columns of the frame :attr:`CompilationReport.records` returns, in order, with
+# the dtype each one carries. A report holding no rows carries these same dtypes.
 RECORD_DTYPES = {
     'asset_id': 'object',
     'world': 'int64',
@@ -103,8 +100,8 @@ RECORD_DTYPES = {
 # The columns of the frame of action rows, in order.
 RECORD_COLUMNS = tuple(RECORD_DTYPES)
 
-# The columns of the frame :attr:`CompilationReport.exclusions` returns,
-# in order, with the dtype each one carries.
+# The columns of the frame :attr:`CompilationReport.exclusions` returns, in order,
+# with the dtype each one carries.
 EXCLUSION_DTYPES = {
     'asset_id': 'object',
     'world': 'int64',
@@ -118,8 +115,8 @@ EXCLUSION_DTYPES = {
 # The columns of the exclusion frame, in order.
 EXCLUSION_COLUMNS = tuple(EXCLUSION_DTYPES)
 
-# What :meth:`CompilationReport.save` adds to the stem of its path for the
-# file of exclusions.
+# What :meth:`CompilationReport.save` adds to the stem of its path for the file of
+# exclusions.
 EXCLUSIONS_SUFFIX = '_exclusions'
 
 
@@ -154,24 +151,22 @@ class CompilationReport:
     """
     Record what a compilation did to each asset, world by world.
 
-    A report holds one row per action taken on a feature and one row per
-    asset excluded from a world, with the run's timings, notices, input
-    coverage and schema check. The section "The compilation report" of the
-    README beside this module states what the rows hold and what
-    :meth:`summary` counts.
+    A report holds one row per action taken on a feature and one row per asset
+    excluded from a world, with the run's timings, notices, input coverage and schema
+    check. The section "The compilation report" of the README beside this module
+    states what the rows hold and what :meth:`summary` counts.
 
-    A row names one of the steps the compiler gave the constructor, and an
-    exclusion one of its categories. Its action must be one of
-    :data:`ACTIONS` and its source a key of
-    :data:`~brails.types.asset_inventory.SOURCE_CODES`. A value outside its
-    set is refused. Asset ids must be all strings or all integers, or
-    :meth:`save` fails. After :meth:`set_world_count`, a world outside
-    ``range(count)`` is refused when recorded or selected.
+    A row names one of the steps the compiler gave the constructor, and an exclusion
+    one of its categories. Its action must be one of :data:`ACTIONS` and its source a
+    key of :data:`~brails.types.asset_inventory.SOURCE_CODES`. A value outside its
+    set is refused. Asset ids must be all strings or all integers, or :meth:`save`
+    fails. After :meth:`set_world_count`, a world outside ``range(count)`` is refused
+    when recorded or selected.
 
     Attributes:
         stages (tuple[str, ...]):
-            The names of the compiler's steps, in the order given. They are
-            not the names of frozen stages.
+            The names of the compiler's steps, in the order given. They are not the
+            names of frozen stages.
         exclusion_categories (tuple[str, ...]):
             The compiler's categories, in the order given, followed by
             :data:`DROPPED_CATEGORY`.
@@ -190,26 +185,25 @@ class CompilationReport:
 
         Args:
             seed (int):
-                The seed the run drew from. A run is repeated by passing
-                this value back.
+                The seed the run drew from. A run is repeated by passing this value
+                back.
             stages (Iterable[str]):
-                The names of the compiler's steps, one of which every action
-                and exclusion names, each once.
+                The names of the compiler's steps, one of which every action and
+                exclusion names, each once.
             exclusion_categories (Iterable[str]):
-                The reasons the compiler files exclusions under, each once,
-                besides :data:`DROPPED_CATEGORY`, which every report accepts.
+                The reasons the compiler files exclusions under, each once, besides
+                :data:`DROPPED_CATEGORY`, which every report accepts.
             settings (Mapping[str, object] or None):
-                The settings the run resolved, echoed into
-                :meth:`summary`. ``None`` records no settings.
+                The settings the run resolved, echoed into :meth:`summary`. ``None``
+                records no settings.
 
         Raises:
             TypeError:
                 If ``seed`` is not an integer, or ``stages`` or
                 ``exclusion_categories`` is a string.
             ValueError:
-                If ``stages`` or ``exclusion_categories`` names one value
-                twice, or ``exclusion_categories`` holds
-                :data:`DROPPED_CATEGORY`.
+                If ``stages`` or ``exclusion_categories`` names one value twice, or
+                ``exclusion_categories`` holds :data:`DROPPED_CATEGORY`.
         """
         self.seed = operator.index(seed)
         named = {}
@@ -270,23 +264,21 @@ class CompilationReport:
             feature (str):
                 The feature the action was taken on.
             stage (str):
-                The step that took the action, one of the names in
-                :attr:`stages`.
+                The step that took the action, one of the names in :attr:`stages`.
             action (str):
                 What was done to the feature, one of :data:`ACTIONS`.
             world (int):
                 The index of the world the action was taken in.
             old (object):
-                The value the feature held. ``None`` records no value;
-                any other value, NaN included, is recorded as its text.
+                The value the feature held. ``None`` records no value; any other
+                value, NaN included, is recorded as its text.
             new (object):
-                The value the feature holds after the action, recorded
-                as ``old`` is.
+                The value the feature holds after the action, recorded as ``old`` is.
             source (str or None):
                 The source the action concerns, a key of
-                :data:`~brails.types.asset_inventory.SOURCE_CODES`: the
-                source a withheld value was held by, or the one ``new``
-                was written to. ``None`` records no source.
+                :data:`~brails.types.asset_inventory.SOURCE_CODES`: the source a
+                withheld value was held by, or the one ``new`` was written to.
+                ``None`` records no source.
             reason (str):
                 What prompted the action, in words.
 
@@ -294,8 +286,8 @@ class CompilationReport:
             TypeError:
                 If ``world`` is not an integer.
             ValueError:
-                If the stage, the action or the source is outside its
-                set, or the world is outside the run's worlds.
+                If the stage, the action or the source is outside its set, or the
+                world is outside the run's worlds.
         """
         self._rows.append(
             (
@@ -335,21 +327,20 @@ class CompilationReport:
             world (int):
                 The index of the world it was excluded from.
             stage (str):
-                The step that excluded it, one of the names in
-                :attr:`stages`.
+                The step that excluded it, one of the names in :attr:`stages`.
             category (str):
                 Why it was excluded, one of :attr:`exclusion_categories`.
             diagnosis (str):
                 What happened, one of the verdicts of
                 :mod:`~brails.inferers.inference_diagnosis`, such as
-                ``'infeasible'``, or :data:`DIAGNOSIS_NOT_SELECTED`. It is
-                the verdict a check returned, where an inferer, a sampler or
-                the composed screen refused the asset. Where a component
-                refused it without a verdict, such as a schema validator or
-                an imputer's outcome, the compiler names the verdict that
-                describes the refusal. Where no component refused it, the
-                compiler gives the verdict or label that describes what
-                happened. Defaults to ``''``, for a compiler that gives none.
+                ``'infeasible'``, or :data:`DIAGNOSIS_NOT_SELECTED`. It is the
+                verdict a check returned, where an inferer, a sampler or the composed
+                screen refused the asset. Where a component refused it without a
+                verdict, such as a schema validator or an imputer's outcome, the
+                compiler names the verdict that describes the refusal. Where no
+                component refused it, the compiler gives the verdict or label that
+                describes what happened. Defaults to ``''``, for a compiler that
+                gives none.
             detail (str):
                 What happened, in words.
             resolvable_by (Iterable[str]):
@@ -360,8 +351,8 @@ class CompilationReport:
             TypeError:
                 If ``world`` is not an integer.
             ValueError:
-                If the stage or the category is outside its set, or the
-                world is outside the run's worlds.
+                If the stage or the category is outside its set, or the world is
+                outside the run's worlds.
         """
         self._exclusion_rows.append(
             (
@@ -403,20 +394,19 @@ class CompilationReport:
         """
         Store the result of checking buildings against a loss model's input schema.
 
-        An input schema states the features a damage and loss model reads
-        and the values it accepts. :meth:`summary` returns the stored result
-        as ``schema_check``.
+        An input schema states the features a damage and loss model reads and the
+        values it accepts. :meth:`summary` returns the stored result as
+        ``schema_check``.
 
         Args:
             verdict (object):
-                The result of the check, stored as given, such as the
-                schema's dataset and the number of buildings it refused in
-                each world.
+                The result of the check, stored as given, such as the schema's
+                dataset and the number of buildings it refused in each world.
             refused (pandas.DataFrame, optional):
-                The buildings the check refused, with an ``asset_id`` and a
-                ``world`` column. Given, the verdict is a mapping, to which
-                :meth:`summary` adds ``excluded_by_world``: the number of the
-                buildings it reads that the check refused in each world.
+                The buildings the check refused, with an ``asset_id`` and a ``world``
+                column. Given, the verdict is a mapping, to which :meth:`summary`
+                adds ``excluded_by_world``: the number of the buildings it reads that
+                the check refused in each world.
         """
         self._schema_check = verdict
         self._schema_refusals = refused
@@ -431,14 +421,14 @@ class CompilationReport:
 
         Args:
             stage (str):
-                The caller's name for the timed part of the run, such as
-                a frozen stage or the manifest. It is not checked against
-                the names in :attr:`stages`.
+                The caller's name for the timed part of the run, such as a frozen
+                stage or the manifest. It is not checked against the names in
+                :attr:`stages`.
             seconds (float):
                 The wall-clock seconds spent.
             world (int or None):
-                The world the seconds belong to. ``None`` for work done
-                once for every world.
+                The world the seconds belong to. ``None`` for work done once for
+                every world.
 
         Raises:
             TypeError:
@@ -461,8 +451,8 @@ class CompilationReport:
             TypeError:
                 If ``count`` is not an integer.
             ValueError:
-                If ``count`` is below one, or a world already recorded is
-                not below it.
+                If ``count`` is below one, or a world already recorded is not below
+                it.
         """
         count = operator.index(count)
         if count < 1:
@@ -522,9 +512,8 @@ class CompilationReport:
 
         Returns:
             pd.DataFrame:
-                A frame with the columns of :data:`RECORD_COLUMNS`, in
-                that order. A copy, so changing it leaves the report
-                alone.
+                A frame with the columns of :data:`RECORD_COLUMNS`, in that order. A
+                copy, so changing it leaves the report alone.
         """
         # Built as objects first, so that pandas keeps None as None.
         return pd.DataFrame(
@@ -538,9 +527,8 @@ class CompilationReport:
 
         Returns:
             pd.DataFrame:
-                A frame with the columns of :data:`EXCLUSION_COLUMNS`,
-                in that order. A copy, so changing it leaves the report
-                alone.
+                A frame with the columns of :data:`EXCLUSION_COLUMNS`, in that order.
+                A copy, so changing it leaves the report alone.
         """
         return pd.DataFrame(
             self._exclusion_rows, columns=list(EXCLUSION_COLUMNS), dtype=object
@@ -552,11 +540,10 @@ class CompilationReport:
         """
         Return the exclusion rows of the selected worlds, each with its group.
 
-        A row of :data:`DROPPED_CATEGORY` is in the group ``'dropped'``. The
-        other rows are grouped by asset: an asset is excluded in a world
-        where it has at least one such row for that world, and its rows
-        are in the group ``'every'`` when that holds in every selected
-        world, and in ``'some'`` otherwise.
+        A row of :data:`DROPPED_CATEGORY` is in the group ``'dropped'``. The other
+        rows are grouped by asset: an asset is excluded in a world where it has at
+        least one such row for that world, and its rows are in the group ``'every'``
+        when that holds in every selected world, and in ``'some'`` otherwise.
 
         Args:
             worlds (Iterable[int] or None):
@@ -568,16 +555,14 @@ class CompilationReport:
 
         Returns:
             pd.DataFrame:
-                The columns of :data:`EXCLUSION_COLUMNS` followed by
-                ``group``, ``'dropped'``, ``'every'`` or ``'some'``. Rows
-                are in the order they were recorded, so each asset's
-                reason in each world is its own row.
+                The columns of :data:`EXCLUSION_COLUMNS` followed by ``group``,
+                ``'dropped'``, ``'every'`` or ``'some'``. Rows are in the order they
+                were recorded, so each asset's reason in each world is its own row.
 
         Raises:
             ValueError:
-                If ``worlds`` is ``None`` and :meth:`set_world_count` has
-                not been called, or a selected world is outside the run's
-                worlds.
+                If ``worlds`` is ``None`` and :meth:`set_world_count` has not been
+                called, or a selected world is outside the run's worlds.
         """
         selected = self._selected_worlds(worlds)
         if selected is None:
@@ -607,19 +592,17 @@ class CompilationReport:
 
         Args:
             worlds (Iterable[int] or None):
-                The worlds whose actions and exclusions are counted.
-                ``None`` counts every row. The timings are those of the
-                whole run either way.
+                The worlds whose actions and exclusions are counted. ``None`` counts
+                every row. The timings are those of the whole run either way.
             keep_outside (bool, optional):
-                Whether to count the actions, exclusions and schema refusals of
-                the assets outside the boundary of :meth:`set_boundary` too.
-                Defaults to ``False``.
+                Whether to count the actions, exclusions and schema refusals of the
+                assets outside the boundary of :meth:`set_boundary` too. Defaults to
+                ``False``.
 
         Returns:
             dict[str, object]:
-                The summary. The section "The summary" of the README beside
-                this module lists its keys. Counts are keyed in sorted
-                order.
+                The summary. The section "The summary" of the README beside this
+                module lists its keys. Counts are keyed in sorted order.
 
         Raises:
             ValueError:
@@ -724,23 +707,21 @@ class CompilationReport:
         """
         Write the report's rows and summary from one path.
 
-        The action rows go to ``path`` as Parquet, and beside it the exclusions
-        to the stem, :data:`EXCLUSIONS_SUFFIX` and the suffix of ``path``,
-        and the summary to the stem and ``_summary.json``: given
-        ``run/report.parquet``, ``run/report_exclusions.parquet`` and
-        ``run/report_summary.json``. A summary value JSON cannot serialize
-        is written as its text form. Without ``actions``, the file at
-        ``path`` is not written, and the other two are written as named
+        The action rows go to ``path`` as Parquet, and beside it the exclusions to
+        the stem, :data:`EXCLUSIONS_SUFFIX` and the suffix of ``path``, and the
+        summary to the stem and ``_summary.json``: given ``run/report.parquet``,
+        ``run/report_exclusions.parquet`` and ``run/report_summary.json``. A summary
+        value JSON cannot serialize is written as its text form. Without ``actions``,
+        the file at ``path`` is not written, and the other two are written as named
         from it.
 
         Args:
             path (str or Path):
-                Where the action rows go. Its parent directory is created if
-                it is absent.
+                Where the action rows go. Its parent directory is created if it is
+                absent.
             worlds (Iterable[int] or None):
                 The worlds whose rows are written, with the summary of
-                :meth:`summary` for the same selection. ``None`` writes
-                every row.
+                :meth:`summary` for the same selection. ``None`` writes every row.
             actions (bool, optional):
                 Whether to write the action rows. Defaults to ``True``.
             keep_outside (bool, optional):
@@ -798,20 +779,17 @@ class CompilationReport:
             logs (Mapping[str, pd.DataFrame]):
                 Log name to the log's frame.
             worlds (Iterable[int] or None):
-                The worlds whose rows are written. A log with a ``world``
-                column keeps the rows of those worlds. A log without one
-                is written whole, so a log that aggregates over worlds
-                carries every computed world into a selection. ``None``
-                writes every row.
+                The worlds whose rows are written. A log with a ``world`` column
+                keeps the rows of those worlds. A log without one is written whole,
+                so a log that aggregates over worlds carries every computed world
+                into a selection. ``None`` writes every row.
 
         Raises:
             ValueError:
-                If a log name is empty, holds a path separator, or is
-                ``report``, alone or followed by :data:`EXCLUSIONS_SUFFIX`,
-                whose files would
-                overwrite those of a report saved as
-                ``<stem>_report.parquet`` in the same directory; or if a
-                selected world is outside the run's worlds.
+                If a log name is empty, holds a path separator, or is ``report``,
+                alone or followed by :data:`EXCLUSIONS_SUFFIX`, whose files would
+                overwrite those of a report saved as ``<stem>_report.parquet`` in the
+                same directory; or if a selected world is outside the run's worlds.
         """
         directory = Path(directory)
         bad = [name for name in logs if not name or Path(name).name != name]
@@ -895,9 +873,9 @@ class CompilationReport:
 
         Returns:
             list[int] or None:
-                The distinct selected worlds in ascending order. Without
-                a selection, every computed world, or ``None`` when
-                :meth:`set_world_count` has not been called.
+                The distinct selected worlds in ascending order. Without a selection,
+                every computed world, or ``None`` when :meth:`set_world_count` has
+                not been called.
 
         Raises:
             TypeError:
@@ -917,8 +895,8 @@ class CompilationReport:
 
         Returns:
             str:
-                The seed, the number of recorded actions, and the number
-                of distinct excluded assets.
+                The seed, the number of recorded actions, and the number of distinct
+                excluded assets.
         """
         return (
             f'<CompilationReport seed={self.seed}: '

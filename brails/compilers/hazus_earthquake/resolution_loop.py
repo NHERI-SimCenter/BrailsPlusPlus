@@ -79,23 +79,23 @@ if TYPE_CHECKING:
         HazusEQStructureTypeInferer,
     )
 
-# The stages of the composed screen, in the order it runs them. Each name
-# is also the stage of the compilation report that the loop records under,
-# unless the loop's report_stages maps it to another.
+# The stages of the composed screen, in the order it runs them. Each name is also the
+# stage of the compilation report that the loop records under, unless the loop's
+# report_stages maps it to another.
 STAGE_DESIGN_LEVEL = 's08_design_level'
 STAGE_STRUCTURE_TYPE = 's08_structure_type'
 SCREEN_STAGES = (STAGE_DESIGN_LEVEL, STAGE_STRUCTURE_TYPE)
 
-# The asset id the screen files one asset's features under. A diagnosis
-# is a function of an asset's features, so any id serves.
+# The asset id the screen files one asset's features under. A diagnosis is a function
+# of an asset's features, so any id serves.
 SCREEN_ASSET_ID = 'screened_asset'
 
-# The coordinate every asset the screen builds carries. An asset requires
-# a valid coordinate and no stage of the screen reads one.
+# The coordinate every asset the screen builds carries. An asset requires a valid
+# coordinate and no stage of the screen reads one.
 SCREEN_COORDINATES = ((0.0, 0.0),)
 
-# The stage of the compilation report the loop records its own rows under,
-# unless the loop's report_stages maps it to another.
+# The stage of the compilation report the loop records its own rows under, unless the
+# loop's report_stages maps it to another.
 STAGE_RESOLUTION = 's08_resolution'
 
 # The source whose general building type the loop withholds.
@@ -114,14 +114,13 @@ class ScreenVerdict(NamedTuple):
         detail (str):
             What happened, in words.
         stage (str):
-            The stage that refused the asset, one of
-            :data:`SCREEN_STAGES`. Empty where the asset passed.
+            The stage that refused the asset, one of :data:`SCREEN_STAGES`. Empty
+            where the asset passed.
         candidates (tuple[str, ...]):
-            The features the refusing stage names, each of which, changed
-            alone, would admit the asset, in the order the stage named
-            them. A named design level appears as the construction year it
-            is derived from. Empty where the asset passed and where the
-            stage named none.
+            The features the refusing stage names, each of which, changed alone,
+            would admit the asset, in the order the stage named them. A named design
+            level appears as the construction year it is derived from. Empty where
+            the asset passed and where the stage named none.
     """
 
     diagnosis: str
@@ -136,17 +135,15 @@ class ResolutionResult(NamedTuple):
 
     Attributes:
         resolved (AssetInventory):
-            The admitted assets, with copies of the features they pass the
-            screen with, whose values are shared with the input inventory. A
-            withheld building type is absent. Where the input carries the
-            design level, the structure type draw reads this inventory as it
-            is.
+            The admitted assets, with copies of the features they pass the screen
+            with, whose values are shared with the input inventory. A withheld
+            building type is absent. Where the input carries the design level, the
+            structure type draw reads this inventory as it is.
         excluded (list):
-            The ids of the excluded assets, in the order of the input's
-            ids.
+            The ids of the excluded assets, in the order of the input's ids.
         given_up (dict):
-            Asset id to the features withheld from its screen, for the
-            admitted assets that gave up any.
+            Asset id to the features withheld from its screen, for the admitted
+            assets that gave up any.
         passed_first_screen (int):
             Assets admitted with nothing withheld.
         resolved_by_withholding (int):
@@ -172,15 +169,14 @@ def _build_one_asset_inventory(
 
     Args:
         features (Mapping[str, object]):
-            The asset's features. Copied, so the component cannot reach
-            the caller's mapping.
+            The asset's features. Copied, so the component cannot reach the caller's
+            mapping.
         vector_features (frozenset[str] or Sequence[str]):
             Names of the features whose values are vectors.
 
     Returns:
         AssetInventory:
-            An inventory holding that one asset under
-            :data:`SCREEN_ASSET_ID`.
+            An inventory holding that one asset under :data:`SCREEN_ASSET_ID`.
     """
     return _build_inventory(
         [SCREEN_ASSET_ID],
@@ -221,13 +217,12 @@ def _add_design_levels(
 
     Args:
         inferer (HazusEQDesignLevelInferer):
-            The inferer that derives the level from the construction
-            year. It must take every asset of the inventory, so each year
-            is one its table reads.
+            The inferer that derives the level from the construction year. It must
+            take every asset of the inventory, so each year is one its table reads.
         inventory (AssetInventory):
-            The inventory whose assets receive the levels, changed in
-            place. Both callers pass an inventory of copies they built, so
-            the assets the screen was given are not changed.
+            The inventory whose assets receive the levels, changed in place. Both
+            callers pass an inventory of copies they built, so the assets the screen
+            was given are not changed.
     """
     key = inferer.design_level_key
     missing = [
@@ -252,8 +247,8 @@ def _exclusion_category(
     """
     Settle which exclusion category a refused asset falls in.
 
-    The section "The exclusion category" of the README beside this module
-    states the rule.
+    The section "The exclusion category" of the README beside this module states the
+    rule.
 
     Args:
         screen (ComposedScreen):
@@ -263,8 +258,8 @@ def _exclusion_category(
         features (Mapping[str, object]):
             The asset's features, as the screen read them.
         acted_on (bool):
-            Whether a caller acted on a candidate of the refusal and the
-            asset failed anyway.
+            Whether a caller acted on a candidate of the refusal and the asset failed
+            anyway.
         vector_features (frozenset[str] or Sequence[str]):
             Names of the features whose values are vectors.
 
@@ -296,14 +291,13 @@ class ComposedScreen:
     """
     Ask the Hazus earthquake inference chain whether it can take an asset.
 
-    The design level inferer and then the structure type inferer check the
-    asset, and the verdict is the first refusal, or a pass. The screen never
-    changes the features it is given, since it writes design levels on
-    copies of the assets. It samples no construction year, so an asset
-    without one is refused at the design level stage. It reads an inventory
-    of one possible world and raises ``ValueError`` for an inventory of
-    several. The section "Composed screen" of the README beside this module
-    states the procedure.
+    The design level inferer and then the structure type inferer check the asset, and
+    the verdict is the first refusal, or a pass. The screen never changes the
+    features it is given, since it writes design levels on copies of the assets. It
+    samples no construction year, so an asset without one is refused at the design
+    level stage. It reads an inventory of one possible world and raises
+    ``ValueError`` for an inventory of several. The section "Composed screen" of the
+    README beside this module states the procedure.
     """
 
     def __init__(
@@ -318,14 +312,14 @@ class ComposedScreen:
             design_level_inferer (HazusEQDesignLevelInferer):
                 The first stage, which reads the construction year.
             structure_type_inferer (HazusEQStructureTypeInferer):
-                The second stage, which reads the year and the level.
-                Pass the inferer the structure type draw uses, so that
-                the screen and the draw read one table.
+                The second stage, which reads the year and the level. Pass the
+                inferer the structure type draw uses, so that the screen and the draw
+                read one table.
 
         Raises:
             ValueError:
-                If the two inferers read the construction year or the
-                design level under different feature names.
+                If the two inferers read the construction year or the design level
+                under different feature names.
         """
         for key in ('year_built_key', 'design_level_key'):
             first = getattr(design_level_inferer, key)
@@ -357,8 +351,8 @@ class ComposedScreen:
 
         Returns:
             ScreenVerdict:
-                The verdict of the first stage that refused the asset, or
-                a passing verdict naming no stage.
+                The verdict of the first stage that refused the asset, or a passing
+                verdict naming no stage.
         """
         inventory = _build_one_asset_inventory(features, vector_features)
         return self.screen_inventory(inventory)[SCREEN_ASSET_ID]
@@ -367,25 +361,24 @@ class ComposedScreen:
         """
         Run the chain over every asset of an inventory.
 
-        Each stage checks all the assets it receives in one call, and an
-        asset gets the verdict :meth:`screen` gives it alone. Where an
-        asset carries a construction year and no design level, the
-        structure type stage reads the level the year implies.
+        Each stage checks all the assets it receives in one call, and an asset gets
+        the verdict :meth:`screen` gives it alone. Where an asset carries a
+        construction year and no design level, the structure type stage reads the
+        level the year implies.
 
         Args:
             inventory (AssetInventory):
-                The assets to screen, an inventory of one possible world.
-                Read and not written.
+                The assets to screen, an inventory of one possible world. Read and
+                not written.
 
         Returns:
             dict:
-                Asset id to its :class:`ScreenVerdict`, in the order of
-                the inventory's ids.
+                Asset id to its :class:`ScreenVerdict`, in the order of the
+                inventory's ids.
 
         Raises:
             ValueError:
-                If the inventory holds a number of possible worlds other
-                than one.
+                If the inventory holds a number of possible worlds other than one.
         """
         _require_one_world(inventory, 'composed screen')
         first = self.design_level_inferer.check(inventory)
@@ -426,17 +419,16 @@ class ComposedScreen:
 
         Returns:
             ScreenVerdict:
-                A verdict holding the stage, its diagnosis and detail, and
-                the features it names, with the construction year in place
-                of a named design level.
+                A verdict holding the stage, its diagnosis and detail, and the
+                features it names, with the construction year in place of a named
+                design level.
         """
         year_key = self.design_level_inferer.year_built_key
         level_key = self.design_level_inferer.design_level_key
-        # A design level is derived from the year, so the year is the
-        # feature to change. Neither HazusEQDesignLevelInferer nor
-        # HazusEQStructureTypeInferer names the level. The mapping, and
-        # dict.fromkeys dropping the repeat it can cause, cover a stage that
-        # does.
+        # A design level is derived from the year, so the year is the feature to
+        # change. Neither HazusEQDesignLevelInferer nor HazusEQStructureTypeInferer
+        # names the level. The mapping, and dict.fromkeys dropping the repeat it can
+        # cause, cover a stage that does.
         candidates = dict.fromkeys(
             year_key if feature == level_key else feature
             for feature in row['resolvable_by']
@@ -451,16 +443,15 @@ class ResolutionLoop:
     Withhold the NSI building type of a refused asset and screen it again.
 
     The loop screens a merged inventory through
-    :meth:`ComposedScreen.screen_inventory`. Where a refusal names the
-    building type and :data:`WITHHELD_SOURCE` holds it, the type is
-    withheld and the asset screened again, the loop's one action. An
-    unsupported asset is excluded without action. Every other refused
-    asset, and one still refused without its type, is excluded in the
-    world of the screen's structure type inferer. The loop reads an
-    inventory of one possible world and raises ``ValueError`` for an
-    inventory of several. It draws nothing and does not change the
-    inventory it reads. The section "Resolution loop" of the README beside
-    this module states what is recorded and how an exclusion is filed.
+    :meth:`ComposedScreen.screen_inventory`. Where a refusal names the building type
+    and :data:`WITHHELD_SOURCE` holds it, the type is withheld and the asset screened
+    again, the loop's one action. An unsupported asset is excluded without action.
+    Every other refused asset, and one still refused without its type, is excluded in
+    the world of the screen's structure type inferer. The loop reads an inventory of
+    one possible world and raises ``ValueError`` for an inventory of several. It
+    draws nothing and does not change the inventory it reads. The section "Resolution
+    loop" of the README beside this module states what is recorded and how an
+    exclusion is filed.
     """
 
     def __init__(
@@ -472,20 +463,19 @@ class ResolutionLoop:
         """
         Set up the loop with the screen it tests against.
 
-        The building type key and the world are those of the screen's
-        structure type inferer.
+        The building type key and the world are those of the screen's structure type
+        inferer.
 
         Args:
             screen (ComposedScreen):
                 The screen every attempt is tested against.
             report_stages (Mapping[str, str], optional):
-                The stage of the report that rows of each of the loop's
-                stages are filed under, keyed by :data:`STAGE_DESIGN_LEVEL`,
-                :data:`STAGE_STRUCTURE_TYPE` or :data:`STAGE_RESOLUTION`, for
-                a caller that runs the loop in more than one step. Defaults
-                to ``None``, which files each under the loop's own name. The
-                report checks each value against its stages when a row is
-                recorded.
+                The stage of the report that rows of each of the loop's stages are
+                filed under, keyed by :data:`STAGE_DESIGN_LEVEL`,
+                :data:`STAGE_STRUCTURE_TYPE` or :data:`STAGE_RESOLUTION`, for a
+                caller that runs the loop in more than one step. Defaults to
+                ``None``, which files each under the loop's own name. The report
+                checks each value against its stages when a row is recorded.
 
         Raises:
             ValueError:
@@ -523,33 +513,33 @@ class ResolutionLoop:
         """
         Admit or exclude each asset of one world's inventory.
 
-        The number of worlds and ``building_type_sources`` are checked
-        before the first asset is screened, so an input the loop refuses
-        leaves the report as it was.
+        The number of worlds and ``building_type_sources`` are checked before the
+        first asset is screened, so an input the loop refuses leaves the report as it
+        was.
 
         Args:
             inventory (AssetInventory):
-                The merged inventory of one possible world, holding one
-                scalar value per feature. Read and not written.
+                The merged inventory of one possible world, holding one scalar value
+                per feature. Read and not written.
             report (CompilationReport):
                 Where every action and exclusion is recorded.
             building_type_sources (Mapping[str | int, str]):
-                Asset id to the label of the source holding the asset's
-                general building type, a key of
-                :data:`~brails.types.asset_inventory.SOURCE_CODES`, for
-                every asset that holds one and no other.
+                Asset id to the label of the source holding the asset's general
+                building type, a key of
+                :data:`~brails.types.asset_inventory.SOURCE_CODES`, for every asset
+                that holds one and no other.
 
         Returns:
             ResolutionResult:
-                The admitted assets, the excluded ids, and how the assets
-                were admitted.
+                The admitted assets, the excluded ids, and how the assets were
+                admitted.
 
         Raises:
             ValueError:
-                If the inventory holds a number of possible worlds other than
-                one, or if ``building_type_sources`` lacks an asset that holds
-                a building type, gives one for an asset that holds none, or
-                gives a label that is not a source.
+                If the inventory holds a number of possible worlds other than one, or
+                if ``building_type_sources`` lacks an asset that holds a building
+                type, gives one for an asset that holds none, or gives a label that
+                is not a source.
         """
         _require_one_world(inventory, 'resolution loop')
         key = self.screen.structure_type_inferer.building_type_key
@@ -577,8 +567,8 @@ class ResolutionLoop:
         for asset_id, verdict in self.screen.screen_inventory(inventory).items():
             _, features = inventory.get_asset_features(asset_id)
             admitted = dict(features) if verdict.diagnosis == DIAGNOSIS_OK else None
-            # An unsupported asset is excluded without action, whatever its
-            # refusal names.
+            # An unsupported asset is excluded without action, whatever its refusal
+            # names.
             acted_on = (
                 verdict.diagnosis not in (DIAGNOSIS_OK, DIAGNOSIS_UNSUPPORTED)
                 and key in verdict.candidates
@@ -624,8 +614,8 @@ class ResolutionLoop:
                     detail = f'{verdict.detail}; without {key}: {retry.detail}'
             if admitted is None:
                 excluded.append(asset_id)
-                # An asset the loop took no action on was excluded by the
-                # stage that refused it.
+                # An asset the loop took no action on was excluded by the stage that
+                # refused it.
                 stage = STAGE_RESOLUTION if acted_on else verdict.stage
                 report.record_exclusion(
                     asset_id,

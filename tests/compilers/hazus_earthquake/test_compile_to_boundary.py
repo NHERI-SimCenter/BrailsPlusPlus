@@ -69,8 +69,8 @@ if TYPE_CHECKING:
 PLACE = ((-40, -40), (190, -40), (190, 240), (-40, 240))
 BUFFER_M = 2000.0
 
-# The keys of the summary and of its settings after a compilation without a
-# boundary, in order.
+# The keys of the summary and of its settings after a compilation without a boundary,
+# in order.
 SUMMARY_KEYS = [
     'seed',
     'settings',
@@ -143,8 +143,8 @@ def around_place(study_area: CompilerInputs) -> CompilerInputs:
 
     Returns:
         CompilerInputs:
-            The footprints within 2,000 m of the place, every footprint but the one
-            3 km away, with the other inputs as given and the place as boundary.
+            The footprints within 2,000 m of the place, every footprint but the one 3
+            km away, with the other inputs as given and the place as boundary.
     """
     footprints = AssetInventory()
     footprints.inventory = {
@@ -461,9 +461,9 @@ def test_state_and_zone_accepted_where_their_table_holds_them(
     study_area: CompilerInputs, state: str | None, zone: str
 ) -> None:
     """A state and zone are accepted where their design level table holds them."""
-    # California's design level table holds zones 3 and 4, that of other states
-    # zones 0 to 4; Texas draws structure types from tables the compiler refuses.
-    # A compiler without a state takes California from the block groups.
+    # California's design level table holds zones 3 and 4, that of other states zones
+    # 0 to 4; Texas draws structure types from tables the compiler refuses. A
+    # compiler without a state takes California from the block groups.
     accepted = {
         None: {'3', '4'},
         'California': {'3', '4'},

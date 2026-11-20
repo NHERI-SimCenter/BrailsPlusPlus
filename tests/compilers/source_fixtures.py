@@ -65,8 +65,7 @@ def codes(occupancy: str = 'N', units: str = '-', stories: str = 'N') -> str:
 
     Returns:
         str:
-            The string, with the missing code for the remaining source
-            features.
+            The string, with the missing code for the remaining source features.
     """
     given = {
         'OccupancyClass': occupancy,
@@ -86,8 +85,8 @@ def merged(
 
     Args:
         records (dict[str, dict[str, Any]]):
-            Features per asset id. Asset ``i`` of the sorted ids stands
-            ``20 * i`` meters east of the origin.
+            Features per asset id. Asset ``i`` of the sorted ids stands ``20 * i``
+            meters east of the origin.
         order (list[str], optional):
             The insertion order. Defaults to the sorted ids.
 
@@ -133,8 +132,8 @@ def sources_for_one_asset() -> dict[str, AssetInventory]:
 
     Returns:
         dict[str, AssetInventory]:
-            ``footprint`` (the spine, with a height of unknown source),
-            ``local`` (a year) and ``nsi`` (the class and story count).
+            ``footprint`` (the spine, with a height of unknown source), ``local`` (a
+            year) and ``nsi`` (the class and story count).
     """
     coordinates = square(0.0, 0.0)
     footprint = AssetInventory()

@@ -425,8 +425,8 @@ def test_assets_excluded_in_every_world_and_in_some_are_separated() -> None:
         'some': 2,
     }
 
-    # The groups are taken over the selected worlds, so a world written
-    # alone puts every asset it excluded in 'every'.
+    # The groups are taken over the selected worlds, so a world written alone puts
+    # every asset it excluded in 'every'.
     alone = report.exclusion_groups(worlds=(1,))
     assert set(alone.loc[alone['asset_id'] != 'd', 'group']) == {'every'}
     assert report.summary(worlds=(1,))['assets_excluded'] == {

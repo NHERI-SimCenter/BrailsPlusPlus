@@ -34,15 +34,13 @@
 """
 A synthetic study area for the compiler tests.
 
-Four block groups of one tract make up the area. The western one holds
-houses, apartments and shops with NSI points, and the eastern one mostly
-footprints without an NSI point, around a mobile-home park point. The
-northern one has no B25024 counts, so its footprints without an NSI point
-take their residential status from the imputer, world by world. The
-fourth, 3 km away, holds one footprint beyond the donor cap of every
-donor. Positions are in meters in UTM zone 10N near San Francisco and
-stored in EPSG:4326.
-Footprint heights are in feet, the scraper's default unit.
+Four block groups of one tract make up the area. The western one holds houses,
+apartments and shops with NSI points, and the eastern one mostly footprints without
+an NSI point, around a mobile-home park point. The northern one has no B25024 counts,
+so its footprints without an NSI point take their residential status from the
+imputer, world by world. The fourth, 3 km away, holds one footprint beyond the donor
+cap of every donor. Positions are in meters in UTM zone 10N near San Francisco and
+stored in EPSG:4326. Footprint heights are in feet, the scraper's default unit.
 """
 
 from __future__ import annotations
@@ -95,11 +93,14 @@ RELEASE = '2026-10-21.0'
 MH_PARK = (400.0, 200.0)
 
 OSM = 'dataset: OpenStreetMap, record_id: w1'
-MIXED = 'dataset: Microsoft ML Buildings; property: /properties/height, dataset: OpenStreetMap'
+MIXED = (
+    'dataset: Microsoft ML Buildings; property: /properties/height, '
+    'dataset: OpenStreetMap'
+)
 
-# Footprints as id: (x, y, side, height in feet or None, sources). A
-# footprint whose sources are None is an OpenStreetMap footprint without
-# them; the others are Overture's.
+# Footprints as id: (x, y, side, height in feet or None, sources). A footprint whose
+# sources are None is an OpenStreetMap footprint without them; the others are
+# Overture's.
 FOOTPRINTS: dict[str, tuple[float, float, float, float | None, str | None]] = {
     'h01': (10, 10, 11, 13.0, OSM),
     'h02': (30, 10, 11, 26.0, OSM),
@@ -154,9 +155,9 @@ FOOTPRINTS: dict[str, tuple[float, float, float, float | None, str | None]] = {
     'f01': (3000, 0, 12, None, OSM),
 }
 
-# NSI points as fd_id: (footprint, dx, dy, fields). The point lies at the
-# footprint's lower left corner plus (dx, dy) meters, so (5, 5) is inside an
-# eleven-meter house and a negative offset puts it outside, for the walk.
+# NSI points as fd_id: (footprint, dx, dy, fields). The point lies at the footprint's
+# lower left corner plus (dx, dy) meters, so (5, 5) is inside an eleven-meter house
+# and a negative offset puts it outside, for the walk.
 _HOUSE = {
     'occtype': 'RES1-1SNB',
     'resunits': 1,
@@ -347,8 +348,8 @@ def build_inputs(*, reverse: bool = False) -> CompilerInputs:
 
     Args:
         reverse (bool, optional):
-            Whether to insert the footprints, the NSI points and the local
-            assets in reverse order.
+            Whether to insert the footprints, the NSI points and the local assets in
+            reverse order.
 
     Returns:
         CompilerInputs:

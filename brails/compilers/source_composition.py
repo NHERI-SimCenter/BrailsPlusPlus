@@ -70,20 +70,19 @@ def _select_assets(
     """
     Return a new inventory holding the given assets of ``source`` themselves.
 
-    The result holds the source's own :class:`Asset` objects, not copies, so
-    a change to an asset's coordinates or features shows in both. It declares
-    ``n_pw`` worlds whatever ``source`` holds, so a source of several worlds
-    needs ``n_pw`` given.
+    The result holds the source's own :class:`Asset` objects, not copies, so a change
+    to an asset's coordinates or features shows in both. It declares ``n_pw`` worlds
+    whatever ``source`` holds, so a source of several worlds needs ``n_pw`` given.
 
     Args:
         source (AssetInventory):
             The inventory the assets are selected from.
         ids (Iterable[Hashable]):
-            The ids of the assets to select, each held by ``source``, in the
-            order the result holds them.
+            The ids of the assets to select, each held by ``source``, in the order
+            the result holds them.
         vector_features (Iterable[str], optional):
-            The features whose values are vectors in the result. ``None``
-            declares those of ``source``.
+            The features whose values are vectors in the result. ``None`` declares
+            those of ``source``.
         n_pw (int, optional):
             The number of possible worlds the result declares. Defaults to 1.
 
@@ -112,14 +111,13 @@ def _build_inventory(
     """
     Build an inventory of new assets from their coordinates and features.
 
-    Each asset holds the coordinates and the feature dict given for it, not
-    copies, so a caller that must not share a feature dict passes a copy. An
-    id with no entry in ``features`` gets a new, empty feature dict.
+    Each asset holds the coordinates and the feature dict given for it, not copies,
+    so a caller that must not share a feature dict passes a copy. An id with no entry
+    in ``features`` gets a new, empty feature dict.
 
     Args:
         ids (Iterable[Hashable]):
-            The ids of the assets to build, in the order the result holds
-            them.
+            The ids of the assets to build, in the order the result holds them.
         coordinates (Mapping[Hashable, Any]):
             The coordinates of each asset, by id.
         features (Mapping[Hashable, dict[str, Any]]):
@@ -127,8 +125,8 @@ def _build_inventory(
         n_pw (int, optional):
             The number of possible worlds the features hold. Defaults to 1.
         vector_features (Iterable[str], optional):
-            The features whose values are vectors. ``None`` declares the
-            default of :class:`AssetInventory`.
+            The features whose values are vectors. ``None`` declares the default of
+            :class:`AssetInventory`.
 
     Returns:
         AssetInventory:
@@ -157,61 +155,58 @@ def compose_source_parts(  # noqa: C901
     """
     Build the inventory of one source in one world from frozen stages.
 
-    The result holds every asset that one of ``parts`` holds, and each of
-    its features takes the value of the one part that holds a value for it
-    in ``world``. A part holds no value for a feature where its value is
-    one that ``AssetInventory.merge`` counts as missing, such as ``None``,
-    NaN, the empty string or the missing marker. Two parts that
-    hold a value for the same feature of one asset raise ``ValueError``.
-    The result shares assets and values with the frozen stages, so a caller
-    must not change it. The section "Composition and assembly" of the
-    README beside this module states the procedure and what the optional
-    records do.
+    The result holds every asset that one of ``parts`` holds, and each of its
+    features takes the value of the one part that holds a value for it in ``world``.
+    A part holds no value for a feature where its value is one that
+    ``AssetInventory.merge`` counts as missing, such as ``None``, NaN, the empty
+    string or the missing marker. Two parts that hold a value for the same feature of
+    one asset raise ``ValueError``. The result shares assets and values with the
+    frozen stages, so a caller must not change it. The section "Composition and
+    assembly" of the README beside this module states the procedure and what the
+    optional records do.
 
     Args:
         freeze (StageFreeze):
-            Holds the frozen stages that the other arguments name. Every
-            stage is read from it by its name.
+            Holds the frozen stages that the other arguments name. Every stage is
+            read from it by its name.
         parts (Sequence[str]):
-            The names of the stages that hold the source's values, each
-            named once. Their order matters: an asset takes the coordinates
-            of the first part that holds it.
+            The names of the stages that hold the source's values, each named once.
+            Their order matters: an asset takes the coordinates of the first part
+            that holds it.
         world (int):
-            The world to compose, numbered from 0. A stage that holds
-            several worlds is read through its values in this world.
+            The world to compose, numbered from 0. A stage that holds several worlds
+            is read through its values in this world.
         withheld (Sequence[str], optional):
-            The names of records of withheld values, which remove values of
-            this source from the result. Defaults to an empty sequence,
-            which withholds nothing.
+            The names of records of withheld values, which remove values of this
+            source from the result. Defaults to an empty sequence, which withholds
+            nothing.
         label (str):
-            The label of the source being composed, such as ``'imputed'``.
-            It is used only to find, in the ``withheld`` records, the values
-            withheld from this source.
+            The label of the source being composed, such as ``'imputed'``. It is used
+            only to find, in the ``withheld`` records, the values withheld from this
+            source.
         dropped (str, optional):
-            The name of a record of dropped footprints, whose assets the
-            result leaves out. Defaults to ``None``, which leaves out no
-            asset.
+            The name of a record of dropped footprints, whose assets the result
+            leaves out. Defaults to ``None``, which leaves out no asset.
 
     Returns:
         AssetInventory:
-            The inventory of the source in ``world``, holding one possible
-            world. It declares every vector feature of every part.
+            The inventory of the source in ``world``, holding one possible world. It
+            declares every vector feature of every part.
 
     Raises:
         TypeError:
-            If ``parts`` or ``withheld`` is a string or not a sequence, a
-            stage name is not a string, ``label`` is not a string, or
-            ``world`` is not an integer.
+            If ``parts`` or ``withheld`` is a string or not a sequence, a stage name
+            is not a string, ``label`` is not a string, or ``world`` is not an
+            integer.
         LookupError:
             If a named stage is not frozen.
         ValueError:
-            If ``parts`` is empty or names a stage twice; if ``world`` is
-            negative, or not below the number of possible worlds of a part
-            or withheld record that holds more than one; or if two parts
-            hold a value for one feature of one asset in ``world``. A
-            message names up to
-            :data:`~brails.types.asset_inventory.MAX_REPORTED_WORLD_PROBLEMS`
-            assets or features.
+            If ``parts`` is empty or names a stage twice; if ``world`` is negative,
+            or not below the number of possible worlds of a part or withheld record
+            that holds more than one; or if two parts hold a value for one feature of
+            one asset in ``world``. A message names up to
+            :data:`~brails.types.asset_inventory.MAX_REPORTED_WORLD_PROBLEMS` assets
+            or features.
     """
     for argument, names in (('parts', parts), ('withheld', withheld)):
         if isinstance(names, str) or not isinstance(names, Sequence):
@@ -262,8 +257,8 @@ def compose_source_parts(  # noqa: C901
 
         Args:
             asset_id (Hashable):
-                The id of the asset of the result whose features are about to
-                be written.
+                The id of the asset of the result whose features are about to be
+                written.
 
         Returns:
             dict[str, Any]:
@@ -288,9 +283,8 @@ def compose_source_parts(  # noqa: C901
 
         Returns:
             dict[str, Any]:
-                The asset's own features where no value is a list of
-                worlds, and otherwise a new dict of their values in
-                ``world``.
+                The asset's own features where no value is a list of worlds, and
+                otherwise a new dict of their values in ``world``.
         """
         if stage.n_pw == 1 or not any(
             isinstance(value, list) for value in asset.features.values()

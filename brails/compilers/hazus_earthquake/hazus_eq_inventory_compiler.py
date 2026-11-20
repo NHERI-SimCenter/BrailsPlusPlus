@@ -34,8 +34,8 @@
 """
 Compile a Hazus earthquake building inventory over several possible worlds.
 
-The section "Hazus earthquake inventory compiler" of the README beside this
-module describes the run.
+The section "Hazus earthquake inventory compiler" of the README beside this module
+describes the run.
 
 .. autosummary::
 
@@ -247,17 +247,16 @@ DEFAULT_N_WORLDS = 10
 # The source labels of a world's merge, highest precedence first.
 PRECEDENCE = ('local', 'footprint', 'nsi', 'derived', 'imputed', 'drawn')
 
-# The label of the footprints, the spine of every merge: a merged inventory
-# holds the footprints' assets and geometries.
+# The label of the footprints, the spine of every merge: a merged inventory holds the
+# footprints' assets and geometries.
 SPINE_LABEL = 'footprint'
 
-# The features the compiler writes for itself and reads back, which a local
-# inventory may not hold: its precedence would put them in place of the
-# compiler's.
+# The features the compiler writes for itself and reads back, which a local inventory
+# may not hold: its precedence would put them in place of the compiler's.
 RESERVED_LOCAL_FEATURES = (BLOCK_GROUP_KEY, NSI_GROSS_AREA_KEY)
 
-# The properties a written building holds besides its id and its geometry,
-# unless write is asked for more. Their choice is described in README.rst.
+# The properties a written building holds besides its id and its geometry, unless
+# write is asked for more. Their choice is described in README.rst.
 DEFAULT_PROPERTIES = (
     OCCUPANCY_KEY,
     UNITS_KEY,
@@ -274,20 +273,20 @@ DEFAULT_PROPERTIES = (
     SOURCE_STRING_KEY,
 )
 
-# The value of write's extra_properties that writes every feature the
-# compiled inventory holds.
+# The value of write's extra_properties that writes every feature the compiled
+# inventory holds.
 ALL_PROPERTIES = 'all'
 
 # The property the integer-id form of the file numbers its features within.
 _TYPE_KEY = 'type'
 
-# The log naming each default property a compiled building lacks where it
-# applies, as (asset id, world, property); write refuses a file it names.
+# The log naming each default property a compiled building lacks where it applies, as
+# (asset id, world, property); write refuses a file it names.
 MISSING_DEFAULTS_LOG = 'missing_defaults'
 
 # Every log a run can hold, in the order the steps write them. A run holds
-# stacked_parts and stacked_asset_ids only with merge_stacked. write without
-# detailed removes a file at the stem under any of these names.
+# stacked_parts and stacked_asset_ids only with merge_stacked. write without detailed
+# removes a file at the stem under any of these names.
 LOG_NAMES = (
     'stacked_parts',
     'stacked_asset_ids',
@@ -372,8 +371,8 @@ REPORT_STAGES = (
 )
 
 # The categories the run files an exclusion under, besides the report's
-# DROPPED_CATEGORY. The section "Exclusion categories" of the compilers'
-# README defines each.
+# DROPPED_CATEGORY. The section "Exclusion categories" of the compilers' README
+# defines each.
 EXCLUSION_CATEGORIES = (
     MISSING_INPUT_CATEGORY,
     UNSUPPORTED_CATEGORY,
@@ -386,8 +385,8 @@ EXCLUSION_CATEGORIES = (
 # The Hazus input schema every compiled realization is checked against.
 DLML_DATASET = 'seismic/building/portfolio/Hazus v5.1'
 
-# The state and design level method whose table assumes Moderate-Code for a
-# Pre-Code W1 building (Table C-10 of the Hazus 5.1 technical manual).
+# The state and design level method whose table assumes Moderate-Code for a Pre-Code
+# W1 building (Table C-10 of the Hazus 5.1 technical manual).
 CARVE_OUT_STATE = 'California'
 CARVE_OUT_METHOD = '5.1'
 
@@ -409,12 +408,12 @@ DEFAULT_MAX_BLOCK_GROUPS = 800
 # The equal-area projection the state shares of a boundary are measured in.
 _EQUAL_AREA_CRS = 'EPSG:6933'
 
-# The exclusion category of each diagnosis by which a year sampler, the
-# design level inferer or the height class inferer refuses an asset. An asset
-# ACSYearBuiltSampler finds infeasible lies in a block group the census tables
-# do not cover. ResidentialNeighborYearSampler gives no_donor to an asset that
-# has no residential neighbor with a construction year, which is filed, as
-# s13's building without a donor is, as having no plausible value.
+# The exclusion category of each diagnosis by which a year sampler, the design level
+# inferer or the height class inferer refuses an asset. An asset ACSYearBuiltSampler
+# finds infeasible lies in a block group the census tables do not cover.
+# ResidentialNeighborYearSampler gives no_donor to an asset that has no residential
+# neighbor with a construction year, which is filed, as s13's building without a
+# donor is, as having no plausible value.
 _DIAGNOSIS_CATEGORY = {
     DIAGNOSIS_INVALID: MISSING_INPUT_CATEGORY,
     DIAGNOSIS_UNSUPPORTED: UNSUPPORTED_CATEGORY,
@@ -422,8 +421,7 @@ _DIAGNOSIS_CATEGORY = {
     DIAGNOSIS_NO_DONOR: NO_PLAUSIBLE_VALUE_CATEGORY,
 }
 
-# The feature of the stage of s13's values holding the source label of each
-# value.
+# The feature of the stage of s13's values holding the source label of each value.
 _VALUE_SOURCE_KEY = 'ReplacementCostSource'
 
 # The occupancy class whose NSI story count is kept over the height count.
@@ -435,8 +433,8 @@ DEFAULT_IMPUTER_OPTIONS: Mapping[str, object] = MappingProxyType(
     {'k': 10, 'location_scale_m': 500.0, 'area_weight': 2.0}
 )
 
-# The option names the compiler sets itself, which an options mapping may
-# not hold, per configured class.
+# The option names the compiler sets itself, which an options mapping may not hold,
+# per configured class.
 _RESERVED_OPTIONS = {
     # The budget and the pair re-draw need the imputer's default status.
     'imputer_options': ('seed', 'status_key', 'status_values', 'status_name'),
@@ -477,11 +475,10 @@ _CODE_POSITION = {
 }
 
 # The sources of an observed occupancy class: the local inventory, NSI, and the
-# classes the NSI join sets from a unit count band. An asset whose occupancy
-# class comes from one of them has an observed occupancy class: it is not a
-# target of the unit budget, and with a story count it is an observed donor.
-# The second tuple holds the sources whose occupancy class the unit budget's
-# mobile-home rule may relabel.
+# classes the NSI join sets from a unit count band. An asset whose occupancy class
+# comes from one of them has an observed occupancy class: it is not a target of the
+# unit budget, and with a story count it is an observed donor. The second tuple holds
+# the sources whose occupancy class the unit budget's mobile-home rule may relabel.
 _OCCUPANCY_SOURCE_LABELS = ('local', 'nsi', 'derived')
 _RELABELED_SOURCES = ('nsi', 'derived')
 
@@ -492,8 +489,8 @@ _WITHOUT_HEIGHT_CLASS = frozenset(
     if classes is None
 )
 
-# The general building type letter of each Hazus structure type, by the
-# pairing the structure type inferer restricts its draw with.
+# The general building type letter of each Hazus structure type, by the pairing the
+# structure type inferer restricts its draw with.
 _LETTER_OF_TYPE = {
     structure_type: letter
     for letter, structure_types in get_hazus_general_type_membership().items()
@@ -507,12 +504,11 @@ class CompilerInputs(NamedTuple):
 
     Attributes:
         footprints (AssetInventory):
-            The building footprints, polygons in EPSG:4326 keyed by string
-            asset ids, with one possible world. Each holds
-            ``footprint_provider``, for an Overture footprint ``sources``,
-            and ``type`` where the file is written with ``integer_ids``. The
-            ids are taken as given, unless the compiler merges stacked
-            footprints, which re-keys them.
+            The building footprints, polygons in EPSG:4326 keyed by string asset ids,
+            with one possible world. Each holds ``footprint_provider``, for an
+            Overture footprint ``sources``, and ``type`` where the file is written
+            with ``integer_ids``. The ids are taken as given, unless the compiler
+            merges stacked footprints, which re-keys them.
         nsi_points (AssetInventory):
             The NSI points keyed by ``fd_id``, as
             :class:`~brails.scrapers.NSIFileReader` reads them.
@@ -541,20 +537,19 @@ class CompilerInputs(NamedTuple):
             compiler read the HIFLD points within the budget's ``mh_park_radius_m``
             of the footprints' bounding box, which needs network access.
         footprint_release (str | None):
-            The Overture release the footprints come from, written to every
-            Overture footprint as ``overture_<release>``. ``None`` writes
-            no release.
+            The Overture release the footprints come from, written to every Overture
+            footprint as ``overture_<release>``. ``None`` writes no release.
         local (AssetInventory | None):
-            Values known locally, keyed by asset ids of ``footprints``,
-            with one possible world. They take precedence over every other
-            source and are never changed. They may hold no feature of
-            :data:`RESERVED_LOCAL_FEATURES`. Not accepted when the compiler
-            merges stacked footprints.
+            Values known locally, keyed by asset ids of ``footprints``, with one
+            possible world. They take precedence over every other source and are
+            never changed. They may hold no feature of
+            :data:`RESERVED_LOCAL_FEATURES`. Not accepted when the compiler merges
+            stacked footprints.
         study_area (str):
             A label of the study area for the report, such as a FIPS code.
         height_unit (str):
-            The length unit of the footprints' heights, as the footprint
-            scraper wrote them. Defaults to the length unit of
+            The length unit of the footprints' heights, as the footprint scraper
+            wrote them. Defaults to the length unit of
             :data:`brails.constants.DEFAULT_UNITS`.
         block_groups (geopandas.GeoDataFrame | None):
             One polygon per census block group, with a ``GEOID`` column, as a
@@ -564,20 +559,19 @@ class CompilerInputs(NamedTuple):
             access. Every footprint must lie in a block group either way.
         boundary (shapely.geometry.Polygon | shapely.geometry.MultiPolygon | None):
             The place to compile, in EPSG:4326, holes kept. Give the footprints of
-            the place and of an area around it. The result's inventory and the
-            files :meth:`CompilationResult.write` saves hold the buildings inside
-            the place. ``None``, the default, keeps every footprint.
+            the place and of an area around it. The result's inventory and the files
+            :meth:`CompilationResult.write` saves hold the buildings inside the
+            place. ``None``, the default, keeps every footprint.
         buffer_m (float | None):
-            How far in meters the area around ``boundary`` reaches past it, which
-            the report records and compares with the donor cap. Read only with
+            How far in meters the area around ``boundary`` reaches past it, which the
+            report records and compares with the donor cap. Read only with
             ``boundary``.
         boundary_record (Mapping[str, object] | None):
             Where ``boundary`` comes from, such as the provider and the GEOID of a
             census place, which the report records. Read only with ``boundary``.
         state (str | None):
-            The full name of the study area's state, which a compiler built
-            without a state applies. ``None``, the default, leaves the state to the
-            compiler.
+            The full name of the study area's state, which a compiler built without a
+            state applies. ``None``, the default, leaves the state to the compiler.
         merge_stacked (bool):
             Whether a compiler built without ``merge_stacked`` merges the stacked
             footprints. Defaults to ``False``.
@@ -644,24 +638,24 @@ class CompilerInputs(NamedTuple):
                 groups. Defaults to the observed-donor imputer's default ``cap_m``.
             overture_options (Mapping[str, object], optional):
                 Options of :class:`~brails.scrapers.OvertureMapsFootprintScraper`,
-                such as ``'overtureRelease'`` or ``'local_path'``. The footprints
-                are keyed by geohash at the scraper's area floor, so
-                ``'id_scheme'`` and ``'min_area'`` are refused.
+                such as ``'overtureRelease'`` or ``'local_path'``. The footprints are
+                keyed by geohash at the scraper's area floor, so ``'id_scheme'`` and
+                ``'min_area'`` are refused.
             block_group_vintage (int, optional):
                 The year of the TIGER/Line release of the block groups and of a
                 census boundary looked up by name. Defaults to
                 :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
             max_block_groups (int | None, optional):
-                The most block groups the area read may intersect, counted before
-                the footprints are read. ``None`` sets no limit. Defaults to
+                The most block groups the area read may intersect, counted before the
+                footprints are read. ``None`` sets no limit. Defaults to
                 :data:`DEFAULT_MAX_BLOCK_GROUPS`.
             compiler (HazusEQInventoryCompiler, optional):
                 The compiler that will compile the inputs, whose
                 :meth:`~HazusEQInventoryCompiler.check_state` is called for the
                 place's state before the footprints are read, as
                 :meth:`HazusEQInventoryCompiler.compile_place` passes it. The inputs
-                are checked against that compiler only; another compiler checks
-                them in ``compile``. ``None``, the default, leaves the check to
+                are checked against that compiler only; another compiler checks them
+                in ``compile``. ``None``, the default, leaves the check to
                 ``compile``.
 
         Returns:
@@ -673,19 +667,19 @@ class CompilerInputs(NamedTuple):
 
         Raises:
             TypeError:
-                If ``place`` is none of the accepted types, or ``buffer_m`` is not
-                a real number.
+                If ``place`` is none of the accepted types, or ``buffer_m`` is not a
+                real number.
             ValueError:
-                If ``buffer_m`` is less than 0 or not finite, or
-                ``overture_options`` sets ``'id_scheme'`` or ``'min_area'``; if
+                If ``buffer_m`` is less than 0 or not finite, or ``overture_options``
+                sets ``'id_scheme'`` or ``'min_area'``; if
                 :func:`~brails.utils.region_filter.resolve_region` or the census
                 lookup refuses the place; if the boundary encloses no area, even as
                 repaired; if no state, or a second state, holds
-                :data:`STATE_AREA_SHARE` of a boundary that is not a census one;
-                if the compiler cannot take the place's state, or ``compiler`` was
-                built for another state or has no seismic zone for this one; if the
-                area read intersects more than ``max_block_groups`` block groups;
-                or if no footprint lies inside the place.
+                :data:`STATE_AREA_SHARE` of a boundary that is not a census one; if
+                the compiler cannot take the place's state, or ``compiler`` was built
+                for another state or has no seismic zone for this one; if the area
+                read intersects more than ``max_block_groups`` block groups; or if no
+                footprint lies inside the place.
             LookupError, RuntimeError:
                 If no Census API key is found or the Census Data API refuses it.
             requests.exceptions.RequestException:
@@ -828,9 +822,9 @@ class CompilationResult(NamedTuple):
             without assets, which holds one world. :meth:`write` still writes the
             report rows of every world the run computed.
         report (CompilationReport):
-            The actions, the exclusions, the timings and the summary of the
-            run. With a boundary, its summary, the rows it saves and its exclusion
-            groups are those of the buildings inside, unless given ``keep_outside``.
+            The actions, the exclusions, the timings and the summary of the run. With
+            a boundary, its summary, the rows it saves and its exclusion groups are
+            those of the buildings inside, unless given ``keep_outside``.
         freeze (StageFreeze):
             Every frozen stage, in freeze order.
         manifest (dict):
@@ -872,72 +866,68 @@ class CompilationResult(NamedTuple):
         """
         Write every world, or one, as GeoJSON, with the report and the manifest.
 
-        The GeoJSON at ``path`` holds the compiled buildings, in every world the
-        run computed or in ``world`` alone, each with the properties of
+        The GeoJSON at ``path`` holds the compiled buildings, in every world the run
+        computed or in ``world`` alone, each with the properties of
         :data:`DEFAULT_PROPERTIES` that apply to it and those of
-        ``extra_properties``. Beside it, under the stem of ``path``, the call
-        saves the report's summary and exclusion rows and the manifest, and with
+        ``extra_properties``. Beside it, under the stem of ``path``, the call saves
+        the report's summary and exclusion rows and the manifest, and with
         ``detailed`` the report's action rows and the logs. Before it writes
-        anything, it removes the files of action rows and logs at the stem that
-        it will not write. The section "The written file" of the README beside
-        this module describes each file and when it is written.
+        anything, it removes the files of action rows and logs at the stem that it
+        will not write. The section "The written file" of the README beside this
+        module describes each file and when it is written.
 
         Args:
             path (str or os.PathLike):
                 The GeoJSON file to write.
             world (int, optional):
-                The number of the world to write alone, from 0 to one less
-                than the compiler's ``n_worlds``. ``None`` writes every world.
+                The number of the world to write alone, from 0 to one less than the
+                compiler's ``n_worlds``. ``None`` writes every world.
             integer_ids (bool, optional):
                 Whether to number the features, as
-                :meth:`AssetInventory.write_to_geojson` does with it, which
-                also writes each building's ``type`` and its asset id as
-                ``unique_id``.
+                :meth:`AssetInventory.write_to_geojson` does with it, which also
+                writes each building's ``type`` and its asset id as ``unique_id``.
             keep_partly_excluded (bool, optional):
-                Whether to write the buildings excluded in some, but not all,
-                of the written worlds, with
-                :data:`~brails.constants.EXCLUDED_KEY` for every building
-                written.
+                Whether to write the buildings excluded in some, but not all, of the
+                written worlds, with :data:`~brails.constants.EXCLUDED_KEY` for every
+                building written.
             extra_properties (str or Sequence[str], optional):
                 Features of the written inventory to write beside the default
-                properties, or :data:`ALL_PROPERTIES` for every feature it
-                holds. They change no value of the default properties.
+                properties, or :data:`ALL_PROPERTIES` for every feature it holds.
+                They change no value of the default properties.
             detailed (bool, optional):
-                Whether to save the report's action rows and the logs too.
-                Defaults to ``False``. A call that refuses the GeoJSON for a
-                missing default property saves them without ``detailed`` too
-                (see ``RuntimeError`` below).
+                Whether to save the report's action rows and the logs too. Defaults
+                to ``False``. A call that refuses the GeoJSON for a missing default
+                property saves them without ``detailed`` too (see ``RuntimeError``
+                below).
             keep_outside (bool, optional):
-                Whether to write the buildings around the boundary too.
-                Defaults to ``False``. Without a boundary it changes nothing.
+                Whether to write the buildings around the boundary too. Defaults to
+                ``False``. Without a boundary it changes nothing.
 
         Raises:
             TypeError:
-                If ``world`` is a bool or not an integer, or
-                ``extra_properties`` is a string other than
-                :data:`ALL_PROPERTIES`; nothing is then written.
+                If ``world`` is a bool or not an integer, or ``extra_properties`` is
+                a string other than :data:`ALL_PROPERTIES`; nothing is then written.
             ValueError:
                 If ``world`` is not one of the worlds the run computed, or
-                ``extra_properties`` names a feature no building of the
-                written inventory holds or names
-                :data:`~brails.constants.EXCLUDED_KEY`; nothing is then
-                written.
+                ``extra_properties`` names a feature no building of the written
+                inventory holds or names :data:`~brails.constants.EXCLUDED_KEY`;
+                nothing is then written.
             RuntimeError:
-                If the log :data:`MISSING_DEFAULTS_LOG` names a default
-                property that a compiled building lacks in a written world.
-                The call then writes the summary, the exclusion rows, the
-                action rows, every log and the manifest, and no GeoJSON.
-                Also if a frozen stage changed after it was frozen, in which
-                case every file the call writes but the manifest is written.
+                If the log :data:`MISSING_DEFAULTS_LOG` names a default property that
+                a compiled building lacks in a written world. The call then writes
+                the summary, the exclusion rows, the action rows, every log and the
+                manifest, and no GeoJSON. Also if a frozen stage changed after it was
+                frozen, in which case every file the call writes but the manifest is
+                written.
             OSError:
-                If a file the call removes cannot be removed, before anything
-                is written. The message names the file, and the files
-                removed before it stay removed.
+                If a file the call removes cannot be removed, before anything is
+                written. The message names the file, and the files removed before it
+                stay removed.
         """
         compiled = self.area_inventory if keep_outside else self.inventory
-        # The report holds the run's worlds and checks world numbers against
-        # them. An inventory without assets holds one world, whatever the run
-        # computed, so the worlds are not read from the inventory.
+        # The report holds the run's worlds and checks world numbers against them. An
+        # inventory without assets holds one world, whatever the run computed, so the
+        # worlds are not read from the inventory.
         worlds = (
             tuple(
                 self.report._selected_worlds(None)  # noqa: SLF001
@@ -979,9 +969,9 @@ class CompilationResult(NamedTuple):
         lacking = missing[missing['world'].isin(worlds)]
         if self.boundary_assets is not None and not keep_outside:
             lacking = lacking[lacking['asset_id'].isin(self.boundary_assets)]
-        # Every call removes the logs of another run, which this result does
-        # not hold, and a lean call also the action rows and every log, all
-        # before it writes anything.
+        # Every call removes the logs of another run, which this result does not
+        # hold, and a lean call also the action rows and every log, all before it
+        # writes anything.
         lean = not detailed and lacking.empty
         for name in (
             ('report', *LOG_NAMES)
@@ -1024,12 +1014,11 @@ class CompilationResult(NamedTuple):
         excluded_in = {
             w: set(rows) for w, rows in groups.groupby('world')['asset_id']
         }
-        # Every world is written from the inventory as it is, unless a building
-        # to be written has an Excluded value that differs from the report's
-        # exclusion rows, as after a caller adds an exclusion to the report.
-        # One world, and every world after such a change, is assembled from
-        # the written worlds' realizations, each building's Excluded value
-        # taken from the report.
+        # Every world is written from the inventory as it is, unless a building to be
+        # written has an Excluded value that differs from the report's exclusion
+        # rows, as after a caller adds an exclusion to the report. One world, and
+        # every world after such a change, is assembled from the written worlds'
+        # realizations, each building's Excluded value taken from the report.
         written = {
             asset_id: asset
             for asset_id, asset in compiled.inventory.items()
@@ -1066,8 +1055,8 @@ class CompilationResult(NamedTuple):
                     key: value
                     for key, value in asset.features.items()
                     if (key in selected or (everything and key != EXCLUDED_KEY))
-                    # In one world, None stands for a feature that only
-                    # another world holds.
+                    # In one world, None stands for a feature that only another world
+                    # holds.
                     and (world is None or value is not None)
                 }
                 for asset_id, asset in written.items()
@@ -1093,8 +1082,8 @@ class _ImputationOutcome(NamedTuple):
 
     Attributes:
         imputer (ObservedDonorImputer):
-            The imputer that ran, configured by the compiler's options. The
-            pair re-draw draws with it, and the year draw of non-residential
+            The imputer that ran, configured by the compiler's options. The pair
+            re-draw draws with it, and the year draw of non-residential
             buildings (s09) and the replacement cost imputation (s13) take its
             settings.
         targets (AssetInventory):
@@ -1112,11 +1101,10 @@ class _WorldSources:
     """
     The frozen parts of each source, and the records that act on them.
 
-    A part is registered under the label of the source it belongs to. A
-    withheld record names, per asset and feature, the source a value is
-    withheld from. The dropped record, named by :attr:`dropped`, holds the
-    footprints removed from every source. :meth:`merge_world` builds one
-    world's merged inventory from them.
+    A part is registered under the label of the source it belongs to. A withheld
+    record names, per asset and feature, the source a value is withheld from. The
+    dropped record, named by :attr:`dropped`, holds the footprints removed from every
+    source. :meth:`merge_world` builds one world's merged inventory from them.
     """
 
     def __init__(self, freeze: StageFreeze) -> None:
@@ -1155,8 +1143,8 @@ class _WorldSources:
             stage (str):
                 The name the record is frozen under.
             inventory (AssetInventory):
-                One asset per asset with a withheld value, one feature per
-                withheld feature, holding the label of its source.
+                One asset per asset with a withheld value, one feature per withheld
+                feature, holding the label of its source.
         """
         self.freeze.freeze(stage, inventory)
         self.withheld.append(stage)
@@ -1171,10 +1159,10 @@ class _WorldSources:
 
         Returns:
             AssetInventory:
-                The world's merged inventory, with one possible world and
-                its source string written. A feature whose value is
-                ``None`` is left out, so the merged inventory of a world
-                holds the same features whatever the number of worlds.
+                The world's merged inventory, with one possible world and its source
+                string written. A feature whose value is ``None`` is left out, so the
+                merged inventory of a world holds the same features whatever the
+                number of worlds.
         """
         sources = {
             label: compose_source_parts(
@@ -1212,9 +1200,8 @@ def _read_occupancy_sources(inventory: AssetInventory) -> dict[str, str | None]:
 
     Returns:
         dict[str, str | None]:
-            The label of the source of each asset's occupancy class, by
-            asset id in the inventory's order, ``None`` where no source
-            holds one.
+            The label of the source of each asset's occupancy class, by asset id in
+            the inventory's order, ``None`` where no source holds one.
 
     Raises:
         ValueError:
@@ -1250,8 +1237,8 @@ def _select_observed_donors(
             The source of each asset's occupancy class in ``inventory``, as
             :func:`_read_occupancy_sources` reads it.
         vector_features (Sequence[str], optional):
-            The features whose values are vectors in the result. ``None``
-            declares those of ``inventory``.
+            The features whose values are vectors in the result. ``None`` declares
+            those of ``inventory``.
 
     Returns:
         AssetInventory:
@@ -1277,25 +1264,23 @@ def _is_plausible_pair(
     """
     Say whether an imputed occupancy class and story count may stand together.
 
-    The compiler passes this function to
-    :meth:`ObservedDonorImputer.impute_stage` as ``validate``, and the imputer
-    calls it with the asset id, the world and the features once it has copied
-    a donor's values. It therefore takes all three arguments and reads only
-    ``features``.
+    The compiler passes this function to :meth:`ObservedDonorImputer.impute_stage` as
+    ``validate``, and the imputer calls it with the asset id, the world and the
+    features once it has copied a donor's values. It therefore takes all three
+    arguments and reads only ``features``.
 
     Args:
         asset_id (object):
             The id of the asset checked, unused.
         world (int):
-            The index of the world in which the donor's values were copied,
-            unused.
+            The index of the world in which the donor's values were copied, unused.
         features (Mapping[str, Any]):
             The asset's features in that world after the copy.
 
     Returns:
         bool:
-            False where both are present and form an implausible pair,
-            otherwise True.
+            False where both are present and form an implausible pair, otherwise
+            True.
     """
     occupancy = features.get(OCCUPANCY_KEY)
     stories = features.get(STORIES_KEY)
@@ -1314,8 +1299,8 @@ def _write_coded_values(
         asset_id (str):
             The asset's id, which an error message names.
         features (dict[str, Any]):
-            The asset's features in the merged inventory, its source
-            string included, changed in place.
+            The asset's features in the merged inventory, its source string included,
+            changed in place.
         values (Mapping[str, Any]):
             The values to write, by feature name.
         label (str):
@@ -1342,8 +1327,8 @@ def _record_boundary(
 
     Args:
         region (RegionBoundary | Polygon | MultiPolygon):
-            The region, as :func:`~brails.utils.region_filter.resolve_region`
-            returns it.
+            The region, as :func:`~brails.utils.region_filter.resolve_region` returns
+            it.
         name (str):
             The region's name, as its boundary gives it.
         identifier (object):
@@ -1386,13 +1371,12 @@ def _find_state(
         name (str):
             The region's name, for the error messages.
         record (Mapping[str, object]):
-            Where the boundary comes from, as
-            :func:`_record_boundary` returns it.
+            Where the boundary comes from, as :func:`_record_boundary` returns it.
         vintage (int):
             The year of the TIGER/Line release of the state file.
         compiler (HazusEQInventoryCompiler | None):
-            The compiler whose state and seismic zone are checked against each
-            state, or ``None`` to check only that the compiler can take it.
+            The compiler whose state and seismic zone are checked against each state,
+            or ``None`` to check only that the compiler can take it.
 
     Returns:
         str:
@@ -1511,8 +1495,8 @@ def _study_area_state(
     """
     Return the state of a study area, as its inputs name it or its block groups lie.
 
-    The first two digits of a block group's GEOID code its state. Inputs that name
-    no state take the compiler's where one of their block groups lies in it.
+    The first two digits of a block group's GEOID code its state. Inputs that name no
+    state take the compiler's where one of their block groups lies in it.
 
     Args:
         inputs (CompilerInputs):
@@ -1575,15 +1559,14 @@ class HazusEQInventoryCompiler:
     """
     Compile a Hazus earthquake inventory of one study area over several worlds.
 
-    The section "Hazus earthquake inventory compiler" of the README beside
-    this module describes the run, its frozen stages, its worlds and the
-    written file.
+    The section "Hazus earthquake inventory compiler" of the README beside this
+    module describes the run, its frozen stages, its worlds and the written file.
 
-    Every constructor argument is stored as an attribute of the same name,
-    read-only by convention; ``seed`` holds the seed used, never ``None``,
-    and the options hold the mappings as resolved. ``state`` and ``merge_stacked``
-    keep ``None`` when left at it. Each compilation resolves them and records the
-    values applied in its summary's settings.
+    Every constructor argument is stored as an attribute of the same name, read-only
+    by convention; ``seed`` holds the seed used, never ``None``, and the options hold
+    the mappings as resolved. ``state`` and ``merge_stacked`` keep ``None`` when left
+    at it. Each compilation resolves them and records the values applied in its
+    summary's settings.
     """
 
     def __init__(  # noqa: C901
@@ -1606,61 +1589,56 @@ class HazusEQInventoryCompiler:
         """
         Store the compiler's settings and refuse any that a component would refuse.
 
-        The constructor builds the structure type inferer, the design level
-        inferer, the NSI join and the observed-donor imputer from the
-        settings so that each can refuse a bad setting. It keeps none of
-        them, since :meth:`compile` builds its own. A bad setting therefore
-        raises here, before any data is read, and not partway through a
-        compilation. The constructor also loads the input schema of
-        :data:`DLML_DATASET`, against which every compilation checks its
+        The constructor builds the structure type inferer, the design level inferer,
+        the NSI join and the observed-donor imputer from the settings so that each
+        can refuse a bad setting. It keeps none of them, since :meth:`compile` builds
+        its own. A bad setting therefore raises here, before any data is read, and
+        not partway through a compilation. The constructor also loads the input
+        schema of :data:`DLML_DATASET`, against which every compilation checks its
         buildings.
 
         Args:
             seed (int, optional):
-                The seed of every component. ``None`` draws one from system
-                entropy.
+                The seed of every component. ``None`` draws one from system entropy.
             n_worlds (int, optional):
-                The number of possible worlds :meth:`compile` computes.
-                Defaults to :data:`DEFAULT_N_WORLDS`.
+                The number of possible worlds :meth:`compile` computes. Defaults to
+                :data:`DEFAULT_N_WORLDS`.
             state (str, optional):
-                The full state name, as in ``'California'``, which every inferer
-                that takes a state receives. Structure types are drawn from the
-                completed West Coast tables, so the state must be one of that
-                region with a RES1 distribution. ``None``, the default, applies the
-                state of the study area, which :meth:`compile` infers.
+                The full state name, as in ``'California'``, which every inferer that
+                takes a state receives. Structure types are drawn from the completed
+                West Coast tables, so the state must be one of that region with a
+                RES1 distribution. ``None``, the default, applies the state of the
+                study area, which :meth:`compile` infers.
             seismic_zone (str):
-                The 1997 UBC seismic zone of the study area, which every inferer
-                that takes one receives: one of ``'4'``, ``'3'``, ``'2B'``,
-                ``'2A'``, ``'1'`` and ``'0'``, and ``'3'`` or ``'4'`` in
-                California.
+                The 1997 UBC seismic zone of the study area, which every inferer that
+                takes one receives: one of ``'4'``, ``'3'``, ``'2B'``, ``'2A'``,
+                ``'1'`` and ``'0'``, and ``'3'`` or ``'4'`` in California.
             design_level_method (str, optional):
-                The design level method of
-                :class:`HazusEQDesignLevelInferer`.
+                The design level method of :class:`HazusEQDesignLevelInferer`.
             join_cap_m (float, optional):
                 The distance cap of the NSI join in meters.
             projected_crs (object, optional):
                 The projected CRS of the join's distances, as
-                :class:`NSIFootprintJoin` takes it. ``None`` estimates a UTM
-                zone from the footprints.
+                :class:`NSIFootprintJoin` takes it. ``None`` estimates a UTM zone
+                from the footprints.
             imputer_options (Mapping[str, object], optional):
-                Keyword arguments of :class:`ObservedDonorImputer`, each
-                overriding :data:`DEFAULT_IMPUTER_OPTIONS`. The compiler
-                passes the donors directly and sets the seed, so
-                ``n_batches`` and ``seed`` are refused.
+                Keyword arguments of :class:`ObservedDonorImputer`, each overriding
+                :data:`DEFAULT_IMPUTER_OPTIONS`. The compiler passes the donors
+                directly and sets the seed, so ``n_batches`` and ``seed`` are
+                refused.
             budget_options (Mapping[str, object], optional):
-                Keyword arguments of :class:`ACSUnitBudget` other than its
-                table, mobile-home park points, imputer and seed, which the
-                compiler passes.
+                Keyword arguments of :class:`ACSUnitBudget` other than its table,
+                mobile-home park points, imputer and seed, which the compiler passes.
             sampler_options (Mapping[str, object], optional):
-                Keyword arguments of :class:`ACSYearBuiltSampler` other than
-                its tables, seed and world, which the compiler passes.
+                Keyword arguments of :class:`ACSYearBuiltSampler` other than its
+                tables, seed and world, which the compiler passes.
             merge_stacked (bool, optional):
-                Whether s01 first merges the stacked footprints of one
-                building with :class:`StackedFootprintMerge`, in the
-                footprints' height unit, which re-keys them by geohash. The
-                footprints must then all be Overture footprints with an
-                ``overture_id``, and no local inventory is accepted. ``None``, the
-                default, applies the ``merge_stacked`` of :class:`CompilerInputs`.
+                Whether s01 first merges the stacked footprints of one building with
+                :class:`StackedFootprintMerge`, in the footprints' height unit, which
+                re-keys them by geohash. The footprints must then all be Overture
+                footprints with an ``overture_id``, and no local inventory is
+                accepted. ``None``, the default, applies the ``merge_stacked`` of
+                :class:`CompilerInputs`.
             acs_vintage (int, optional):
                 The last year of the ACS five-year release from which :meth:`compile`
                 reads each census table that :class:`CompilerInputs` gives as
@@ -1677,17 +1655,15 @@ class HazusEQInventoryCompiler:
             TypeError:
                 If ``seed``, ``n_worlds``, ``acs_vintage`` or ``block_group_vintage``
                 is not an integer, ``merge_stacked`` is neither a boolean nor
-                ``None``, an options argument is not a mapping, or an options
-                mapping names an argument its class does not take or that the
-                compiler sets.
+                ``None``, an options argument is not a mapping, or an options mapping
+                names an argument its class does not take or that the compiler sets.
             ValueError:
-                If ``n_worlds`` is below 1; if
-                :class:`HazusEQStructureTypeInferer` refuses the state with
-                its completed tables (a state outside the West Coast region,
-                or one without a RES1 distribution); if the zone or the method
-                is refused by :class:`HazusEQDesignLevelInferer`; if
-                ``imputer_options`` holds ``n_batches``; or if the join or
-                the imputer refuses its settings.
+                If ``n_worlds`` is below 1; if :class:`HazusEQStructureTypeInferer`
+                refuses the state with its completed tables (a state outside the West
+                Coast region, or one without a RES1 distribution); if the zone or the
+                method is refused by :class:`HazusEQDesignLevelInferer`; if
+                ``imputer_options`` holds ``n_batches``; or if the join or the
+                imputer refuses its settings.
             NotImplementedError:
                 If the design level method is not implemented.
         """
@@ -1718,8 +1694,8 @@ class HazusEQInventoryCompiler:
         self.acs_vintage = acs_vintage
         self.block_group_vintage = block_group_vintage
 
-        # The zone is checked here against every zone of the tables, and against
-        # the state's table here or, without a state, by check_state.
+        # The zone is checked here against every zone of the tables, and against the
+        # state's table here or, without a state, by check_state.
         if str(seismic_zone).upper() not in GENERIC_DESIGN_LEVELS:
             msg = (
                 'seismic_zone must be a 1997 UBC seismic zone, one of '
@@ -1797,10 +1773,10 @@ class HazusEQInventoryCompiler:
         The call is ``compile(CompilerInputs.from_place(place,
         place_source=place_source, compiler=self, **from_place_options))``, so a
         state or zone the compiler would refuse stops it before the footprints are
-        read. ``buffer_m`` defaults to the imputer's ``cap_m``. The Census API key
-        is checked by both calls. No inputs are kept, so a compilation that fails
-        loses the downloads; call :meth:`CompilerInputs.from_place` and
-        :meth:`compile` apart to keep them. It raises what those two raise.
+        read. ``buffer_m`` defaults to the imputer's ``cap_m``. The Census API key is
+        checked by both calls. No inputs are kept, so a compilation that fails loses
+        the downloads; call :meth:`CompilerInputs.from_place` and :meth:`compile`
+        apart to keep them. It raises what those two raise.
 
         Args:
             place (str | RegionBoundary | Polygon | MultiPolygon):
@@ -1839,8 +1815,8 @@ class HazusEQInventoryCompiler:
 
         Returns:
             CompilationResult:
-                The compiled inventory, with the report, frozen stages and
-                logs of the run.
+                The compiled inventory, with the report, frozen stages and logs of
+                the run.
 
         Raises:
             TypeError:
@@ -1848,25 +1824,23 @@ class HazusEQInventoryCompiler:
                 Shapely Polygon or MultiPolygon, or the notices are not a tuple of
                 strings.
             ValueError:
-                If the local inventory holds an asset that the footprints
-                lack, a feature of :data:`RESERVED_LOCAL_FEATURES` or more
-                than one possible world, or is given with ``merge_stacked``;
-                if no footprint lies inside the boundary, found right after
-                ``s01_footprints`` and before the census tables are read;
-                if the inputs name a state other than by its full name, or name
-                none and their block groups lie in two states or more, none of them
-                the compiler's, or name a state in which none lies, or if the state
-                of the study area is other than the compiler's or one the inferers
-                refuse with the compiler's seismic zone, checked before anything is
-                read or, for block groups given as ``None``, right after they are
-                read;
-                or as the components raise, among them a footprint outside
-                every block group and, with ``merge_stacked``, a footprint
-                that is not Overture's; or, for a census table given as ``None``, if
-                a store holds a value that cannot be a Census API key or a table the
-                year sampler reads holds an estimate the Census Bureau does not
-                publish where the run reads it; or, where both the census tables
-                and the block groups are read, if ``acs_vintage`` and
+                If the local inventory holds an asset that the footprints lack, a
+                feature of :data:`RESERVED_LOCAL_FEATURES` or more than one possible
+                world, or is given with ``merge_stacked``; if no footprint lies
+                inside the boundary, found right after ``s01_footprints`` and before
+                the census tables are read; if the inputs name a state other than by
+                its full name, or name none and their block groups lie in two states
+                or more, none of them the compiler's, or name a state in which none
+                lies, or if the state of the study area is other than the compiler's
+                or one the inferers refuse with the compiler's seismic zone, checked
+                before anything is read or, for block groups given as ``None``, right
+                after they are read; or as the components raise, among them a
+                footprint outside every block group and, with ``merge_stacked``, a
+                footprint that is not Overture's; or, for a census table given as
+                ``None``, if a store holds a value that cannot be a Census API key or
+                a table the year sampler reads holds an estimate the Census Bureau
+                does not publish where the run reads it; or, where both the census
+                tables and the block groups are read, if ``acs_vintage`` and
                 ``block_group_vintage`` are of different decades.
             LookupError:
                 If a census table is given as ``None`` and no Census API key is
@@ -1942,9 +1916,9 @@ class HazusEQInventoryCompiler:
         )
         report.set_timing('s03_story_counts', time.perf_counter() - started)
 
-        # The unit budget and the imputation read world 0 as s03 leaves it,
-        # with the source of each footprint's occupancy class, and the budget
-        # is given the imputer that s05 then runs on the budget's targets.
+        # The unit budget and the imputation read world 0 as s03 leaves it, with the
+        # source of each footprint's occupancy class, and the budget is given the
+        # imputer that s05 then runs on the budget's targets.
         started = time.perf_counter()
         merged = sources.merge_world(0)
         occupancy_source = _read_occupancy_sources(merged)
@@ -2013,9 +1987,9 @@ class HazusEQInventoryCompiler:
 
         self._withhold_replaced_values(sources, centroids)
 
-        # Steps s11 to s15 run world by world on the world's merged inventory,
-        # which s15 completes, and each world's results are added to those of
-        # the earlier worlds.
+        # Steps s11 to s15 run world by world on the world's merged inventory, which
+        # s15 completes, and each world's results are added to those of the earlier
+        # worlds.
         excluded_in = {
             world: set(ids)
             for world, ids in report.exclusions.groupby('world')['asset_id']
@@ -2252,10 +2226,10 @@ class HazusEQInventoryCompiler:
         """
         Return the state and the seismic zone a compilation of a study area applies.
 
-        The state is the one the study area is in, which must be the compiler's
-        where it was given one, and the zone is the compiler's. :meth:`compile`
-        calls it for the state of its inputs, and :meth:`CompilerInputs.from_place`
-        for the state of the place when given the compiler.
+        The state is the one the study area is in, which must be the compiler's where
+        it was given one, and the zone is the compiler's. :meth:`compile` calls it
+        for the state of its inputs, and :meth:`CompilerInputs.from_place` for the
+        state of the place when given the compiler.
 
         Args:
             named (str):
@@ -2298,36 +2272,34 @@ class HazusEQInventoryCompiler:
         """
         Run s01: freeze the footprints with their block groups and plan areas.
 
-        With ``merge_stacked``, the stacked footprints are merged first,
-        and the rest of the step reads the merged set.
+        With ``merge_stacked``, the stacked footprints are merged first, and the rest
+        of the step reads the merged set.
 
         Args:
             inputs (CompilerInputs):
                 The study area's data.
             sources (_WorldSources):
-                The sources, to which the footprints and a local inventory
-                are added as :data:`STAGE_S01_FOOTPRINTS` and
-                :data:`STAGE_S01_LOCAL`.
+                The sources, to which the footprints and a local inventory are added
+                as :data:`STAGE_S01_FOOTPRINTS` and :data:`STAGE_S01_LOCAL`.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``footprint_ties`` and, with
-                ``merge_stacked``, the merge's parts table as
-                ``stacked_parts`` and its id log as ``stacked_asset_ids``.
+                ``merge_stacked``, the merge's parts table as ``stacked_parts`` and
+                its id log as ``stacked_asset_ids``.
             report (CompilationReport):
                 The report, whose notices count the merges.
             merge_stacked (bool):
-                Whether to merge the stacked footprints, as the compilation
-                resolved :attr:`merge_stacked`.
+                Whether to merge the stacked footprints, as the compilation resolved
+                :attr:`merge_stacked`.
 
         Returns:
             dict[str, list[list[float]]]:
-                Each footprint's centroid as coordinates, the exterior
-                rings' centroid of
-                :meth:`AssetInventory.centroid_and_plan_area`.
+                Each footprint's centroid as coordinates, the exterior rings'
+                centroid of :meth:`AssetInventory.centroid_and_plan_area`.
 
         Raises:
             ValueError:
-                If a footprint lies outside every block group or encloses no
-                area, or as :meth:`StackedFootprintMerge.merge` raises.
+                If a footprint lies outside every block group or encloses no area, or
+                as :meth:`StackedFootprintMerge.merge` raises.
         """
         footprints = inputs.footprints
         if merge_stacked:
@@ -2335,14 +2307,14 @@ class HazusEQInventoryCompiler:
             merged = merge.merge(footprints)
             footprints = merged.inventory
             logs['stacked_parts'] = merged.parts
-            # The keys of an assign_asset_ids log entry, so that the log
-            # keeps its columns when nothing collides.
+            # The keys of an assign_asset_ids log entry, so that the log keeps its
+            # columns when nothing collides.
             logs['stacked_asset_ids'] = pd.DataFrame(
                 merged.id_log,
                 columns=['position', 'geohash', 'area_m2', 'rank', 'id', 'reason'],
             )
-            # The drawing kept of a set of duplicates is a head too, so the
-            # rule tells it from the head of a stack.
+            # The drawing kept of a set of duplicates is a head too, so the rule
+            # tells it from the head of a stack.
             rule = merged.parts['rule']
             head = merged.parts['is_head']
             report.note(
@@ -2385,8 +2357,8 @@ class HazusEQInventoryCompiler:
             local = deepcopy(inputs.local)
             for asset_id, asset in local.inventory.items():
                 asset.coordinates = centroids[asset_id]
-                # The local GrossArea also under a name of its own, which the
-                # output keeps where the GrossArea of s12 takes its place.
+                # The local GrossArea also under a name of its own, which the output
+                # keeps where the GrossArea of s12 takes its place.
                 if not is_missing_value(asset.features.get(GROSS_AREA_KEY)):
                     asset.features[LOCAL_GROSS_AREA_KEY] = asset.features[
                         GROSS_AREA_KEY
@@ -2689,16 +2661,15 @@ class HazusEQInventoryCompiler:
             inputs (CompilerInputs):
                 The study area's data.
             sources (_WorldSources):
-                The sources, to which the join's observed and derived values
-                are added as :data:`STAGE_S02_NSI_JOIN` and
-                :data:`STAGE_S02_DERIVED`, with centroids as their
-                coordinates.
+                The sources, to which the join's observed and derived values are
+                added as :data:`STAGE_S02_NSI_JOIN` and :data:`STAGE_S02_DERIVED`,
+                with centroids as their coordinates.
             logs (dict[str, pandas.DataFrame]):
-                The logs, which receive the join's links, unlinked points
-                and branch counts.
+                The logs, which receive the join's links, unlinked points and branch
+                counts.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
         """
         result = NSIFootprintJoin(
             cap_m=self.join_cap_m, seed=self.seed, projected_crs=self.projected_crs
@@ -2730,37 +2701,34 @@ class HazusEQInventoryCompiler:
         """
         Run s03: story counts from the footprint heights.
 
-        The section "The run" of the README beside this module states the
-        procedure.
+        The section "The run" of the README beside this module states the procedure.
 
         Args:
             inputs (CompilerInputs):
                 The study area's data, whose height unit the inferer reads.
             sources (_WorldSources):
                 The sources, to which the counts are added as the part
-                :data:`STAGE_S03_STORY_COUNTS` and the NSI counts they
-                replace as the record :data:`STAGE_S03_WITHHELD`.
+                :data:`STAGE_S03_STORY_COUNTS` and the NSI counts they replace as the
+                record :data:`STAGE_S03_WITHHELD`.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``stories``.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
             report (CompilationReport):
-                The report, which receives the withheld NSI counts of every
-                world.
+                The report, which receives the withheld NSI counts of every world.
             n_computed (int):
                 The number of worlds computed.
 
         Returns:
             StoriesFromHeightInferer:
-                The inferer of story counts from footprint heights, which the
-                pair re-draw reads too.
+                The inferer of story counts from footprint heights, which the pair
+                re-draw reads too.
 
         Raises:
             ValueError:
                 If an asset's source string is not one
-                :func:`~brails.types.asset_inventory.read_source_string`
-                reads.
+                :func:`~brails.types.asset_inventory.read_source_string` reads.
         """
         merged = sources.merge_world(0)
         inferer = StoriesFromHeightInferer(length_unit=inputs.height_unit)
@@ -2836,38 +2804,36 @@ class HazusEQInventoryCompiler:
         """
         Run s04: the unit budget, which drops footprints left without units.
 
-        The section "The run" of the README beside this module states the
-        procedure.
+        The section "The run" of the README beside this module states the procedure.
 
         Args:
             inputs (CompilerInputs):
-                The study area's data, whose B25024 table and mobile-home
-                park points the budget reads.
+                The study area's data, whose B25024 table and mobile-home park points
+                the budget reads.
             sources (_WorldSources):
-                The sources, to which the budget's values are added as the
-                part :data:`STAGE_S04_UNIT_BUDGET`, the dropped footprints as
-                the record :data:`STAGE_S04_DROPPED`, and the occupancy
-                classes it relabels as the record :data:`STAGE_S04_WITHHELD`.
+                The sources, to which the budget's values are added as the part
+                :data:`STAGE_S04_UNIT_BUDGET`, the dropped footprints as the record
+                :data:`STAGE_S04_DROPPED`, and the occupancy classes it relabels as
+                the record :data:`STAGE_S04_WITHHELD`.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``budget``, ``budget_diagnostic``,
                 ``budget_gaps`` and ``budget_nonresidential``.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
             report (CompilationReport):
-                The report, which receives the relabeled classes and the
-                dropped footprints of every world.
+                The report, which receives the relabeled classes and the dropped
+                footprints of every world.
             n_computed (int):
                 The number of worlds computed.
             merged (AssetInventory):
-                World 0 merged after s03, which s05 reads as well. Read and
-                not changed.
+                World 0 merged after s03, which s05 reads as well. Read and not
+                changed.
             occupancy_source (Mapping[str, str | None]):
-                The source of each footprint's occupancy class in ``merged``,
-                as :func:`_read_occupancy_sources` reads it.
+                The source of each footprint's occupancy class in ``merged``, as
+                :func:`_read_occupancy_sources` reads it.
             imputer (ObservedDonorImputer):
-                The imputer whose status round the budget takes and which
-                s05 runs.
+                The imputer whose status round the budget takes and which s05 runs.
 
         Returns:
             UnitBudgetResult:
@@ -3018,28 +2984,26 @@ class HazusEQInventoryCompiler:
         """
         Run s05: fill what is still missing from observed donors.
 
-        The targets carry the values of s04's allocation, and the imputer
-        takes each target's residential status from it in place of its own
-        status round. The section "The run" of the README beside this module
-        states the procedure.
+        The targets carry the values of s04's allocation, and the imputer takes each
+        target's residential status from it in place of its own status round. The
+        section "The run" of the README beside this module states the procedure.
 
         Args:
             sources (_WorldSources):
-                The sources, to which the imputed values are added as the
-                part :data:`STAGE_S05_IMPUTATION`.
+                The sources, to which the imputed values are added as the part
+                :data:`STAGE_S05_IMPUTATION`.
             logs (dict[str, pandas.DataFrame]):
                 The logs, which receive ``imputer``.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
             n_computed (int):
                 The number of worlds computed.
             merged (AssetInventory):
-                World 0 merged after s03, as s04 read it. Read and not
-                changed.
+                World 0 merged after s03, as s04 read it. Read and not changed.
             occupancy_source (Mapping[str, str | None]):
-                The source of each footprint's occupancy class in ``merged``,
-                as s04 read it.
+                The source of each footprint's occupancy class in ``merged``, as s04
+                read it.
             imputer (ObservedDonorImputer):
                 The imputer s04's budget was given.
             allocation (UnitBudgetResult):
@@ -3049,14 +3013,13 @@ class HazusEQInventoryCompiler:
             _ImputationOutcome:
                 The imputer, its targets and its log.
         """
-        # Every footprint the budget kept that is not an observed donor is a
-        # target.
+        # Every footprint the budget kept that is not an observed donor is a target.
         donors = _select_observed_donors(
             merged, occupancy_source, vector_features=DEFAULT_VECTOR_FEATURES
         )
         dropped_ids = set(allocation.dropped)
-        # Each target holds a copy of its merged features, updated with the
-        # features the unit budget allocated.
+        # Each target holds a copy of its merged features, updated with the features
+        # the unit budget allocated.
         target_features = {}
         for asset_id, asset in merged.inventory.items():
             if asset_id in dropped_ids or asset_id in donors.inventory:
@@ -3086,8 +3049,8 @@ class HazusEQInventoryCompiler:
         ]
         logs['imputer'] = imputer_log
         # A footprint with an observed occupancy class outside the residential
-        # classes is a target for its story count only, since the join gives
-        # units only to the NSI points of housing.
+        # classes is a target for its story count only, since the join gives units
+        # only to the NSI points of housing.
         for asset_id, asset in imputation.imputed.inventory.items():
             class_of = merged.inventory[asset_id].features.get(OCCUPANCY_KEY)
             if (
@@ -3125,22 +3088,19 @@ class HazusEQInventoryCompiler:
         """
         Run s06 in every world: the year built of residential buildings.
 
-        The section "The run" of the README beside this module states the
-        procedure.
+        The section "The run" of the README beside this module states the procedure.
 
         Args:
             inputs (CompilerInputs):
-                The study area's data, whose census tables the year sampler
-                reads.
+                The study area's data, whose census tables the year sampler reads.
             sources (_WorldSources):
                 The sources, to which the years are added as the part
                 :data:`STAGE_S06_RESIDENTIAL_YEAR`.
             logs (dict[str, pandas.DataFrame]):
-                The logs, which receive ``year_fit``, with a ``world``
-                column.
+                The logs, which receive ``year_fit``, with a ``world`` column.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
             report (CompilationReport):
                 The report, which receives the exclusions of every world.
             n_computed (int):
@@ -3217,23 +3177,22 @@ class HazusEQInventoryCompiler:
         """
         Run s07 in every world: re-draw implausible pairs of class and stories.
 
-        Each world's re-draw reads that world merged after s06, and its
-        donors are the observed donors of the world's realization of the
-        view :data:`STAGE_S05_VIEW`. The section "The run" of the README beside
-        this module states the procedure.
+        Each world's re-draw reads that world merged after s06, and its donors are
+        the observed donors of the world's realization of the view
+        :data:`STAGE_S05_VIEW`. The section "The run" of the README beside this
+        module states the procedure.
 
         Args:
             sources (_WorldSources):
-                The sources, to which the re-drawn values are added as the
-                part :data:`STAGE_S07_PAIR_REDRAW`, the height counts that
-                replace NSI's as the part :data:`STAGE_S07_DERIVED`, and the
-                values they replace as the record :data:`STAGE_S07_WITHHELD`.
+                The sources, to which the re-drawn values are added as the part
+                :data:`STAGE_S07_PAIR_REDRAW`, the height counts that replace NSI's
+                as the part :data:`STAGE_S07_DERIVED`, and the values they replace as
+                the record :data:`STAGE_S07_WITHHELD`.
             logs (dict[str, pandas.DataFrame]):
-                The logs, which receive ``pair_redraw``, with a ``world``
-                column.
+                The logs, which receive ``pair_redraw``, with a ``world`` column.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
             report (CompilationReport):
                 The report, which receives the actions of every world.
             n_computed (int):
@@ -3246,8 +3205,7 @@ class HazusEQInventoryCompiler:
         Raises:
             ValueError:
                 If an asset's source string is not one
-                :func:`~brails.types.asset_inventory.read_source_string`
-                reads.
+                :func:`~brails.types.asset_inventory.read_source_string` reads.
         """
         view = sources.freeze.read(STAGE_S05_VIEW)
         kept = list(view.inventory)
@@ -3360,24 +3318,22 @@ class HazusEQInventoryCompiler:
         """
         Give each building its design level, structure type and height class.
 
-        This runs in every world and also applies the W1 carve-out. Each
-        world's draws read that world merged after s07. A building excluded
-        from the world by an earlier step, which can only be s06, takes none.
-        The section "The run" of the README beside this module states the
-        procedure.
+        This runs in every world and also applies the W1 carve-out. Each world's
+        draws read that world merged after s07. A building excluded from the world by
+        an earlier step, which can only be s06, takes none. The section "The run" of
+        the README beside this module states the procedure.
 
         Args:
             sources (_WorldSources):
                 The sources, to which the parts are added.
             logs (dict[str, pandas.DataFrame]):
-                The logs, which receive ``resolution``, with a ``world``
-                column.
+                The logs, which receive ``resolution``, with a ``world`` column.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
             report (CompilationReport):
-                The report, whose exclusions are read and which receives the
-                actions and exclusions of every world.
+                The report, whose exclusions are read and which receives the actions
+                and exclusions of every world.
             n_computed (int):
                 The number of worlds computed.
             state (str):
@@ -3388,9 +3344,9 @@ class HazusEQInventoryCompiler:
         Raises:
             ValueError:
                 If an asset's source string is not one
-                :func:`~brails.types.asset_inventory.read_source_string`
-                reads, or, as :meth:`ResolutionLoop.resolve` raises, a
-                building type has no source.
+                :func:`~brails.types.asset_inventory.read_source_string` reads, or,
+                as :meth:`ResolutionLoop.resolve` raises, a building type has no
+                source.
         """
         kept = list(sources.freeze.read(STAGE_S05_VIEW).inventory)
         exclusions = report.exclusions
@@ -3456,31 +3412,29 @@ class HazusEQInventoryCompiler:
         """
         Give assets their design levels, structure types and height classes.
 
-        Design levels and structure types go to the assets with a
-        construction year, and height classes to every asset with a
-        structure type and no height class.
+        Design levels and structure types go to the assets with a construction year,
+        and height classes to every asset with a structure type and no height class.
 
-        The section "The run" of the README beside this module states the
-        procedure.
+        The section "The run" of the README beside this module states the procedure.
 
         Args:
             world (int):
-                The index of the world being compiled. The structure type
-                inferer draws in it, and the report records it.
+                The index of the world being compiled. The structure type inferer
+                draws in it, and the report records it.
             sources (_WorldSources):
-                The sources, whose frozen parts say which source holds a
-                building type.
+                The sources, whose frozen parts say which source holds a building
+                type.
             report (CompilationReport):
                 The report, which receives the actions and exclusions.
             merged_world (AssetInventory):
-                The world's merged inventory, into which the design levels
-                are written.
+                The world's merged inventory, into which the design levels are
+                written.
             candidates (Sequence[str]):
-                The ids of the assets to give values; those in
-                ``excluded`` are skipped.
+                The ids of the assets to give values; those in ``excluded`` are
+                skipped.
             excluded (set[str]):
-                The assets excluded in the world, to which the refused ones
-                are added.
+                The assets excluded in the world, to which the refused ones are
+                added.
             derived (dict[str, dict[str, Any]]):
                 The world's new derived values, written per asset.
             drawn (dict[str, dict[str, Any]]):
@@ -3490,10 +3444,9 @@ class HazusEQInventoryCompiler:
             seismic_zone (str):
                 The 1997 UBC seismic zone the compilation applies.
             step (str, optional):
-                The label of the step the report files the rows under, the
-                prefix of each report stage: ``'s08'`` for the buildings with
-                a year before s09, ``'s10'`` for those s09 gives one.
-                Defaults to ``'s08'``.
+                The label of the step the report files the rows under, the prefix of
+                each report stage: ``'s08'`` for the buildings with a year before
+                s09, ``'s10'`` for those s09 gives one. Defaults to ``'s08'``.
 
         Returns:
             dict[str, int]:
@@ -3503,9 +3456,9 @@ class HazusEQInventoryCompiler:
         Raises:
             ValueError:
                 If an asset's source string is not one
-                :func:`~brails.types.asset_inventory.read_source_string`
-                reads, or, as :meth:`ResolutionLoop.resolve` raises, a
-                building type has no source.
+                :func:`~brails.types.asset_inventory.read_source_string` reads, or,
+                as :meth:`ResolutionLoop.resolve` raises, a building type has no
+                source.
         """
         design = HazusEQDesignLevelInferer(
             self.design_level_method, state, seismic_zone
@@ -3701,13 +3654,12 @@ class HazusEQInventoryCompiler:
         """
         Run s09 and s10: years built, then structure, for buildings without a year.
 
-        s09 draws a year built for each building without one, and s10 gives
-        those buildings their design levels, structure types and height
-        classes. Each step is timed in each world, and the freeze of its
-        parts once, under its own label.
+        s09 draws a year built for each building without one, and s10 gives those
+        buildings their design levels, structure types and height classes. Each step
+        is timed in each world, and the freeze of its parts once, under its own
+        label.
 
-        The section "The run" of the README beside this module states the
-        procedure.
+        The section "The run" of the README beside this module states the procedure.
 
         Args:
             sources (_WorldSources):
@@ -3719,16 +3671,15 @@ class HazusEQInventoryCompiler:
                 The logs, which receive ``neighbor_year`` and
                 ``nonresidential_resolution``, each with a ``world`` column.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
             report (CompilationReport):
-                The report, whose exclusions are read and which receives the
-                actions and exclusions of every world.
+                The report, whose exclusions are read and which receives the actions
+                and exclusions of every world.
             n_computed (int):
                 The number of worlds computed.
             imputer (ObservedDonorImputer):
-                The imputer of s05, whose ``k`` and ``cap_m`` the sampler
-                takes.
+                The imputer of s05, whose ``k`` and ``cap_m`` the sampler takes.
             state (str):
                 The full state name the compilation applies.
             seismic_zone (str):
@@ -3737,9 +3688,9 @@ class HazusEQInventoryCompiler:
         Raises:
             ValueError:
                 If an asset's source string is not one
-                :func:`~brails.types.asset_inventory.read_source_string`
-                reads, or, as :meth:`ResolutionLoop.resolve` raises, a
-                building type has no source.
+                :func:`~brails.types.asset_inventory.read_source_string` reads, or,
+                as :meth:`ResolutionLoop.resolve` raises, a building type has no
+                source.
         """
         view = sources.freeze.read(STAGE_S08_VIEW)
         kept = list(view.inventory)
@@ -3875,9 +3826,8 @@ class HazusEQInventoryCompiler:
         """
         Freeze each world's merged inventory of every source as one view.
 
-        The report receives the time of each world's merge under
-        ``f'{stage}_merge'`` and that of the freeze under
-        ``f'{stage}_freeze'``.
+        The report receives the time of each world's merge under ``f'{stage}_merge'``
+        and that of the freeze under ``f'{stage}_freeze'``.
 
         Args:
             stage (str):
@@ -3911,12 +3861,11 @@ class HazusEQInventoryCompiler:
         """
         Run s12 in one world: the gross area of every building.
 
-        The area is computed from the footprint in the world's realization of
-        the view :data:`STAGE_S08_VIEW`, whose story counts are final, for
-        every building of the view, excluded ones included, so that a
-        building the schema check excludes keeps its row in the log
-        ``gross_area``. The section "The run" of the README beside this
-        module states the procedure.
+        The area is computed from the footprint in the world's realization of the
+        view :data:`STAGE_S08_VIEW`, whose story counts are final, for every building
+        of the view, excluded ones included, so that a building the schema check
+        excludes keeps its row in the log ``gross_area``. The section "The run" of
+        the README beside this module states the procedure.
 
         Args:
             world (int):
@@ -3924,26 +3873,25 @@ class HazusEQInventoryCompiler:
             sources (_WorldSources):
                 The sources, whose freeze holds the view.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
             rows (list[tuple[str, int, str | None]]):
-                The rows of the log ``gross_area``, to which the step adds the
-                (asset id, world, ``area_source``) that
-                ``footprint_gross_area`` gives each building in the world.
+                The rows of the log ``gross_area``, to which the step adds the (asset
+                id, world, ``area_source``) that ``footprint_gross_area`` gives each
+                building in the world.
             report (CompilationReport):
                 The report, which receives the step's time in the world.
 
         Returns:
             AssetInventory:
-                One asset per building of the view, holding its gross area
-                in the world where the footprint gives one. The run freezes
-                the areas of every world as :data:`STAGE_S12_GROSS_AREA`,
-                which no merge takes.
+                One asset per building of the view, holding its gross area in the
+                world where the footprint gives one. The run freezes the areas of
+                every world as :data:`STAGE_S12_GROSS_AREA`, which no merge takes.
 
         Raises:
             ValueError:
-                As :func:`footprint_gross_area` raises, for a building
-                without a readable footprint.
+                As :func:`footprint_gross_area` raises, for a building without a
+                readable footprint.
         """
         started = time.perf_counter()
         view = sources.freeze.read(STAGE_S08_VIEW)
@@ -3966,27 +3914,26 @@ class HazusEQInventoryCompiler:
         """
         Withhold from every later merge the values that s12, s13 and s14 replace.
 
-        Each record is named by the step whose value takes the place of the
-        values it withholds, and each names, per building, the source a value
-        is withheld from: :data:`STAGE_S12_WITHHELD_LOCAL` the local
-        ``GrossArea``, :data:`STAGE_S12_WITHHELD_JOIN` NSI's ``GrossArea``,
-        :data:`STAGE_S12_WITHHELD_FOOTPRINT` a ``GrossArea`` the footprints
-        carry, :data:`STAGE_S13_WITHHELD` the join's ``ReplacementCost`` where
-        no local value outranks it, :data:`STAGE_S14_WITHHELD` NSI's
-        ``BuildingType`` and :data:`STAGE_S14_WITHHELD_FOOTPRINT` a
-        ``BuildingType`` the footprints carry. One building's ``GrossArea``
-        of two sources needs two records, since a record withholds a feature
-        from one source. The run calls this after the view
-        :data:`STAGE_S08_VIEW` is frozen and before the first merge of s11, so
-        that the unit budget, the structure type draw and the rates of s13
-        read these values.
+        Each record is named by the step whose value takes the place of the values it
+        withholds, and each names, per building, the source a value is withheld from:
+        :data:`STAGE_S12_WITHHELD_LOCAL` the local ``GrossArea``,
+        :data:`STAGE_S12_WITHHELD_JOIN` NSI's ``GrossArea``,
+        :data:`STAGE_S12_WITHHELD_FOOTPRINT` a ``GrossArea`` the footprints carry,
+        :data:`STAGE_S13_WITHHELD` the join's ``ReplacementCost`` where no local
+        value outranks it, :data:`STAGE_S14_WITHHELD` NSI's ``BuildingType`` and
+        :data:`STAGE_S14_WITHHELD_FOOTPRINT` a ``BuildingType`` the footprints carry.
+        One building's ``GrossArea`` of two sources needs two records, since a record
+        withholds a feature from one source. The run calls this after the view
+        :data:`STAGE_S08_VIEW` is frozen and before the first merge of s11, so that
+        the unit budget, the structure type draw and the rates of s13 read these
+        values.
 
         Args:
             sources (_WorldSources):
                 The sources, to which the six records are added.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
         """
         local = [
             (asset_id, asset.features)
@@ -4010,8 +3957,8 @@ class HazusEQInventoryCompiler:
             STAGE_S14_WITHHELD: {},
             STAGE_S14_WITHHELD_FOOTPRINT: {},
         }
-        # Footprints from BRAILS's scrapers carry neither feature, but a
-        # caller's footprints may.
+        # Footprints from BRAILS's scrapers carry neither feature, but a caller's
+        # footprints may.
         for stage in sources.parts[SPINE_LABEL]:
             for asset_id, asset in sources.freeze.read(stage).inventory.items():
                 for key, record in (
@@ -4036,8 +3983,8 @@ class HazusEQInventoryCompiler:
                     records[STAGE_S13_WITHHELD][asset_id] = {
                         REPLACEMENT_COST_KEY: label
                     }
-                # The join puts a BuildingType in its observed part only; the
-                # derived part is read in case a join ever puts one there.
+                # The join puts a BuildingType in its observed part only; the derived
+                # part is read in case a join ever puts one there.
                 if not is_missing_value(features.get(BUILDING_TYPE_KEY)):
                     records[STAGE_S14_WITHHELD][asset_id] = {
                         BUILDING_TYPE_KEY: label
@@ -4062,21 +4009,20 @@ class HazusEQInventoryCompiler:
 
         Args:
             world (int):
-                The index of the world the merged inventory holds, which
-                the report records.
+                The index of the world the merged inventory holds, which the report
+                records.
             merged (AssetInventory):
                 The world's merged inventory.
             excluded (set[str]):
-                The buildings excluded from the world, to which those the
-                schema refuses are added.
+                The buildings excluded from the world, to which those the schema
+                refuses are added.
             report (CompilationReport):
-                The report, which receives an exclusion for each building the
-                schema refuses and the step's time in the world.
+                The report, which receives an exclusion for each building the schema
+                refuses and the step's time in the world.
 
         Returns:
             pandas.DataFrame:
-                The schema's violations in the world, with a ``world``
-                column.
+                The schema's violations in the world, with a ``world`` column.
         """
         started = time.perf_counter()
         checked = _select_assets(
@@ -4111,9 +4057,9 @@ class HazusEQInventoryCompiler:
         """
         Run s13 in one world: the value of every building.
 
-        Every building of the view :data:`STAGE_S08_VIEW` is valued, excluded
-        ones included, at its gross area of s12 in the world. The section
-        "The run" of the README beside this module states the procedure.
+        Every building of the view :data:`STAGE_S08_VIEW` is valued, excluded ones
+        included, at its gross area of s12 in the world. The section "The run" of the
+        README beside this module states the procedure.
 
         Args:
             world (int):
@@ -4121,26 +4067,26 @@ class HazusEQInventoryCompiler:
             sources (_WorldSources):
                 The sources, whose freeze holds the view and the donor stage.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
             imputer (ObservedDonorImputer):
-                The imputer of s05, whose ``k``, ``cap_m`` and distance
-                weights the value imputer takes.
+                The imputer of s05, whose ``k``, ``cap_m`` and distance weights the
+                value imputer takes.
             excluded (set[str]):
-                The buildings excluded from the world, to which those left
-                without a value are added.
+                The buildings excluded from the world, to which those left without a
+                value are added.
             areas (AssetInventory):
                 The gross areas of s12 in the world.
             report (CompilationReport):
-                The report, which receives an exclusion for each building
-                left without a value that is not yet excluded, and the step's
-                time in the world.
+                The report, which receives an exclusion for each building left
+                without a value that is not yet excluded, and the step's time in the
+                world.
 
         Returns:
             tuple[AssetInventory, pandas.DataFrame]:
-                One asset per building of the view, holding its value and the
-                value's source label where the value is not a kept local one,
-                and the value imputer's log of the world.
+                One asset per building of the view, holding its value and the value's
+                source label where the value is not a kept local one, and the value
+                imputer's log of the world.
 
         Raises:
             ValueError:
@@ -4154,8 +4100,8 @@ class HazusEQInventoryCompiler:
             location_scale_m=imputer.location_scale_m,
             area_weight=imputer.area_weight,
             stories_weight=imputer.stories_weight,
-            # A rate divides a value, NSI's, the join's sum of NSI's or a local
-            # one, by NSI's sqft, never by a local GrossArea.
+            # A rate divides a value, NSI's, the join's sum of NSI's or a local one,
+            # by NSI's sqft, never by a local GrossArea.
             gross_area_key=NSI_GROSS_AREA_KEY,
         )
         result = valuer.impute_stage(
@@ -4170,10 +4116,10 @@ class HazusEQInventoryCompiler:
         for asset_id, outcome in zip(result.log['asset_id'], result.log['outcome']):
             code = OUTCOME_VALUE_CODES.get(outcome)
             if code is None and asset_id not in excluded:
-                # The three outcomes the value imputer gives without a value.
-                # A building without an occupancy class fails the schema check
-                # first, and every footprint encloses an area, so only
-                # no_donor is expected here.
+                # The three outcomes the value imputer gives without a value. A
+                # building without an occupancy class fails the schema check first,
+                # and every footprint encloses an area, so only no_donor is expected
+                # here.
                 category, diagnosis = {
                     OUTCOME_NO_CLASS: (MISSING_INPUT_CATEGORY, DIAGNOSIS_INVALID),
                     OUTCOME_NO_AREA: (MISSING_INPUT_CATEGORY, DIAGNOSIS_INVALID),
@@ -4183,10 +4129,10 @@ class HazusEQInventoryCompiler:
                     ),
                 }.get(
                     outcome,
-                    # The imputer gives no other outcome without a value. One
-                    # would say neither that an input is missing nor that the
-                    # donor search found none, only that the imputer, with its
-                    # inputs, gave no value, which infeasible states.
+                    # The imputer gives no other outcome without a value. One would
+                    # say neither that an input is missing nor that the donor search
+                    # found none, only that the imputer, with its inputs, gave no
+                    # value, which infeasible states.
                     (NO_PLAUSIBLE_VALUE_CATEGORY, DIAGNOSIS_INFEASIBLE),
                 )
                 report.record_exclusion(
@@ -4228,13 +4174,12 @@ class HazusEQInventoryCompiler:
         """
         Run s14 in one world: the letter of each building's structure type.
 
-        Every building without a local ``BuildingType`` takes the letter of
-        its structure type in the world, excluded ones included, by the
-        pairing of ``get_hazus_general_type_membership`` that the structure
-        type inferer draws with. A local letter is kept. A building not yet
-        excluded whose local letter differs from the letter of its structure
-        type is excluded from the world as a ``conflict``, since its local
-        inventory contradicts itself.
+        Every building without a local ``BuildingType`` takes the letter of its
+        structure type in the world, excluded ones included, by the pairing of
+        ``get_hazus_general_type_membership`` that the structure type inferer draws
+        with. A local letter is kept. A building not yet excluded whose local letter
+        differs from the letter of its structure type is excluded from the world as a
+        ``conflict``, since its local inventory contradicts itself.
 
         Args:
             world (int):
@@ -4242,22 +4187,21 @@ class HazusEQInventoryCompiler:
             merged (AssetInventory):
                 The world's merged inventory.
             sources (_WorldSources):
-                The sources, whose local parts say which building has a local
-                letter.
+                The sources, whose local parts say which building has a local letter.
             centroids (Mapping[str, list[list[float]]]):
-                Each footprint's centroid, which the assets built here take as
-                their coordinates.
+                Each footprint's centroid, which the assets built here take as their
+                coordinates.
             excluded (set[str]):
-                The buildings excluded from the world, to which those whose
-                letters contradict each other are added.
+                The buildings excluded from the world, to which those whose letters
+                contradict each other are added.
             report (CompilationReport):
-                The report, which receives an exclusion for each such
-                building and the step's time in the world.
+                The report, which receives an exclusion for each such building and
+                the step's time in the world.
 
         Returns:
             AssetInventory:
-                One asset per building of the merged inventory, holding the
-                letter where the step gives one.
+                One asset per building of the merged inventory, holding the letter
+                where the step gives one.
         """
         started = time.perf_counter()
         local_letters = {
@@ -4311,11 +4255,10 @@ class HazusEQInventoryCompiler:
         """
         Run s15 in one world: write Excluded and the results of s12 to s14.
 
-        Every building receives ``Excluded`` and the letter of s14. A
-        building not excluded from the world also receives its value of s13,
-        coded by its source label, and its gross area of s12 as
-        ``GrossArea``, and is checked for the properties of
-        :data:`DEFAULT_PROPERTIES` that apply to it.
+        Every building receives ``Excluded`` and the letter of s14. A building not
+        excluded from the world also receives its value of s13, coded by its source
+        label, and its gross area of s12 as ``GrossArea``, and is checked for the
+        properties of :data:`DEFAULT_PROPERTIES` that apply to it.
 
         Args:
             world (int):
@@ -4335,14 +4278,13 @@ class HazusEQInventoryCompiler:
 
         Returns:
             list[tuple[str, int, str]]:
-                The (asset id, world, property) of each default property a
-                compiled building lacks where it applies.
+                The (asset id, world, property) of each default property a compiled
+                building lacks where it applies.
 
         Raises:
             ValueError:
                 If a source string is not one that
-                :func:`~brails.types.asset_inventory.read_source_string`
-                reads.
+                :func:`~brails.types.asset_inventory.read_source_string` reads.
         """
         started = time.perf_counter()
         lacking = []

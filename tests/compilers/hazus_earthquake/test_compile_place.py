@@ -84,8 +84,8 @@ if TYPE_CHECKING:
 
 pytestmark = pytest.mark.usefixtures('no_network')
 
-# The place, inside the western block group, in meters east and north of the
-# fixture origin.
+# The place, inside the western block group, in meters east and north of the fixture
+# origin.
 PLACE = ((-40, -40), (190, -40), (190, 240), (-40, 240))
 
 # The corners of each block group of California, and whether it has land.
@@ -96,8 +96,8 @@ BLOCK_GROUPS = {
     BG_FAR: (((2900, -100), (3100, -100), (3100, 100), (2900, 100)), True),
 }
 
-# A land block group that overlaps the place by a sliver, holds no building of
-# the place, and reaches 6 km east.
+# A land block group that overlaps the place by a sliver, holds no building of the
+# place, and reaches 6 km east.
 BG_SLIVER = '060750101005'
 SLIVER = (((185, -3000), (6000, -3000), (6000, -35), (185, -35)), True)
 
@@ -131,8 +131,8 @@ class Services:
     The files and stand-ins from_place reads, with each call recorded in order.
 
     The TIGER/Line files are zipped shapefiles placed in ``tiger_files``'s memory,
-    the Overture footprints a local GeoParquet file, and the NSI records come from
-    a stand-in for ``NSI_Parser._get_nsi_data``; the Census API key check is a
+    the Overture footprints a local GeoParquet file, and the NSI records come from a
+    stand-in for ``NSI_Parser._get_nsi_data``; the Census API key check is a
     stand-in.
 
     Attributes:
@@ -310,8 +310,8 @@ def services(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Services:
         NSI_Parser, '_get_nsi_data', staticmethod(served.nsi_records)
     )
 
-    # The routes to the Overture bucket and its release list, which the socket
-    # guard does not cover: a scraper built without local_path fails at once.
+    # The routes to the Overture bucket and its release list, which the socket guard
+    # does not cover: a scraper built without local_path fails at once.
     def refuse(*_args: object, **_kwargs: object) -> None:
         msg = 'A test tried to reach the Overture bucket or its release list.'
         raise AssertionError(msg)
@@ -426,8 +426,8 @@ class TestFromPlace:
 
     def test_area_compiled_cut_from_the_area_read(self, services: Services) -> None:
         """Footprints read past the area compiled are cut; NSI reads that area."""
-        # The sliver brings its 6 km into the area read but holds no building of
-        # the place, so the area compiled ends 2 km past the western block group.
+        # The sliver brings its 6 km into the area read but holds no building of the
+        # place, so the area compiled ends 2 km past the western block group.
         services.block_groups[BG_SLIVER] = SLIVER
         services.footprints['z01'] = (5000, -1000, 12)
         inputs = gather(services, polygon(PLACE))
@@ -482,8 +482,8 @@ class TestFromPlace:
 
     def test_census_name(self, services: Services) -> None:
         """A name is found in the census files of the release, its state given."""
-        # Most of the place lies in Nevada by the state file, which a census
-        # boundary does not read.
+        # Most of the place lies in Nevada by the state file, which a census boundary
+        # does not read.
         services.states['32'] = ('Nevada', PLACE)
         inputs = gather(services, 'Placeville, CA', block_group_vintage=2022)
 

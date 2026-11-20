@@ -105,8 +105,8 @@ OSM_HEIGHT = {'footprint_provider': 'overture', 'sources': f'dataset: {OSM}'}
 
 MAX_ATTEMPTS = 5
 
-# The donors the keyed re-draw picks for keyed_target(), computed with SEED
-# and SECOND_SEED, and with SEED under the imputer's own labels.
+# The donors the keyed re-draw picks for keyed_target(), computed with SEED and
+# SECOND_SEED, and with SEED under the imputer's own labels.
 GOLDEN_DONOR = 'd4'
 SECOND_SEED = 1
 SECOND_SEED_DONOR = 'd2'
@@ -124,8 +124,8 @@ RESIDENTIAL_CANDIDATES = (
     {'OccupancyClass': 'RES2', 'NumberOfStories': 1},
 )
 
-# Iteration the stub reports for an accepted pick, distinct from any
-# iteration the re-draw passes.
+# Iteration the stub reports for an accepted pick, distinct from any iteration the
+# re-draw passes.
 STUB_ITERATION = 41
 
 
@@ -134,8 +134,8 @@ class StubDraw:
     Stand in for ``ObservedDonorImputer.draw`` and record its calls.
 
     The stub returns the first of its candidates that ``admit`` passes, or
-    ``exhausted``. A forced outcome replaces the pick, with no donor unless
-    it is the block-group fallback, and forced values are returned unjudged.
+    ``exhausted``. A forced outcome replaces the pick, with no donor unless it is the
+    block-group fallback, and forced values are returned unjudged.
     """
 
     def __init__(
@@ -179,8 +179,8 @@ class StubDraw:
             pool (object):
                 The donor pool, recorded only.
             asset_id (str):
-                The id of the asset drawn for, which selects a forced
-                outcome or forced values.
+                The id of the asset drawn for, which selects a forced outcome or
+                forced values.
             features (dict[str, Any]):
                 The asset's features, recorded as a copy.
             redraw (tuple[str, ...], optional):
@@ -194,20 +194,17 @@ class StubDraw:
             exclude_donors (tuple, optional):
                 Donors the draw may not pick, recorded only.
             status (bool, optional):
-                The residential status, which selects the stub's
-                candidates.
+                The residential status, which selects the stub's candidates.
             protected (tuple[str, ...], optional):
                 Features that may not change, recorded only.
             scan_nearest (bool, optional):
-                Whether the draw ends with the nearest-first scan, recorded
-                only.
+                Whether the draw ends with the nearest-first scan, recorded only.
             purpose_prefix (str, optional):
                 The prefix of the purpose labels, recorded only.
 
         Returns:
             DonorDraw:
-                The draw: the donor id, its values, the attempts and the
-                outcome.
+                The draw: the donor id, its values, the attempts and the outcome.
         """
         self.calls.append(
             {
@@ -721,9 +718,8 @@ class TestDrawCall:
             pair_redraw.redraw(merged({'a': nsi_tall_industry()}))
 
 
-# An eight-story NSI AGR1 whose height gives five stories. AGR1 is
-# implausible above low-rise, so the pair stays implausible at the height
-# count.
+# An eight-story NSI AGR1 whose height gives five stories. AGR1 is implausible above
+# low-rise, so the pair stays implausible at the height count.
 EIGHT_STORY_AGR1 = {
     'OccupancyClass': 'AGR1',
     'NumberOfStories': 8,
@@ -975,9 +971,8 @@ def keyed_target() -> tuple[AssetInventory, AssetInventory]:
     return target, donors
 
 
-# Ten-story donors as (id, meters east, class, block group) for the
-# locality tests, whose target stands at the origin in BG_A, and the seed
-# and pick of those tests.
+# Ten-story donors as (id, meters east, class, block group) for the locality tests,
+# whose target stands at the origin in BG_A, and the seed and pick of those tests.
 OUTSIDE_THE_CAP = (
     ('c1', 1900.0, 'COM1', BG_A),
     ('c2', 1950.0, 'COM2', BG_A),
@@ -1071,8 +1066,8 @@ class TestWithTheImputer:
 
     def test_locality_bound(self) -> None:
         """A donor beyond the cap and outside the block group changes nothing."""
-        # Two admissible donors lie within the cap, fewer than k, so a wider
-        # cap lets the donor beyond it into the candidates and changes the pick.
+        # Two admissible donors lie within the cap, fewer than k, so a wider cap lets
+        # the donor beyond it into the candidates and changes the pick.
         assert bounded_pick(OUTSIDE_THE_CAP)[0] == LOCALITY_DONOR
         assert bounded_pick(OUTSIDE_THE_CAP[:2])[0] == LOCALITY_DONOR
         changed = (*OUTSIDE_THE_CAP[:2], ('out', 2050.0, 'IND1', BG_B))

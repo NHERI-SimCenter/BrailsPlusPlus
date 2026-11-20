@@ -248,8 +248,8 @@ def compiled(study_area: CompilerInputs) -> Callable[..., CompilationResult]:
 
     Returns:
         Callable[..., CompilationResult]:
-            ``compiled(n_worlds=3)`` gives the result of the compiler at
-            the fixture seed and CRS.
+            ``compiled(n_worlds=3)`` gives the result of the compiler at the fixture
+            seed and CRS.
     """
 
     @functools.cache
@@ -296,11 +296,10 @@ def features_in(inventory: AssetInventory, world: int) -> dict[str, dict]:
     """
     Return every asset's features in one world, without the empty ones.
 
-    An assembled inventory holds a feature as a list over its worlds, with
-    ``None`` in a world where it has no value, so a realization of a longer
-    run holds ``None`` where a shorter run holds no key. The merged
-    inventories the run builds hold no ``None``
-    (``test_merge_keys_do_not_depend_on_n_worlds``), and the comparison of
+    An assembled inventory holds a feature as a list over its worlds, with ``None``
+    in a world where it has no value, so a realization of a longer run holds ``None``
+    where a shorter run holds no key. The merged inventories the run builds hold no
+    ``None`` (``test_merge_keys_do_not_depend_on_n_worlds``), and the comparison of
     realizations leaves ``None`` out.
 
     Args:
@@ -422,9 +421,9 @@ class TestCompileArguments:
     @pytest.mark.parametrize('key', hc.RESERVED_LOCAL_FEATURES)
     def test_reserved_local_feature_refused(self, key: str) -> None:
         """A local inventory holding a feature the compiler reads back is refused."""
-        # Were a local NSIGrossArea of 7.0 on h02 accepted, s13 would divide
-        # NSI's ReplacementCost by 7 sq ft to get the rate of h02 and of every
-        # building that takes its rate from h02.
+        # Were a local NSIGrossArea of 7.0 on h02 accepted, s13 would divide NSI's
+        # ReplacementCost by 7 sq ft to get the rate of h02 and of every building
+        # that takes its rate from h02.
         inputs = build_inputs()
         coordinates = inputs.footprints.inventory['h02'].coordinates
         inputs.local.add_asset('h02', Asset('h02', coordinates, {key: 7.0}))
@@ -494,9 +493,9 @@ class TestFootprintsAndJoin:
                     OVERTURE_ID_KEY: asset_id,
                 }
             )
-        # A tower on p01, half a meter of it outside, 68 ft taller; a
-        # footprint in c04 5 ft taller, which merges only if read in meters;
-        # and a second drawing of c01, half a meter east, which is dropped.
+        # A tower on p01, half a meter of it outside, 68 ft taller; a footprint in
+        # c04 5 ft taller, which merges only if read in meters; and a second drawing
+        # of c01, half a meter east, which is dropped.
         x, y, side, height = FOOTPRINTS['p01'][:4]
         added = {
             't01': (square(x + side - 9.5, y, 10), height + 68.0),
@@ -591,8 +590,8 @@ class TestFootprintsAndJoin:
 
             Returns:
                 AssetInventory:
-                    The composed source, with h01's story count set to 9
-                    where ``parts`` holds ``'s02_nsi_join'``.
+                    The composed source, with h01's story count set to 9 where
+                    ``parts`` holds ``'s02_nsi_join'``.
             """
             composed = real(freeze, parts, **kwargs)
             if 's02_nsi_join' in parts:
@@ -838,10 +837,10 @@ class TestOutput:
 
     def test_log_names_list_every_log(self, compiled: object) -> None:
         """LOG_NAMES holds every name the compiler writes a log under."""
-        # The syntax tree catches a log stored as logs[name] = ... anywhere in
-        # the module, and fails on a key it cannot read. It misses one added
-        # by logs.update, setdefault or a dict of another name, and the run
-        # below holds the fixture's logs only, without merge_stacked.
+        # The syntax tree catches a log stored as logs[name] = ... anywhere in the
+        # module, and fails on a key it cannot read. It misses one added by
+        # logs.update, setdefault or a dict of another name, and the run below holds
+        # the fixture's logs only, without merge_stacked.
         tree = ast.parse(Path(hc.__file__).read_text(encoding='utf-8'))
         written = {
             node.slice.value
@@ -892,8 +891,8 @@ class TestWrittenFile:
         """No compiled building lacks a default property that applies to it."""
         result = compiled(n_worlds=3)
         assert result.logs[MISSING_DEFAULTS_LOG].empty
-        # Both exemptions occur: a building outside UNIT_COUNT_CLASSES without
-        # units, and one of a type without height classes.
+        # Both exemptions occur: a building outside UNIT_COUNT_CLASSES without units,
+        # and one of a type without height classes.
         bands = get_hazus_height_classes_by_type()
         exempt = set()
         for world in range(3):
@@ -942,8 +941,8 @@ class TestWrittenFile:
 
             Args:
                 inventory (AssetInventory):
-                    The buildings checked, which share their asset objects
-                    with the merged inventory s11 to s15 work on.
+                    The buildings checked, which share their asset objects with the
+                    merged inventory s11 to s15 work on.
 
             Returns:
                 object:
@@ -992,8 +991,8 @@ class TestWrittenFile:
 
             Args:
                 inventory (AssetInventory):
-                    The buildings checked, which share their asset objects
-                    with the merged inventory s11 to s15 work on.
+                    The buildings checked, which share their asset objects with the
+                    merged inventory s11 to s15 work on.
 
             Returns:
                 object:
@@ -1017,8 +1016,8 @@ class TestWrittenFile:
         for stem, worlds in (('world0', {0}), ('both', {0, 1}), ('world1', {1})):
             rows = pd.read_parquet(tmp_path / f'{stem}_report_exclusions.parquet')
             assert set(rows['world']) == worlds
-        # A valid write at the stem of a refused one removes the files the
-        # refusal left beyond the four it writes.
+        # A valid write at the stem of a refused one removes the files the refusal
+        # left beyond the four it writes.
         assert (tmp_path / f'both_{MISSING_DEFAULTS_LOG}.parquet').exists()
         result.write(tmp_path / 'both.geojson', world=0)
         assert {p.name for p in tmp_path.iterdir() if p.stem.startswith('both')} == {
@@ -1031,8 +1030,8 @@ class TestWrittenFile:
     @pytest.mark.parametrize(
         ('name', 'replacement', 'building', 'key'),
         [
-            # Without an area every other building gets no value and is
-            # excluded, and c02 keeps its local value.
+            # Without an area every other building gets no value and is excluded, and
+            # c02 keeps its local value.
             (
                 'footprint_gross_area',
                 lambda *_args, **_kwargs: (None, None),
@@ -1645,9 +1644,8 @@ class TestYearsAndTypes:
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """In each world, the year fit and the re-draw's donors read that world's realization of s05_view."""
-        # The mocks record the inventories they are called with, not copies,
-        # so the comparison after the run also sees a change made to them
-        # after the call.
+        # The mocks record the inventories they are called with, not copies, so the
+        # comparison after the run also sees a change made to them after the call.
         compiler = HazusEQInventoryCompiler(
             seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         )
@@ -1690,8 +1688,8 @@ class TestYearsAndTypes:
 
             Returns:
                 AssetInventory:
-                    The frozen stage, with h01's story count set to 9 where
-                    ``stage`` is ``'s05_view'``.
+                    The frozen stage, with h01's story count set to 9 where ``stage``
+                    is ``'s05_view'``.
             """
             held = real(self, stage)
             if stage == 's05_view':
@@ -1748,8 +1746,8 @@ class TestYearsAndTypes:
         compiler = HazusEQInventoryCompiler(
             seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         )
-        # The re-draw is watched through its method, which receives the
-        # world's merged inventory.
+        # The re-draw is watched through its method, which receives the world's
+        # merged inventory.
         monkeypatch.setattr(
             hc.PairRedraw,
             'redraw',
@@ -1779,8 +1777,8 @@ class TestYearsAndTypes:
         compiler = HazusEQInventoryCompiler(
             seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         )
-        # The draws are watched through _assign_structure, which receives the
-        # world's merged inventory; its first calls in a run are s08's.
+        # The draws are watched through _assign_structure, which receives the world's
+        # merged inventory; its first calls in a run are s08's.
         monkeypatch.setattr(
             hc.HazusEQInventoryCompiler,
             '_assign_structure',
@@ -1839,9 +1837,9 @@ class TestYearsAndTypes:
                 elif not values[EXCLUDED_KEY] or letter is not None:
                     assert letter == hc._LETTER_OF_TYPE[values[STRUCTURE_TYPE_KEY]]
                     derived.add(asset_id)
-        # q03's local W stands beside its local C1, NSI's C is not written,
-        # and q03 is excluded as a conflict in each world, without its value
-        # and gross area, and with no notice.
+        # q03's local W stands beside its local C1, NSI's C is not written, and q03
+        # is excluded as a conflict in each world, without its value and gross area,
+        # and with no notice.
         assert local['q03'] != hc._LETTER_OF_TYPE[LOCAL['q03'][STRUCTURE_TYPE_KEY]]
         assert derived & UNREACHED
         rows = result.report.exclusions
@@ -1866,8 +1864,8 @@ class TestYearsAndTypes:
 
     def test_letters_disagreeing_are_excluded(self, study_area: object) -> None:
         """A building whose local letter is not its type's is excluded where it is not yet."""
-        # u06 gets a local C beside a local W1, as q03 holds a local W beside
-        # a local C1, and is excluded from world 1; h04's local W agrees.
+        # u06 gets a local C beside a local W1, as q03 holds a local W beside a local
+        # C1, and is excluded from world 1; h04's local W agrees.
         local = build_inputs().local
         x, y, side = FOOTPRINTS['u06'][:3]
         local.add_asset(
@@ -2190,8 +2188,8 @@ class TestYearAndValueOfTheRest:
             for row in picks.itertuples()
         }
         assert 'D' in drawn
-        # COM1 with NSI's occupancy class, given a year and a structure type in
-        # every world.
+        # COM1 with NSI's occupancy class, given a year and a structure type in every
+        # world.
         assert set(picks.loc[picks['asset_id'] == 'c01', 'world']) == {0, 1, 2}
         for world in range(3):
             assert features_in(result.inventory, world)['c01'][STRUCTURE_TYPE_KEY]
@@ -2306,8 +2304,8 @@ class TestYearAndValueOfTheRest:
         """A local `GrossArea` changes neither a rate nor the value it gives."""
         result = compiled(n_worlds=3)
         log = result.logs['value'].set_index(['asset_id', 'world'])
-        # l01 and h01 are the same NSI house on footprints of one size, and
-        # l01 has a local gross area of 777 sq ft beside NSI's 1,400.
+        # l01 and h01 are the same NSI house on footprints of one size, and l01 has a
+        # local gross area of 777 sq ft beside NSI's 1,400.
         for world in range(3):
             features = features_in(result.inventory, world)
             assert log.loc[('l01', world), 'rate'] == 350000.0 / 1400.0
@@ -2439,8 +2437,8 @@ class TestStructureStages:
 
     def test_s10_files_under_its_own_stages(self) -> None:
         """A building s09 gives a year is filed under s10, every other under s08."""
-        # c05 is non-residential and has no year. NSI's MH, which no COM1
-        # structure type has, makes s10's loop withhold the letter.
+        # c05 is non-residential and has no year. NSI's MH, which no COM1 structure
+        # type has, makes s10's loop withhold the letter.
         inputs = build_inputs()
         inputs.nsi_points.inventory[28].features['bldgtype'] = 'MH'
         result = HazusEQInventoryCompiler(
@@ -2539,8 +2537,8 @@ class TestLastSteps:
         has_area = log['footprint_gross_area_sqft'].notna()
         assert set(log.loc[has_area, 'area_source']) == {AREA_FROM_FEATURE}
         assert set(log.loc[~has_area, 'outcome']) == {OUTCOME_LOCAL_VALUE}
-        # The value of a building the schema refuses is computed and kept in
-        # the stage, and the view still holds what the rates read.
+        # The value of a building the schema refuses is computed and kept in the
+        # stage, and the view still holds what the rates read.
         costs = result.freeze.read(hc.STAGE_S13_REPLACEMENT_COST)
         assert costs.inventory['u08'].features[REPLACEMENT_COST_KEY] is not None
         view = features_in(result.freeze.read(hc.STAGE_S08_VIEW), 0)
@@ -2739,8 +2737,8 @@ class TestLastSteps:
             seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         )
         real = compiler._validator.validate
-        # The schema check refuses nothing, as if the schema did not require
-        # an occupancy class.
+        # The schema check refuses nothing, as if the schema did not require an
+        # occupancy class.
         monkeypatch.setattr(
             compiler._validator,
             'validate',

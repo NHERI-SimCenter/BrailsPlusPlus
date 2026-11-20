@@ -104,9 +104,9 @@ STORE_WITHOUT_YEAR = {OCCUPANCY_KEY: 'COM1', STORIES_KEY: 2}
 # A store whose year no table can read.
 UNREADABLE_YEAR_STORE = {**STORE, YEAR_BUILT_KEY: 'unknown'}
 
-# A wood high-rise. Its cell, the combination of occupancy class, story band
-# and era that selects a structure type distribution, is printed in the
-# tables and holds no wood type.
+# A wood high-rise. Its cell, the combination of occupancy class, story band and era
+# that selects a structure type distribution, is printed in the tables and holds no
+# wood type.
 WOOD_TOWER = {
     OCCUPANCY_KEY: 'RES3',
     STORIES_KEY: 9,
@@ -114,17 +114,16 @@ WOOD_TOWER = {
     BUILDING_TYPE_KEY: 'W',
 }
 
-# A wood store at eight stories. The tables print no distribution for its
-# cell, and the distribution the completed tables fill it with holds no wood
-# type.
+# A wood store at eight stories. The tables print no distribution for its cell, and
+# the distribution the completed tables fill it with holds no wood type.
 TALL_WOOD_STORE = {**STORE, STORIES_KEY: 8, BUILDING_TYPE_KEY: 'W'}
 
-# The world the loop's tests resolve, other than the first so that a
-# row of the wrong world shows.
+# The world the loop's tests resolve, other than the first so that a row of the wrong
+# world shows.
 WORLD = 3
 
-# A masonry walk-up whose refusal names its occupancy, story count, year
-# and building type. Without the building type the tables can take it.
+# A masonry walk-up whose refusal names its occupancy, story count, year and building
+# type. Without the building type the tables can take it.
 MASONRY_WALKUP = {
     OCCUPANCY_KEY: 'COM8',
     STORIES_KEY: 5,
@@ -151,16 +150,15 @@ def _screen(*, complete_tables: bool = True, **components: object) -> ComposedSc
 
     Args:
         complete_tables (bool):
-            Whether the structure type inferer draws from the completed
-            West Coast tables.
+            Whether the structure type inferer draws from the completed West Coast
+            tables.
         **components (object):
-            Stages to put in place of the real inferers, by constructor
-            argument name.
+            Stages to put in place of the real inferers, by constructor argument
+            name.
 
     Returns:
         ComposedScreen:
-            The screen, with ``components`` in place of the real inferers
-            they name.
+            The screen, with ``components`` in place of the real inferers they name.
     """
     settings = {
         'design_level_inferer': HazusEQDesignLevelInferer(
@@ -186,11 +184,10 @@ class _Stage:
         design_level_key (str):
             Feature name of the design level.
         verdict (tuple):
-            The diagnosis, detail and resolvable features every asset
-            gets.
+            The diagnosis, detail and resolvable features every asset gets.
         asked (list[dict]):
-            For each call of :meth:`check`, the features of the inventory
-            it was given, by asset id.
+            For each call of :meth:`check`, the features of the inventory it was
+            given, by asset id.
     """
 
     year_built_key = YEAR_BUILT_KEY
@@ -350,8 +347,8 @@ def test_an_inventory_screened_at_once_gets_each_asset_its_own_verdict(
     assert inventory.get_asset_features('passes')[1] == STORE
 
 
-# A store in an inventory of two possible worlds: with one year for both,
-# and with one year per world.
+# A store in an inventory of two possible worlds: with one year for both, and with
+# one year per world.
 TWO_WORLD_STORES = pytest.mark.parametrize(
     'year', [1960, [1960, 1970]], ids=('one_value', 'one_per_world')
 )
@@ -431,8 +428,7 @@ class _ScriptedScreen(ComposedScreen):
 
     Attributes:
         rule (Callable[[dict], ScreenVerdict]):
-            Takes the features of one asset and returns the verdict for
-            them.
+            Takes the features of one asset and returns the verdict for them.
     """
 
     def __init__(self, rule: Callable[[dict], ScreenVerdict]) -> None:
@@ -479,11 +475,9 @@ def _resolve(
         features (Mapping[str, dict]):
             Features by asset id.
         building_type_sources (Mapping[str, str]):
-            The label of the source holding each asset's building type, by
-            asset id.
+            The label of the source holding each asset's building type, by asset id.
         screen (ComposedScreen or None):
-            The screen the loop tests against. ``None`` takes
-            :func:`_screen`'s.
+            The screen the loop tests against. ``None`` takes :func:`_screen`'s.
         vector_features (Sequence[str]):
             Names of the features whose values are vectors.
 
