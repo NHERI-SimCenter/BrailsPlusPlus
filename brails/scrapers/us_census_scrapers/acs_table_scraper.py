@@ -50,6 +50,7 @@ import pandas as pd
 import requests
 from requests import exceptions
 
+from brails.constants import REDACTED
 from brails.scrapers.us_census_scrapers.census_tract_scraper import (
     LEVEL_BLOCK_GROUP,
     LEVEL_TRACT,
@@ -78,10 +79,6 @@ GEOID_INDEX = 'GEOID'
 # The Census Bureau's coded values, such as -666666666, which the API returns in
 # place of an estimate or a margin, lie below this limit.
 CODED_VALUE_LIMIT = -100_000_000
-
-# What replaces the key in the HTTP library's log records and in answer text quoted
-# in messages.
-_REDACTED = '<census-api-key>'
 
 # The geography of each level as the API names it, and the response columns whose
 # values, joined in this order, form a GEOID.
@@ -130,7 +127,7 @@ class _KeyRedaction(logging.Filter):
         """
         message = record.getMessage()
         if self._key in message:
-            record.msg = message.replace(self._key, _REDACTED)
+            record.msg = message.replace(self._key, REDACTED)
             record.args = None
         return True
 
@@ -467,7 +464,7 @@ class ACSTableScraper:
                 that is not valid or not activated, the message names where the key
                 came from.
         """
-        body = response.text.replace(self._api_key, _REDACTED).strip()
+        body = response.text.replace(self._api_key, REDACTED).strip()
         if response.status_code == 204:  # noqa: PLR2004
             msg = (
                 f'The Census Data API holds no geography for {what}; check the '

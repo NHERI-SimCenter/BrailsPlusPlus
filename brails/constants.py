@@ -103,6 +103,10 @@ BLOCK_GROUP_KEY = 'BLOCKGROUP_GEOID'
 GEOID_LENGTH = 12
 TRACT_GEOID_LENGTH = 11
 
+# What replaces a secret, such as an API key, wherever text that would hold it is
+# shown: a repr, a log record or a message.
+REDACTED = '<redacted>'
+
 # The geographic CRS asset coordinates are stored in.
 GEOGRAPHIC_CRS = 'EPSG:4326'
 

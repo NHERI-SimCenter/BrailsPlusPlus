@@ -55,6 +55,8 @@ import os
 import warnings
 from pathlib import Path
 
+from brails.constants import REDACTED
+
 # The name of the environment variable, and of the Google Colab secret, that holds
 # the key.
 CENSUS_API_KEY_NAME = 'CENSUS_API_KEY'
@@ -77,9 +79,9 @@ class CensusApiKey(str):
 
     It is the key's text in every other use, so ``requests`` sends it as given. A
     traceback that shows the values of a frame holding it, or a container holding it
-    printed whole, such as the query of a request, shows ``<census-api-key>`` in its
-    place. The routines here turn a key's text into one where they receive it, also
-    a text that is then refused.
+    printed whole, such as the query of a request, shows
+    :data:`~brails.constants.REDACTED` in its place. The routines here turn a key's
+    text into one where they receive it, also a text that is then refused.
     """
 
     __slots__ = ()
@@ -90,9 +92,9 @@ class CensusApiKey(str):
 
         Returns:
             str:
-                ``'<census-api-key>'``.
+                :data:`~brails.constants.REDACTED`.
         """
-        return '<census-api-key>'
+        return REDACTED
 
 
 def _clean_key(value: str, source: str) -> CensusApiKey:
