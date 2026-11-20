@@ -46,20 +46,19 @@ DEFAULT_UNITS: Dict[str, str] = {
     'weight': 'lb',
 }
 
-# Earth's radius: R_EARTH_KM, in kilometers, is the rounded value GeoTools
-# uses; EARTH_RADIUS_M is the mean radius in meters that the asset ids
-# (through a copy in asset_id.py) and the distances of the donor search and
-# the unit budget use.
+# Earth's radius: R_EARTH_KM, in kilometers, is the rounded value GeoTools uses;
+# EARTH_RADIUS_M is the mean radius in meters that the asset ids (through a copy in
+# asset_id.py) and the distances of the donor search and the unit budget use.
 R_EARTH_KM = 6371
 EARTH_RADIUS_M = 6371008.8
 
-# The provenance feature the footprint scrapers write, naming the provider
-# of each footprint.
+# The provenance feature the footprint scrapers write, naming the provider of each
+# footprint.
 FOOTPRINT_PROVIDER_KEY = 'footprint_provider'
 
-# The features holding each footprint provider's own ids, by the value the
-# footprint scrapers record as FOOTPRINT_PROVIDER_KEY. The first of them
-# ranks footprints of equal geometry and identifies a dropped footprint.
+# The features holding each footprint provider's own ids, by the value the footprint
+# scrapers record as FOOTPRINT_PROVIDER_KEY. The first of them ranks footprints of
+# equal geometry and identifies a dropped footprint.
 PROVIDER_ID_FEATURES: Dict[str, Tuple[str, ...]] = {
     'usa_structures': ('usa_build_id', 'usa_uuid'),
     'microsoft': (),
@@ -67,8 +66,8 @@ PROVIDER_ID_FEATURES: Dict[str, Tuple[str, ...]] = {
     'overture': ('overture_id',),
 }
 
-# The features that record a footprint's source: every provider id and the
-# provenance feature.
+# The features that record a footprint's source: every provider id and the provenance
+# feature.
 PROVIDER_FEATURES: Tuple[str, ...] = (
     *(
         feature
@@ -78,28 +77,27 @@ PROVIDER_FEATURES: Tuple[str, ...] = (
     FOOTPRINT_PROVIDER_KEY,
 )
 
-# A footprint's release and the datasets of its sources. A footprint of any
-# provider may carry them; only HazusEQInventoryCompiler writes them, for an
-# Overture footprint.
+# A footprint's release and the datasets of its sources. A footprint of any provider
+# may carry them; only HazusEQInventoryCompiler writes them, for an Overture
+# footprint.
 FOOTPRINT_RELEASE_KEY = 'footprint_release'
 FOOTPRINT_DATASETS_KEY = 'footprint_datasets'
 
-# The features that state where a footprint came from. Unlike
-# PROVIDER_FEATURES, they hold no provider id.
+# The features that state where a footprint came from. Unlike PROVIDER_FEATURES, they
+# hold no provider id.
 FOOTPRINT_PROVENANCE_FEATURES: Tuple[str, ...] = (
     FOOTPRINT_PROVIDER_KEY,
     FOOTPRINT_RELEASE_KEY,
     FOOTPRINT_DATASETS_KEY,
 )
 
-# The features the census tract scraper writes, holding an asset's Census
-# tract and block group.
+# The features the census tract scraper writes, holding an asset's Census tract and
+# block group.
 TRACT_KEY = 'TRACT_GEOID'
 BLOCK_GROUP_KEY = 'BLOCKGROUP_GEOID'
 
-# Characters in a block-group GEOID: state 2, county 3, tract 6, group 1. A
-# tract's GEOID is the first TRACT_GEOID_LENGTH characters of its block
-# groups' GEOIDs.
+# Characters in a block-group GEOID: state 2, county 3, tract 6, group 1. A tract's
+# GEOID is the first TRACT_GEOID_LENGTH characters of its block groups' GEOIDs.
 GEOID_LENGTH = 12
 TRACT_GEOID_LENGTH = 11
 
@@ -125,17 +123,17 @@ DESIGN_LEVEL_KEY = 'DesignLevel'
 STRUCTURE_TYPE_KEY = 'StructureType'
 HEIGHT_CLASS_KEY = 'HeightClass'
 
-# The feature HazusEQInventoryCompiler writes on every building: true in a
-# world the building is excluded from, false in the others.
+# The feature HazusEQInventoryCompiler writes on every building: true in a world the
+# building is excluded from, false in the others.
 EXCLUDED_KEY = 'Excluded'
 
-# Features under which HazusEQInventoryCompiler keeps the GROSS_AREA_KEY
-# feature that NSIFootprintJoin writes and the one a local inventory gives.
+# Features under which HazusEQInventoryCompiler keeps the GROSS_AREA_KEY feature that
+# NSIFootprintJoin writes and the one a local inventory gives.
 NSI_GROSS_AREA_KEY = 'NSIGrossArea'
 LOCAL_GROSS_AREA_KEY = 'LocalGrossArea'
 
-# Feature of HazusEQInventoryCompiler's record of the footprints its unit
-# budget dropped.
+# Feature of HazusEQInventoryCompiler's record of the footprints its unit budget
+# dropped.
 DROPPED_KEY = 'Dropped'
 
 # SimCenter source string that captures data provenance
@@ -147,10 +145,9 @@ IMPUTATION_DONOR_KEY = 'ImputationDonor'
 # Feature holding number of stories inferred from height.
 STORIES_FROM_HEIGHT_KEY = 'StoriesFromHeight'
 
-# Where a building's gross area comes from, as the unit budget and the
-# replacement cost imputer log it: its GROSS_AREA_KEY, its plan area times
-# its STORIES_KEY, its plan area as one story, or the feature a caller of the
-# imputer names as holding it.
+# Where a building's gross area comes from, as the unit budget and the replacement
+# cost imputer log it: its GROSS_AREA_KEY, its plan area times its STORIES_KEY, its
+# plan area as one story, or the feature a caller of the imputer names as holding it.
 AREA_FROM_GROSS_AREA = 'gross_area'
 AREA_FROM_STORIES = 'stories'
 AREA_FROM_PLAN_AREA = 'plan_area'

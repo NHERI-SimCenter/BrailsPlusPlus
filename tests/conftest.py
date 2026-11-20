@@ -54,14 +54,14 @@ def build_inventory() -> Callable[..., AssetInventory]:
     """
     Return a factory that builds an AssetInventory from feature dicts.
 
-    Assets are added directly so the number of possible worlds can be set
-    explicitly. Going through ``add_asset_features`` would infer it from
-    whichever feature happened to be added last.
+    Assets are added directly so the number of possible worlds can be set explicitly.
+    Going through ``add_asset_features`` would infer it from whichever feature
+    happened to be added last.
 
     Returns:
         Callable[..., AssetInventory]:
-            A callable taking ``features_by_asset``, and optionally
-            ``n_pw`` and ``vector_features``.
+            A callable taking ``features_by_asset``, and optionally ``n_pw`` and
+            ``vector_features``.
 
     Examples:
         >>> def test_something(build_inventory):
@@ -113,8 +113,8 @@ def no_network() -> Iterator[None]:
     ``pytestmark = pytest.mark.usefixtures('no_network')``. Set up per module, it is
     in place before the module's own module-scoped fixtures, but not before a
     session-scoped fixture, which must reach no network itself. It covers Python's
-    ``socket`` only, not pyarrow's S3 client or GDAL, which connect outside it. A test
-    marked ``live`` must sit in a module that does not ask for it.
+    ``socket`` only, not pyarrow's S3 client or GDAL, which connect outside it. A
+    test marked ``live`` must sit in a module that does not ask for it.
 
     Yields:
         None:
