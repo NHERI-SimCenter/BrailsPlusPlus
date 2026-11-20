@@ -86,6 +86,12 @@ Create Regional-Scale Inventories
 
       Build the building inventory of a city for a Hazus earthquake assessment from its name and seismic zone, with ten possible worlds, from public data: census boundaries and tables, Overture Maps footprints, the National Structure Inventory and mobile home park locations.
 
+   .. grid-item-card:: Cut a County Inventory to a City for R2D
+      :link: https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/hazus_eq_compiler/filter_county_file_for_r2d.ipynb
+      :text-align: center
+
+      Keep the buildings of a city from a county inventory of ten possible worlds, see how the worlds are stored, and write one world for the R2D tool with integer ids, the asset type ``building`` and the class RES3 for multifamily housing.
+
 Data Scraping
 ^^^^^^^^^^^^^
 
