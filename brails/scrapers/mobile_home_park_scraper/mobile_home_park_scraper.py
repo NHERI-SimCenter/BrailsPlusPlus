@@ -59,17 +59,17 @@ if TYPE_CHECKING:
 
     from brails.types.region_boundary import RegionBoundary
 
+# The bucket of SeerAI's archive of HIFLD layers on Source Cooperative.
 PARK_BUCKET_URL = 'https://data.source.coop/seerai'
-"""The bucket of SeerAI's archive of HIFLD layers on Source Cooperative."""
 
+# The folder of the bucket that holds the parts of the park points' Parquet file.
 PARK_PREFIX = 'hifld/mobile-home-parks/mobilehomeparks/mobilehomeparks.parquet/'
-"""The folder of the bucket that holds the parts of the park points' Parquet file."""
 
+# The URL of the listing of the park file's folder.
 PARK_LISTING_URL = f'{PARK_BUCKET_URL}?list-type=2&prefix={PARK_PREFIX}'
-"""The URL of the listing of the park file's folder."""
 
+# The HIFLD column of a park's id, by which the points are keyed.
 PARK_ID_COLUMN = 'MHPID'
-"""The HIFLD column of a park's id, by which the points are keyed."""
 
 # The XML namespace of the bucket's listing, which follows Amazon S3's.
 _LISTING_NAMESPACE = {'s3': 'http://s3.amazonaws.com/doc/2006-03-01/'}
@@ -93,9 +93,8 @@ def _download(session: requests.Session, url: str, timeout: float) -> bytes:
 
     Raises:
         requests.ConnectionError:
-            If the connection keeps failing after the session's retries, or the body
-            is cut short as :func:`~brails.utils.http_session.get_whole_body` finds
-            it.
+            If the connection keeps failing after the retries, or the body is cut
+            short.
         requests.HTTPError:
             If the server answers with an error status, after the retries.
     """
@@ -108,29 +107,22 @@ class MobileHomeParkScraper:
     """
     Read the mobile-home park points of HIFLD that lie inside a region.
 
-    The points are the mobile-home park layer of the Homeland Infrastructure
-    Foundation-Level Data (HIFLD), as SeerAI's archive holds it: a Parquet file of
-    points in longitude and latitude, written in parts. Each complete write leaves in
-    the file's folder a marker named ``_committed_<id>`` that lists the parts it
-    added. Only the parts of the newest marker, by its time of modification, are
-    read, into memory, so the read assumes that the last write rewrote the whole
-    file. Nothing is written to disk or kept between calls.
+    The points come from SeerAI's archive of HIFLD on Source Cooperative, read into
+    memory on each call. The README beside this module describes the archive and
+    which write of it is read.
 
     Args:
         timeout (float, optional):
             Seconds to wait for the server to answer each request. Defaults to 120.
         retries (int, optional):
-            How many times a request is tried again after a failure that
-            :func:`~brails.utils.http_session.create_retrying_session` retries.
-            Defaults to 3.
+            How many times a failed request is tried again. Defaults to 3.
 
     Attributes:
         marker (str | None):
-            The name of the marker whose parts the last call of :meth:`get_assets`
-            read, or ``None`` before a call.
+            The name of the archive's marker whose parts the last call of
+            :meth:`get_assets` read, or ``None`` before a call.
         written (str | None):
-            That marker's time of modification as the archive's listing gives it, or
-            ``None`` before a call.
+            That marker's time of modification, or ``None`` before a call.
     """
 
     def __init__(self, *, timeout: float = 120, retries: int = 3) -> None:
@@ -151,18 +143,15 @@ class MobileHomeParkScraper:
         Returns:
             AssetInventory:
                 One point asset per park, keyed by its :data:`PARK_ID_COLUMN` as an
-                integer, with the HIFLD columns as features under their HIFLD names.
-                A point on the boundary is outside.
+                integer, with the HIFLD columns as features.
 
         Raises:
             RuntimeError:
-                If the listing of the folder is truncated or shows no complete write,
-                without a ``_SUCCESS`` marker, a ``_committed_`` marker or a part in
-                the newest marker.
+                If the archive shows no complete write to read.
             ValueError:
-                If a part states a CRS other than longitude and latitude, or if a
-                point inside the region has a :data:`PARK_ID_COLUMN` that is not a
-                whole number or that another point inside has too.
+                If a part states a CRS other than longitude and latitude, or a park
+                inside the region has a :data:`PARK_ID_COLUMN` that is not a whole
+                number or that another park inside has too.
             requests.ConnectionError:
                 If the connection keeps failing after the retries, or a body is cut
                 short.
@@ -172,8 +161,10 @@ class MobileHomeParkScraper:
         boundary, _, _ = region.get_boundary()
         with create_retrying_session(self.retries) as session:
             listing = _download(session, PARK_LISTING_URL, self.timeout)
-            # The parser of the standard library refuses the entity expansions an XML
-            # attack rests on (expat 2.4.1 and later).
+            # Ruff flags every ElementTree parse call (S314). Expat 2.4.1 and later,
+            # bundled with Python 3.10 to 3.12, refuses runaway entity expansion, and
+            # ElementTree reads no external entity; pyexpat.EXPAT_VERSION shows the
+            # version a build uses.
             root = ET.fromstring(listing)  # noqa: S314
             modified = {
                 entry.findtext('s3:Key', '', _LISTING_NAMESPACE).removeprefix(
