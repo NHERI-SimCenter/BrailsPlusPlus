@@ -59,6 +59,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
 import pandas as pd
+import requests
 
 from brails.aggregators.points_to_polygons.nsi_footprint_join import NSIFootprintJoin
 from brails.aggregators.stacked_footprints.stacked_footprints import (
@@ -185,6 +186,10 @@ from brails.scrapers.us_census_scrapers.census_tract_scraper import (
     LEVEL_TRACT,
     CensusTractScraper,
 )
+from brails.scrapers.us_census_scrapers.tiger_line_scraper import (
+    STATE_NAME_COLUMN,
+    TIGERLineScraper,
+)
 from brails.types.asset_inventory import (
     DEFAULT_VECTOR_FEATURES,
     HAZUS_EQ_SOURCE_FEATURES,
@@ -194,7 +199,9 @@ from brails.types.asset_inventory import (
     is_missing_value,
     read_source_string,
 )
+from brails.types.geometry_region import GeometryRegion
 from brails.utils.stage_freeze import StageFreeze
+from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE
 from brails.utils.unit_converter import UNIT_TO_METER
 from brails.utils.unit_count_rules import UNIT_COUNT_CLASSES
 from brails.validators.schema_validator import SchemaValidator
@@ -500,12 +507,11 @@ class CompilerInputs(NamedTuple):
             scraper wrote them. Defaults to the length unit of
             :data:`brails.constants.DEFAULT_UNITS`.
         block_groups (geopandas.GeoDataFrame | None):
-            One polygon per census block group, with a ``GEOID`` column, as
-            a TIGER/Line file holds them. Given ``None``, the default, the
-            compiler queries the Census 2020 block groups from the Census
-            Bureau's TIGERweb service, which needs network access. Give the
-            polygons to avoid the query. Every footprint must lie in a block
-            group either way.
+            One polygon per census block group, with a ``GEOID`` column, as a
+            TIGER/Line file holds them. ``None``, the default, has the compiler read
+            the block groups that intersect the footprints' bounding box from the
+            TIGER/Line files of its ``block_group_vintage``, which needs network
+            access. Every footprint must lie in a block group either way.
     """
 
     footprints: AssetInventory
@@ -1076,6 +1082,7 @@ class HazusEQInventoryCompiler:
         sampler_options: Mapping[str, object] | None = None,
         merge_stacked: bool = False,
         acs_vintage: int = DEFAULT_ACS_VINTAGE,
+        block_group_vintage: int = DEFAULT_TIGER_VINTAGE,
     ) -> None:
         """
         Store the compiler's settings and refuse any that a component would refuse.
@@ -1136,13 +1143,19 @@ class HazusEQInventoryCompiler:
                 reads each census table that :class:`CompilerInputs` gives as
                 ``None``. Defaults to
                 :data:`~brails.scrapers.us_census_scrapers.acs_table_scraper.DEFAULT_ACS_VINTAGE`.
+            block_group_vintage (int, optional):
+                The year of the TIGER/Line release from which :meth:`compile` reads
+                the block groups when :class:`CompilerInputs` gives none. Where the
+                census tables are read too, it must be of the decade of
+                ``acs_vintage``. Defaults to
+                :data:`~brails.utils.tiger_files.DEFAULT_TIGER_VINTAGE`.
 
         Raises:
             TypeError:
-                If ``seed``, ``n_worlds`` or ``acs_vintage`` is not an integer,
-                ``merge_stacked`` is not a boolean, an options argument is
-                not a mapping, or an options mapping names an argument its
-                class does not take or that the compiler sets.
+                If ``seed``, ``n_worlds``, ``acs_vintage`` or ``block_group_vintage``
+                is not an integer, ``merge_stacked`` is not a boolean, an options
+                argument is not a mapping, or an options mapping names an argument
+                its class does not take or that the compiler sets.
             ValueError:
                 If ``n_worlds`` is below 1; if
                 :class:`HazusEQStructureTypeInferer` refuses the state with
@@ -1171,10 +1184,15 @@ class HazusEQInventoryCompiler:
             msg = f'merge_stacked must be a boolean, not {merge_stacked!r}.'
             raise TypeError(msg)
         self.merge_stacked = merge_stacked
-        if isinstance(acs_vintage, bool) or not isinstance(acs_vintage, int):
-            msg = f'acs_vintage must be an integer year, not {acs_vintage!r}.'
-            raise TypeError(msg)
+        for name, vintage in (
+            ('acs_vintage', acs_vintage),
+            ('block_group_vintage', block_group_vintage),
+        ):
+            if isinstance(vintage, bool) or not isinstance(vintage, int):
+                msg = f'{name} must be an integer year, not {vintage!r}.'
+                raise TypeError(msg)
         self.acs_vintage = acs_vintage
+        self.block_group_vintage = block_group_vintage
 
         try:
             # Built only to check the state. Each world builds its own.
@@ -1262,7 +1280,9 @@ class HazusEQInventoryCompiler:
                 that is not Overture's; or, for a census table given as ``None``, if
                 a key store holds a value that cannot be a key or a table the year
                 sampler reads holds an estimate the Census Bureau does not publish
-                where the run reads it.
+                where the run reads it; or, where both the census tables and the
+                block groups are read, if ``acs_vintage`` and ``block_group_vintage``
+                are of different decades.
             LookupError:
                 If a census table is given as ``None`` and no Census API key is
                 found.
@@ -1272,7 +1292,8 @@ class HazusEQInventoryCompiler:
                 a request with something other than the table asked.
             requests.exceptions.RequestException:
                 If the key check or a request for a census table fails, as
-                :meth:`~brails.scrapers.ACSTableScraper.get_table` raises.
+                :meth:`~brails.scrapers.ACSTableScraper.get_table` raises, or the
+                download of a TIGER/Line file of block groups fails.
         """
         not_strings = [
             a for a in inputs.footprints.inventory if not isinstance(a, str)
@@ -1632,46 +1653,92 @@ class HazusEQInventoryCompiler:
         self, inputs: CompilerInputs, report: CompilationReport
     ) -> tuple[CompilerInputs, ACSTableScraper | None]:
         """
-        Check the Census API key for the census tables left as ``None``.
+        Read the block groups left as ``None`` and check the key for the tables.
 
-        The check runs before s01, so that a run without a usable key stops before
-        any step. The tables are read after s01, by :meth:`_read_census_tables`.
+        Both run before s01, so that a run without a usable key or without the files
+        stops before any step. The census tables left as ``None`` are read after s01,
+        by :meth:`_read_census_tables`.
 
         Args:
             inputs (CompilerInputs):
                 The study area's data.
             report (CompilationReport):
-                The report, whose settings record ``acs_vintage`` when a table is to
-                be read.
+                The report, whose settings record the release of each input read,
+                whose notice names the states of the block groups, and which times
+                their reading as ``s01_block_groups``.
 
         Returns:
             tuple[CompilerInputs, ACSTableScraper | None]:
-                The inputs, and the scraper holding the checked key, or ``None`` when
-                every table is given.
+                A copy of the inputs holding the block groups read, and the scraper
+                holding the checked key, or ``None`` when every table is given.
 
         Raises:
-            LookupError, RuntimeError:
-                If no key is found or the API refuses it, with a sentence naming the
-                tables that need it.
-            ValueError, requests.exceptions.RequestException:
-                As :class:`ACSTableScraper` and its ``check_key`` raise.
+            ValueError:
+                If both the tables and the block groups are read and their vintages
+                are of different decades, or as :class:`ACSTableScraper` and
+                :meth:`TIGERLineScraper.get_block_groups` raise.
+            LookupError, RuntimeError, ValueError:
+                If no key is found, a store holds a value that cannot be one or the
+                API refuses it, with a sentence naming the tables that need it.
+            requests.exceptions.RequestException:
+                If the key check fails, or the download of a TIGER/Line file, with a
+                sentence naming the input that was being read.
         """
         missing = [
             name for name in _ACS_TABLE_REQUESTS if getattr(inputs, name) is None
         ]
-        if not missing:
-            return inputs, None
-        try:
-            scraper = ACSTableScraper()
-            scraper.check_key(self.acs_vintage)
-        except (LookupError, RuntimeError) as error:
+        # A GEOID can carry over from one decade to the next with a changed boundary,
+        # so tables and polygons of two decades would be joined without an error.
+        if (
+            missing
+            and inputs.block_groups is None
+            and self.acs_vintage // 10 != self.block_group_vintage // 10
+        ):
+            decade = self.acs_vintage // 10 * 10
             msg = (
-                f'{error} CompilerInputs leaves {", ".join(missing)} as None, so '
-                'the compiler reads them from the Census Data API, which needs a '
-                'key. Give the tables in CompilerInputs to compile without one.'
+                f'acs_vintage {self.acs_vintage} and block_group_vintage '
+                f'{self.block_group_vintage} are of different decades. The tables '
+                "of an ACS release count the block groups of its decade's census, "
+                'so set block_group_vintage to a TIGER/Line release from '
+                f'{decade} to {decade + 9}.'
             )
-            raise type(error)(msg) from error
-        report.settings['acs_vintage'] = self.acs_vintage
+            raise ValueError(msg)
+        scraper = None
+        if missing:
+            try:
+                scraper = ACSTableScraper()
+                scraper.check_key(self.acs_vintage)
+            except (LookupError, RuntimeError, ValueError) as error:
+                msg = (
+                    f'{error} CompilerInputs leaves {", ".join(missing)} as None, '
+                    'so the compiler reads them from the Census Data API, which '
+                    'needs a key. Give the tables in CompilerInputs to compile '
+                    'without one.'
+                )
+                raise type(error)(msg) from error
+            report.settings['acs_vintage'] = self.acs_vintage
+
+        if inputs.block_groups is None:
+            started = time.perf_counter()
+            vintage = self.block_group_vintage
+            area = GeometryRegion(inputs.footprints.get_extent(buffer='none'))
+            try:
+                block_groups = TIGERLineScraper(vintage).get_block_groups(area)
+            except requests.RequestException as error:
+                msg = (
+                    f'Reading the block groups from the TIGER/Line {vintage} files '
+                    f'failed: {error} To compile without the download, give the '
+                    'polygons as CompilerInputs.block_groups.'
+                )
+                raise type(error)(msg) from error
+            inputs = inputs._replace(block_groups=block_groups)
+            report.settings['block_group_vintage'] = vintage
+            report.note(
+                f'Block groups read from the TIGER/Line {vintage} files of '
+                f'{", ".join(sorted(set(block_groups[STATE_NAME_COLUMN])))} for the '
+                "footprints' bounding box."
+            )
+            report.set_timing('s01_block_groups', time.perf_counter() - started)
         return inputs, scraper
 
     def _read_census_tables(

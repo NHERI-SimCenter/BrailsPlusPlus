@@ -54,7 +54,9 @@ from brails.compilers.hazus_earthquake.hazus_eq_inventory_compiler import (
 )
 from brails.constants import BLOCK_GROUP_KEY
 from brails.scrapers.us_census_scrapers.acs_table_scraper import ACS5_URL
+from brails.scrapers.us_census_scrapers.tiger_line_scraper import STATE_NAME_COLUMN
 from brails.utils.census_api_key import CENSUS_API_KEY_NAME
+from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE
 from tests.compilers.hazus_earthquake.compiler_fixtures import (
     BG_EAST,
     BG_WEST,
@@ -65,6 +67,7 @@ from tests.compilers.hazus_earthquake.compiler_fixtures import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 # The table and geography requested for each census table field of CompilerInputs.
@@ -364,6 +367,21 @@ class TestCensusTables:
         assert not assign.called
         assert calls == []
 
+    def test_value_that_cannot_be_a_key_names_the_tables(
+        self,
+        study_area: CompilerInputs,
+        census_api: Callable[..., list[dict]],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A variable that cannot be a key stops the run naming the tables."""
+        calls = census_api(study_area)
+        monkeypatch.setenv(CENSUS_API_KEY_NAME, 'notakey-')
+        with pytest.raises(ValueError, match='environment variable.*leaves b25127'):
+            HazusEQInventoryCompiler(seed=SEED, n_worlds=1).compile(
+                study_area._replace(b25127_tracts=None)
+            )
+        assert calls == []
+
     def test_refused_key_stops_before_s01(
         self,
         study_area: CompilerInputs,
@@ -453,3 +471,109 @@ class TestCensusTables:
         """An ACS vintage that is not an integer year is refused."""
         with pytest.raises(TypeError, match='acs_vintage must be an integer'):
             HazusEQInventoryCompiler(seed=SEED, acs_vintage=vintage)
+
+
+class TestBlockGroups:
+    """Block groups given as None are read from the TIGER/Line files."""
+
+    @pytest.fixture
+    def read(self, study_area: CompilerInputs) -> Iterator[mock.MagicMock]:
+        """
+        Stand in for TIGERLineScraper.get_block_groups with the fixture's polygons.
+
+        Args:
+            study_area (CompilerInputs):
+                The study area, whose block groups are served with the columns of a
+                TIGER/Line file that the compiler does not read.
+
+        Yields:
+            unittest.mock.MagicMock:
+                The stand-in, whose calls give the scraper and the area.
+        """
+        served = study_area.block_groups.to_crs('EPSG:4269').assign(
+            **{STATE_NAME_COLUMN: 'California', 'ALAND': 1000}
+        )
+        with mock.patch.object(
+            hc.TIGERLineScraper,
+            'get_block_groups',
+            autospec=True,
+            return_value=served,
+        ) as stand_in:
+            yield stand_in
+
+    def test_block_groups_read_compile_as_given(
+        self,
+        study_area: CompilerInputs,
+        compiled: Callable[[int], CompilationResult],
+        read: mock.MagicMock,
+    ) -> None:
+        """Block groups read for the footprints' bounding box give the given run."""
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+        ).compile(study_area._replace(block_groups=None))
+
+        ((scraper, area),) = [call.args for call in read.call_args_list]
+        assert scraper.vintage == DEFAULT_TIGER_VINTAGE
+        assert all(
+            area.geometry.covers(asset.get_geometry())
+            for asset in study_area.footprints.inventory.values()
+        )
+        assert_same_compilation(result, compiled(3))
+        summary = result.report.summary()
+        assert summary['settings']['block_group_vintage'] == DEFAULT_TIGER_VINTAGE
+        assert any(
+            f'TIGER/Line {DEFAULT_TIGER_VINTAGE} files of California' in notice
+            for notice in summary['notices']
+        )
+
+    def test_given_block_groups_record_no_release(
+        self, compiled: Callable[[int], CompilationResult]
+    ) -> None:
+        """A run given its block groups records no TIGER/Line release."""
+        assert 'block_group_vintage' not in compiled(1).report.summary()['settings']
+
+    def test_failed_download_names_the_input_before_s01(
+        self, study_area: CompilerInputs, read: mock.MagicMock
+    ) -> None:
+        """A failed download stops the run before s01, naming the field to give."""
+        read.side_effect = requests.ConnectionError('no route')
+        with (
+            mock.patch.object(
+                hc.CensusTractScraper, 'get_census_geographies'
+            ) as assign,
+            pytest.raises(
+                requests.ConnectionError,
+                match='no route.*CompilerInputs.block_groups',
+            ),
+        ):
+            HazusEQInventoryCompiler(seed=SEED).compile(
+                study_area._replace(block_groups=None)
+            )
+        assert not assign.called
+
+    @pytest.mark.parametrize('vintage', ['2023', True])
+    def test_block_group_vintage_must_be_an_integer(self, vintage: object) -> None:
+        """A block-group vintage that is not an integer year is refused."""
+        with pytest.raises(
+            TypeError, match='block_group_vintage must be an integer'
+        ):
+            HazusEQInventoryCompiler(seed=SEED, block_group_vintage=vintage)
+
+    def test_vintages_of_two_decades_refused_only_where_both_are_read(
+        self,
+        study_area: CompilerInputs,
+        census_api: Callable[..., list[dict]],
+        read: mock.MagicMock,
+    ) -> None:
+        """Vintages of two decades stop a run reading both, before any request."""
+        calls = census_api(study_area)
+        compiler = HazusEQInventoryCompiler(seed=SEED, acs_vintage=2019)
+        with pytest.raises(ValueError, match='release from 2010 to 2019'):
+            compiler.compile(
+                study_area._replace(block_groups=None, b25127_tracts=None)
+            )
+        assert calls == []
+        assert not read.called
+        # Given every table, the block groups alone are read without a refusal.
+        compiler.compile(study_area._replace(block_groups=None))
+        assert read.called

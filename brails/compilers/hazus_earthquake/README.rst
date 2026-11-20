@@ -64,8 +64,9 @@ The constructor of the compiler takes the settings of the run: the seed of
 every random draw, the number of worlds, the state, the seismic zone and the
 design level method that the Hazus inferers read, the distance cap of the NSI
 join and the projected coordinate system of its distances, the options of
-three components, whether to merge stacked footprints first, and ``acs_vintage``, the
-ACS release of the census tables the run reads. Given no
+three components, whether to merge stacked footprints first, ``acs_vintage``, the ACS
+release of the census tables the run reads, and ``block_group_vintage``, the
+TIGER/Line release of the block groups it reads. Given no
 seed, the compiler draws one, which ``CompilationResult.seed`` and the
 report's summary hold, so that the run can be repeated. The constructor
 checks the settings. It also builds four of the components, so that each can
@@ -751,12 +752,18 @@ These limits hold:
 Block groups
 ------------
 
-``CompilerInputs.block_groups`` holds one polygon per census block group,
-with a ``GEOID`` column, as a TIGER/Line file holds them. Without it, the
-compiler queries the Census 2020 block groups from the Census Bureau's
-TIGERweb service, which needs network access. Give the polygons to avoid the
-query, or give nothing. Either way, every footprint must lie in a block
-group.
+``CompilerInputs.block_groups`` holds one polygon per census block group, with a
+``GEOID`` column, as a TIGER/Line file holds them. Without it, ``TIGERLineScraper``
+reads the block groups that intersect the footprints' bounding box from the
+TIGER/Line files of the compiler's ``block_group_vintage``, before
+``s01_footprints``. The read needs network access. The report's settings record the
+release, a notice names the states read, and the report times the reading as
+``s01_block_groups``. The tables of an ACS release count the block groups of its
+decade's census, and a GEOID can carry over from one decade to the next with a
+changed boundary. Where the run reads both the census tables and the block groups, it
+therefore refuses a ``block_group_vintage`` whose decade differs from that of
+``acs_vintage``. Give the polygons to avoid the download, or give nothing. Either
+way, every footprint must lie in a block group.
 
 The written file
 ----------------
@@ -818,7 +825,7 @@ The compiler draws structure types from the completed West Coast tables, so
 its constructor accepts only states of that region with a RES1 distribution.
 It checks the buildings against the one input schema ``DLML_DATASET``, and
 the W1 carve-out of ``s08`` applies only in ``CARVE_OUT_STATE`` under
-``CARVE_OUT_METHOD``. Without polygons it reads the Census 2020 block groups.
+``CARVE_OUT_METHOD``.
 ``merge_stacked`` takes Overture footprints only, and a compiler built with
 it takes no local inventory. A local inventory holds one possible world. The
 implausible pairs of occupancy class and story count are those of the West

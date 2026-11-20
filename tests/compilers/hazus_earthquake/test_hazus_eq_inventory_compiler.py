@@ -477,41 +477,6 @@ class TestFootprintsAndJoin:
         held = result.inventory.inventory['h06'].features
         assert held[FOOTPRINT_DATASETS_KEY] == 'Microsoft ML Buildings;OpenStreetMap'
 
-    def test_block_groups_queried_without_polygons(
-        self, study_area: object, compiled: object
-    ) -> None:
-        """Inputs without block-group polygons pass None to the scraper and compile as with them."""
-        real = hc.CensusTractScraper.get_census_geographies
-        asked = []
-
-        def query(
-            scraper: object, inventory: AssetInventory, **settings: object
-        ) -> tuple:
-            # Stands in for the query with the fixture's own polygons.
-            asked.append(settings.pop('polygons'))
-            return real(
-                scraper, inventory, polygons=study_area.block_groups, **settings
-            )
-
-        given = study_area._asdict()
-        del given['block_groups']
-        with mock.patch.object(
-            hc.CensusTractScraper,
-            'get_census_geographies',
-            autospec=True,
-            side_effect=query,
-        ):
-            result = HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
-            ).compile(CompilerInputs(**given))
-
-        assert asked == [None]
-        expected = compiled(n_worlds=3).inventory
-        for world in range(3):
-            assert features_in(result.inventory, world) == features_in(
-                expected, world
-            )
-
     @pytest.mark.parametrize(('height_unit', 'merged'), [('ft', 1), ('m', 2)])
     def test_stacked_footprints_merge_into_the_spine(
         self, study_area: object, height_unit: str, merged: int
