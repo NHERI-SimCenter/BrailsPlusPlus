@@ -108,6 +108,7 @@ from brails.constants import (
     FOOTPRINT_PROVIDER_KEY,
     FOOTPRINT_RELEASE_KEY,
     GEOGRAPHIC_CRS,
+    GEOID_LENGTH,
     GROSS_AREA_KEY,
     HEIGHT_CLASS_KEY,
     LOCAL_GROSS_AREA_KEY,
@@ -156,7 +157,6 @@ from brails.inferers.acs_year_built_sampler.acs_year_built_sampler import (
 )
 from brails.inferers.hazus_inferer_earthquake.hazus_eq_design_level_inferer import (
     GENERIC_DESIGN_LEVELS,
-    STATE_DESIGN_LEVELS,
     HazusEQDesignLevelInferer,
     apply_w1_carveout,
 )
@@ -220,7 +220,7 @@ from brails.types.asset_inventory import (
     is_missing_value,
     read_source_string,
 )
-from brails.types.census_boundary import CensusBoundary
+from brails.types.census_boundary import STATES, CensusBoundary
 from brails.types.geometry_region import GeometryRegion
 from brails.utils.region_filter import (
     find_inside,
@@ -390,11 +390,6 @@ DLML_DATASET = 'seismic/building/portfolio/Hazus v5.1'
 # Pre-Code W1 building (Table C-10 of the Hazus 5.1 technical manual).
 CARVE_OUT_STATE = 'California'
 CARVE_OUT_METHOD = '5.1'
-
-# The state a compilation applies where neither the compiler nor its inputs name
-# one, and the 1997 UBC seismic zone it applies where the compiler is given none.
-DEFAULT_STATE = 'California'
-DEFAULT_SEISMIC_ZONE = '4'
 
 # The design level method a compiler applies by default.
 DEFAULT_DESIGN_LEVEL_METHOD = '5.1'
@@ -1383,7 +1378,7 @@ def _find_state(
     encloses no area, or that lies in no state or in two, is refused first. Then,
     without ``compiler``, a state the compiler cannot take is refused, and with it,
     what :meth:`HazusEQInventoryCompiler.check_state` refuses, in its order: a state
-    other than the compiler's, a state it cannot take, a missing zone.
+    other than the compiler's, a state it cannot take with its zone.
 
     Args:
         boundary (Polygon | MultiPolygon):
@@ -1442,7 +1437,7 @@ def _find_state(
         raise ValueError(msg)
     (state,) = states
     if compiler is None:
-        _check_state(state, DEFAULT_SEISMIC_ZONE, DEFAULT_DESIGN_LEVEL_METHOD, 0)
+        _check_state(state, None, DEFAULT_DESIGN_LEVEL_METHOD, 0)
     else:
         compiler.check_state(state)
     return state
@@ -1468,7 +1463,7 @@ def _widen(geometry: BaseGeometry, meters: float) -> BaseGeometry:
 
 
 def _check_state(
-    state: str, seismic_zone: str, design_level_method: str, seed: int
+    state: str, seismic_zone: str | None, design_level_method: str, seed: int
 ) -> None:
     """
     Raise if the inferers a compilation builds would refuse the state or zone.
@@ -1478,8 +1473,9 @@ def _check_state(
     Args:
         state (str):
             The full state name the compilation applies.
-        seismic_zone (str):
-            The 1997 UBC seismic zone it applies.
+        seismic_zone (str | None):
+            The 1997 UBC seismic zone it applies, or ``None`` to check the state
+            alone.
         design_level_method (str):
             The design level method of :class:`HazusEQDesignLevelInferer`.
         seed (int):
@@ -1505,7 +1501,74 @@ def _check_state(
             else f'The compiler cannot draw structure types for {state}: {error}'
         )
         raise ValueError(msg) from error
-    HazusEQDesignLevelInferer(design_level_method, state, seismic_zone)
+    if seismic_zone is not None:
+        HazusEQDesignLevelInferer(design_level_method, state, seismic_zone)
+
+
+def _study_area_state(
+    inputs: CompilerInputs, compiler_state: str | None
+) -> str | None:
+    """
+    Return the state of a study area, as its inputs name it or its block groups lie.
+
+    The first two digits of a block group's GEOID code its state. Inputs that name
+    no state take the compiler's where one of their block groups lies in it.
+
+    Args:
+        inputs (CompilerInputs):
+            The study area's data.
+        compiler_state (str | None):
+            The state the compiler was built for, or ``None``.
+
+    Returns:
+        str | None:
+            The full state name, or ``None`` where the inputs name no state and give
+            no block groups, or give GEOIDs other than 12-digit strings.
+
+    Raises:
+        ValueError:
+            If the inputs name a state that is not a full state name; if they name
+            none and the block groups lie in two states or more, none of them the
+            compiler's; or if they name a state in which no block group lies.
+    """
+    names = {code: name for code, _, name in STATES}
+    if inputs.state is not None and inputs.state not in names.values():
+        msg = (
+            'CompilerInputs.state must be a full state name, as in '
+            f"'California', not {inputs.state!r}."
+        )
+        raise ValueError(msg)
+    if inputs.block_groups is None or inputs.block_groups.empty:
+        return inputs.state
+    geoids = list(inputs.block_groups['GEOID'])
+    # Other GEOIDs are refused, with a message that says how to fix them, where the
+    # block groups are checked.
+    if not all(
+        isinstance(geoid, str)
+        and len(geoid) == GEOID_LENGTH
+        and geoid.isascii()
+        and geoid.isdigit()
+        for geoid in geoids
+    ):
+        return inputs.state
+    states = sorted({names.get(geoid[:2], geoid[:2]) for geoid in geoids})
+    if inputs.state is None and compiler_state in states:
+        return compiler_state
+    if inputs.state is None and len(states) > 1:
+        msg = (
+            f'The block groups of the inputs lie in each of {" and ".join(states)}, '
+            'and a compilation covers one state. Name the state of the study area '
+            'in CompilerInputs.state.'
+        )
+        raise ValueError(msg)
+    if inputs.state is not None and inputs.state not in states:
+        msg = (
+            f'The inputs name {inputs.state}, and their block groups lie in '
+            f'{" and ".join(states)}. Give the block groups of the study area, or '
+            'leave the state to them.'
+        )
+        raise ValueError(msg)
+    return inputs.state or states[0]
 
 
 class HazusEQInventoryCompiler:
@@ -1518,9 +1581,9 @@ class HazusEQInventoryCompiler:
 
     Every constructor argument is stored as an attribute of the same name,
     read-only by convention; ``seed`` holds the seed used, never ``None``,
-    and the options hold the mappings as resolved. ``state``, ``seismic_zone`` and
-    ``merge_stacked`` keep ``None`` when left at it. Each compilation resolves them
-    and records the values applied in its summary's settings.
+    and the options hold the mappings as resolved. ``state`` and ``merge_stacked``
+    keep ``None`` when left at it. Each compilation resolves them and records the
+    values applied in its summary's settings.
     """
 
     def __init__(  # noqa: C901
@@ -1529,7 +1592,7 @@ class HazusEQInventoryCompiler:
         seed: int | None = None,
         n_worlds: int = DEFAULT_N_WORLDS,
         state: str | None = None,
-        seismic_zone: str | None = None,
+        seismic_zone: str,
         design_level_method: str = DEFAULT_DESIGN_LEVEL_METHOD,
         join_cap_m: float = DEFAULT_JOIN_CAP_M,
         projected_crs: object = None,
@@ -1564,13 +1627,12 @@ class HazusEQInventoryCompiler:
                 that takes a state receives. Structure types are drawn from the
                 completed West Coast tables, so the state must be one of that
                 region with a RES1 distribution. ``None``, the default, applies the
-                state of :class:`CompilerInputs` and :data:`DEFAULT_STATE` where the
-                inputs name none.
-            seismic_zone (str, optional):
-                The 1997 UBC seismic zone, which every inferer that takes one
-                receives. ``None``, the default, applies
-                :data:`DEFAULT_SEISMIC_ZONE`, which :meth:`compile` refuses for
-                inputs that name a state other than :data:`DEFAULT_STATE`.
+                state of the study area, which :meth:`compile` infers.
+            seismic_zone (str):
+                The 1997 UBC seismic zone of the study area, which every inferer
+                that takes one receives: one of ``'4'``, ``'3'``, ``'2B'``,
+                ``'2A'``, ``'1'`` and ``'0'``, and ``'3'`` or ``'4'`` in
+                California.
             design_level_method (str, optional):
                 The design level method of
                 :class:`HazusEQDesignLevelInferer`.
@@ -1656,14 +1718,17 @@ class HazusEQInventoryCompiler:
         self.acs_vintage = acs_vintage
         self.block_group_vintage = block_group_vintage
 
-        # A compiler without a state is checked on DEFAULT_STATE, and compile
-        # checks another state the inputs name.
-        _check_state(
-            state or DEFAULT_STATE,
-            seismic_zone or DEFAULT_SEISMIC_ZONE,
-            design_level_method,
-            self.seed,
-        )
+        # The zone is checked here against every zone of the tables, and against
+        # the state's table here or, without a state, by check_state.
+        if str(seismic_zone).upper() not in GENERIC_DESIGN_LEVELS:
+            msg = (
+                'seismic_zone must be a 1997 UBC seismic zone, one of '
+                f'{", ".join(GENERIC_DESIGN_LEVELS)}, not {seismic_zone!r}.'
+            )
+            raise ValueError(msg)
+        seismic_zone = str(seismic_zone).upper()
+        if state is not None:
+            _check_state(state, seismic_zone, design_level_method, self.seed)
         self.state = state
         self.seismic_zone = seismic_zone
         self.design_level_method = design_level_method
@@ -1788,9 +1853,13 @@ class HazusEQInventoryCompiler:
                 than one possible world, or is given with ``merge_stacked``;
                 if no footprint lies inside the boundary, found right after
                 ``s01_footprints`` and before the census tables are read;
-                if the inputs name a state other than the compiler's, or other than
-                :data:`DEFAULT_STATE` for a compiler built without a seismic zone,
-                or one the inferers refuse with the compiler's seismic zone;
+                if the inputs name a state other than by its full name, or name
+                none and their block groups lie in two states or more, none of them
+                the compiler's, or name a state in which none lies, or if the state
+                of the study area is other than the compiler's or one the inferers
+                refuse with the compiler's seismic zone, checked before anything is
+                read or, for block groups given as ``None``, right after they are
+                read;
                 or as the components raise, among them a footprint outside
                 every block group and, with ``merge_stacked``, a footprint
                 that is not Overture's; or, for a census table given as ``None``, if
@@ -1848,7 +1917,13 @@ class HazusEQInventoryCompiler:
         sources = _WorldSources(freeze)
         logs: dict[str, pd.DataFrame] = {}
 
+        block_groups_read = inputs.block_groups is None
         inputs, acs_scraper = self._read_inputs_before_s01(inputs, report)
+        if block_groups_read:
+            state, _ = self.check_state(
+                _study_area_state(inputs, self.state) or self.state
+            )
+            report.settings['state'] = state
         started = time.perf_counter()
         centroids = self._prepare_footprints(
             inputs, sources, logs, report, merge_stacked=merge_stacked
@@ -2067,11 +2142,12 @@ class HazusEQInventoryCompiler:
                 The study area's data.
 
         Returns:
-            tuple[str, str, bool, list[str]]:
+            tuple[str | None, str, bool, list[str]]:
                 The state, the seismic zone and ``merge_stacked`` the compilation
-                applies, and the notices for the report: those of the inputs, and one
-                naming the zone where the inputs name :data:`DEFAULT_STATE` and the
-                compiler was built without a zone.
+                applies, and the notices of the inputs for the report. The state is
+                ``None`` where neither the compiler nor the inputs name one and the
+                inputs give no block groups, whose state :meth:`compile` checks once
+                it has read them.
 
         Raises:
             TypeError:
@@ -2081,8 +2157,8 @@ class HazusEQInventoryCompiler:
             ValueError:
                 If the local inventory holds an asset that the footprints lack, a
                 feature of :data:`RESERVED_LOCAL_FEATURES` or more than one possible
-                world, or is given with ``merge_stacked``; or as
-                :meth:`check_state` raises.
+                world, or is given with ``merge_stacked``; as
+                :func:`_study_area_state` raises; or as :meth:`check_state` raises.
         """
         not_strings = [
             a for a in inputs.footprints.inventory if not isinstance(a, str)
@@ -2104,7 +2180,10 @@ class HazusEQInventoryCompiler:
                 f'{inputs.notices!r}.'
             )
             raise TypeError(msg)
-        state, seismic_zone = self.check_state(inputs.state)
+        named = _study_area_state(inputs, self.state) or self.state
+        state, seismic_zone = (
+            (None, self.seismic_zone) if named is None else self.check_state(named)
+        )
         merge_stacked = (
             inputs.merge_stacked
             if self.merge_stacked is None
@@ -2112,13 +2191,7 @@ class HazusEQInventoryCompiler:
         )
         if inputs.local is not None:
             self._check_local(inputs, merge_stacked=merge_stacked)
-        notices = list(inputs.notices)
-        if inputs.state == DEFAULT_STATE and self.seismic_zone is None:
-            notices.append(
-                f'The inputs name {DEFAULT_STATE} and the compiler was built '
-                f'without seismic_zone, so zone {DEFAULT_SEISMIC_ZONE} applies.'
-            )
-        return state, seismic_zone, merge_stacked, notices
+        return state, seismic_zone, merge_stacked, list(inputs.notices)
 
     @staticmethod
     def _check_local(inputs: CompilerInputs, *, merge_stacked: bool) -> None:
@@ -2175,21 +2248,19 @@ class HazusEQInventoryCompiler:
             )
             raise ValueError(msg)
 
-    def check_state(self, named: str | None) -> tuple[str, str]:
+    def check_state(self, named: str) -> tuple[str, str]:
         """
         Return the state and the seismic zone a compilation of a study area applies.
 
-        The compiler's state applies where it was given one, the state the study
-        area is in where it was not, and :data:`DEFAULT_STATE` where neither is
-        named. The compiler's zone applies where it was given one, and
-        :data:`DEFAULT_SEISMIC_ZONE` otherwise. :meth:`compile` calls it for the
-        state its inputs name, and :meth:`CompilerInputs.from_place` for the state
-        of the place when given the compiler.
+        The state is the one the study area is in, which must be the compiler's
+        where it was given one, and the zone is the compiler's. :meth:`compile`
+        calls it for the state of its inputs, and :meth:`CompilerInputs.from_place`
+        for the state of the place when given the compiler.
 
         Args:
-            named (str | None):
-                The state the study area is in, such as the inputs name, or
-                ``None``.
+            named (str):
+                The state the study area is in, such as the inputs name or their
+                block groups lie in.
 
         Returns:
             tuple[str, str]:
@@ -2197,34 +2268,23 @@ class HazusEQInventoryCompiler:
 
         Raises:
             ValueError:
-                In this order: if the compiler's state and ``named`` differ; for a
-                compiler built without a state, if the inferers refuse ``named``
-                with the zone; and if ``named`` is a state other than
-                :data:`DEFAULT_STATE` and the compiler was built without a zone.
+                In this order: if the compiler's state and ``named`` differ; and for
+                a compiler built without a state, if the inferers refuse ``named``
+                with the zone.
         """
-        if self.state is not None and named not in (None, self.state):
+        if self.state is not None and named != self.state:
             msg = (
                 f'The compiler was built for {self.state} and the study area is in '
                 f'{named}. Build the compiler without a state, and it takes the '
                 'state of the study area.'
             )
             raise ValueError(msg)
-        state = self.state or named or DEFAULT_STATE
-        seismic_zone = self.seismic_zone or DEFAULT_SEISMIC_ZONE
-        # The constructor checked the compiler's state, or DEFAULT_STATE without one.
-        if state != (self.state or DEFAULT_STATE):
-            _check_state(state, seismic_zone, self.design_level_method, self.seed)
-        if named not in (None, DEFAULT_STATE) and self.seismic_zone is None:
-            zones = STATE_DESIGN_LEVELS.get(named, GENERIC_DESIGN_LEVELS)
-            msg = (
-                f'The study area is in {named}, and the compiler was built without '
-                'seismic_zone. Build it with seismic_zone, the 1997 UBC zone of the '
-                f'study area, one of {", ".join(zones)}; zone '
-                f'{DEFAULT_SEISMIC_ZONE} applies without one only to inputs that '
-                f'name {DEFAULT_STATE} or no state.'
+        # The constructor checked the compiler's state with the zone.
+        if self.state is None:
+            _check_state(
+                named, self.seismic_zone, self.design_level_method, self.seed
             )
-            raise ValueError(msg)
-        return state, seismic_zone
+        return named, self.seismic_zone
 
     def _prepare_footprints(
         self,

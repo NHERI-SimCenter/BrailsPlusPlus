@@ -131,6 +131,7 @@ from tests.compilers.hazus_earthquake.compiler_fixtures import (
     RELEASE,
     SEED,
     build_inputs,
+    in_state,
     square,
 )
 
@@ -265,7 +266,7 @@ def compiled(study_area: CompilerInputs) -> Callable[..., CompilationResult]:
                 The result, shared between calls with the same settings.
         """
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=n_worlds, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=n_worlds, projected_crs=METRIC_CRS
         )
         return compiler.compile(study_area)
 
@@ -371,11 +372,12 @@ class TestConstructor:
     def test_refusals(self, arguments: dict, error: type, match: str | None) -> None:
         """A setting no component accepts is refused before any run."""
         with pytest.raises(error, match=match):
-            HazusEQInventoryCompiler(**arguments)
+            HazusEQInventoryCompiler(**{'seismic_zone': '4', **arguments})
 
     def test_options_and_seed(self) -> None:
         """The imputer defaults are the compiler's, overridden key by key."""
         compiler = HazusEQInventoryCompiler(
+            seismic_zone='4',
             imputer_options={'k': 7},
             budget_options={'threshold_sqft': 900.0},
             sampler_options={'smoothing': 5.0},
@@ -384,9 +386,9 @@ class TestConstructor:
         assert dict(compiler.imputer_options) == {**DEFAULT_IMPUTER_OPTIONS, 'k': 7}
         assert dict(compiler.budget_options) == {'threshold_sqft': 900.0}
         assert dict(compiler.sampler_options) == {'smoothing': 5.0}
-        assert dict(HazusEQInventoryCompiler().imputer_options) == dict(
-            DEFAULT_IMPUTER_OPTIONS
-        )
+        assert dict(
+            HazusEQInventoryCompiler(seismic_zone='4').imputer_options
+        ) == dict(DEFAULT_IMPUTER_OPTIONS)
 
 
 class TestCompileArguments:
@@ -397,25 +399,25 @@ class TestCompileArguments:
         footprints = build_inputs().footprints
         footprints.inventory[7] = footprints.inventory.pop('h01')
         with pytest.raises(TypeError, match='must be strings'):
-            HazusEQInventoryCompiler(seed=SEED).compile(
+            HazusEQInventoryCompiler(seismic_zone='4', seed=SEED).compile(
                 study_area._replace(footprints=footprints)
             )
         local = build_inputs().local
         local.add_asset_coordinates('zz', [[-122.4, 37.7]])
         with pytest.raises(ValueError, match='footprints lack'):
-            HazusEQInventoryCompiler(seed=SEED).compile(
+            HazusEQInventoryCompiler(seismic_zone='4', seed=SEED).compile(
                 study_area._replace(local=local)
             )
         local = build_inputs().local
         local.n_pw = 2
         with pytest.raises(ValueError, match='one possible world'):
-            HazusEQInventoryCompiler(seed=SEED).compile(
+            HazusEQInventoryCompiler(seismic_zone='4', seed=SEED).compile(
                 study_area._replace(local=local)
             )
         with pytest.raises(ValueError, match='merge_stacked'):
-            HazusEQInventoryCompiler(seed=SEED, merge_stacked=True).compile(
-                study_area
-            )
+            HazusEQInventoryCompiler(
+                seismic_zone='4', seed=SEED, merge_stacked=True
+            ).compile(study_area)
 
     @pytest.mark.parametrize('key', hc.RESERVED_LOCAL_FEATURES)
     def test_reserved_local_feature_refused(self, key: str) -> None:
@@ -427,7 +429,7 @@ class TestCompileArguments:
         coordinates = inputs.footprints.inventory['h02'].coordinates
         inputs.local.add_asset('h02', Asset('h02', coordinates, {key: 7.0}))
         with pytest.raises(ValueError, match=key):
-            HazusEQInventoryCompiler(seed=SEED).compile(inputs)
+            HazusEQInventoryCompiler(seismic_zone='4', seed=SEED).compile(inputs)
 
     def test_inputs_not_modified(self, study_area: object, compiled: object) -> None:
         """A run leaves every input as it was."""
@@ -510,7 +512,11 @@ class TestFootprintsAndJoin:
             }
             footprints.add_asset(asset_id, Asset(asset_id, ring, features))
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS, merge_stacked=True
+            seismic_zone='4',
+            seed=SEED,
+            n_worlds=1,
+            projected_crs=METRIC_CRS,
+            merge_stacked=True,
         ).compile(
             study_area._replace(
                 footprints=footprints, local=None, height_unit=height_unit
@@ -596,7 +602,7 @@ class TestFootprintsAndJoin:
         monkeypatch.setattr(hc, 'compose_source_parts', changing)
         with pytest.raises(RuntimeError, match='s02_nsi_join'):
             HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
 
 
@@ -634,7 +640,7 @@ class TestOutput:
             side_effect=counted,
         ):
             result = HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
             ).compile(study_area)
         for asset_id in ('h01', 'u02'):
             excluded_values = result.inventory.inventory[asset_id].features[
@@ -650,7 +656,7 @@ class TestOutput:
     def test_excluded_assets(self, study_area: object, tmp_path: object) -> None:
         """Excluded in every written world: left out; in some: on request."""
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         ).compile(study_area)
         report = result.report
         assert result.inventory.inventory['h01'].features[EXCLUDED_KEY] is False
@@ -926,7 +932,7 @@ class TestWrittenFile:
     ) -> None:
         """A missing default value is logged, and write keeps the rest of the run."""
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         )
         real = compiler._validator.validate
 
@@ -975,7 +981,7 @@ class TestWrittenFile:
     ) -> None:
         """A file of the world without the defect is written, and a file of the other world or of both is refused."""
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
         )
         real = compiler._validator.validate
         calls = []
@@ -1048,7 +1054,7 @@ class TestWrittenFile:
         """A value s15 cannot write is logged as missing."""
         monkeypatch.setattr(hc, name, replacement)
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         ).compile(study_area)
         lacking = set(
             result.logs[MISSING_DEFAULTS_LOG].itertuples(index=False, name=None)
@@ -1134,7 +1140,7 @@ class TestRandomness:
             ('other', build_inputs(), SEED + 1),
         ):
             result = HazusEQInventoryCompiler(
-                seed=seed, n_worlds=3, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=seed, n_worlds=3, projected_crs=METRIC_CRS
             ).compile(inputs)
             result.write(
                 tmp_path / f'{name}.geojson', extra_properties=ALL_PROPERTIES
@@ -1212,7 +1218,7 @@ class TestReport:
             ),
         ):
             result = HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
         seconds = {
             entry['stage']: entry['seconds']
@@ -1268,6 +1274,7 @@ class TestStoriesUnitsAndImputation:
     ) -> None:
         """The run gives the imputer and the budget their options and the seed."""
         compiler = HazusEQInventoryCompiler(
+            seismic_zone='4',
             seed=5,
             n_worlds=1,
             projected_crs=METRIC_CRS,
@@ -1355,7 +1362,7 @@ class TestStoriesUnitsAndImputation:
             ) as imputed,
         ):
             HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
         # l01 is a local RES1 over the COM1 of its NSI point.
         assert 'l01' in allocated.call_args.args[2].inventory
@@ -1374,7 +1381,7 @@ class TestStoriesUnitsAndImputation:
             hc.ObservedDonorImputer, 'impute_stage', autospec=True, side_effect=real
         ) as impute:
             HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
         assert impute.call_args.kwargs['validate'] is hc._is_plausible_pair
 
@@ -1387,7 +1394,7 @@ class TestStoriesUnitsAndImputation:
         footprints = AssetInventory()
         footprints.add_asset('d01', study_area.footprints.inventory['d01'])
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         ).compile(study_area._replace(footprints=footprints, local=None))
         assert not result.inventory.inventory
         result.write(tmp_path / 'empty.geojson')
@@ -1523,7 +1530,10 @@ class TestWorlds:
                 ),
             ):
                 HazusEQInventoryCompiler(
-                    seed=SEED, n_worlds=n_worlds, projected_crs=METRIC_CRS
+                    seismic_zone='4',
+                    seed=SEED,
+                    n_worlds=n_worlds,
+                    projected_crs=METRIC_CRS,
                 ).compile(study_area)
             last = [merged for world, merged in merges if world == 0][-1]
             keys[n_worlds] = {
@@ -1609,8 +1619,13 @@ class TestYearsAndTypes:
         self, study_area: object, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Each per-world component is told the number of the world it computes."""
+        # Built with its state, which the constructor checks before the spies.
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=6, projected_crs=METRIC_CRS
+            seismic_zone='4',
+            state='California',
+            seed=SEED,
+            n_worlds=6,
+            projected_crs=METRIC_CRS,
         )
         spies = {}
         for name in (
@@ -1634,7 +1649,7 @@ class TestYearsAndTypes:
         # so the comparison after the run also sees a change made to them
         # after the call.
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         )
         redraw = mock.Mock(wraps=hc.PairRedraw)
         monkeypatch.setattr(hc, 'PairRedraw', redraw)
@@ -1686,7 +1701,7 @@ class TestYearsAndTypes:
         monkeypatch.setattr(hc.StageFreeze, 'read', changing)
         with pytest.raises(RuntimeError, match='s05_view'):
             HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
             ).compile(study_area)
 
     def test_parts_of_s06_to_s08(self, compiled: object) -> None:
@@ -1731,7 +1746,7 @@ class TestYearsAndTypes:
     ) -> None:
         """In each world, the pair re-draw reads the world merged with s06's years, coded drawn."""
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         )
         # The re-draw is watched through its method, which receives the
         # world's merged inventory.
@@ -1762,7 +1777,7 @@ class TestYearsAndTypes:
     ) -> None:
         """In each world, the structure draws read the world merged with s07's re-drawn values, coded imputed."""
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         )
         # The draws are watched through _assign_structure, which receives the
         # world's merged inventory; its first calls in a run are s08's.
@@ -1895,7 +1910,7 @@ class TestYearsAndTypes:
             side_effect=counted,
         ):
             result = HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
             ).compile(study_area._replace(local=local))
         rows = result.report.exclusions
         conflicts = rows[rows['stage'] == 's14_building_type']
@@ -1952,8 +1967,12 @@ class TestYearsAndTypes:
             assert features[DESIGN_LEVEL_KEY] == 'Moderate-Code'
             assert (row.old, row.new) == ('Pre-Code', 'Moderate-Code')
         oregon = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, state='Oregon', projected_crs=METRIC_CRS
-        ).compile(study_area)
+            seismic_zone='4',
+            seed=SEED,
+            n_worlds=3,
+            state='Oregon',
+            projected_crs=METRIC_CRS,
+        ).compile(in_state(study_area, '41'))
         assert 's08_carve_out' not in set(oregon.report.records['stage'])
         levels = [
             (features[STRUCTURE_TYPE_KEY], features[DESIGN_LEVEL_KEY])
@@ -2002,7 +2021,7 @@ class TestYearsAndTypes:
             hc.ResolutionLoop, 'resolve', autospec=True, side_effect=real
         ) as resolve:
             HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
             ).compile(study_area)
         for call in resolve.call_args_list[:2]:
             labels = call.kwargs['building_type_sources']
@@ -2034,7 +2053,7 @@ class TestYearsAndTypes:
     def test_year_refused(self, study_area: object) -> None:
         """Without year tables, every residential asset is excluded at the year."""
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
         ).compile(
             study_area._replace(
                 b25034_block_groups=study_area.b25034_block_groups.iloc[0:0],
@@ -2062,7 +2081,7 @@ class TestYearsAndTypes:
             x, y, side = FOOTPRINTS[asset_id][:3]
             local.add_asset(asset_id, Asset(asset_id, square(x, y, side), features))
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
         ).compile(study_area._replace(local=local))
         rows = result.report.exclusions.set_index(['asset_id', 'world'])
         for asset_id, stage in (
@@ -2093,6 +2112,7 @@ class TestYearAndValueOfTheRest:
     ) -> None:
         """Both draw per world with the imputer's k and cap, s13 its weights too."""
         compiler = HazusEQInventoryCompiler(
+            seismic_zone='4',
             seed=SEED,
             n_worlds=6,
             projected_crs=METRIC_CRS,
@@ -2141,7 +2161,7 @@ class TestYearAndValueOfTheRest:
             side_effect=real,
         ) as check:
             result = HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
             ).compile(study_area)
         step6 = result.freeze.read('s08_view')
         for world in range(3):
@@ -2195,7 +2215,7 @@ class TestYearAndValueOfTheRest:
             'f01', Asset('f01', square(x, y, side), {OCCUPANCY_KEY: 'COM1'})
         )
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
         ).compile(study_area._replace(local=local))
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'f01']
@@ -2277,7 +2297,7 @@ class TestYearAndValueOfTheRest:
         local = build_inputs().local
         local.inventory['c02'].features[GROSS_AREA_KEY] = 10000.0
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         ).compile(study_area._replace(local=local))
         log = result.logs['value']
         assert set(log[log['asset_id'] == 'c02']['rate']) == {5.0e6 / 40000.0}
@@ -2316,7 +2336,7 @@ class TestYearAndValueOfTheRest:
             ),
         )
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         ).compile(study_area._replace(local=local))
         rows = result.report.exclusions
         rows = rows[rows['asset_id'] == 'f01']
@@ -2382,7 +2402,7 @@ class TestYearAndValueOfTheRest:
 
         monkeypatch.setattr(hc.ReplacementCostImputer, 'impute_stage', renamed)
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         ).compile(study_area)
         rows = result.report.exclusions
         rows = rows[rows['stage'] == 's13_replacement_cost']
@@ -2424,7 +2444,7 @@ class TestStructureStages:
         inputs = build_inputs()
         inputs.nsi_points.inventory[28].features['bldgtype'] = 'MH'
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         ).compile(inputs)
         picks = result.logs['neighbor_year']
         dated_by_s09 = set(zip(picks['asset_id'], picks['world']))
@@ -2472,7 +2492,7 @@ class TestLastSteps:
                     name,
                 )
             HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
             ).compile(study_area)
         # Each call's arguments are the compiler, then the world.
         assert [(args[1], name) for name, args, _ in manager.mock_calls] == [
@@ -2571,7 +2591,7 @@ class TestLastSteps:
             ),
         )
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         ).compile(study_area._replace(local=local))
         log = result.logs['value']
         assert not set(log.loc[log['asset_id'] == 'u10', 'outcome']) & set(
@@ -2672,7 +2692,7 @@ class TestLastSteps:
             side_effect=spied,
         ):
             HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
             ).compile(inputs)
         assert len(merges) == 3
         for merged in merges:
@@ -2688,7 +2708,7 @@ class TestLastSteps:
         for asset_id, values in FOOTPRINT_VALUES.items():
             inputs.footprints.inventory[asset_id].features.update(values)
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         ).compile(inputs)
         for world in range(3):
             features = features_in(result.inventory, world)
@@ -2716,7 +2736,7 @@ class TestLastSteps:
             ),
         )
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         )
         real = compiler._validator.validate
         # The schema check refuses nothing, as if the schema did not require

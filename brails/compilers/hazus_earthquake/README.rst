@@ -65,28 +65,32 @@ The caller gives the data of the study area in a ``CompilerInputs``:
 - the Overture release of the footprints, the length unit of their heights
   and a label of the study area for the report.
 
-The constructor of the compiler takes the settings of the run: the seed of
-every random draw, the number of worlds, the state, the seismic zone and the
-design level method that the Hazus inferers read, the distance cap of the NSI
-join and the projected coordinate system of its distances, the options of
-three components, whether to merge stacked footprints first, ``acs_vintage``, the ACS
-release of the census tables the run reads, and ``block_group_vintage``, the
-TIGER/Line release of the block groups it reads. Given no
-seed, the compiler draws one, which ``CompilationResult.seed`` and the
-report's summary hold, so that the run can be repeated with the same inputs (see
-``s01_footprints`` for those the compiler reads). The constructor
-checks the settings. It also builds four of the components, so that each can
-refuse its own settings and a bad setting raises an error in the
-constructor, before any data is read.
+The constructor of the compiler takes the settings of the run: the seed of every
+random draw, the number of worlds, the state, the seismic zone (the 1997 UBC seismic
+zone of the study area, which the user supplies) and the design level method that the
+Hazus inferers read, the distance cap of the NSI join and the projected coordinate
+system of its distances, the options of three components, whether to merge stacked
+footprints first, ``acs_vintage``, the ACS release of the census tables the run
+reads, and ``block_group_vintage``, the TIGER/Line release of the block groups it
+reads. Given no seed, the compiler draws one, which ``CompilationResult.seed`` and
+the report's summary hold, so that the run can be repeated with the same inputs (see
+``s01_footprints`` for those the compiler reads). The constructor checks the
+settings. It also builds four of the components, so that each can refuse its own
+settings and a bad setting raises an error in the constructor, before any data is
+read.
 
-The state, the seismic zone and ``merge_stacked`` default to ``None``. A compilation
-then applies the state the inputs name, or ``DEFAULT_STATE`` where they name none,
-the zone ``DEFAULT_SEISMIC_ZONE``, and the inputs' ``merge_stacked``, which is off
-unless set. Before it reads any data, ``compile`` refuses, in this order, inputs that
-name a state other than the compiler's, a state the compiler cannot take, and a state
-other than ``DEFAULT_STATE`` when the compiler was built without a seismic zone.
-Where the inputs name ``DEFAULT_STATE`` and no zone was given, a notice names the
-zone applied.
+The seismic zone has no default: it is one of ``'4'``, ``'3'``, ``'2B'``, ``'2A'``,
+``'1'`` and ``'0'``, and ``'3'`` or ``'4'`` in California, and the constructor
+refuses any other value, ``None`` included. The state and ``merge_stacked`` default
+to ``None``. A compilation then applies the state the inputs name or, where they name
+none, the state of their block groups, which the first two digits of each GEOID give,
+or the compiler's state where one of them lies in it; and the inputs'
+``merge_stacked``, which is off unless set. Before it reads any data, ``compile``
+refuses, in this order, a state the inputs name other than by its full name, inputs
+whose block groups lie in two states where neither they nor the compiler name one,
+inputs that name a state in which none of their block groups lies, a state other than
+the compiler's, and a state the compiler cannot take with its zone. Block groups the
+compiler reads itself are checked as soon as they are read.
 
 ``compile`` returns a ``CompilationResult``. Its ``inventory`` is the compiled
 inventory over every world, with each building's ``Excluded`` true in the
@@ -841,8 +845,8 @@ first:
    ``STATE_AREA_SHARE`` of its area. It first refuses a boundary that encloses no
    area, or that lies in no state or in two. Then, without ``compiler``, it refuses a
    state the compiler cannot take, and with it, what the compiler's ``check_state``
-   refuses, in this order: a state other than the compiler's, a state it cannot take,
-   a missing zone.
+   refuses, in this order: a state other than the compiler's, and a state it cannot
+   take with its zone.
 3. It widens the place, together with the block groups with land that overlap it, by
    ``buffer_m``, and refuses that area read where it intersects more than
    ``max_block_groups`` block groups.

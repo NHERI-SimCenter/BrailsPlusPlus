@@ -57,6 +57,7 @@ from brails.constants import BLOCK_GROUP_KEY, DEFAULT_TIGER_VINTAGE, GEOGRAPHIC_
 from brails.scrapers.us_census_scrapers.acs_table_scraper import ACS5_URL
 from brails.scrapers.us_census_scrapers.tiger_line_scraper import STATE_NAME_COLUMN
 from brails.types.asset_inventory import Asset, AssetInventory
+from brails.types.census_boundary import STATES
 from brails.utils.census_api_key import CENSUS_API_KEY_NAME
 from tests.compilers.hazus_earthquake.compiler_fixtures import (
     BG_EAST,
@@ -66,6 +67,7 @@ from tests.compilers.hazus_earthquake.compiler_fixtures import (
     SEED,
     TRACT,
     build_inputs,
+    in_state,
     lonlat,
 )
 
@@ -122,7 +124,7 @@ def compiled(study_area: CompilerInputs) -> Callable[[int], CompilationResult]:
     @functools.cache
     def run(n_worlds: int) -> CompilationResult:
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=n_worlds, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=n_worlds, projected_crs=METRIC_CRS
         )
         return compiler.compile(study_area)
 
@@ -233,7 +235,11 @@ class TestCensusTables:
         """Tables read from the API give the inventory and report of tables given."""
         calls = census_api(study_area)
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS, acs_vintage=2023
+            seismic_zone='4',
+            seed=SEED,
+            n_worlds=3,
+            projected_crs=METRIC_CRS,
+            acs_vintage=2023,
         ).compile(study_area._replace(**dict.fromkeys(CENSUS_TABLES)))
 
         release = ACS5_URL.format(vintage=2023)
@@ -274,7 +280,9 @@ class TestCensusTables:
         polygons['GEOID'] = polygons['GEOID'].replace(BG_EAST, block_group)
         b25024 = study_area.b25024_block_groups.copy()
         b25024['geoid'] = b25024['geoid'].replace(BG_EAST, block_group)
+        # Block groups of two states are compiled where the inputs name the state.
         spread = study_area._replace(
+            state='California',
             block_groups=polygons,
             b25024_block_groups=b25024,
             b25034_block_groups=study_area.b25034_block_groups.rename(
@@ -292,7 +300,7 @@ class TestCensusTables:
         )
         calls = census_api(spread)
         compiler = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=2, projected_crs=METRIC_CRS
         )
         result = compiler.compile(spread._replace(**dict.fromkeys(CENSUS_TABLES)))
 
@@ -323,7 +331,7 @@ class TestCensusTables:
         """Only the table given as None is requested, and the run is unchanged."""
         calls = census_api(study_area)
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         ).compile(study_area._replace(**{name: None}))
 
         table, geography = CENSUS_TABLES[name]
@@ -355,9 +363,9 @@ class TestCensusTables:
                 LookupError, match=f'{CENSUS_API_KEY_NAME}.*leaves b25127_tracts'
             ),
         ):
-            HazusEQInventoryCompiler(seed=SEED, n_worlds=1).compile(
-                study_area._replace(b25127_tracts=None)
-            )
+            HazusEQInventoryCompiler(
+                seismic_zone='4', seed=SEED, n_worlds=1
+            ).compile(study_area._replace(b25127_tracts=None))
         assert not assign.called
         assert calls == []
 
@@ -371,9 +379,9 @@ class TestCensusTables:
         calls = census_api(study_area)
         monkeypatch.setenv(CENSUS_API_KEY_NAME, 'notakey-')
         with pytest.raises(ValueError, match='environment variable.*leaves b25127'):
-            HazusEQInventoryCompiler(seed=SEED, n_worlds=1).compile(
-                study_area._replace(b25127_tracts=None)
-            )
+            HazusEQInventoryCompiler(
+                seismic_zone='4', seed=SEED, n_worlds=1
+            ).compile(study_area._replace(b25127_tracts=None))
         assert calls == []
 
     def test_refused_key_stops_before_s01(
@@ -391,9 +399,9 @@ class TestCensusTables:
                 RuntimeError, match='environment variable.*leaves b25127_tracts'
             ) as raised,
         ):
-            HazusEQInventoryCompiler(seed=SEED, n_worlds=1).compile(
-                study_area._replace(b25127_tracts=None)
-            )
+            HazusEQInventoryCompiler(
+                seismic_zone='4', seed=SEED, n_worlds=1
+            ).compile(study_area._replace(b25127_tracts=None))
         assert not assign.called
         assert len(calls) == 1
         assert CENSUS_API_KEY not in str(raised.value)
@@ -412,7 +420,7 @@ class TestCensusTables:
         monkeypatch.delenv(CENSUS_API_KEY_NAME)
         monkeypatch.setitem(sys.modules, 'google.colab.userdata', None)
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         ).compile(study_area)
 
         assert calls == []
@@ -432,9 +440,9 @@ class TestCensusTables:
         with pytest.raises(
             ValueError, match=f'b25034_block_groups, by block group.*{BG_WEST}'
         ):
-            HazusEQInventoryCompiler(seed=SEED, n_worlds=1).compile(
-                study_area._replace(b25034_block_groups=None)
-            )
+            HazusEQInventoryCompiler(
+                seismic_zone='4', seed=SEED, n_worlds=1
+            ).compile(study_area._replace(b25034_block_groups=None))
 
     def test_coded_estimates_the_sampler_does_not_read_are_ignored(
         self,
@@ -456,7 +464,7 @@ class TestCensusTables:
         ).assign(B25034_001E=CODED_ESTIMATE)
         census_api(study_area._replace(b25034_block_groups=b25034))
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         ).compile(study_area._replace(b25034_block_groups=None))
         assert_same_compilation(result, compiled(1))
 
@@ -464,7 +472,9 @@ class TestCensusTables:
     def test_vintage_must_be_an_integer(self, vintage: object) -> None:
         """An ACS vintage that is not an integer year is refused."""
         with pytest.raises(TypeError, match='acs_vintage must be an integer'):
-            HazusEQInventoryCompiler(seed=SEED, acs_vintage=vintage)
+            HazusEQInventoryCompiler(
+                seismic_zone='4', seed=SEED, acs_vintage=vintage
+            )
 
 
 class TestBlockGroups:
@@ -503,7 +513,7 @@ class TestBlockGroups:
     ) -> None:
         """Block groups read for the footprints' bounding box give the given run."""
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         ).compile(study_area._replace(block_groups=None))
 
         ((scraper, area),) = [call.args for call in read.call_args_list]
@@ -519,6 +529,24 @@ class TestBlockGroups:
             f'TIGER/Line {DEFAULT_TIGER_VINTAGE} files of California' in notice
             for notice in summary['notices']
         )
+
+    @pytest.mark.usefixtures('read')
+    def test_state_of_block_groups_read_checked_before_s01(
+        self, study_area: CompilerInputs
+    ) -> None:
+        """The state of the block groups read is checked as soon as they are read."""
+        with (
+            mock.patch.object(
+                HazusEQInventoryCompiler, '_prepare_footprints'
+            ) as s01,
+            pytest.raises(
+                ValueError, match='built for Oregon and the study area is in'
+            ),
+        ):
+            HazusEQInventoryCompiler(
+                seismic_zone='4', state='Oregon', seed=SEED
+            ).compile(study_area._replace(block_groups=None))
+        s01.assert_not_called()
 
     def test_given_block_groups_record_no_release(
         self, compiled: Callable[[int], CompilationResult]
@@ -540,7 +568,7 @@ class TestBlockGroups:
                 match='no route.*CompilerInputs.block_groups',
             ),
         ):
-            HazusEQInventoryCompiler(seed=SEED).compile(
+            HazusEQInventoryCompiler(seismic_zone='4', seed=SEED).compile(
                 study_area._replace(block_groups=None)
             )
         assert not assign.called
@@ -551,7 +579,9 @@ class TestBlockGroups:
         with pytest.raises(
             TypeError, match='block_group_vintage must be an integer'
         ):
-            HazusEQInventoryCompiler(seed=SEED, block_group_vintage=vintage)
+            HazusEQInventoryCompiler(
+                seismic_zone='4', seed=SEED, block_group_vintage=vintage
+            )
 
     def test_vintages_of_two_decades_refused_only_where_both_are_read(
         self,
@@ -561,7 +591,9 @@ class TestBlockGroups:
     ) -> None:
         """Vintages of two decades stop a run reading both, before any request."""
         calls = census_api(study_area)
-        compiler = HazusEQInventoryCompiler(seed=SEED, acs_vintage=2019)
+        compiler = HazusEQInventoryCompiler(
+            seismic_zone='4', seed=SEED, acs_vintage=2019
+        )
         with pytest.raises(ValueError, match='release from 2010 to 2019'):
             compiler.compile(
                 study_area._replace(block_groups=None, b25127_tracts=None)
@@ -607,7 +639,7 @@ class TestParkPoints:
             hc.MobileHomeParkScraper, 'get_assets', autospec=True, side_effect=read
         ):
             result = HazusEQInventoryCompiler(
-                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+                seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
             ).compile(study_area._replace(mh_park_points=None))
 
         assert_same_compilation(result, compiled(3))
@@ -630,7 +662,7 @@ class TestParkPoints:
     ) -> None:
         """An AssetInventory of park points compiles as the array of its points."""
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         ).compile(study_area._replace(mh_park_points=parks))
         assert_same_compilation(result, compiled(1))
 
@@ -638,9 +670,9 @@ class TestParkPoints:
         self, study_area: CompilerInputs
     ) -> None:
         """An empty array of park points compiles, and no point is read."""
-        result = HazusEQInventoryCompiler(seed=SEED, n_worlds=1).compile(
-            study_area._replace(mh_park_points=np.zeros((0, 2)))
-        )
+        result = HazusEQInventoryCompiler(
+            seismic_zone='4', seed=SEED, n_worlds=1
+        ).compile(study_area._replace(mh_park_points=np.zeros((0, 2))))
         assert 'mh_park_write' not in result.report.summary()['settings']
 
     @pytest.mark.parametrize(
@@ -662,7 +694,7 @@ class TestParkPoints:
             pytest.raises(LookupError),
         ):
             HazusEQInventoryCompiler(
-                seed=SEED, budget_options=budget_options
+                seismic_zone='4', seed=SEED, budget_options=budget_options
             ).compile(study_area._replace(mh_park_points=None))
 
         ((_, area),) = [call.args for call in read.call_args_list]
@@ -697,7 +729,7 @@ class TestParkPoints:
                 match='no route.*CompilerInputs.mh_park_points',
             ),
         ):
-            HazusEQInventoryCompiler(seed=SEED).compile(
+            HazusEQInventoryCompiler(seismic_zone='4', seed=SEED).compile(
                 study_area._replace(mh_park_points=None)
             )
         assert not assign.called
@@ -708,7 +740,7 @@ class TestStateAndMerge:
 
     def test_state_taken_from_inputs(self, study_area: CompilerInputs) -> None:
         """A compiler without a state compiles the inputs' state as if given it."""
-        oregon = study_area._replace(state='Oregon')
+        oregon = in_state(study_area, '41')._replace(state='Oregon')
         taken = HazusEQInventoryCompiler(
             seed=SEED, n_worlds=2, projected_crs=METRIC_CRS, seismic_zone='3'
         ).compile(oregon)
@@ -724,57 +756,149 @@ class TestStateAndMerge:
         settings = taken.report.summary()['settings']
         assert (settings['state'], settings['seismic_zone']) == ('Oregon', '3')
 
+    def test_state_of_block_groups_taken(self, study_area: CompilerInputs) -> None:
+        """Inputs that name no state compile in the state of their block groups."""
+        oregon = in_state(study_area, '41')
+        taken = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS, seismic_zone='3'
+        ).compile(oregon)
+        named = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=2, projected_crs=METRIC_CRS, seismic_zone='3'
+        ).compile(oregon._replace(state='Oregon'))
+
+        assert_same_compilation(taken, named)
+        assert taken.report.summary()['settings']['state'] == 'Oregon'
+
     @pytest.mark.parametrize(
-        ('arguments', 'state', 'match'),
+        ('state', 'match'),
         [
-            ({'state': 'California'}, 'Oregon', 'built for California and the'),
-            (
-                {'seismic_zone': '3'},
-                'Texas',
-                'Census West region only, not Texas',
-            ),
-            ({}, 'Oregon', 'with seismic_zone, .*one of 4, 3, 2B, 2A, 1, 0; zone 4'),
-            ({}, 'Texas', 'Census West region only, not Texas'),
-            ({'seismic_zone': '3'}, 'Guam', 'no RES1 distribution for Guam'),
+            (None, 'lie in each of California and Oregon, and a compilation'),
+            ('Washington', 'name Washington, and their block groups lie in'),
         ],
     )
-    def test_state_of_inputs_refused(
-        self, study_area: CompilerInputs, arguments: dict, state: str, match: str
+    def test_block_groups_of_another_state_refused(
+        self, study_area: CompilerInputs, state: str | None, match: str
     ) -> None:
-        """Another state, a state it cannot take, no zone: refused in that order."""
+        """Block groups of two states, or of a state the inputs do not name."""
+        moved = in_state(study_area, '41').block_groups.iloc[:1]
+        inputs = study_area._replace(
+            block_groups=pd.concat([study_area.block_groups.iloc[1:], moved]),
+            state=state,
+        )
         with (
             mock.patch.object(
                 HazusEQInventoryCompiler, '_prepare_footprints'
             ) as s01,
             pytest.raises(ValueError, match=match),
         ):
-            HazusEQInventoryCompiler(seed=SEED, **arguments).compile(
-                study_area._replace(state=state)
-            )
+            HazusEQInventoryCompiler(seed=SEED, seismic_zone='4').compile(inputs)
         s01.assert_not_called()
 
-    @pytest.mark.parametrize('zone', [None, '4'])
-    def test_california_inputs_compile_as_default(
+    @pytest.mark.parametrize(
+        ('arguments', 'state', 'located', 'match'),
+        [
+            ({'state': 'California'}, 'Oregon', 'Oregon', 'built for California'),
+            ({'seismic_zone': '3'}, 'Texas', 'Texas', 'Census West region only'),
+            (
+                {'seismic_zone': '2B'},
+                'California',
+                'California',
+                "zone '2B' is not in the design level table selected by state",
+            ),
+            ({'seismic_zone': '3'}, 'Guam', 'Guam', 'no RES1 distribution for Guam'),
+            ({'state': 'California'}, 'Texas', 'Texas', 'built for California'),
+            (
+                {'state': 'California'},
+                'Washington',
+                'California',
+                'name Washington, and their block groups',
+            ),
+        ],
+    )
+    def test_state_of_inputs_refused(
+        self,
+        study_area: CompilerInputs,
+        arguments: dict,
+        state: str,
+        located: str,
+        match: str,
+    ) -> None:
+        """Each fault is refused, and of two the one the README states first."""
+        code = {name: code for code, _, name in STATES}[located]
+        with (
+            mock.patch.object(
+                HazusEQInventoryCompiler, '_prepare_footprints'
+            ) as s01,
+            pytest.raises(ValueError, match=match),
+        ):
+            HazusEQInventoryCompiler(
+                **{'seed': SEED, 'seismic_zone': '4', **arguments}
+            ).compile(in_state(study_area, code)._replace(state=state))
+        s01.assert_not_called()
+
+    def test_state_not_a_full_name_refused(self, study_area: CompilerInputs) -> None:
+        """Inputs that name a state by its code are asked for its full name."""
+        with pytest.raises(ValueError, match="full state name, as in 'California'"):
+            HazusEQInventoryCompiler(seed=SEED, seismic_zone='4').compile(
+                study_area._replace(state='CA')
+            )
+
+    def test_compiler_state_judges_block_groups_of_two_states(
+        self, study_area: CompilerInputs
+    ) -> None:
+        """A compiler built for a state takes block groups that reach past it."""
+        moved = in_state(study_area, '41').block_groups.iloc[:1]
+        inputs = study_area._replace(
+            block_groups=pd.concat([study_area.block_groups.iloc[1:], moved])
+        )
+        compiler = HazusEQInventoryCompiler(
+            seed=SEED, seismic_zone='4', state='California'
+        )
+        assert compiler._check_inputs(inputs)[0] == 'California'
+
+    @pytest.mark.parametrize(
+        ('change', 'match'),
+        [
+            (int, "'GEOID' is numeric; read it as strings"),
+            (lambda geoid: geoid[1:], 'are tracts, whose GEOIDs hold no block'),
+        ],
+        ids=['numeric', 'leading zero lost'],
+    )
+    def test_geoids_not_strings_of_12_digits_refused_as_such(
+        self,
+        study_area: CompilerInputs,
+        change: Callable[[str], object],
+        match: str,
+    ) -> None:
+        """GEOIDs that are not 12-digit strings get the message on GEOIDs."""
+        block_groups = study_area.block_groups.assign(
+            GEOID=study_area.block_groups['GEOID'].map(change)
+        )
+        with pytest.raises(ValueError, match=match):
+            HazusEQInventoryCompiler(seed=SEED, seismic_zone='4').compile(
+                study_area._replace(block_groups=block_groups)
+            )
+
+    @pytest.mark.parametrize('state', [None, 'California'])
+    def test_zone_none_refused_by_the_constructor(self, state: str | None) -> None:
+        """A compiler is refused a missing zone, with or without a state."""
+        with pytest.raises(ValueError, match='must be a 1997 UBC seismic zone'):
+            HazusEQInventoryCompiler(seed=SEED, seismic_zone=None, state=state)
+
+    def test_california_inputs_compile_as_stateless(
         self,
         study_area: CompilerInputs,
         compiled: Callable[[int], CompilationResult],
-        zone: str | None,
     ) -> None:
-        """Inputs in California compile as inputs without a state, the zone noted."""
+        """Inputs naming California compile as inputs that name no state."""
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=3, projected_crs=METRIC_CRS, seismic_zone=zone
+            seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
         ).compile(study_area._replace(state='California'))
 
         assert_same_compilation(result, compiled(3))
-        expected = compiled(3).report.summary()
-        notice = (
-            'The inputs name California and the compiler was built without '
-            'seismic_zone, so zone 4 applies.'
-        )
         assert result.report.summary() == {
-            **expected,
+            **compiled(3).report.summary(),
             'timings': result.report.summary()['timings'],
-            'notices': [notice] * (zone is None) + expected['notices'],
         }
 
     @pytest.mark.parametrize(
@@ -795,7 +919,11 @@ class TestStateAndMerge:
                 {'footprint_provider': 'overture', 'overture_id': asset_id}
             )
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS, merge_stacked=given
+            seismic_zone='4',
+            seed=SEED,
+            n_worlds=1,
+            projected_crs=METRIC_CRS,
+            merge_stacked=given,
         ).compile(
             study_area._replace(
                 footprints=footprints, local=None, merge_stacked=taken

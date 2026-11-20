@@ -51,7 +51,9 @@ if TYPE_CHECKING:
 @pytest.mark.live
 def test_compile_place_live(tmp_path: Path) -> None:
     """A small place compiles from live inputs and writes its file."""
-    result = HazusEQInventoryCompiler(n_worlds=1).compile_place('Fairfax, CA')
+    result = HazusEQInventoryCompiler(seismic_zone='4', n_worlds=1).compile_place(
+        'Fairfax, CA'
+    )
     assert result.inventory.inventory
     result.write(tmp_path / 'fairfax.geojson')
     assert (tmp_path / 'fairfax.geojson').is_file()

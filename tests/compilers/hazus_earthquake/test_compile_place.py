@@ -584,10 +584,10 @@ class TestFromPlace:
         if change:
             assert not called(services, 'block groups')
 
-    def test_two_states_refused_before_the_compiler_zone(
+    def test_two_states_refused_before_the_compiler_state(
         self, services: Services
     ) -> None:
-        """A second state is refused before a compiler without a zone for either."""
+        """A boundary in two states is refused before the compiler's state is."""
         services.states['06'] = (
             'Oregon',
             ((-9000, -9000), (100, -9000), (100, 9000), (-9000, 9000)),
@@ -600,7 +600,9 @@ class TestFromPlace:
             gather(
                 services,
                 polygon(PLACE),
-                compiler=HazusEQInventoryCompiler(seed=SEED),
+                compiler=HazusEQInventoryCompiler(
+                    seismic_zone='4', state='Washington', seed=SEED
+                ),
             )
         assert not called(services, 'block groups')
 
@@ -650,6 +652,7 @@ class TestCompilePlace:
         """compile_place passes itself and its donor cap to from_place to compile."""
         inputs = build_inputs()._replace(notices=('A notice of the inputs.',))
         compiler = HazusEQInventoryCompiler(
+            seismic_zone='4',
             seed=SEED,
             n_worlds=1,
             projected_crs=METRIC_CRS,
@@ -671,7 +674,7 @@ class TestCompilePlace:
 
     def test_compile_place_source_defaults_to_census(self) -> None:
         """compile_place without place_source passes 'census' to from_place."""
-        compiler = HazusEQInventoryCompiler(seed=SEED, n_worlds=1)
+        compiler = HazusEQInventoryCompiler(seismic_zone='4', seed=SEED, n_worlds=1)
         with (
             mock.patch.object(
                 CompilerInputs, 'from_place', return_value=build_inputs()
@@ -683,11 +686,10 @@ class TestCompilePlace:
         assert gather_inputs.call_args.kwargs['place_source'] == 'census'
 
     def test_zone_refused_before_footprints(self, services: Services) -> None:
-        """A place outside California without a zone stops before footprints."""
-        services.states['06'] = ('Oregon', services.states['06'][1])
+        """A zone the place's state refuses stops the run before the footprints."""
         services.serve_tiger(DEFAULT_TIGER_VINTAGE)
-        with pytest.raises(ValueError, match='built without seismic_zone'):
-            HazusEQInventoryCompiler(seed=SEED).compile_place(
+        with pytest.raises(ValueError, match="zone '2B' is not in the design level"):
+            HazusEQInventoryCompiler(seismic_zone='2B', seed=SEED).compile_place(
                 polygon(PLACE), overture_options=services.overture_options()
             )
         assert not called(services, 'overture')
@@ -708,7 +710,7 @@ class TestCompilePlace:
             }
         )
         result = HazusEQInventoryCompiler(
-            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+            seismic_zone='4', seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
         ).compile(inputs)
 
         summary = result.report.summary()
@@ -716,4 +718,3 @@ class TestCompilePlace:
         assert (settings['state'], settings['merge_stacked']) == ('California', True)
         assert 'stacked_parts' in result.logs
         assert summary['boundary']['outside'] > 0
-        assert any(n.endswith('so zone 4 applies.') for n in summary['notices'])

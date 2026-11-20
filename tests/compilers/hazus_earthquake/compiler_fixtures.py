@@ -436,3 +436,35 @@ def build_inputs(*, reverse: bool = False) -> CompilerInputs:
         local=local,
         study_area='06075',
     )
+
+
+def in_state(inputs: CompilerInputs, code: str) -> CompilerInputs:
+    """
+    Return the study area moved to another state, whose code begins its GEOIDs.
+
+    Args:
+        inputs (CompilerInputs):
+            The study area, as :func:`build_inputs` gives it.
+        code (str):
+            The two-digit code of the state.
+
+    Returns:
+        CompilerInputs:
+            The study area with the census GEOIDs of its block groups and tables
+            moved to the state.
+    """
+
+    def move(geoid: str) -> str:
+        return code + geoid[2:]
+
+    return inputs._replace(
+        block_groups=inputs.block_groups.assign(
+            GEOID=inputs.block_groups['GEOID'].map(move)
+        ),
+        b25024_block_groups=inputs.b25024_block_groups.assign(
+            geoid=inputs.b25024_block_groups['geoid'].map(move)
+        ),
+        b25034_block_groups=inputs.b25034_block_groups.rename(index=move),
+        b25034_tracts=inputs.b25034_tracts.rename(index=move),
+        b25127_tracts=inputs.b25127_tracts.rename(index=move),
+    )

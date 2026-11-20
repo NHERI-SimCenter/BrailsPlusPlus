@@ -57,6 +57,7 @@ from tests.compilers.hazus_earthquake.compiler_fixtures import (
     METRIC_CRS,
     SEED,
     build_inputs,
+    in_state,
     lonlat,
 )
 
@@ -172,7 +173,7 @@ def compile_with(inputs: CompilerInputs) -> CompilationResult:
             The result of the compilation.
     """
     compiler = HazusEQInventoryCompiler(
-        seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+        seismic_zone='4', seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
     )
     return compiler.compile(inputs)
 
@@ -456,12 +457,13 @@ def test_without_boundary_writes_as_with_keep_outside(
 
 @pytest.mark.parametrize('zone', ['0', '1', '2A', '2B', '3', '4', '9'])
 @pytest.mark.parametrize('state', [None, 'California', 'Oregon', 'Texas'])
-def test_state_and_zone_accepted_by_constructor(
+def test_state_and_zone_accepted_where_their_table_holds_them(
     study_area: CompilerInputs, state: str | None, zone: str
 ) -> None:
     """A state and zone are accepted where their design level table holds them."""
     # California's design level table holds zones 3 and 4, that of other states
     # zones 0 to 4; Texas draws structure types from tables the compiler refuses.
+    # A compiler without a state takes California from the block groups.
     accepted = {
         None: {'3', '4'},
         'California': {'3', '4'},
@@ -469,9 +471,12 @@ def test_state_and_zone_accepted_by_constructor(
         'Texas': set(),
     }[state]
     arguments = {} if state is None else {'state': state}
+    area = in_state(study_area, '41') if state == 'Oregon' else study_area
     if zone not in accepted:
         with pytest.raises(ValueError, match=r'zone|structure types'):
-            HazusEQInventoryCompiler(seed=SEED, seismic_zone=zone, **arguments)
+            HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=1, seismic_zone=zone, **arguments
+            ).compile(area)
         return
     result = HazusEQInventoryCompiler(
         seed=SEED,
@@ -479,7 +484,7 @@ def test_state_and_zone_accepted_by_constructor(
         projected_crs=METRIC_CRS,
         seismic_zone=zone,
         **arguments,
-    ).compile(study_area)
+    ).compile(area)
     settings = result.report.summary()['settings']
     assert (settings['state'], settings['seismic_zone']) == (
         state or 'California',
@@ -494,7 +499,11 @@ def test_merge_stacked_of_compiler_applies(
 ) -> None:
     """merge_stacked given to the compiler applies whatever the inputs say."""
     compiler = HazusEQInventoryCompiler(
-        seed=SEED, n_worlds=1, projected_crs=METRIC_CRS, merge_stacked=merge_stacked
+        seismic_zone='4',
+        seed=SEED,
+        n_worlds=1,
+        projected_crs=METRIC_CRS,
+        merge_stacked=merge_stacked,
     )
     if merge_stacked:
         with pytest.raises(ValueError, match='cannot be given with merge_stacked'):
@@ -507,7 +516,7 @@ def test_merge_stacked_of_compiler_applies(
 def test_defaults_compile_as_their_values(
     study_area: CompilerInputs, whole: CompilationResult
 ) -> None:
-    """A default compiler compiles stateless inputs as California at zone 4."""
+    """A compiler without a state compiles stateless inputs in California."""
     given = HazusEQInventoryCompiler(
         seed=SEED,
         n_worlds=3,
