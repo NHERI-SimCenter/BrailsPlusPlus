@@ -980,7 +980,7 @@ class TestRegion:
 
         monkeypatch.setattr(RegionBoundary, 'get_boundary', get_boundary)
         raw = io.BytesIO()
-        console = io.TextIOWrapper(raw, encoding='ascii')
+        console = io.TextIOWrapper(raw, encoding='ascii', newline='\n')
         monkeypatch.setattr(sys, 'stdout', console)
         filter_to_region(three_worlds(), 'Cañada, CA', place_source='osm')
         console.flush()
