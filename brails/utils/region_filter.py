@@ -480,9 +480,7 @@ def filter_to_region(  # noqa: C901
                 'testbed, which share their number of worlds.'
                 + (
                     ' A source of 1 world, such as one world of a run written '
-                    'alone, is not merged with sources of more worlds. For an '
-                    'inventory read with read_from_geojson from a file without '
-                    'n_worlds, which leaves n_pw at 1, pass the file by its path.'
+                    'alone, is not merged with sources of more worlds.'
                     if 1 in worlds.values()
                     else ''
                 )

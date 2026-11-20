@@ -756,10 +756,10 @@ class TestFile:
 
     def test_mixed_list_lengths_refused(self, tmp_path: Path) -> None:
         """Kept lists of different lengths name no number of worlds."""
-        source = three_worlds()
-        source.inventory['in_b'].features['StructureType'] = ['S1', 'S2']
-        path = tmp_path / 'mixed.geojson'
-        source.write_to_geojson(str(path))
+        collection = three_worlds().write_to_geojson()
+        del collection['n_worlds']
+        collection['features'][1]['properties']['StructureType'] = ['S1', 'S2']
+        path = write(tmp_path / 'mixed.geojson', collection)
         with pytest.raises(ValueError, match='lists of 2 and 3 values'):
             filter_to_region(path, REGION)
 

@@ -352,7 +352,7 @@ def test_get_world_realization_has_one_world_and_a_dataframe(
 
 
 def test_get_world_realization_reads_back_a_multi_world_file(tmp_path: Any) -> None:
-    """Without n_worlds, a multi-world file reads with n_pw 1 and world 0 only."""
+    """Without n_worlds, a multi-world file takes its worlds from its lists."""
     inventory = AssetInventory()
     inventory.add_asset(
         'A1', Asset('A1', [[-122.4, 37.8]], {'YearBuilt': [1950, 1960, 1970]})
@@ -365,15 +365,11 @@ def test_get_world_realization_reads_back_a_multi_world_file(tmp_path: Any) -> N
     back = AssetInventory()
     back.read_from_geojson(str(path))
 
-    assert back.n_pw == 1
-    assert back.get_world_realization(0).get_asset_features('A1')[1] == {
-        'YearBuilt': 1950,
+    assert back.n_pw == 3
+    assert back.get_world_realization(2).get_asset_features('A1')[1] == {
+        'YearBuilt': 1970,
         'type': 'building',
     }
-    with pytest.raises(Exception, match='holds 3 realizations'):
-        back.get_world_realization(2)
-    with pytest.raises(Exception, match='holds 3 realizations'):
-        back.get_world_realization(-1)
 
 
 def test_get_world_realization_keeps_the_class() -> None:

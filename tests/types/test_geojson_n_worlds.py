@@ -133,57 +133,44 @@ class TestWrite:
         assert list(inv.write_to_geojson(**options)) == MEMBERS
 
     @pytest.mark.parametrize(
-        ('features', 'n_pw', 'n_worlds'),
+        ('features', 'n_pw'),
         [
-            ({'a': {'PlanArea': 10.0}}, 1, 1),
-            ({'a': {'PlanArea': 10.0}}, 3, 3),
-            ({'a': {'StructureType': ['W1', 'W2', 'C1', 'C1']}}, 4, 4),
-            ({'a': {'StructureType': ['W1', 'W2', 'C1', 'C1']}}, 1, 4),
-            ({'a': {'HousingUnits': [2, 3]}}, 1, 1),
+            ({'a': {'PlanArea': 10.0}}, 1),
+            ({'a': {'PlanArea': 10.0}}, 3),
+            ({'a': {'StructureType': ['W1', 'W2', 'C1', 'C1']}}, 4),
+            ({'a': {'HousingUnits': [2, 3]}}, 1),
         ],
-        ids=[
-            'one world',
-            'no lists',
-            'lists of n_pw',
-            'lists under n_pw 1',
-            'vector',
-        ],
+        ids=['one world', 'no lists', 'lists of n_pw', 'vector'],
     )
-    def test_count(
-        self, tmp_path: Path, features: dict, n_pw: int, n_worlds: int
-    ) -> None:
-        """The count is n_pw, or under n_pw 1 the length the lists share."""
+    def test_count_is_n_pw(self, tmp_path: Path, features: dict, n_pw: int) -> None:
+        """The member is n_pw."""
         path = tmp_path / 'inventory.geojson'
-        assert written(inventory(features, n_pw), path)['n_worlds'] == n_worlds
+        assert written(inventory(features, n_pw), path)['n_worlds'] == n_pw
 
     @pytest.mark.parametrize(
-        ('features', 'n_pw', 'lengths'),
+        ('features', 'n_pw', 'message'),
         [
-            ({'a': {'X': [1, 2, 3]}, 'b': {'X': [1, 2]}}, 3, '2 and 3'),
-            ({'a': {'X': [1, 2, 3]}, 'b': {'X': [1, 2]}}, 1, '2 and 3'),
-            ({'a': {'X': [1, 2]}}, 3, '2'),
-            ({'a': {'X': []}}, 1, '0'),
+            (
+                {'a': {'X': [1, 2, 3, 4]}},
+                1,
+                "'a' holds 4 values under 'X', but n_pw is 1",
+            ),
+            (
+                {'a': {'X': [1, 2, 3]}, 'b': {'X': [1, 2]}},
+                3,
+                "'b' holds 2 values under 'X', but n_pw is 3",
+            ),
+            ({'a': {'X': []}}, 1, "'a' holds 0 values under 'X', but n_pw is 1"),
         ],
+        ids=['lists under n_pw 1', 'one list short', 'empty list'],
     )
-    def test_left_out_where_lists_disagree(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        features: dict,
-        n_pw: int,
-        lengths: str,
+    def test_list_of_another_length_refused(
+        self, tmp_path: Path, features: dict, n_pw: int, message: str
     ) -> None:
-        """Lists that give no count leave the member out, with one line."""
-        path = tmp_path / 'mixed.geojson'
-        collection = written(inventory(features, n_pw), path)
-        assert 'n_worlds' not in collection
-        assert len(collection['features']) == len(features)
-        printed = capsys.readouterr().out.splitlines()
-        assert printed[0] == (
-            f'n_worlds is left out of {path}: n_pw is {n_pw} and the lists hold '
-            f'{lengths} values. validate_possible_worlds names the assets whose '
-            'lists do not hold n_pw values.'
-        )
+        """A list of another length than n_pw raises, and no file is written."""
+        with pytest.raises(ValueError, match=message):
+            inventory(features, n_pw).write_to_geojson(str(tmp_path / 'x.geojson'))
+        assert list(tmp_path.iterdir()) == []
 
     def test_count_written_as_an_int(self, tmp_path: Path) -> None:
         """An n_pw held as a NumPy integer is written as a plain integer."""
@@ -193,24 +180,13 @@ class TestWrite:
         assert type(collection['n_worlds']) is int
         assert collection['n_worlds'] == 3
 
-    @pytest.mark.parametrize(
-        ('n_pw', 'shown'),
-        [(0, '0'), (np.int64(0), '0'), (True, 'True'), (3.0, '3.0')],
-    )
-    def test_no_member_for_what_is_no_count(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        n_pw: object,
-        shown: str,
-    ) -> None:
-        """An n_pw that is not an integer of at least 1 writes no member."""
-        path = tmp_path / 'zero.geojson'
-        assert 'n_worlds' not in written(inventory({'a': {}}, n_pw=n_pw), path)
-        assert capsys.readouterr().out.splitlines()[0] == (
-            f'n_worlds is left out of {path}: n_pw is {shown}, which is not an '
-            'integer of at least 1.'
-        )
+    @pytest.mark.parametrize('n_pw', [0, np.int64(0), True, 3.0])
+    def test_n_pw_that_is_no_count_refused(self, n_pw: object) -> None:
+        """An n_pw that is not an integer of at least 1 raises."""
+        with pytest.raises(
+            ValueError, match='which is not an integer of at least 1'
+        ):
+            inventory({'a': {}}, n_pw=n_pw).write_to_geojson()
 
 
 class TestRead:
@@ -239,18 +215,92 @@ class TestRead:
         world = back.get_world_realization(2)
         assert world.inventory['a'].features['StructureType'] == 'C1'
 
-    def test_file_without_the_member_as_before(self, tmp_path: Path) -> None:
-        """Without n_worlds, the inventory keeps its n_pw."""
-        collection = inventory(THREE_WORLDS, n_pw=3).write_to_geojson()
+    @pytest.mark.parametrize(
+        ('features', 'n_pw'),
+        [(THREE_WORLDS, 3), ({'a': {'PlanArea': 10.0}}, 1)],
+        ids=['lists', 'no lists'],
+    )
+    def test_file_without_the_member_counts_its_lists(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        features: dict,
+        n_pw: int,
+    ) -> None:
+        """Without n_worlds, the file's lists give its number of worlds."""
+        collection = inventory(features, n_pw=n_pw).write_to_geojson()
         del collection['n_worlds']
         path = tmp_path / 'old.geojson'
         path.write_text(json.dumps(collection), encoding='utf-8')
-        empty = AssetInventory()
-        empty.read_from_geojson(str(path))
-        assert empty.n_pw == 1
-        five = inventory({'z': {'X': [1, 2, 3, 4, 5]}}, n_pw=5)
-        five.read_from_geojson(str(path))
-        assert five.n_pw == 5
+        back = AssetInventory()
+        back.read_from_geojson(str(path))
+        assert back.n_pw == n_pw
+        back.validate_possible_worlds()
+        printed = (
+            f'{path} gives no n_worlds, so it is read as 3 possible worlds, the '
+            "number of values its lists hold, first under 'StructureType'. If "
+            "those lists are not possible worlds, pass 'StructureType' in "
+            'vector_features, with DEFAULT_VECTOR_FEATURES.'
+        )
+        assert (printed in capsys.readouterr().out) == (n_pw > 1)
+
+    def test_count_given_by_the_member_not_printed(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A file that gives n_worlds is read without the line on its lists."""
+        path = tmp_path / 'worlds.geojson'
+        inventory(THREE_WORLDS, n_pw=3).write_to_geojson(str(path))
+        AssetInventory().read_from_geojson(str(path))
+        assert 'gives no n_worlds' not in capsys.readouterr().out
+
+    def test_vertex_elevations_are_one_world(self, tmp_path: Path) -> None:
+        """Per-vertex all_elevations lists are written and read back as 1 world."""
+        features = {
+            'a': {'all_elevations': [1.0, 2.0, 3.0, 4.0]},
+            'b': {'all_elevations': [1.0, 2.0, 3.0, 4.0, 5.0]},
+            'c': {'all_elevations': [5.0, 6.0, 7.0, 8.0, 9.0]},
+        }
+        collection = written(inventory(features), tmp_path / 'written.geojson')
+        assert collection['n_worlds'] == 1
+        del collection['n_worlds']
+        path = tmp_path / 'old.geojson'
+        path.write_text(json.dumps(collection), encoding='utf-8')
+        back = AssetInventory()
+        back.read_from_geojson(str(path))
+        assert back.n_pw == 1
+        assert back.inventory['b'].features['all_elevations'] == [
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+        ]
+
+    @pytest.mark.parametrize(
+        ('values', 'message'),
+        [
+            (
+                ['S1', 'S2'],
+                "feature 0 holds 3 under 'StructureType' and feature 1 holds 2 "
+                "under 'StructureType'. Pass the vector features",
+            ),
+            ([], "Feature 1 .* holds an empty list under 'StructureType'"),
+        ],
+        ids=['two lengths', 'empty list'],
+    )
+    def test_file_without_the_member_refused_for_its_lists(
+        self, tmp_path: Path, values: list, message: str
+    ) -> None:
+        """Without n_worlds, lists of two lengths or an empty list are refused."""
+        collection = inventory(THREE_WORLDS, n_pw=3).write_to_geojson()
+        del collection['n_worlds']
+        collection['features'][1]['properties']['StructureType'] = values
+        path = tmp_path / 'old.geojson'
+        path.write_text(json.dumps(collection), encoding='utf-8')
+        target = AssetInventory()
+        with pytest.raises(ValueError, match=message):
+            target.read_from_geojson(str(path))
+        assert state(target) == (1, {})
 
     def test_member_not_a_count_refused(self, tmp_path: Path) -> None:
         """A member that is not an integer of at least 1 is refused."""
@@ -278,14 +328,23 @@ class TestRead:
         assert state(target) == (1, {})
 
     @pytest.mark.parametrize(
-        ('held', 'n_pw', 'n_worlds', 'result'),
+        ('held', 'n_pw', 'n_worlds', 'member'),
         [
-            ({'X': [1, 2, 3]}, 3, 3, 3),
-            ({'X': 1}, 1, 3, 3),
-            ({'X': [1, 2]}, 1, 3, r"asset 'z' .* 2 values under 'X'"),
-            ({'X': [1, 2, 3]}, 3, 5, '5 possible worlds and the inventory holds 3'),
+            ({'X': [1, 2, 3]}, 3, 3, True),
+            ({'X': [1, 2, 3]}, 3, 3, False),
+            ({'X': 1}, 1, 3, True),
+            ({'X': 1}, 1, 3, False),
+            ({'X': [1, 2, 3]}, 3, 1, True),
+            ({'X': [1, 2, 3]}, 3, 5, True),
         ],
-        ids=['equal', 'inventory of 1', 'own list too short', 'two'],
+        ids=[
+            'equal',
+            'equal by its lists',
+            'inventory of 1',
+            'inventory of 1 by its lists',
+            'file of 1',
+            'two counts',
+        ],
     )
     def test_count_against_the_inventory(
         self,
@@ -293,65 +352,33 @@ class TestRead:
         held: dict[str, Any],
         n_pw: int,
         n_worlds: int,
-        result: int | str,
+        *,
+        member: bool,
     ) -> None:
-        """An inventory with assets takes a file's count only where they agree."""
+        """An inventory with assets takes a file of its own number of worlds only."""
         features = {
             'a': {'StructureType': ['W1'] * n_worlds} if n_worlds > 1 else {}
         }
+        collection = inventory(features, n_worlds).write_to_geojson()
+        if not member:
+            del collection['n_worlds']
         path = tmp_path / 'file.geojson'
-        assert written(inventory(features, n_worlds), path)['n_worlds'] == n_worlds
+        path.write_text(json.dumps(collection), encoding='utf-8')
         target = inventory({'z': held}, n_pw)
         before = state(target)
-        if isinstance(result, int):
+        if n_worlds == n_pw:
             target.read_from_geojson(str(path))
-            assert target.n_pw == result
+            assert target.n_pw == n_pw
             assert sorted(target.inventory) == ['a', 'z']
         else:
-            with pytest.raises(ValueError, match=result):
+            noun = 'world' if n_worlds == 1 else 'worlds'
+            with pytest.raises(
+                ValueError,
+                match=f'{n_worlds} possible {noun} and the inventory holds {n_pw}. '
+                'Read the file into an empty inventory.',
+            ):
                 target.read_from_geojson(str(path))
             assert state(target) == before
-
-    def test_file_of_one_world_taken_for_every_world(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A file of 1 world without lists joins an inventory of 3, with a line."""
-        path = tmp_path / 'one.geojson'
-        written(inventory({'a': {'PlanArea': 10.0}}), path)
-        capsys.readouterr()
-        target = inventory({'z': {'X': [1, 2, 3]}}, n_pw=3)
-        target.read_from_geojson(str(path))
-        assert target.n_pw == 3
-        target.validate_possible_worlds()
-        assert capsys.readouterr().out == (
-            f'{path} holds 1 possible world, so its values are taken for every '
-            "one of the inventory's 3 worlds.\n"
-        )
-
-    def test_file_of_one_world_with_lists_refused(self, tmp_path: Path) -> None:
-        """A file of 1 world holding one-value lists is refused at 3 worlds."""
-        path = tmp_path / 'one.geojson'
-        written(inventory({'a': {'X': [7]}}), path)
-        target = inventory({'z': {'X': [1, 2, 3]}}, n_pw=3)
-        before = state(target)
-        with pytest.raises(ValueError, match="list of one value under 'X'"):
-            target.read_from_geojson(str(path))
-        assert state(target) == before
-
-    def test_inventory_of_one_world_takes_more_with_a_line(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """An inventory of 1 world without lists takes a file of 3, with a line."""
-        path = tmp_path / 'three.geojson'
-        written(inventory(THREE_WORLDS, n_pw=3), path)
-        capsys.readouterr()
-        target = inventory({'z': {'PlanArea': 10.0}})
-        target.read_from_geojson(str(path))
-        assert target.n_pw == 3
-        assert capsys.readouterr().out == (
-            'The inventory holds 1 possible world and no lists, so the values of '
-            f'its assets are taken for every one of the 3 worlds of {path}.\n'
-        )
 
 
 @pytest.mark.parametrize('value', [True, 0, -1, '3', 3.0, None])
