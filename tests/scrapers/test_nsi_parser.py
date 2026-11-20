@@ -41,6 +41,7 @@ from typing import TYPE_CHECKING
 
 import pyarrow.parquet as pq
 import pytest
+from shapely.geometry import box
 
 from brails.scrapers.nsi_parser.nsi_conventions import (
     NSI_RAW_SCHEMA,
@@ -48,7 +49,7 @@ from brails.scrapers.nsi_parser.nsi_conventions import (
     to_simcenter,
 )
 from brails.scrapers.nsi_parser.nsi_parser import NSI_Parser
-from tests.scrapers.conftest import Region, canned_response
+from tests.scrapers.conftest import Region, canned_response, serve_features
 from tests.scrapers.data.nsi_fixture_generator import FIXTURE_PATH, fetch_sample
 
 if TYPE_CHECKING:
@@ -302,6 +303,78 @@ def test_records_sharing_a_coordinate_all_survive(
     assert inventory.get_asset_coordinates(11)[1] == [[0.0005, 0.0005]]
     assert inventory.get_asset_coordinates(33)[1] == [[0.0005, 0.0005]]
     assert inventory.get_asset_features(33)[1]['sqft'] == 900.0
+
+
+# ---------------------------------------------------------------------
+# the point of a record
+# ---------------------------------------------------------------------
+
+
+def serve_rounded(monkeypatch: pytest.MonkeyPatch, records: list[dict]) -> None:
+    """
+    Serve these records as NSI does, each point rounded to six decimals.
+
+    Args:
+        monkeypatch (pytest.MonkeyPatch):
+            The patcher.
+        records (list[dict]):
+            Raw NSI property records, whose ``x`` and ``y`` are not rounded.
+    """
+    serve_features(
+        monkeypatch,
+        [
+            {
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': [round(r['x'], 6), round(r['y'], 6)],
+                },
+                'properties': r,
+            }
+            for r in records
+        ],
+    )
+
+
+def test_raw_points_stand_at_x_and_y(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The region keeps, and the asset stands at, x and y, not the served point."""
+    # Served at x 0.0005, on the region's edge and so outside it.
+    serve_rounded(monkeypatch, [make_record(11, 0.00050049, 0.0005)])
+
+    inventory = NSI_Parser().get_raw_data(Region(box(0.0005, -0.01, 0.01, 0.01)))
+
+    assert inventory.get_asset_ids() == [11]
+    assert inventory.get_asset_coordinates(11)[1] == [[0.00050049, 0.0005]]
+    assert 'without x or y' not in capsys.readouterr().out
+
+
+def test_a_record_without_x_keeps_the_served_point(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A record without x stands at the served point, and the count is printed."""
+    record = make_record(11, 0.00050049, 0.0005)
+    serve_rounded(monkeypatch, [record, make_record(22, 0.0002, 0.0002)])
+    del record['x']
+
+    inventory = NSI_Parser().get_raw_data(Region())
+
+    assert inventory.get_asset_coordinates(11)[1] == [[0.0005, 0.0005]]
+    assert inventory.get_asset_coordinates(22)[1] == [[0.0002, 0.0002]]
+    assert (
+        'NSI records without x or y, placed at the point NSI serves: 1\n'
+        in capsys.readouterr().out
+    )
+
+
+def test_footprints_match_x_and_y(monkeypatch: pytest.MonkeyPatch) -> None:
+    """GetNSIData matches a footprint that holds x and y but not the served point."""
+    serve_rounded(monkeypatch, [make_record(11, 0.00050049, 0.0005)])
+    footprint = list(box(0.0005003, 0.0004, 0.0006, 0.0006).exterior.coords)
+
+    geojson, _ = NSI_Parser().GetNSIData([footprint])
+
+    assert [f['properties']['fd_id'] for f in geojson['features']] == [11]
 
 
 # ---------------------------------------------------------------------

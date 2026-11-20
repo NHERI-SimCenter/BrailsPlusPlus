@@ -14,14 +14,18 @@ docstrings state the arguments, the return values, and the errors.
 How the records reach an inventory
 ----------------------------------
 
-``NSI_Parser.get_raw_data`` fetches the records inside a region and returns
-one point asset per record, keyed by ``fd_id``, NSI's identifier of the
-structure. Given ``raw_parquet_path``, it also writes the records to a
-parquet table under their NSI names, through ``write_raw_records``, and
-``NSIFileReader.read`` reads such a table back. The table has one column for
-each field of ``NSI_RAW_SCHEMA``, the fields the NSI 2026 API serves, stored
-under the type the schema declares, and one column for each other field a
-record carries.
+``NSI_Parser.get_raw_data`` fetches the records inside a region and returns one point
+asset per record, keyed by ``fd_id``, NSI's identifier of the structure. The point is
+at the record's ``x`` and ``y``, which are not rounded, and not at the point NSI
+serves beside them, which is rounded to six decimals. A record without ``x`` or ``y``
+keeps the served point, and the call prints how many records did. Given
+``raw_parquet_path``, it also writes the records to a parquet table under their NSI
+names, through ``write_raw_records``, and ``NSIFileReader.read`` reads such a table
+back. The table has one column for each field of ``NSI_RAW_SCHEMA``, the fields the
+NSI 2026 API serves, stored under the type the schema declares, and one column for
+each other field a record carries. ``write_raw_records`` refuses a record without
+``x`` or ``y``, so a call given ``raw_parquet_path`` raises ``ValueError`` when the
+pull holds one.
 
 Both keep NSI's field names and values by default. With
 ``simcenter_format=True``, each record passes through ``to_simcenter``,

@@ -850,9 +850,7 @@ OpenStreetMap with ``source='osm'``; a ``RegionBoundary``; or a Shapely polygon.
    ``buffer_m``, make the area compiled. Footprints outside it are left out, and so
    are those in no block group, with a notice. A notice also names a building inside
    the place whose block group has no land and may reach past the area read.
-5. It reads the NSI points of the area compiled, widened by ``DEFAULT_JOIN_CAP_M``,
-   and places each at its record's ``x`` and ``y``, as the NSI reader does. The
-   point NSI serves beside them is rounded to six decimals.
+5. It reads the NSI points of the area compiled, widened by ``DEFAULT_JOIN_CAP_M``.
 
 The inputs carry the boundary, ``buffer_m``, the record of where the boundary comes
 from, the state, ``merge_stacked`` set on, and the notices, which the report lists.

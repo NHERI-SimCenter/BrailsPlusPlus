@@ -294,11 +294,8 @@ class NSIFileReader:
                 The parquet file.
             region (RegionBoundary, optional):
                 When given, only the points strictly inside the region's
-                boundary polygon are kept. The test uses each row's ``x``
-                and ``y``, which can differ by up to 5e-7 degree from the
-                served point geometry, so a point that close to the boundary
-                can fall on the other side. Defaults to None, which keeps
-                every row.
+                boundary polygon, by ``x`` and ``y``, are kept. Defaults to
+                None, which keeps every row.
             simcenter_format (bool):
                 When True, each record passes through
                 :func:`brails.scrapers.nsi_parser.nsi_conventions.to_simcenter`.

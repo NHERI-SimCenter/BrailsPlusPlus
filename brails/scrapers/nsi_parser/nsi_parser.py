@@ -72,6 +72,39 @@ logger = logging.getLogger(__name__)
 API_ENDPOINT = 'https://nsi.sec.usace.army.mil/nsiapi/structures?bbox='
 
 
+def _record_points(features: list[dict]) -> list[Point]:
+    """
+    Return the point of each served NSI feature, at its record's x and y.
+
+    NSI serves each feature's point rounded to six decimals, beside the record's
+    ``x`` and ``y``, which are not rounded. The rounding can move a point across a
+    footprint's edge. A record without ``x`` or ``y`` keeps the served point, and
+    the number of such records is printed.
+
+    Args:
+        features (list[dict]):
+            GeoJSON features as NSI serves them.
+
+    Returns:
+        list[Point]:
+            The point of each record, in the order of ``features``.
+    """
+    points = []
+    served = 0
+    for feature in features:
+        properties = feature['properties']
+        if properties.get('x') is None or properties.get('y') is None:
+            points.append(Point(feature['geometry']['coordinates']))
+            served += 1
+        else:
+            points.append(Point(properties['x'], properties['y']))
+    if served:
+        print(
+            f'NSI records without x or y, placed at the point NSI serves: {served}'
+        )
+    return points
+
+
 class NSI_Parser:
     """
     A class for interacting with the National Structure Inventory (NSI) data.
@@ -229,10 +262,9 @@ class NSI_Parser:
             data = response.json().get('features', [])
 
             # Convert GeoJSON features to a dictionary with (lon, lat) as keys
-            return {
-                Point(feat['geometry']['coordinates']): feat['properties']
-                for feat in data
-            }
+            return dict(
+                zip(_record_points(data), (feat['properties'] for feat in data))
+            )
 
         except requests.exceptions.RequestException as e:
             logging.error(f'Request failed: {e}')
@@ -711,11 +743,8 @@ class NSI_Parser:
         # record NSI serves without one raises here rather than being reported
         # as a failed download and returned as an empty pull.
         records = {
-            feat['properties']['fd_id']: (
-                Point(feat['geometry']['coordinates']),
-                feat['properties'],
-            )
-            for feat in data
+            feat['properties']['fd_id']: (point, feat['properties'])
+            for feat, point in zip(data, _record_points(data))
         }
         if len(records) != len(data):
             message = (

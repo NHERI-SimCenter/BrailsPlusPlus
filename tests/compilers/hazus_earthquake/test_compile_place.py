@@ -424,44 +424,6 @@ class TestFromPlace:
             for asset in inputs.nsi_points.inventory.values()
         )
 
-    def test_points_at_their_records_x_and_y(
-        self, services: Services, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Each NSI point stands at its record's x and y, not at the served point."""
-        served = services.nsi_records
-
-        # NSI serves its points rounded to six decimals.
-        def rounded(bbox: tuple) -> dict:
-            return {
-                fd_id: (shapely.Point(round(point.x, 6), round(point.y, 6)), fields)
-                for fd_id, (point, fields) in served(bbox).items()
-            }
-
-        monkeypatch.setattr(NSI_Parser, '_get_nsi_data', staticmethod(rounded))
-        points = gather(services, polygon(PLACE)).nsi_points.inventory.values()
-
-        assert points
-        assert all(
-            a.coordinates == [[a.features['x'], a.features['y']]] for a in points
-        )
-        assert any(a.features['x'] != round(a.features['x'], 6) for a in points)
-
-    def test_record_without_x_refused(
-        self, services: Services, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """An NSI record without x is refused by its id, not with a bare KeyError."""
-        served = services.nsi_records
-
-        def without_x(bbox: tuple) -> dict:
-            return {
-                fd_id: (point, {k: v for k, v in fields.items() if k != 'x'})
-                for fd_id, (point, fields) in served(bbox).items()
-            }
-
-        monkeypatch.setattr(NSI_Parser, '_get_nsi_data', staticmethod(without_x))
-        with pytest.raises(ValueError, match='NSI record .* has no x or y'):
-            gather(services, polygon(PLACE))
-
     def test_area_compiled_cut_from_the_area_read(self, services: Services) -> None:
         """Footprints read past the area compiled are cut; NSI reads that area."""
         # The sliver brings its 6 km into the area read but holds no building of
