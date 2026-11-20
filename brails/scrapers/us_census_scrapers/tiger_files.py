@@ -72,8 +72,8 @@ def tiger_file_url(
             The layer's folder in the release, such as ``'PLACE'``, ``'COUNTY'``,
             ``'STATE'`` or ``'BG'``.
         area (str):
-            The two-digit FIPS code of a state for a file published by state, such
-            as ``'06'``, or ``'us'`` for a national file.
+            The two-digit FIPS code of a state for a file published by state, such as
+            ``'06'``, or ``'us'`` for a national file.
         vintage (int, optional):
             The year of the TIGER/Line release. Defaults to
             :data:`~brails.constants.DEFAULT_TIGER_VINTAGE`.
@@ -133,10 +133,9 @@ def read_tiger_file(
         ValueError:
             If the server has no such file, naming its URL and the vintage.
         requests.ConnectionError:
-            If the connection keeps failing after the retries, or the file's
-            body is cut short as
-            :func:`~brails.utils.http_session.get_whole_body` finds it; the
-            message then says to try again.
+            If the connection keeps failing after the retries, or the file's body is
+            cut short as :func:`~brails.utils.http_session.get_whole_body` finds it;
+            the message then says to try again.
         requests.HTTPError:
             If the server answers with another error status, after the retries.
     """

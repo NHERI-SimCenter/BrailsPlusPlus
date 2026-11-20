@@ -73,16 +73,19 @@ if TYPE_CHECKING:
     import geopandas as gpd
 
 CENSUS_TRACT_QUERY_URL = 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/6/query'
-CENSUS_BLOCK_GROUP_QUERY_URL = 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/8/query'
+CENSUS_BLOCK_GROUP_QUERY_URL = (
+    'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/'
+    'tigerWMS_Census2020/MapServer/8/query'
+)
 
 # The census geographies the scraper assigns.
 LEVEL_TRACT = 'tract'
 LEVEL_BLOCK_GROUP = 'block_group'
 LEVELS = (LEVEL_TRACT, LEVEL_BLOCK_GROUP)
 
-# Columns of the table get_census_geographies returns: an asset on an edge or
-# a vertex shared by several polygons, the GEOID it received, and the number
-# of polygons its point touches.
+# Columns of the table get_census_geographies returns: an asset on an edge or a
+# vertex shared by several polygons, the GEOID it received, and the number of
+# polygons its point touches.
 TIE_COLUMNS = ('asset_id', 'geoid', 'polygons')
 
 
@@ -90,14 +93,13 @@ class CensusTractScraper:
     """
     A class to get census tract and block-group data from the US Census.
 
-    An asset is located by the centroid of its exterior rings for a
-    footprint (:meth:`AssetInventory.centroid_and_plan_area`), by the point
-    itself for a point asset, and by the Shapely centroid for any other
-    geometry that encloses no area. The location takes the GEOID of the
-    polygon that contains or touches it, and a location on an edge or a
-    vertex shared by several polygons takes the lowest GEOID, so the result
-    does not depend on the order of the assets. A location in no polygon is
-    an error.
+    An asset is located by the centroid of its exterior rings for a footprint
+    (:meth:`AssetInventory.centroid_and_plan_area`), by the point itself for a point
+    asset, and by the Shapely centroid for any other geometry that encloses no area.
+    The location takes the GEOID of the polygon that contains or touches it, and a
+    location on an edge or a vertex shared by several polygons takes the lowest
+    GEOID, so the result does not depend on the order of the assets. A location in no
+    polygon is an error.
     """
 
     def __init__(self) -> None:
@@ -140,9 +142,9 @@ class CensusTractScraper:
 
         Returns:
             list[dict]:
-                The GeoJSON features of the polygons containing or touching
-                the point, each with its GEOID, empty for a point outside
-                every polygon of the layer.
+                The GeoJSON features of the polygons containing or touching the
+                point, each with its GEOID, empty for a point outside every polygon
+                of the layer.
 
         Raises:
             requests.exceptions.HTTPError:
@@ -210,9 +212,9 @@ class CensusTractScraper:
         """
         Identify the census tract corresponding to each asset.
 
-        The tracts are queried from TIGERweb's Census 2020 tract layer, and
-        each asset's GEOID is written to its :data:`~brails.constants.TRACT_KEY`
-        feature in place.
+        The tracts are queried from TIGERweb's Census 2020 tract layer, and each
+        asset's GEOID is written to its :data:`~brails.constants.TRACT_KEY` feature
+        in place.
 
         Args:
             asset_inventory (AssetInventory):
@@ -220,16 +222,14 @@ class CensusTractScraper:
 
         Returns:
             downloaded_tracts_cache (dict):
-                The GEOID and geometry of each census tract that received an
-                asset.
+                The GEOID and geometry of each census tract that received an asset.
 
         Raises:
             TypeError:
                 If ``asset_inventory`` is not an ``AssetInventory``.
             ValueError:
-                If an asset has no coordinates, its coordinates form no
-                geometry, or it lies outside every tract. Nothing is written
-                then.
+                If an asset has no coordinates, its coordinates form no geometry, or
+                it lies outside every tract. Nothing is written then.
             requests.exceptions.HTTPError:
                 On a 4xx response from TIGERweb.
             requests.exceptions.ConnectionError:
@@ -265,26 +265,23 @@ class CensusTractScraper:
         """
         Give every asset of an inventory its census tract, block group, or both.
 
-        Without ``polygons`` the block groups are queried from TIGERweb's
-        Census 2020 block-group layer when ``levels`` holds
-        :data:`LEVEL_BLOCK_GROUP`, and a tract's GEOID is the first
-        :data:`~brails.constants.TRACT_GEOID_LENGTH` digits of its block
-        group's; otherwise the tracts are queried from the tract layer.
-        Given polygons are read at the level their GEOID length names.
+        Without ``polygons`` the block groups are queried from TIGERweb's Census 2020
+        block-group layer when ``levels`` holds :data:`LEVEL_BLOCK_GROUP`, and a
+        tract's GEOID is the first :data:`~brails.constants.TRACT_GEOID_LENGTH`
+        digits of its block group's; otherwise the tracts are queried from the tract
+        layer. Given polygons are read at the level their GEOID length names.
 
         Args:
             inventory (AssetInventory):
                 The assets, with coordinates in
                 :data:`~brails.constants.GEOGRAPHIC_CRS`. It is not modified.
             levels (Sequence[str], optional):
-                The geographies written, from :data:`LEVELS`. Defaults to
-                both.
+                The geographies written, from :data:`LEVELS`. Defaults to both.
             polygons (geopandas.GeoDataFrame, optional):
-                One polygon per tract or per block group, with a CRS, such
-                as a TIGER/Line file. A CRS other than
-                :data:`~brails.constants.GEOGRAPHIC_CRS` is reprojected. It
-                is not modified. Defaults to ``None``, which queries
-                TIGERweb.
+                One polygon per tract or per block group, with a CRS, such as a
+                TIGER/Line file. A CRS other than
+                :data:`~brails.constants.GEOGRAPHIC_CRS` is reprojected. It is not
+                modified. Defaults to ``None``, which queries TIGERweb.
             tract_key (str, optional):
                 The feature a tract's GEOID is written to. Defaults to
                 :data:`~brails.constants.TRACT_KEY`.
@@ -293,31 +290,29 @@ class CensusTractScraper:
                 :data:`~brails.constants.BLOCK_GROUP_KEY`.
             geoid_column (str, optional):
                 The column of ``polygons`` holding the GEOIDs, as strings of
-                :data:`~brails.constants.TRACT_GEOID_LENGTH` digits for
-                tracts or :data:`~brails.constants.GEOID_LENGTH` digits for
-                block groups. Defaults to ``'GEOID'``.
+                :data:`~brails.constants.TRACT_GEOID_LENGTH` digits for tracts or
+                :data:`~brails.constants.GEOID_LENGTH` digits for block groups.
+                Defaults to ``'GEOID'``.
 
         Returns:
             tuple[AssetInventory, pandas.DataFrame]:
-                A copy of the inventory in which every asset holds the keys
-                of ``levels``, and a table of the assets on an edge or a
-                vertex shared by several polygons, with the columns of
-                :data:`TIE_COLUMNS`, in ascending order of the asset id as
-                a string.
+                A copy of the inventory in which every asset holds the keys of
+                ``levels``, and a table of the assets on an edge or a vertex shared
+                by several polygons, with the columns of :data:`TIE_COLUMNS`, in
+                ascending order of the asset id as a string.
 
         Raises:
             TypeError:
                 If ``inventory`` is not an ``AssetInventory``.
             ValueError:
-                If ``levels`` is empty or holds a value outside
-                :data:`LEVELS` or a value twice; if ``polygons`` is empty or
-                has no CRS, its GEOID column is missing or numeric, or holds
-                a value that is not a string of the tract or the block-group
-                length or values of both lengths; if ``polygons`` holds
-                tracts and ``levels`` asks for block groups; or if an asset
-                has no coordinates, coordinates that form no geometry, or a
-                location outside every polygon. The message of the last
-                names the assets.
+                If ``levels`` is empty or holds a value outside :data:`LEVELS` or a
+                value twice; if ``polygons`` is empty or has no CRS, its GEOID column
+                is missing or numeric, or holds a value that is not a string of the
+                tract or the block-group length or values of both lengths; if
+                ``polygons`` holds tracts and ``levels`` asks for block groups; or if
+                an asset has no coordinates, coordinates that form no geometry, or a
+                location outside every polygon. The message of the last names the
+                assets.
             requests.exceptions.HTTPError:
                 On a 4xx response from TIGERweb.
             requests.exceptions.ConnectionError:
@@ -379,19 +374,19 @@ class CensusTractScraper:
             level (str):
                 :data:`LEVEL_TRACT` or :data:`LEVEL_BLOCK_GROUP`.
             frame (tuple[numpy.ndarray, numpy.ndarray] | None):
-                The GEOIDs and polygons :func:`_read_polygons` returns, or
-                ``None`` to query TIGERweb's layer of ``level``.
+                The GEOIDs and polygons :func:`_read_polygons` returns, or ``None``
+                to query TIGERweb's layer of ``level``.
 
         Returns:
             tuple[list, list[str], dict[str, Any], pandas.DataFrame]:
-                The asset ids in ascending order as strings, the GEOID of
-                each, the polygons read or fetched by GEOID, and the table
-                of ties with the columns of :data:`TIE_COLUMNS`.
+                The asset ids in ascending order as strings, the GEOID of each, the
+                polygons read or fetched by GEOID, and the table of ties with the
+                columns of :data:`TIE_COLUMNS`.
 
         Raises:
             ValueError:
-                If an asset has no coordinates, coordinates that form no
-                geometry, or a location in no polygon.
+                If an asset has no coordinates, coordinates that form no geometry, or
+                a location in no polygon.
         """
         asset_ids = sorted(inventory.inventory, key=str)
         points = shapely.points(
@@ -448,9 +443,9 @@ class CensusTractScraper:
         """
         Query TIGERweb for the polygons that hold a set of points.
 
-        A point is queried unless it lies in the interior of a polygon
-        already fetched, so a point on a shared edge or vertex fetches every
-        polygon it touches.
+        A point is queried unless it lies in the interior of a polygon already
+        fetched, so a point on a shared edge or vertex fetches every polygon it
+        touches.
 
         Args:
             points (numpy.ndarray):
@@ -460,8 +455,8 @@ class CensusTractScraper:
 
         Returns:
             tuple[numpy.ndarray, numpy.ndarray]:
-                The GEOIDs fetched, as an object array of strings, and their
-                polygons as an array of Shapely geometries.
+                The GEOIDs fetched, as an object array of strings, and their polygons
+                as an array of Shapely geometries.
 
         Raises:
             requests.exceptions.HTTPError:
@@ -499,15 +494,14 @@ def _read_polygons(
 
     Returns:
         tuple[str, tuple[numpy.ndarray, numpy.ndarray]]:
-            :data:`LEVEL_TRACT` or :data:`LEVEL_BLOCK_GROUP`, and the GEOIDs
-            as an object array of strings with the polygons, in
+            :data:`LEVEL_TRACT` or :data:`LEVEL_BLOCK_GROUP`, and the GEOIDs as an
+            object array of strings with the polygons, in
             :data:`~brails.constants.GEOGRAPHIC_CRS`, as an array of Shapely
             geometries, in the order of the rows.
 
     Raises:
         ValueError:
-            In the cases
-            :meth:`CensusTractScraper.get_census_geographies` lists for
+            In the cases :meth:`CensusTractScraper.get_census_geographies` lists for
             ``polygons``.
     """
     if polygons.crs is None:

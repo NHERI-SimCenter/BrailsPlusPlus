@@ -73,8 +73,8 @@ def server(
 
     Returns:
         tuple[dict[str, tuple[int, bytes]], list[tuple[str, float]]]:
-            The status and content served for each URL, which a test fills, any
-            other URL answering 404, and the URL and timeout of each request.
+            The status and content served for each URL, which a test fills, any other
+            URL answering 404, and the URL and timeout of each request.
     """
     files: dict[str, tuple[int, bytes]] = {}
     requests_made: list[tuple[str, float]] = []

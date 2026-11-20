@@ -35,20 +35,19 @@
 """
 Write the stored sample NSI table.
 
-The sample holds NSI 2026 records sampled from several San Francisco Bay
-Area counties: the fields the NSI API serves and ``query_fips``, the county
-request that served each row. The ``SAMPLE_SIZE`` records are shared about
-evenly among the counties and chosen in ascending ``fd_id`` within each:
+The sample holds NSI 2026 records sampled from several San Francisco Bay Area
+counties: the fields the NSI API serves and ``query_fips``, the county request that
+served each row. The ``SAMPLE_SIZE`` records are shared about evenly among the
+counties and chosen in ascending ``fd_id`` within each:
 
 1. every record of the first ``STACKS_PER_COUNTY`` coordinates holding two to
    ``MAX_STACK_SIZE`` records each, so stacked mixed-use records are present;
 2. the first ``H_PER_COUNTY`` records whose ``source`` is ``H`` not taken above;
-3. the first records whose ``source`` is ``P`` not taken above, up to the
-   county's share.
+3. the first records whose ``source`` is ``P`` not taken above, up to the county's
+   share.
 
-The selection depends only on the records of the table, not on its row
-order. The module can be run by hand with the path of the NSI table to
-sample:
+The selection depends only on the records of the table, not on its row order. The
+module can be run by hand with the path of the NSI table to sample:
 
     python tests/scrapers/data/nsi_pooled_fixture_generator.py NSI.parquet
 
@@ -79,8 +78,8 @@ def cut_sample(pooled_path: str | Path) -> list[int]:
 
     Returns:
         list[int]:
-            The ``fd_id`` of every sampled record, by county in FIPS order
-            and in selection order within a county.
+            The ``fd_id`` of every sampled record, by county in FIPS order and in
+            selection order within a county.
     """
     frame = pq.read_table(
         pooled_path, columns=['fd_id', 'x', 'y', 'source', 'query_fips']

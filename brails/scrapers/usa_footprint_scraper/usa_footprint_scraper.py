@@ -249,8 +249,8 @@ class USA_FootprintScraper(FootprintScraper):
                     logger.warning("%r generated an exception: %s", cell, exc)
         pbar.close()
 
-        # Parse the API results into building id, footprints, height and
-        # UUID information:
+        # Parse the API results into building id, footprints, height and UUID
+        # information:
         ids, footprints, bldgheight, uuids = [], [], [], []
         for cell in tqdm(final_cells):
             res = results[cell]
@@ -340,8 +340,8 @@ class USA_FootprintScraper(FootprintScraper):
                   polygons.
                 - List of building heights (`bldgheight`), with `None` for
                   invalid or missing heights.
-                - List of FEMA USA Structures UUIDs (`uuids`), with `None`
-                  where a record has no UUID.
+                - List of FEMA USA Structures UUIDs (`uuids`), with `None` where a
+                  record has no UUID.
         """
         # Parse the response JSON and extract features:
         api_tools = ArcgisAPIServiceHelper(API_ENDPOINT)

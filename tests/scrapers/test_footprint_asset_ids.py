@@ -97,8 +97,8 @@ def row_lon(index: float) -> float:
     return -122.45 + meters_to_lon(index * 25.0)
 
 
-# The fixture: twelve houses 25 m apart, a 4 m shed on the same centroid as
-# house 3, a 5 by 6 m garage beside house 7, and a collinear footprint.
+# The fixture: twelve houses 25 m apart, a 4 m shed on the same centroid as house 3,
+# a 5 by 6 m garage beside house 7, and a collinear footprint.
 HOUSES = [rectangle(row_lon(index), 12.0, 10.0) for index in range(12)]
 SHED = rectangle(row_lon(3), 4.0, 4.0)
 GARAGE = rectangle(row_lon(7) + 0.0001, 5.0, 6.0)
@@ -492,9 +492,9 @@ def test_overture_reads_buildings_only(mocker: MockerFixture) -> None:
 
 def test_two_query_boxes_agree_outside_collision_sets(mocker: MockerFixture) -> None:
     """Footprints both boxes return keep their ids unless a box splits a collision set."""
-    # A building and a smaller footprint inside it share a centroid 4 m west
-    # of the east box's edge. The east box reaches the building but not the
-    # smaller footprint.
+    # A building and a smaller footprint inside it share a centroid 4 m west of the
+    # east box's edge. The east box reaches the building but not the smaller
+    # footprint.
     east_edge = row_lon(3.5)
     building = rectangle(east_edge - meters_to_lon(4.0), 16.0, 16.0)
     part = rectangle(east_edge - meters_to_lon(4.0), 7.0, 7.0)

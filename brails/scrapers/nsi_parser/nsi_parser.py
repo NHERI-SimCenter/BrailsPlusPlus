@@ -78,8 +78,8 @@ def _record_points(features: list[dict]) -> list[Point]:
 
     NSI serves each feature's point rounded to six decimals, beside the record's
     ``x`` and ``y``, which are not rounded. The rounding can move a point across a
-    footprint's edge. A record without ``x`` or ``y`` keeps the served point, and
-    the number of such records is printed.
+    footprint's edge. A record without ``x`` or ``y`` keeps the served point, and the
+    number of such records is printed.
 
     Args:
         features (list[dict]):
@@ -533,19 +533,18 @@ class NSI_Parser:
             region (RegionBoundary):
                 The region boundary object defining the area of interest.
             simcenter_format (bool):
-                When True, each record's fields are renamed to SimCenter
-                conventions and its packed occupancy code is decoded; see
+                When True, each record's fields are renamed to SimCenter conventions
+                and its packed occupancy code is decoded; see
                 :func:`brails.scrapers.nsi_parser.nsi_conventions.to_simcenter`.
-                Defaults to False, which keeps the NSI names and values
-                untouched.
+                Defaults to False, which keeps the NSI names and values untouched.
             raw_parquet_path (str or Path, optional):
-                When given, the records inside the region are also written
-                to this parquet file under their NSI names, as served and
-                before any SimCenter conversion, in ascending ``fd_id``; see
+                When given, the records inside the region are also written to this
+                parquet file under their NSI names, as served and before any
+                SimCenter conversion, in ascending ``fd_id``; see
                 :func:`~brails.scrapers.nsi_parser.nsi_file_reader.write_raw_records`.
                 :meth:`NSIFileReader.read
-                <brails.scrapers.nsi_parser.nsi_file_reader.NSIFileReader.read>`
-                can read the file back as the inventory returned.
+                <brails.scrapers.nsi_parser.nsi_file_reader.NSIFileReader.read>` can
+                read the file back as the inventory returned.
             omit_nulls (bool):
                 When True, a field whose value is null is left out of an asset's
                 features, as ``NSIFileReader`` leaves it out. Defaults to False.
@@ -673,11 +672,11 @@ class NSI_Parser:
             bbox (tuple) Tuple containing the minimum and maximum latitude and
                 longitude values.
         Returns:
-            dict: Dictionary containing extracted NSI data keyed using the
-                fd_id of each record, with the record's point geometry and
-                its properties as the value. NSI serves one record per
-                occupancy of a mixed-use structure, all of them on the same
-                coordinate; keying by record id keeps every record.
+            dict: Dictionary containing extracted NSI data keyed using the fd_id of
+                each record, with the record's point geometry and its properties as
+                the value. NSI serves one record per occupancy of a mixed-use
+                structure, all of them on the same coordinate; keying by record id
+                keeps every record.
         """
         # Unpack the bounding box coordinates:
         (minlon, minlat, maxlon, maxlat) = bbox
@@ -739,9 +738,9 @@ class NSI_Parser:
             )
             return {}
 
-        # Keyed by record id, and built outside the request handling so that a
-        # record NSI serves without one raises here rather than being reported
-        # as a failed download and returned as an empty pull.
+        # Keyed by record id, and built outside the request handling so that a record
+        # NSI serves without one raises here rather than being reported as a failed
+        # download and returned as an empty pull.
         records = {
             feat['properties']['fd_id']: (point, feat['properties'])
             for feat, point in zip(data, _record_points(data))

@@ -76,20 +76,20 @@ REQUIRED_COLUMNS = ('fd_id', 'x', 'y')
 _MAX_X = 180
 _MAX_Y = 90
 
-# The Python values each declared type accepts, and the name an error gives
-# them. A bool is an int in Python but is refused for every type.
+# The Python values each declared type accepts, and the name an error gives them. A
+# bool is an int in Python but is refused for every type.
 _ACCEPTED = {
     pa.int64(): ((int,), 'an integer'),
     pa.float64(): ((int, float), 'a number'),
     pa.string(): ((str,), 'a string'),
 }
 
-# The number of rows converted to Python objects at once, which bounds
-# transient memory.
+# The number of rows converted to Python objects at once, which bounds transient
+# memory.
 _BATCH_ROWS = 100_000
 
-# The number of repeated ids or offending rows an error names before
-# counting the rest.
+# The number of repeated ids or offending rows an error names before counting the
+# rest.
 _PREVIEW = 10
 
 
@@ -134,27 +134,26 @@ def write_raw_records(records: Iterable[dict[str, Any]], path: str | Path) -> No
     """
     Write raw NSI records to a parquet table under their NSI names.
 
-    The table has one row per record, in the order given. It has one column
-    per field of
-    :data:`~brails.scrapers.nsi_parser.nsi_conventions.NSI_RAW_SCHEMA`,
-    stored under its declared type, and then one per field outside the
-    schema, in the order first seen and with its type inferred. A field a
-    record lacks or holds as None is written as null.
+    The table has one row per record, in the order given. It has one column per field
+    of :data:`~brails.scrapers.nsi_parser.nsi_conventions.NSI_RAW_SCHEMA`, stored
+    under its declared type, and then one per field outside the schema, in the order
+    first seen and with its type inferred. A field a record lacks or holds as None is
+    written as null.
 
     Args:
         records (Iterable[dict[str, Any]]):
-            The NSI properties of each record, as the API serves them.
-            Each must carry ``fd_id``, ``x`` and ``y``.
+            The NSI properties of each record, as the API serves them. Each must
+            carry ``fd_id``, ``x`` and ``y``.
         path (str or Path):
             The parquet file to write. Its folder must exist.
 
     Raises:
         ValueError:
-            If a record lacks ``fd_id``, ``x`` or ``y``, or if two records
-            share an ``fd_id``.
+            If a record lacks ``fd_id``, ``x`` or ``y``, or if two records share an
+            ``fd_id``.
         TypeError:
-            If a value does not fit the declared type of its field, or if a
-            field outside the schema mixes types.
+            If a value does not fit the declared type of its field, or if a field
+            outside the schema mixes types.
     """
     rows = list(records)
     for row in rows:
@@ -269,8 +268,8 @@ class NSIFileReader:
 
     The table may be one written by :meth:`NSI_Parser.get_raw_data
     <brails.scrapers.nsi_parser.nsi_parser.NSI_Parser.get_raw_data>` with
-    ``raw_parquet_path``. BRAILS is compatible with the records of the NSI
-    2026 Base only.
+    ``raw_parquet_path``. BRAILS is compatible with the records of the NSI 2026 Base
+    only.
 
     To import the :class:`NSIFileReader` class, use:
 
@@ -293,9 +292,9 @@ class NSIFileReader:
             path (str or Path):
                 The parquet file.
             region (RegionBoundary, optional):
-                When given, only the points strictly inside the region's
-                boundary polygon, by ``x`` and ``y``, are kept. Defaults to
-                None, which keeps every row.
+                When given, only the points strictly inside the region's boundary
+                polygon, by ``x`` and ``y``, are kept. Defaults to None, which keeps
+                every row.
             simcenter_format (bool):
                 When True, each record passes through
                 :func:`brails.scrapers.nsi_parser.nsi_conventions.to_simcenter`.
@@ -303,15 +302,15 @@ class NSIFileReader:
 
         Returns:
             AssetInventory:
-                One point asset per kept row, inserted in ascending
-                ``fd_id``, with coordinates ``[[x, y]]`` and the row's
-                non-null cells and ``type`` as features.
+                One point asset per kept row, inserted in ascending ``fd_id``, with
+                coordinates ``[[x, y]]`` and the row's non-null cells and ``type`` as
+                features.
 
         Raises:
             ValueError:
-                If the table lacks ``fd_id``, ``x`` or ``y``, if any of
-                them is null in a row, if a coordinate is out of range, or
-                if an ``fd_id`` occurs more than once.
+                If the table lacks ``fd_id``, ``x`` or ``y``, if any of them is null
+                in a row, if a coordinate is out of range, or if an ``fd_id`` occurs
+                more than once.
         """
         table = pq.read_table(Path(path))
         self._check_table(table, path)

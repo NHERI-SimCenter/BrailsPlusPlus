@@ -76,9 +76,9 @@ DEFAULT_MIN_AREA_SQFT = 450.0
 # The default floor in square meters, the unit the plan area is measured in.
 DEFAULT_MIN_AREA_M2 = DEFAULT_MIN_AREA_SQFT * UNIT_TO_METER['ft'] ** 2
 
-# Features recorded in the scraper's length unit or its square. They stay
-# out of a tiebreak built from a footprint's features, so that ranks do not
-# depend on the unit.
+# Features recorded in the scraper's length unit or its square. They stay out of a
+# tiebreak built from a footprint's features, so that ranks do not depend on the
+# unit.
 LENGTH_UNIT_FEATURES = ('buildingheight', 'footprintArea')
 
 
@@ -98,20 +98,18 @@ class FootprintScraper(ABC):
         id_scheme (str):
             How assets are keyed: ``'index'`` or ``'geohash'``.
         min_area (float):
-            The smallest plan area kept, in the square of the scraper's
-            length unit.
+            The smallest plan area kept, in the square of the scraper's length unit.
         asset_id_log (list[dict]):
             One entry per member of a geohash collision set in the last
-            ``get_footprints`` call, with ``position`` the footprint's
-            position in that call's footprints.
+            ``get_footprints`` call, with ``position`` the footprint's position in
+            that call's footprints.
         asset_id_skipped (list[dict]):
-            The footprints the last ``get_footprints`` call dropped before
-            keys were assigned, by ``position``, ``provider_id``,
-            ``plan_area`` (in the square of the length unit) and ``reason``
-            (``'below_min_area'`` or ``'zero_area'``). Under ``'geohash'``,
-            or with ``min_area`` above 0, a footprint without area is
-            dropped as ``'zero_area'`` and a vertex outside EPSG:4326 raises
-            ``ValueError``.
+            The footprints the last ``get_footprints`` call dropped before keys were
+            assigned, by ``position``, ``provider_id``, ``plan_area`` (in the square
+            of the length unit) and ``reason`` (``'below_min_area'`` or
+            ``'zero_area'``). Under ``'geohash'``, or with ``min_area`` above 0, a
+            footprint without area is dropped as ``'zero_area'`` and a vertex outside
+            EPSG:4326 raises ``ValueError``.
 
     Methods:
         get_footprints(region):
@@ -133,21 +131,20 @@ class FootprintScraper(ABC):
             input_dict (dict, optional):
                 Scraper options. The base class reads:
 
-                - ``'id_scheme'`` (str): ``'index'``, the default, keys
-                  assets by position. ``'geohash'`` keys them by the geohash
-                  of their centroid, see
-                  :func:`brails.utils.asset_id.assign_asset_ids`.
-                - ``'min_area'`` (float): the smallest plan area kept, in
-                  the square of ``length_unit``, measured by
+                - ``'id_scheme'`` (str): ``'index'``, the default, keys assets by
+                  position. ``'geohash'`` keys them by the geohash of their centroid,
+                  see :func:`brails.utils.asset_id.assign_asset_ids`.
+                - ``'min_area'`` (float): the smallest plan area kept, in the square
+                  of ``length_unit``, measured by
                   :meth:`AssetInventory.centroid_and_plan_area`.
             length_unit (str):
-                The scraper's length unit, which sets the unit of
-                ``min_area``. Defaults to ``'ft'``.
+                The scraper's length unit, which sets the unit of ``min_area``.
+                Defaults to ``'ft'``.
 
         Raises:
             ValueError:
-                If ``id_scheme`` is not a known scheme or ``min_area`` is
-                not a finite, non-negative number.
+                If ``id_scheme`` is not a known scheme or ``min_area`` is not a
+                finite, non-negative number.
         """
         self.name: str = name
         self.footprints = []
@@ -164,15 +161,14 @@ class FootprintScraper(ABC):
 
         Args:
             input_dict (dict):
-                Scraper options, read for ``'id_scheme'`` and
-                ``'min_area'``.
+                Scraper options, read for ``'id_scheme'`` and ``'min_area'``.
             length_unit (str):
                 The scraper's length unit.
 
         Raises:
             ValueError:
-                If ``id_scheme`` is not a known scheme or ``min_area`` is
-                not a finite, non-negative number.
+                If ``id_scheme`` is not a known scheme or ``min_area`` is not a
+                finite, non-negative number.
         """
         id_scheme = input_dict.get('id_scheme', ID_SCHEME_INDEX)
         if id_scheme not in ID_SCHEMES:
@@ -219,8 +215,7 @@ class FootprintScraper(ABC):
 
         Returns:
             float:
-                ``DEFAULT_MIN_AREA_M2`` under ``'geohash'``, and 0 under
-                ``'index'``.
+                ``DEFAULT_MIN_AREA_M2`` under ``'geohash'``, and 0 under ``'index'``.
         """
         if id_scheme == ID_SCHEME_GEOHASH:
             return DEFAULT_MIN_AREA_M2
@@ -347,19 +342,18 @@ class FootprintScraper(ABC):
             length_unit (str):
                 Length unit whose square ``min_area`` is expressed in.
             tiebreak (Sequence[str | None], optional):
-                One string per footprint ranking footprints equal in
-                normalized geometry under ``'geohash'``.
+                One string per footprint ranking footprints equal in normalized
+                geometry under ``'geohash'``.
             provider_ids (Sequence, optional):
-                The provider's id of each footprint, recorded for dropped
-                footprints.
+                The provider's id of each footprint, recorded for dropped footprints.
             positions (Sequence[int], optional):
-                The position of each footprint in the scraper's footprints,
-                used in the logs. Defaults to ``range(len(footprints))``.
+                The position of each footprint in the scraper's footprints, used in
+                the logs. Defaults to ``range(len(footprints))``.
 
         Returns:
             tuple[list[int], list[int | str]]:
-                The indices into ``footprints`` that are kept, in order,
-                and the key of each.
+                The indices into ``footprints`` that are kept, in order, and the key
+                of each.
         """
         # A subclass that skips FootprintScraper.__init__ gets the defaults.
         id_scheme = getattr(self, 'id_scheme', ID_SCHEME_INDEX)
@@ -442,14 +436,12 @@ class FootprintScraper(ABC):
             features (dict):
                 The footprint's features.
             id_feature (str or None):
-                The feature holding the provider's id, if the provider has
-                one.
+                The feature holding the provider's id, if the provider has one.
 
         Returns:
             str:
-                The provider's id when the footprint carries one. Otherwise
-                the sorted JSON of the features outside
-                ``LENGTH_UNIT_FEATURES``.
+                The provider's id when the footprint carries one. Otherwise the
+                sorted JSON of the features outside ``LENGTH_UNIT_FEATURES``.
         """
         value = None if id_feature is None else features.get(id_feature)
         if value is not None and value != 'NA':
@@ -481,27 +473,25 @@ class FootprintScraper(ABC):
             footprints (Sequence[list]):
                 Footprints as BRAILS coordinate lists.
             features (list[dict]):
-                The features of each footprint. ``footprint_provider`` is
-                added to each when ``provider`` is given.
+                The features of each footprint. ``footprint_provider`` is added to
+                each when ``provider`` is given.
             length_unit (str):
                 Length unit whose square ``min_area`` is expressed in.
             provider (str, optional):
-                Name of the footprint provider, a key of
-                ``PROVIDER_ID_FEATURES``.
+                Name of the footprint provider, a key of ``PROVIDER_ID_FEATURES``.
             positions (Sequence[int], optional):
-                The position of each footprint in the scraper's footprints,
-                used in the logs.
+                The position of each footprint in the scraper's footprints, used in
+                the logs.
             centroids (Sequence, optional):
                 The centroid of each footprint, stored for the kept ones in
                 ``self.centroids``.
             inventory (AssetInventory, optional):
-                The inventory the assets are added to. Defaults to a new
-                one.
+                The inventory the assets are added to. Defaults to a new one.
 
         Returns:
             tuple[AssetInventory, list[int]]:
-                The inventory and the indices into ``footprints`` that are
-                kept, in order.
+                The inventory and the indices into ``footprints`` that are kept, in
+                order.
         """
         if provider is not None:
             for asset_features in features:

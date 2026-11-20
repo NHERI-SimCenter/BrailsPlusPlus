@@ -34,11 +34,11 @@
 """
 Regenerate the stored NSI API sample used by the parser tests.
 
-The fixture is a verbatim NSI API response for a small, pinned San
-Francisco block chosen for its variety: RES1 codes with and without
-basement and multi-story suffixes, several RES3 subtypes, commercial
-occupancies, and more than one general building type. Rerun this script
-manually when the NSI schema changes and the live test starts failing:
+The fixture is a verbatim NSI API response for a small, pinned San Francisco block
+chosen for its variety: RES1 codes with and without basement and multi-story
+suffixes, several RES3 subtypes, commercial occupancies, and more than one general
+building type. Rerun this script manually when the NSI schema changes and the live
+test starts failing:
 
     python tests/scrapers/data/nsi_fixture_generator.py
 

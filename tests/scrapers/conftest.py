@@ -56,8 +56,8 @@ class Region:
 
         Args:
             polygon (object, optional):
-                The shapely polygon `get_boundary` returns. Defaults to a
-                box from -0.01 to 0.01 in both coordinates.
+                The shapely polygon `get_boundary` returns. Defaults to a box from
+                -0.01 to 0.01 in both coordinates.
         """
         self.polygon = box(-0.01, -0.01, 0.01, 0.01) if polygon is None else polygon
 
@@ -93,8 +93,8 @@ def serve_features(monkeypatch: pytest.MonkeyPatch, features: list[dict]) -> Non
     """
     Serve these GeoJSON features from the NSI endpoint.
 
-    The download itself, ``NSI_Parser._get_nsi_data``, still runs, so the
-    records are keyed as in a real pull.
+    The download itself, ``NSI_Parser._get_nsi_data``, still runs, so the records are
+    keyed as in a real pull.
 
     Args:
         monkeypatch (pytest.MonkeyPatch):

@@ -46,9 +46,8 @@ import pyarrow as pa
 # The feature type written on every asset built from an NSI record.
 ASSET_TYPE = 'building'
 
-# The fields the NSI 2026 API serves and the type each is stored under in a
-# raw NSI parquet table. A float field may be served as an integer and is
-# stored as a float.
+# The fields the NSI 2026 API serves and the type each is stored under in a raw NSI
+# parquet table. A float field may be served as an integer and is stored as a float.
 NSI_RAW_SCHEMA = pa.schema(
     [
         ('bid', pa.string()),
@@ -96,20 +95,20 @@ NSI_RAW_SCHEMA = pa.schema(
     ]
 )
 
-# NSI field names and the SimCenter feature names assigned to them. Fields
-# that are not listed pass through with their NSI names.
-# The fields and the features they become are described in README.rst.
+# NSI field names and the SimCenter feature names assigned to them. Fields that are
+# not listed pass through with their NSI names. The fields and the features they
+# become are described in README.rst.
 #
-# med_yr_blt becomes YearBuiltTractMedian: NSI reports it as the median year
-# built of the structures in the Census tract, so every building in a tract
-# carries the same value and none of them was observed. Use the
-# YearBuiltSampler to draw a per-building year from it.
+# med_yr_blt becomes YearBuiltTractMedian: NSI reports it as the median year built of
+# the structures in the Census tract, so every building in a tract carries the same
+# value and none of them was observed. Use the YearBuiltSampler to draw a
+# per-building year from it.
 #
-# sqft becomes GrossArea: NSI reports it as the structure's estimated
-# square footage, its gross area, not its plan area.
+# sqft becomes GrossArea: NSI reports it as the structure's estimated square footage,
+# its gross area, not its plan area.
 #
-# fullrep becomes ReplacementCost: NSI reports it as the full, not
-# depreciated, estimated replacement value of the structure.
+# fullrep becomes ReplacementCost: NSI reports it as the full, not depreciated,
+# estimated replacement value of the structure.
 NSI_TO_SIMCENTER = {
     'x': 'Longitude',
     'y': 'Latitude',
@@ -125,9 +124,8 @@ NSI_TO_SIMCENTER = {
     'firmzone': 'FloodZone',
 }
 
-# NSI general building type codes kept as general classes. The H code is
-# mapped to MH; the other codes (W, S, C, M) match the Hazus general classes
-# as they are.
+# NSI general building type codes kept as general classes. The H code is mapped to
+# MH; the other codes (W, S, C, M) match the Hazus general classes as they are.
 BUILDING_TYPE_MAP = {'H': 'MH'}
 
 
@@ -135,10 +133,10 @@ def _unpack_occtype(occtype: str) -> dict:
     """
     Decode the packed NSI occupancy string into separate features.
 
-    NSI uses the extended RES1 occupancy code that includes story count,
-    split-level and basement information, for example ``RES1-2SWB`` or
-    ``RES1-SLNB``. The occupancy class is the part before the dash, which keeps
-    the RES3 subtypes (``RES3A``-``RES3F``) verbatim since they carry no dash.
+    NSI uses the extended RES1 occupancy code that includes story count, split-level
+    and basement information, for example ``RES1-2SWB`` or ``RES1-SLNB``. The
+    occupancy class is the part before the dash, which keeps the RES3 subtypes
+    (``RES3A``-``RES3F``) verbatim since they carry no dash.
 
     Args:
         occtype (str):
@@ -146,10 +144,9 @@ def _unpack_occtype(occtype: str) -> dict:
 
     Returns:
         dict:
-            ``OccupancyClass``, plus boolean ``SplitLevel`` and
-            ``Basement`` where the code carries them. A feature the code
-            does not state is omitted, not defaulted, so downstream
-            imputation sees a genuine gap.
+            ``OccupancyClass``, plus boolean ``SplitLevel`` and ``Basement`` where
+            the code carries them. A feature the code does not state is omitted, not
+            defaulted, so downstream imputation sees a genuine gap.
     """
     unpacked = {'OccupancyClass': occtype.split('-')[0]}
 
@@ -168,10 +165,9 @@ def to_simcenter(properties: dict) -> dict:
     """
     Rename raw NSI fields to SimCenter names and decode packed values.
 
-    The conversion renames the fields listed in :data:`NSI_TO_SIMCENTER`,
-    maps the general building type codes through :data:`BUILDING_TYPE_MAP`,
-    and unpacks the occupancy code. Fields it does not know pass through
-    with their NSI names.
+    The conversion renames the fields listed in :data:`NSI_TO_SIMCENTER`, maps the
+    general building type codes through :data:`BUILDING_TYPE_MAP`, and unpacks the
+    occupancy code. Fields it does not know pass through with their NSI names.
 
     Args:
         properties (dict):
@@ -179,8 +175,8 @@ def to_simcenter(properties: dict) -> dict:
 
     Returns:
         dict:
-            A new dictionary with the properties under SimCenter
-            conventions. The input is not modified.
+            A new dictionary with the properties under SimCenter conventions. The
+            input is not modified.
     """
     converted = {
         NSI_TO_SIMCENTER.get(key, key): value for key, value in properties.items()

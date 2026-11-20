@@ -70,8 +70,8 @@ RELEASE = '2026-10-21.0'
 # The south-east half of BOX. Its bounding box is BOX.
 TRIANGLE = Polygon([(-122.46, 37.76), (-122.40, 37.76), (-122.40, 37.78)])
 
-# Four houses of 12 by 10 m and a 4 by 4 m shed inside TRIANGLE, and a house
-# inside BOX but north-west of TRIANGLE.
+# Four houses of 12 by 10 m and a 4 by 4 m shed inside TRIANGLE, and a house inside
+# BOX but north-west of TRIANGLE.
 HOUSE_LON, HOUSE_LAT = 0.0001366, 0.0000899
 SHED_LON, SHED_LAT = 0.0000455, 0.000036
 FOOTPRINTS = [
@@ -100,8 +100,8 @@ def building_table(
         overture_type (str, optional):
             The value of the ``type`` column. Defaults to ``'building'``.
         release (str, optional):
-            A release to record under ``BRAILS_METADATA_KEY``, as
-            ``download`` does. Defaults to none.
+            A release to record under ``BRAILS_METADATA_KEY``, as ``download`` does.
+            Defaults to none.
 
     Returns:
         pa.Table:

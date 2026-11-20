@@ -67,8 +67,8 @@ from brails.scrapers.overture_maps_scraper.overture_maps_scraper import \
 OVERTURE_TYPE = 'building'
 ASSET_TYPE = 'building'
 
-# Schema metadata key under which ``download`` records the release and the
-# source read:
+# Schema metadata key under which ``download`` records the release and the source
+# read:
 BRAILS_METADATA_KEY = b'brails'
 
 # Attributes with associated units and the units they are defined in within
@@ -82,15 +82,15 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
     """
     Scraper of the Overture Maps buildings in a region.
 
-    The rows come from the Overture S3 bucket, or from local GeoParquet
-    files given as ``'local_path'``, which :meth:`download` writes. Only
-    rows of Overture's ``building`` type are read. The README beside this
-    module states what is read and how the release is resolved.
+    The rows come from the Overture S3 bucket, or from local GeoParquet files given
+    as ``'local_path'``, which :meth:`download` writes. Only rows of Overture's
+    ``building`` type are read. The README beside this module states what is read and
+    how the release is resolved.
 
     Attributes:
         units (dict):
-            The units parsed from ``input_dict``. ``units['length']`` is the
-            length unit of plan areas and heights.
+            The units parsed from ``input_dict``. ``units['length']`` is the length
+            unit of plan areas and heights.
         inventory (AssetInventory):
             The inventory :meth:`get_footprints` adds its assets to.
         overture_release (str):
@@ -99,18 +99,17 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
             The local files read in place of the S3 bucket, or ``None``.
 
     Example:
-        With ``region`` and ``scraper`` as in the example of
-        :meth:`get_footprints`, record the release an inventory was built
-        from and name it in a later run, to read the same release for as
-        long as the bucket holds it:
+        With ``region`` and ``scraper`` as in the example of :meth:`get_footprints`,
+        record the release an inventory was built from and name it in a later run, to
+        read the same release for as long as the bucket holds it:
 
         >>> release = scraper.overture_release
         >>> later = OvertureMapsFootprintScraper(
         ...     {'overtureRelease': release}
         ... )
 
-        Read Parquet files that record no release, naming the release they
-        hold, here ``files_release``:
+        Read Parquet files that record no release, naming the release they hold, here
+        ``files_release``:
 
         >>> local = OvertureMapsFootprintScraper(
         ...     {
@@ -130,32 +129,31 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
             input_dict (dict, optional):
                 Scraper options, all optional:
 
-                - ``'length'`` (str): the length unit, such as ``'ft'`` or
-                  ``'m'``. Defaults to ``DEFAULT_UNITS['length']``.
+                - ``'length'`` (str): the length unit, such as ``'ft'`` or ``'m'``.
+                  Defaults to ``DEFAULT_UNITS['length']``.
                 - ``'overtureRelease'`` (str): the release to read. Without
                   ``'local_path'`` it is checked by
                   :meth:`~brails.scrapers.overture_maps_scraper.overture_maps_scraper.OvertureMapsScraper.resolve_release`,
                   which also gives the default.
-                - ``'id_scheme'`` (str) and ``'min_area'`` (float): described
-                  in :class:`~brails.scrapers.footprint_scraper.FootprintScraper`.
-                - ``'local_path'`` (str or sequence of str): GeoParquet files
-                  of Overture ``building`` rows read in place of the S3
-                  bucket, which is then not contacted. Each file must hold
-                  Overture's ``bbox`` column, and a file without it fails
-                  when it is read. The release is ``'overtureRelease'`` or
-                  the one each file records. The README beside this module,
-                  "Local files and their release", states the rules.
+                - ``'id_scheme'`` (str) and ``'min_area'`` (float): described in
+                  :class:`~brails.scrapers.footprint_scraper.FootprintScraper`.
+                - ``'local_path'`` (str or sequence of str): GeoParquet files of
+                  Overture ``building`` rows read in place of the S3 bucket, which is
+                  then not contacted. Each file must hold Overture's ``bbox`` column,
+                  and a file without it fails when it is read. The release is
+                  ``'overtureRelease'`` or the one each file records. The README
+                  beside this module, "Local files and their release", states the
+                  rules.
 
         Raises:
             FileNotFoundError:
                 If a file of ``'local_path'`` does not exist.
             ValueError:
                 If ``'length'`` or ``'weight'`` is not a supported unit, or
-                ``'id_scheme'`` or ``'min_area'`` is invalid; if
-                ``'local_path'`` names no file, a path that is not a Parquet
-                file, or a file holding a ``building_id`` column; if no
-                release is known for a file; if the files and
-                ``'overtureRelease'`` name more than one release; or,
+                ``'id_scheme'`` or ``'min_area'`` is invalid; if ``'local_path'``
+                names no file, a path that is not a Parquet file, or a file holding a
+                ``building_id`` column; if no release is known for a file; if the
+                files and ``'overtureRelease'`` name more than one release; or,
                 without ``'local_path'``, as ``resolve_release`` raises it.
             OSError:
                 Without ``'local_path'``, as ``resolve_release`` raises it.
@@ -174,8 +172,8 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
         local_path = input_dict.get('local_path')
         if local_path is None:
             self.local_paths = None
-            # Parse Overture Maps release from input dict or fall back to the
-            # newest release the S3 bucket holds:
+            # Parse Overture Maps release from input dict or fall back to the newest
+            # release the S3 bucket holds:
             self.overture_release = self.resolve_release(
                 input_dict.get('overtureRelease')
             )
@@ -193,8 +191,8 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
                     f"Overture file not found: {', '.join(missing)}"
                 )
 
-            # The release declared in input_dict and the releases the files
-            # record must name one release:
+            # The release declared in input_dict and the releases the files record
+            # must name one release:
             declared = input_dict.get('overtureRelease')
             releases = {declared} if declared else set()
             unrecorded = []
@@ -213,8 +211,8 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
                         f"{path} is not a GeoParquet file of Overture rows: "
                         f"{error}"
                     ) from error
-                # Only Overture's building_part rows carry building_id,
-                # including part files without a type column:
+                # Only Overture's building_part rows carry building_id, including
+                # part files without a type column:
                 if 'building_id' in schema.names:
                     raise ValueError(
                         f"{path} holds Overture building_part rows. Only "
@@ -241,11 +239,11 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
         """
         Retrieve the Overture buildings whose geometry intersects a region.
 
-        The assets are added to ``self.inventory``. Each carries its row's
-        columns as features, with ``id`` as ``overture_id``, heights in
-        ``units['length']`` and ``names`` dropped. A building found in
-        several local files becomes one asset. The README beside this
-        module, "The features of an asset", lists every change.
+        The assets are added to ``self.inventory``. Each carries its row's columns as
+        features, with ``id`` as ``overture_id``, heights in ``units['length']`` and
+        ``names`` dropped. A building found in several local files becomes one asset.
+        The README beside this module, "The features of an asset", lists every
+        change.
 
         Args:
             region (RegionBoundary):
@@ -257,9 +255,9 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
 
         Raises:
             ValueError:
-                If a local file holds rows of a type other than 'building',
-                or, under ``'geohash'`` or with ``'min_area'`` above 0, if a
-                vertex lies outside EPSG:4326.
+                If a local file holds rows of a type other than 'building', or, under
+                ``'geohash'`` or with ``'min_area'`` above 0, if a vertex lies
+                outside EPSG:4326.
 
         Example:
             Read the buildings of Berkeley, California, from the release
@@ -355,14 +353,13 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
         """
         Write the Overture building rows of a region to a GeoParquet file.
 
-        The rows are those whose geometry intersects the region, read from
-        the S3 bucket or from the files of ``'local_path'``, with every
-        column they hold and the ``theme`` and ``type`` columns. The file
-        records the release under ``BRAILS_METADATA_KEY``. With the same
-        options, a scraper reading it as ``'local_path'`` builds the same
-        inventory over the same region. ``self.inventory`` is left
-        unchanged. The README beside this module, "The file download
-        writes", states the format and the metadata.
+        The rows are those whose geometry intersects the region, read from the S3
+        bucket or from the files of ``'local_path'``, with every column they hold and
+        the ``theme`` and ``type`` columns. The file records the release under
+        ``BRAILS_METADATA_KEY``. With the same options, a scraper reading it as
+        ``'local_path'`` builds the same inventory over the same region.
+        ``self.inventory`` is left unchanged. The README beside this module, "The
+        file download writes", states the format and the metadata.
 
         Args:
             region (RegionBoundary):
@@ -380,9 +377,8 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
 
         Example:
             With ``region`` and ``scraper`` as in the example of
-            :meth:`get_footprints`, download the region once and build
-            inventories from the file, without reading the bucket again,
-            keyed by geohash:
+            :meth:`get_footprints`, download the region once and build inventories
+            from the file, without reading the bucket again, keyed by geohash:
 
             >>> count = scraper.download(region, 'berkeley_buildings.parquet')
             >>> local = OvertureMapsFootprintScraper(
@@ -409,8 +405,8 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
             'type', pa.array([OVERTURE_TYPE] * count, pa.string())
         )
 
-        # GeoParquet metadata of the geometry column; the bbox of an empty
-        # file is left out:
+        # GeoParquet metadata of the geometry column; the bbox of an empty file is
+        # left out:
         column = {
             'encoding': 'WKB',
             'geometry_types': sorted(
@@ -457,11 +453,10 @@ class OvertureMapsFootprintScraper(OvertureMapsScraper, FootprintScraper):
         """
         Read the Overture building rows whose bbox overlaps a bounding box.
 
-        The rows come from the S3 bucket, or from the files of
-        ``'local_path'``. Rows read from local files lose the ``theme`` and
-        ``type`` columns, which the bucket holds as partition values, and a
-        building found in several files is kept once, at its first
-        occurrence by ``id``.
+        The rows come from the S3 bucket, or from the files of ``'local_path'``. Rows
+        read from local files lose the ``theme`` and ``type`` columns, which the
+        bucket holds as partition values, and a building found in several files is
+        kept once, at its first occurrence by ``id``.
 
         Args:
             bbox (Tuple[float, float, float, float]):

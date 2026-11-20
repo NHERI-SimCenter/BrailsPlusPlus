@@ -82,8 +82,8 @@ class FakeFileSystem:
             entries (list[FakeFileInfo]):
                 Entries returned by every listing call.
             counter (list[int]):
-                Single-element list incremented on each listing, so tests can
-                assert how often the bucket was hit.
+                Single-element list incremented on each listing, so tests can assert
+                how often the bucket was hit.
         """
         self.entries = entries
         self.counter = counter

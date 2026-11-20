@@ -89,21 +89,20 @@ TYPE_THEME_MAP = {
     "water": "base",
 }
 
-# The footprint_provider value of an Overture footprint, and the feature
-# holding its Overture id.
+# The footprint_provider value of an Overture footprint, and the feature holding its
+# Overture id.
 OVERTURE_PROVIDER = 'overture'
 OVERTURE_ID_KEY = PROVIDER_ID_FEATURES[OVERTURE_PROVIDER][0]
 
-# Overture's building columns that other modules read: the height, the
-# number of floors, the class and the sources.
+# Overture's building columns that other modules read: the height, the number of
+# floors, the class and the sources.
 HEIGHT_KEY = 'height'
 NUM_FLOORS_KEY = 'num_floors'
 CLASS_KEY = 'class'
 SOURCES_KEY = 'sources'
 
-# The separator of the entries of the sources string that _format_sources
-# writes, and the property an entry names when it is the source of the
-# height.
+# The separator of the entries of the sources string that _format_sources writes, and
+# the property an entry names when it is the source of the height.
 SOURCES_SEPARATOR = '; '
 HEIGHT_PROPERTY = '/properties/height'
 
@@ -114,8 +113,8 @@ class OvertureMapsScraper(ABC):
 
     The class is not instantiated directly, and
     :class:`~brails.scrapers.overture_maps_scraper.overture_maps_footprint_scraper.OvertureMapsFootprintScraper`
-    derives from it. The README beside this module, "Releases", states how
-    a release is resolved.
+    derives from it. The README beside this module, "Releases", states how a release
+    is resolved.
     """
 
     # Releases the S3 bucket holds, cached after the first listing.
@@ -159,13 +158,13 @@ class OvertureMapsScraper(ABC):
 
         Args:
             refresh (bool, optional):
-                List the bucket again instead of reusing the result cached
-                by the first listing. Defaults to ``False``.
+                List the bucket again instead of reusing the result cached by the
+                first listing. Defaults to ``False``.
 
         Returns:
             List[str]:
-                Release names, in reverse order, which is newest first for
-                date-named releases.
+                Release names, in reverse order, which is newest first for date-named
+                releases.
 
         Raises:
             OSError:
@@ -195,15 +194,14 @@ class OvertureMapsScraper(ABC):
         """
         Determine which release to read, checking it against the bucket.
 
-        Where the bucket cannot be listed or lists no release, a warning is
-        printed, ``requested`` is returned unchecked, and without it the
-        first release of the published list is returned.
+        Where the bucket cannot be listed or lists no release, a warning is printed,
+        ``requested`` is returned unchecked, and without it the first release of the
+        published list is returned.
 
         Args:
             requested (str, optional):
                 The release to read. When omitted, the first release
-                :meth:`fetch_available_releases` gives, with a printed
-                notice.
+                :meth:`fetch_available_releases` gives, with a printed notice.
 
         Returns:
             str:
@@ -211,13 +209,11 @@ class OvertureMapsScraper(ABC):
 
         Raises:
             ValueError:
-                If the bucket holds no release named ``requested``, or if
-                the bucket cannot be listed or lists no release and the
-                published list is empty.
+                If the bucket holds no release named ``requested``, or if the bucket
+                cannot be listed or lists no release and the published list is empty.
             OSError:
-                If the bucket cannot be listed or lists no release,
-                ``requested`` is omitted and the published list cannot be
-                fetched.
+                If the bucket cannot be listed or lists no release, ``requested`` is
+                omitted and the published list cannot be fetched.
         """
         listing_error = None
         try:
@@ -242,8 +238,8 @@ class OvertureMapsScraper(ABC):
             )
             return available[0]
 
-        # The bucket could not be listed, so nothing here can be confirmed
-        # readable. Fall back to the published list.
+        # The bucket could not be listed, so nothing here can be confirmed readable.
+        # Fall back to the published list.
         print(
             f"WARNING: could not list s3://{S3_BASE_PATH} ({listing_error}). "
             "Falling back to the published release list, which may name "
@@ -324,8 +320,8 @@ class OvertureMapsScraper(ABC):
         """
         Read an Overture dataset from S3, or from local files, as a table.
 
-        The rows kept are those whose ``bbox`` column overlaps ``bbox``. The
-        same filter applies to the S3 dataset and to local files.
+        The rows kept are those whose ``bbox`` column overlaps ``bbox``. The same
+        filter applies to the S3 dataset and to local files.
 
         Args:
             overture_release (str):
@@ -341,14 +337,13 @@ class OvertureMapsScraper(ABC):
             request_timeout (Optional[int]):
                 Timeout in seconds for data requests.
             paths (Optional[Sequence[str]]):
-                Local Parquet files to read in place of the S3 dataset. Each
-                file must hold Overture's ``bbox`` column when ``bbox`` is
-                given.
+                Local Parquet files to read in place of the S3 dataset. Each file
+                must hold Overture's ``bbox`` column when ``bbox`` is given.
 
         Returns:
             pa.Table:
-                The rows read, with the columns and the schema metadata of
-                the dataset.
+                The rows read, with the columns and the schema metadata of the
+                dataset.
         """
         if bbox is not None:
             bbox = OvertureMapsScraper.normalize_bbox_order(bbox)

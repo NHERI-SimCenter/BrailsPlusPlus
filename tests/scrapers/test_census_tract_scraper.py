@@ -886,8 +886,8 @@ class TestTigerwebBlockGroups:
         """
         An asset on a shared edge takes the lowest GEOID in either order.
 
-        Queried first, the edge asset fetches both block groups and settles
-        the interior asset; queried after it, it fetches both itself.
+        Queried first, the edge asset fetches both block groups and settles the
+        interior asset; queried after it, it fetches both itself.
         """
         features = {
             geoid: _feature_for_polygon(geoid, polygon)
