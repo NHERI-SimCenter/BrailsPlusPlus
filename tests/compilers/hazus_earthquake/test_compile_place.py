@@ -132,7 +132,8 @@ class Services:
 
     The TIGER/Line files are zipped shapefiles placed in ``tiger_files``'s memory,
     the Overture footprints a local GeoParquet file, and the NSI records come from
-    a stand-in for ``NSI_Parser._get_nsi_data``; the key check is a stand-in.
+    a stand-in for ``NSI_Parser._get_nsi_data``; the Census API key check is a
+    stand-in.
 
     Attributes:
         calls (list[tuple[str, object]]):
@@ -273,8 +274,8 @@ def services(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Services:
         tmp_path (Path):
             The folder of the files.
         monkeypatch (pytest.MonkeyPatch):
-            Replaces the key check and NSI's request, and records the reads of the
-            block groups and of the footprints.
+            Replaces the Census API key check and NSI's request, and records the
+            reads of the block groups and of the footprints.
 
     Returns:
         Services:

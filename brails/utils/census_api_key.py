@@ -33,7 +33,7 @@
 
 
 """
-Find and store the key of the Census Bureau's Data API.
+Find and store the Census API key.
 
 No routine here writes the key to a message, a warning or a log record, and the key
 is returned as a :class:`CensusApiKey`, whose ``repr`` hides it.
@@ -58,13 +58,13 @@ from pathlib import Path
 from brails.constants import REDACTED
 
 # The name of the environment variable, and of the Google Colab secret, that holds
-# the key.
+# the Census API key.
 CENSUS_API_KEY_NAME = 'CENSUS_API_KEY'
 
-# The file that holds the key, relative to the user's home directory.
+# The file that holds the Census API key, relative to the user's home directory.
 CENSUS_API_KEY_FILE = Path('.brails') / 'census_api_key'
 
-# The page where the Census Bureau issues keys.
+# The page where the Census Bureau issues Census API keys.
 CENSUS_API_KEY_SIGNUP_URL = 'https://api.census.gov/data/key_signup.html'
 
 # The names of the Colab exceptions that mean the notebook gets no secret: it does
@@ -75,7 +75,7 @@ _COLAB_NO_SECRET = ('SecretNotFoundError', 'NotebookAccessError', 'TimeoutExcept
 
 class CensusApiKey(str):
     """
-    A Census Data API key, which its ``repr`` does not show.
+    A Census API key, which its ``repr`` does not show.
 
     It is the key's text in every other use, so ``requests`` sends it as given. A
     traceback that shows the values of a frame holding it, or a container holding it
@@ -88,7 +88,7 @@ class CensusApiKey(str):
 
     def __repr__(self) -> str:
         """
-        Return a placeholder in place of the key.
+        Return a placeholder in place of the Census API key.
 
         Returns:
             str:
@@ -99,7 +99,7 @@ class CensusApiKey(str):
 
 def _clean_key(value: str, source: str) -> CensusApiKey:
     """
-    Return a key without surrounding whitespace and quotes, or refuse it.
+    Return a Census API key without surrounding whitespace and quotes, or refuse it.
 
     Args:
         value (str):
@@ -114,7 +114,7 @@ def _clean_key(value: str, source: str) -> CensusApiKey:
     Raises:
         ValueError:
             If what remains holds a character other than an ASCII letter or digit,
-            which no Census Data API key holds. The message names the source and not
+            which no Census API key holds. The message names the source and not
             the value.
     """
     # Every holder of the text is a CensusApiKey, so a frame shown with its values
@@ -125,7 +125,7 @@ def _clean_key(value: str, source: str) -> CensusApiKey:
         key = CensusApiKey(key[1:-1].strip())
     if key and not (key.isascii() and key.isalnum()):
         msg = (
-            f'The value from {source} cannot be a Census Data API key, which '
+            f'The value from {source} cannot be a Census API key, which '
             'holds letters and digits only.'
         )
         raise ValueError(msg)
@@ -136,7 +136,7 @@ def resolve_census_api_key(
     api_key: str | None = None,
 ) -> tuple[CensusApiKey, str]:
     """
-    Return the Census Data API key and its source, from the argument or a store.
+    Return the Census API key and its source, from the argument or a store.
 
     A key given as ``api_key`` is returned. Otherwise the key is the one
     :func:`find_census_api_key` finds. Surrounding whitespace and quotes are removed
@@ -173,7 +173,7 @@ def resolve_census_api_key(
 
 def find_census_api_key() -> tuple[CensusApiKey, str]:
     """
-    Return the Census Data API key of the first store that holds one.
+    Return the Census API key of the first store that holds one.
 
     The stores are read in this order: the environment variable
     :data:`CENSUS_API_KEY_NAME`; in Google Colab, the notebook secret of that name;
@@ -237,7 +237,7 @@ def find_census_api_key() -> tuple[CensusApiKey, str]:
         else f'the file {CENSUS_API_KEY_FILE} under the home directory'
     )
     msg = (
-        'No Census Data API key was found. Request one at '
+        'No Census API key was found. Request one at '
         f'{CENSUS_API_KEY_SIGNUP_URL} and activate it from the email the Census '
         f'Bureau sends. Then set the environment variable {CENSUS_API_KEY_NAME}, '
         f'add a Google Colab secret named {CENSUS_API_KEY_NAME} that the notebook '
@@ -248,7 +248,7 @@ def find_census_api_key() -> tuple[CensusApiKey, str]:
 
 def save_census_api_key() -> Path:
     """
-    Ask for the Census Data API key and write it to the key file.
+    Ask for the Census API key and write it to the key file.
 
     The prompt does not show what is typed. The file is :data:`CENSUS_API_KEY_FILE`
     under the home directory, read by :func:`find_census_api_key` when neither the
@@ -279,23 +279,23 @@ def save_census_api_key() -> Path:
             answer = CensusApiKey(getpass.getpass('Census API key: '))
         except getpass.GetPassWarning:
             msg = (
-                'This console cannot hide what is typed, so no key was asked for. '
-                'Run save_census_api_key in a terminal or a notebook, or set the '
-                f'environment variable {CENSUS_API_KEY_NAME}.'
+                'This console cannot hide what is typed, so no Census API key was '
+                'asked for. Run save_census_api_key in a terminal or a notebook, or '
+                f'set the environment variable {CENSUS_API_KEY_NAME}.'
             )
             raise RuntimeError(msg) from None
     key = _clean_key(answer, 'the prompt')
     if not key:
         msg = (
-            'No key was typed, so none was saved. Run save_census_api_key() again '
-            'and type the key.'
+            'No Census API key was typed, so none was saved. Run '
+            'save_census_api_key() again and type the key.'
         )
         raise ValueError(msg)
 
     path = Path.home() / CENSUS_API_KEY_FILE
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    # The key goes to a file of mode 600 beside the target, which then replaces the
-    # target. O_BINARY and newline='\n' write a bare newline on every system.
+    # The Census API key goes to a file of mode 600 beside the target, which then
+    # replaces it. O_BINARY and newline='\n' write a bare newline on any system.
     partial = path.with_name(f'{path.name}.partial')
     flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_BINARY', 0)
     try:
@@ -309,7 +309,7 @@ def save_census_api_key() -> Path:
             partial.unlink(missing_ok=True)
         raise
 
-    # The file just written holds a key, so the stores raise no LookupError.
+    # The file just written holds the Census API key, so no LookupError follows.
     try:
         found, source = find_census_api_key()
     except ValueError as error:
@@ -320,8 +320,8 @@ def save_census_api_key() -> Path:
         return path
     if found != key:
         warnings.warn(
-            f'A different key is in {source}, which is read before {path}. Remove '
-            'that key or replace it with the new one.',
+            f'A different Census API key is in {source}, which is read before '
+            f'{path}. Remove that key or replace it with the new one.',
             stacklevel=2,
         )
     return path

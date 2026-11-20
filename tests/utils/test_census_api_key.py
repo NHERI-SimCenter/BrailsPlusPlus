@@ -315,8 +315,8 @@ def test_saved_folder_is_private_to_its_owner(
 @pytest.mark.parametrize(
     ('value', 'match'),
     [
-        ('', 'No key was typed'),
-        ('   ', 'No key was typed'),
+        ('', 'No Census API key was typed'),
+        ('   ', 'No Census API key was typed'),
         ('two words', 'letters and digits only'),
         ('key+with/symbols', 'letters and digits only'),
     ],
@@ -397,7 +397,7 @@ def test_no_home_directory_skips_the_file(monkeypatch: pytest.MonkeyPatch) -> No
         raise RuntimeError
 
     monkeypatch.setattr('pathlib.Path.home', no_home)
-    with pytest.raises(LookupError, match='No Census Data API key'):
+    with pytest.raises(LookupError, match='No Census API key'):
         resolve_census_api_key()
 
 
@@ -528,9 +528,7 @@ def test_refused_key_hidden_in_every_frame(
     # The made-up key stays a global, so that no frame of the test holds it.
     monkeypatch.setattr(getpass, 'getpass', lambda _prompt: MALFORMED)
     for call in (lambda: resolve_census_api_key(MALFORMED), save_census_api_key):
-        with pytest.raises(
-            ValueError, match='cannot be a Census Data API key'
-        ) as error:
+        with pytest.raises(ValueError, match='cannot be a Census API key') as error:
             call()
         assert MALFORMED not in render_with_locals(error.value)
     monkeypatch.setenv(CENSUS_API_KEY_NAME, MALFORMED)

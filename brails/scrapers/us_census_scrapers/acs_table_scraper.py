@@ -324,7 +324,7 @@ class ACSTableScraper:
                 If the connection keeps failing after the retries, or the answer is
                 cut short.
         """
-        what = f'the key check against the {vintage} release'
+        what = f'the Census API key check against the {vintage} release'
         self._read_rows(self._send_request(vintage, _KEY_CHECK_PARAMS, what), what)
 
     def _send_request(
@@ -389,7 +389,7 @@ class ACSTableScraper:
             msg = (
                 f'{type(error).__name__} during the request to the Census Data API '
                 f'for {what}. Its traceback is left out, since the frames of '
-                'requests and urllib3 hold the URL with the key.'
+                'requests and urllib3 hold the URL with the Census API key.'
             )
             try:
                 fresh = type(error)(msg)
@@ -452,7 +452,7 @@ class ACSTableScraper:
             msg = (
                 f'The Census Data API answered the request for {what} with the '
                 f'page {page} instead of a table. It sends such a page when the '
-                f'key is not valid or not activated: check the key from '
+                'Census API key is not valid or not activated: check the key from '
                 f'{self.key_source}. A new key works only after it is '
                 'activated from the email the Census Bureau sends.'
             )

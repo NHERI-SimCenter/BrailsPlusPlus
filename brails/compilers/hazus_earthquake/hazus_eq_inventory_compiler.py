@@ -1795,8 +1795,8 @@ class HazusEQInventoryCompiler:
         The call is ``compile(CompilerInputs.from_place(place, source=source,
         compiler=self, **from_place_options))``, so a state or zone the compiler
         would refuse stops it before the footprints are read. ``buffer_m`` defaults
-        to the imputer's ``cap_m``. The Census key is checked by both calls. No inputs are
-        kept, so a compilation that fails loses the downloads; call
+        to the imputer's ``cap_m``. The Census API key is checked by both calls. No
+        inputs are kept, so a compilation that fails loses the downloads; call
         :meth:`CompilerInputs.from_place` and :meth:`compile` apart to keep them.
         It raises what those two raise.
 
@@ -1856,22 +1856,22 @@ class HazusEQInventoryCompiler:
                 or as the components raise, among them a footprint outside
                 every block group and, with ``merge_stacked``, a footprint
                 that is not Overture's; or, for a census table given as ``None``, if
-                a key store holds a value that cannot be a key or a table the year
-                sampler reads holds an estimate the Census Bureau does not publish
-                where the run reads it; or, where both the census tables and the
-                block groups are read, if ``acs_vintage`` and ``block_group_vintage``
-                are of different decades.
+                a store holds a value that cannot be a Census API key or a table the
+                year sampler reads holds an estimate the Census Bureau does not
+                publish where the run reads it; or, where both the census tables
+                and the block groups are read, if ``acs_vintage`` and
+                ``block_group_vintage`` are of different decades.
             LookupError:
                 If a census table is given as ``None`` and no Census API key is
                 found.
             RuntimeError:
                 If a frozen stage changed during the run; or, for a census table
-                given as ``None``, if the Census Data API refuses the key or answers
-                a request with something other than the table asked; or, for park
-                points given as ``None``, if the HIFLD archive shows no complete
-                write.
+                given as ``None``, if the Census Data API refuses the Census API key
+                or answers a request with something other than the table asked; or,
+                for park points given as ``None``, if the HIFLD archive shows no
+                complete write.
             requests.exceptions.RequestException:
-                If the key check or a request for a census table fails, as
+                If the Census API key check or a request for a census table fails, as
                 :meth:`~brails.scrapers.ACSTableScraper.get_table` raises, or the
                 download of a TIGER/Line file of block groups or of the park points
                 fails.
@@ -2400,7 +2400,7 @@ class HazusEQInventoryCompiler:
         self, inputs: CompilerInputs, report: CompilationReport
     ) -> tuple[CompilerInputs, ACSTableScraper | None]:
         """
-        Read the park points and block groups left as ``None``, and check the key.
+        Read the park points and block groups not given; check the Census API key.
 
         All run before s01, so that a run without a usable key or without the files
         stops before any step. The census tables left as ``None`` are read after s01,
@@ -2430,9 +2430,9 @@ class HazusEQInventoryCompiler:
                 API refuses it, with a sentence naming the tables that need it; or,
                 for a RuntimeError, if the HIFLD archive shows no complete write.
             requests.exceptions.RequestException:
-                If the key check fails, or the download of the park points or of a
-                TIGER/Line file, with a sentence naming the input that was being
-                read.
+                If the Census API key check fails, or the download of the park points
+                or of a TIGER/Line file, with a sentence naming the input that was
+                being read.
         """
         missing = [
             name for name in _ACS_TABLE_REQUESTS if getattr(inputs, name) is None
@@ -2462,8 +2462,8 @@ class HazusEQInventoryCompiler:
                 msg = (
                     f'{error} CompilerInputs leaves {", ".join(missing)} as None, '
                     'so the compiler reads them from the Census Data API, which '
-                    'needs a key. Give the tables in CompilerInputs to compile '
-                    'without one.'
+                    'needs a Census API key. Give the tables in CompilerInputs to '
+                    'compile without one.'
                 )
                 raise type(error)(msg) from error
             report.settings['acs_vintage'] = self.acs_vintage
