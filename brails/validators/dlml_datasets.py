@@ -45,16 +45,14 @@ import dlml
 
 from brails.exceptions import BrailsError
 
-# Friendly names for the DLML datasets, so that a caller can write
-# 'Hazus Earthquake - Buildings' instead of
-# 'seismic/building/portfolio/Hazus v6.1'.
+# Friendly names for the DLML datasets, so that a caller can write 'Hazus
+# Earthquake - Buildings' instead of 'seismic/building/portfolio/Hazus v6.1'.
 #
 # These strings are copied verbatim from pelicun's
-# `pelicun/resources/dlml_resource_paths.json`, so that a user moving
-# between BRAILS and pelicun meets the same vocabulary. Only
-# the datasets that ship an input schema are listed: an alias for a
-# dataset without one would resolve to an identifier no validator can
-# use. Extend this as DLML gains schemas.
+# `pelicun/resources/dlml_resource_paths.json`, so that a user moving between BRAILS
+# and pelicun meets the same vocabulary. Only the datasets that ship an input schema
+# are listed: an alias for a dataset without one would resolve to an identifier no
+# validator can use. Extend this as DLML gains schemas.
 METHOD_ALIASES = {
     'Hazus Earthquake - Buildings': 'seismic/building/portfolio/Hazus v6.1',
     'Hazus Hurricane': 'hurricane/building/portfolio/Hazus v5.1 coupled',
@@ -74,9 +72,8 @@ def resolve_dataset_id(name: str) -> str:
 
     Args:
         name (str):
-            A friendly method name listed in :data:`METHOD_ALIASES`, or a
-            DLML dataset identifier such as
-            ``'seismic/building/portfolio/Hazus v6.1'``.
+            A friendly method name listed in :data:`METHOD_ALIASES`, or a DLML
+            dataset identifier such as ``'seismic/building/portfolio/Hazus v6.1'``.
 
     Returns:
         str:
@@ -84,8 +81,7 @@ def resolve_dataset_id(name: str) -> str:
 
     Raises:
         BrailsError:
-            If ``name`` is neither a known alias nor a DLML dataset
-            identifier.
+            If ``name`` is neither a known alias nor a DLML dataset identifier.
 
     Examples:
         >>> resolve_dataset_id('Hazus Earthquake - Buildings')

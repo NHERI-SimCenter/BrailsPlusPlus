@@ -254,8 +254,8 @@ def test_validates_every_world(
     inventory = build_inventory(
         {
             'A1': {
-                # W1 needs no height class; URM caps the design level and
-                # requires one, so only the second world is invalid.
+                # W1 needs no height class; URM caps the design level and requires
+                # one, so only the second world is invalid.
                 'StructureType': ['W1', 'URM'],
                 'DesignLevel': 'High-Code',
                 'OccupancyClass': 'RES1',

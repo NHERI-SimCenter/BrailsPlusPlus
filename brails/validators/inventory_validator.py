@@ -53,12 +53,12 @@ class InventoryValidator(ABC):
     """
     Base class for validating AssetInventory objects.
 
-    A validator answers one question: does this inventory satisfy the
-    input requirements of a simulation method? It reports what is
-    wrong and changes nothing.
+    A validator answers one question: does this inventory satisfy the input
+    requirements of a simulation method? It reports what is wrong and changes
+    nothing.
 
-    Subclasses implement :meth:`validate`, which must not mutate the
-    inventory it is given.
+    Subclasses implement :meth:`validate`, which must not mutate the inventory it is
+    given.
 
     To import the :class:`InventoryValidator` class, use:
 
@@ -80,8 +80,8 @@ class InventoryValidator(ABC):
 
         Returns:
             ValidationReport:
-                The violations that were found. An empty report means the
-                inventory satisfies the requirements.
+                The violations that were found. An empty report means the inventory
+                satisfies the requirements.
 
         Raises:
             TypeError:

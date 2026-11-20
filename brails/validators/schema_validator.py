@@ -60,14 +60,13 @@ class SchemaValidator(InventoryValidator):
     """
     Validate an AssetInventory against a DLML input schema.
 
-    The Damage and Loss Model Library publishes, for each method that
-    needs one, a JSON Schema describing what that method requires of an
-    asset. This class checks an inventory against one of those schemas.
-    One class therefore serves every method DLML covers; the dataset is
-    chosen per instance.
+    The Damage and Loss Model Library publishes, for each method that needs one, a
+    JSON Schema describing what that method requires of an asset. This class checks
+    an inventory against one of those schemas. One class therefore serves every
+    method DLML covers; the dataset is chosen per instance.
 
-    A green report means the inventory satisfies that schema. It is not a
-    statement that the inventory is otherwise complete or plausible.
+    A green report means the inventory satisfies that schema. It is not a statement
+    that the inventory is otherwise complete or plausible.
 
     To import the :class:`SchemaValidator` class, use:
 
@@ -88,14 +87,14 @@ class SchemaValidator(InventoryValidator):
 
         Args:
             dataset (str):
-                A method alias such as ``'Hazus Earthquake - Buildings'``
-                or a DLML dataset identifier such as
+                A method alias such as ``'Hazus Earthquake - Buildings'`` or a DLML
+                dataset identifier such as
                 ``'seismic/building/portfolio/Hazus v6.1'``.
 
         Raises:
             BrailsError:
-                If ``dataset`` is not a known alias or dataset
-                identifier, or if the dataset ships no input schema.
+                If ``dataset`` is not a known alias or dataset identifier, or if the
+                dataset ships no input schema.
         """
         self.dataset_id = resolve_dataset_id(dataset)
 
@@ -114,9 +113,9 @@ class SchemaValidator(InventoryValidator):
         """
         List the DLML datasets that provide an input schema.
 
-        Only these datasets can be validated against. The list comes from
-        the installed version of DLML, so a schema added to the library
-        becomes usable here without any change to BRAILS.
+        Only these datasets can be validated against. The list comes from the
+        installed version of DLML, so a schema added to the library becomes usable
+        here without any change to BRAILS.
 
         Returns:
             list[str]:
@@ -137,10 +136,9 @@ class SchemaValidator(InventoryValidator):
         """
         Check every asset, in every possible world, against the schema.
 
-        A feature holding one value per possible world is checked one
-        world at a time, so a violation that occurs in only some worlds is
-        reported against those worlds alone. The inventory is not
-        modified.
+        A feature holding one value per possible world is checked one world at a
+        time, so a violation that occurs in only some worlds is reported against
+        those worlds alone. The inventory is not modified.
 
         Args:
             inventory (AssetInventory):
@@ -155,17 +153,16 @@ class SchemaValidator(InventoryValidator):
                 If ``inventory`` is not an
                 :class:`~brails.types.asset_inventory.AssetInventory`.
             BrailsError:
-                If the inventory holds features whose number of
-                realizations disagrees with its number of possible
-                worlds.
+                If the inventory holds features whose number of realizations
+                disagrees with its number of possible worlds.
         """
         if not InputValidator.is_inventory(inventory):
             raise TypeError(
                 'Expected an instance of AssetInventory for inventory input.'
             )
 
-        # A feature holding the wrong number of realizations cannot be
-        # split into worlds, so reject it before reporting anything.
+        # A feature holding the wrong number of realizations cannot be split into
+        # worlds, so reject it before reporting anything.
         inventory.validate_possible_worlds()
 
         n_pw = inventory.get_n_pw()
@@ -215,8 +212,8 @@ def _project_world(
     """
     Reduce an asset's features to the values of one possible world.
 
-    Features that hold a single value shared by every world are passed
-    through unchanged.
+    Features that hold a single value shared by every world are passed through
+    unchanged.
 
     Args:
         features (dict[str, Any]):

@@ -34,8 +34,8 @@
 """
 Validators check inventories against the requirements of a method.
 
-A validator reports what is wrong with an inventory and changes nothing.
-Repairing an inventory belongs to a fixer.
+A validator reports what is wrong with an inventory and changes nothing. Repairing an
+inventory belongs to a fixer.
 
 .. autosummary::
 

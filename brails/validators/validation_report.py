@@ -56,14 +56,14 @@ class ValidationReport:
     """
     The violations found when validating an AssetInventory.
 
-    A report stores one list of messages per asset per possible world.
-    Callers that want a simpler shape can use one of the views:
-    :meth:`by_asset` collapses the worlds, :meth:`by_world` groups
-    by world, and :meth:`to_dataframe` returns one row per message.
+    A report stores one list of messages per asset per possible world. Callers that
+    want a simpler shape can use one of the views:
+    :meth:`by_asset` collapses the worlds, :meth:`by_world` groups by world, and
+    :meth:`to_dataframe` returns one row per message.
 
-    An empty report means every asset satisfied the schema. The report
-    follows container conventions, so it is **truthy when violations were
-    found**. Use :attr:`is_valid` to ask whether validation passed.
+    An empty report means every asset satisfied the schema. The report follows
+    container conventions, so it is **truthy when violations were found**. Use
+    :attr:`is_valid` to ask whether validation passed.
 
     To import the :class:`ValidationReport` class, use:
 
@@ -87,8 +87,8 @@ class ValidationReport:
             n_pw (int):
                 The number of possible worlds that were validated.
             n_assets (int):
-                The number of assets that were validated, whether or not
-                they had violations.
+                The number of assets that were validated, whether or not they had
+                violations.
         """
         self.dataset_id = dataset_id
         self.n_pw = n_pw
@@ -108,11 +108,10 @@ class ValidationReport:
             asset_id (str or int):
                 The identifier of the offending asset.
             world_index (int):
-                The index of the possible world the violations were found
-                in.
+                The index of the possible world the violations were found in.
             messages (Iterable[str]):
-                The violation messages. An empty iterable is ignored, so
-                that only offending assets appear in the report.
+                The violation messages. An empty iterable is ignored, so that only
+                offending assets appear in the report.
         """
         messages = list(messages)
         if not messages:
@@ -137,8 +136,7 @@ class ValidationReport:
 
         Returns:
             list[str | int]:
-                The offending asset identifiers, in the order they were
-                recorded.
+                The offending asset identifiers, in the order they were recorded.
         """
         return list(self._violations)
 
@@ -146,9 +144,9 @@ class ValidationReport:
         """
         Group the violations by asset, collapsing the possible worlds.
 
-        Messages that repeat across worlds are reported once, in the
-        order they were first seen. With a single world this is the shape
-        returned by ``dlml.validate_assets``.
+        Messages that repeat across worlds are reported once, in the order they were
+        first seen. With a single world this is the shape returned by
+        ``dlml.validate_assets``.
 
         Returns:
             dict[str | int, list[str]]:
@@ -170,8 +168,8 @@ class ValidationReport:
 
         Returns:
             dict[int, dict[str | int, list[str]]]:
-                For each world that had violations, the messages of each
-                offending asset.
+                For each world that had violations, the messages of each offending
+                asset.
         """
         grouped: dict[int, dict[str | int, list[str]]] = {}
 
@@ -185,16 +183,15 @@ class ValidationReport:
         """
         Return the violations as one row per message.
 
-        The ``path`` column holds the location the violation was reported
-        at, such as ``$.DesignLevel`` for a property whose value is wrong
-        or ``$`` for a missing required property. This long form joins
-        back to the inventory on ``asset_id``.
+        The ``path`` column holds the location the violation was reported at, such as
+        ``$.DesignLevel`` for a property whose value is wrong or ``$`` for a missing
+        required property. This long form joins back to the inventory on
+        ``asset_id``.
 
         Returns:
             pd.DataFrame:
-                A frame with the columns ``asset_id``, ``world_index``,
-                ``path`` and ``message``. Empty when the inventory is
-                valid.
+                A frame with the columns ``asset_id``, ``world_index``, ``path`` and
+                ``message``. Empty when the inventory is valid.
         """
         rows = [
             (asset_id, world_index, *_split_message(message))
@@ -221,8 +218,8 @@ class ValidationReport:
 
         Returns:
             bool:
-                ``True`` if the report is **not** empty. See
-                :attr:`is_valid` for the opposite question.
+                ``True`` if the report is **not** empty. See :attr:`is_valid` for the
+                opposite question.
         """
         return bool(self._violations)
 
@@ -249,8 +246,8 @@ def _split_message(message: str) -> tuple[str, str]:
     """
     Split a violation message into its location and its text.
 
-    DLML formats a violation as ``'<json_path>: <message>'``. A message
-    without that prefix is returned unchanged, with an empty location.
+    DLML formats a violation as ``'<json_path>: <message>'``. A message without that
+    prefix is returned unchanged, with an empty location.
 
     Args:
         message (str):
