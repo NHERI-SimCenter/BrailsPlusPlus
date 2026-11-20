@@ -528,6 +528,64 @@ class TestFile:
         with pytest.raises(ValueError, match='Feature 1 .* has an empty unique_id'):
             filter_to_region(path, REGION)
 
+    def test_repeated_unique_id_refused_inside_only(self, tmp_path: Path) -> None:
+        """A unique_id repeated inside the region is refused, outside it is not."""
+        features = [
+            {
+                'type': 'Feature',
+                'id': number,
+                'properties': {'unique_id': 'a'},
+                'geometry': {'type': 'Point', 'coordinates': [lon, 38.0]},
+            }
+            for number, lon in ((1, -122.0), (2, -121.9), (3, -122.001))
+        ]
+        path = tmp_path / 'r2d.geojson'
+        write(path, {'type': 'FeatureCollection', 'features': features[:2]})
+        assert list(filter_to_region(path, REGION).inventory) == ['a']
+        write(path, {'type': 'FeatureCollection', 'features': features})
+        with pytest.raises(ValueError, match='inside the region have the unique_id'):
+            filter_to_region(path, REGION)
+
+    def test_other_form_outside_the_region_not_checked(self, tmp_path: Path) -> None:
+        """A feature of the default form outside the region is left out unchecked."""
+        features = [
+            {
+                'type': 'Feature',
+                'id': 1,
+                'properties': {'unique_id': 'a'},
+                'geometry': json.loads(POINT),
+            },
+            {
+                'type': 'Feature',
+                'id': 'b',
+                'properties': {},
+                'geometry': {'type': 'Point', 'coordinates': [-121.9, 38.0]},
+            },
+        ]
+        path = write(
+            tmp_path / 'mixed.geojson',
+            {'type': 'FeatureCollection', 'features': features},
+        )
+        assert list(filter_to_region(path, REGION).inventory) == ['a']
+
+    def test_polygon_read_by_its_exterior_ring(self, tmp_path: Path) -> None:
+        """A kept polygon's holes are dropped."""
+        shell = square(-122.0, 38.0, 0.001)
+        feature = {
+            'type': 'Feature',
+            'id': 'p',
+            'properties': {},
+            'geometry': {
+                'type': 'Polygon',
+                'coordinates': [shell, square(-122.0, 38.0, 0.0005)],
+            },
+        }
+        path = write(
+            tmp_path / 'holed.geojson',
+            {'type': 'FeatureCollection', 'features': [feature]},
+        )
+        assert filter_to_region(path, REGION).inventory['p'].coordinates == shell
+
     def test_projected_file_refused_at_its_crs(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

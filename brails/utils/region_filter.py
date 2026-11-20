@@ -161,93 +161,37 @@ def filter_to_region(  # noqa: C901
     """
     Return the assets of an inventory whose reference point lies inside a region.
 
-    An asset is inside when its :func:`reference_point` lies strictly inside
-    the region's boundary, as :func:`shapely.contains_xy` decides. A point on
-    the boundary is outside, so an asset on the line two neighboring places
-    share belongs to neither, and no asset belongs to both. An asset whose
-    outline crosses the boundary is kept or left out whole, by its point.
-
-    A place name is looked up among the census places and counties of its
-    state by :class:`~brails.types.census_boundary.CensusBoundary`, whose
-    boundary keeps its holes, so the assets of an enclave, such as Piedmont
-    inside Oakland, are left out. With ``source='osm'`` the name is looked up
-    in OpenStreetMap by :class:`RegionBoundary`, which builds the boundary
-    from the outer members of the place's relation only, so it has no holes
-    and the assets of an enclave are kept. A Shapely polygon keeps its holes.
-
-    The kept assets are deep copies, so a change to the returned inventory
+    An asset is inside when its :func:`reference_point` lies strictly inside the
+    region's boundary, so an asset on the line two neighboring places share
+    belongs to neither, and one whose outline crosses the boundary is kept or left
+    out whole. The kept assets are copies, so a change to the returned inventory
     leaves the source as it was.
 
-    Given an :class:`AssetInventory`, the function returns a new inventory
-    with the source's ``n_pw`` and ``vector_features``. Pass a GeoJSON file by
-    its path rather than as an inventory read with
-    :meth:`AssetInventory.read_from_geojson`, which leaves ``n_pw`` at 1 for
-    a file of several worlds without ``n_worlds``, adds ``type`` and turns
-    digit-string ids into integers.
+    A place name is looked up among the census places and counties of its state
+    with :class:`~brails.types.census_boundary.CensusBoundary`, whose boundary
+    keeps its holes: the assets of an enclave, such as Piedmont inside Oakland,
+    are left out. With ``source='osm'`` the name is looked up in OpenStreetMap
+    with :class:`RegionBoundary`, whose boundary has no holes, so those assets are
+    kept.
 
-    Given the path of a GeoJSON FeatureCollection, such as a file
-    :meth:`AssetInventory.write_to_geojson` wrote, it reads the file as
-    UTF-8 one feature at a time, so for a valid file its memory grows with
-    the assets kept and not with the file. Each kept feature becomes an asset
-    keyed by the feature's ``id``, with its properties as written and its
-    geometry as :meth:`AssetInventory.read_from_geojson` reads it, exterior
-    rings only. No ``type`` is added.
+    The source is an inventory, the path of a GeoJSON file that
+    :meth:`AssetInventory.write_to_geojson` wrote, or a list or tuple of them,
+    such as the county files of a city that spans several counties. A file is
+    read one feature at a time, so memory grows with the assets kept, and each
+    kept feature becomes an asset keyed by its ``id``, or by its ``unique_id`` in
+    a file written with ``integer_ids=True``. The sources of a list are filtered
+    in the order given into one inventory, with one lookup of the boundary. They
+    must hold the same number of worlds and the same vector features, and no
+    asset id may lie inside the region in two of them.
 
-    A feature of the integer-id form, which ``write_to_geojson(...,
-    integer_ids=True)`` writes as an integer ``id`` beside a string
-    ``unique_id`` property, is keyed by its ``unique_id`` string instead. The
-    ``unique_id`` property is dropped, the feature's number is not kept, and
-    its ``type`` stays a property, so such a file can be filtered and written
-    in that form again with the same features. Any other ``unique_id`` is an
-    ordinary property: the default form of ``write_to_geojson`` writes every
-    ``id`` as a string, so its files never take this form. The keys stay
-    strings when every ``unique_id`` is digits, where
-    ``read_from_geojson(key_by_unique_id=True)`` makes them integers, and the
-    export writes the same file from either. The checks on ``unique_id``, an
-    empty one, a repeated one, or kept features of both forms, cover the kept
-    features.
+    The result takes its ``n_pw`` and ``vector_features`` from the sources. For a
+    file, the number of worlds is its ``n_worlds`` or, without that member, the
+    number of values of its kept lists. A file with neither takes the number of
+    the other sources, or 1. A file of 1 world is refused beside a source of more.
 
-    ``n_pw`` is the file's ``n_worlds``, an integer of at least 1, which
-    every kept list-valued feature must hold as its number of values. Those
-    features are the ones
-    :func:`~brails.types.asset_inventory.is_probabilistic_feature` counts as
-    holding worlds under the default ``vector_features``. In a file without
-    the member, ``n_pw`` is the number of values of the kept lists, and 1
-    without them. Of the file's other top-level members, ``type`` must be
-    ``FeatureCollection`` and ``crs``, if present, must name WGS84 or NAD83
-    longitude and latitude. ``n_worlds``, ``type`` and ``crs`` are each
-    checked when read. NAD83 coordinates are used as they are, as WGS84 ones,
-    and a line is printed to say so. No other member is kept, and
-    ``write_to_geojson`` writes a ``generated``, ``brails_version``,
-    ``n_worlds`` and ``crs`` of its own. Written back with
-    ``write_to_geojson`` in the form the file has, the kept features equal
-    the source's features, for a file that ``write_to_geojson`` wrote.
-
-    The integer-id form that R2D reads requires a ``type`` on every asset.
-    ``write_to_geojson(..., integer_ids=True, asset_type='building')`` writes
-    that type for the assets without one, such as the buildings of a county
-    file of the testbed as compiled.
-
-    Given a list or tuple of inventories and paths, such as the county files
-    of a city that spans several counties, the function filters them one
-    after another into one inventory, in the order given, and looks the
-    boundary up once. The sources must hold the same number of worlds and
-    the same vector features. An inventory states its ``n_pw`` and a file its
-    ``n_worlds``. For a file without the member, the count is the length of
-    its kept lists, so one whose kept assets hold no lists takes the others'
-    number unchecked. A file that states 1 world, or whose kept lists hold
-    one value, is refused beside a source of more worlds, since it may be one
-    world of a run. :meth:`AssetInventory.read_from_geojson` adds a file of 1
-    world without lists to an inventory of more worlds. An asset id that
-    lies inside the region in two sources is refused, since the sources then
-    overlap, and so are two kept ids with the same string form, which
-    ``write_to_geojson`` would write as one id. A one-item list gives what
-    its item gives. Another sequence, such as a generator, is not taken as a
-    list. Memory is that of the kept assets and of one file's stream at a
-    time.
-
-    The function prints the number of assets kept, and for several sources
-    the number kept from each.
+    The function prints the number of assets kept, and for several sources the
+    number kept from each. It also prints a line for a file whose ``crs`` is
+    NAD83, whose coordinates it reads as WGS84 ones.
 
     Args:
         inventory_or_geojson_path (AssetInventory | str | PathLike | list | tuple):

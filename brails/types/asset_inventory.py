@@ -3057,7 +3057,11 @@ class AssetInventory:
                 by asset id, numerically when every asset id, as a string, is
                 ASCII digits without a leading zero (``'0'`` included), and
                 as strings otherwise. Assets without geometry are skipped.
-                Defaults to ``False``.
+                ``read_from_geojson(..., key_by_unique_id=True)`` and
+                ``filter_to_region`` read such a file back keyed by asset id,
+                without ``unique_id``, so it can be written in this form
+                again; ``read_from_geojson`` turns digit-string ids into
+                integers. Defaults to ``False``.
             asset_type (str, optional):
                 With ``integer_ids``, the ``type`` written for an asset whose
                 ``type`` is missing, ``None``, NaN or an empty string, the
