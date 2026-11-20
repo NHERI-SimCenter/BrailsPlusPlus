@@ -80,6 +80,12 @@ Create Regional-Scale Inventories
 
       Keep the buildings of a county inventory, such as a county of the SimCenter San Francisco Bay Area testbed, that lie inside a city or another place given by its name. For a place that spans several counties, several county files can be filtered into one inventory. A boundary looked up by name has no holes, so the buildings of an enclave are kept.
 
+   .. grid-item-card:: Compile a Hazus Earthquake Inventory of a City
+      :link: https://github.com/NHERI-SimCenter/BrailsPlusPlus/blob/master/examples/hazus_eq_compiler/compile_city_inventory.ipynb
+      :text-align: center
+
+      Build the building inventory of a city for a Hazus earthquake assessment from its name and seismic zone, with ten possible worlds, from public data: census boundaries and tables, Overture Maps footprints, the National Structure Inventory and mobile home park locations.
+
 Data Scraping
 ^^^^^^^^^^^^^
 
