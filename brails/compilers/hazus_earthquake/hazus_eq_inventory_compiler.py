@@ -57,6 +57,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, NamedTuple
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import requests
@@ -101,6 +102,7 @@ from brails.constants import (
     FOOTPRINT_DATASETS_KEY,
     FOOTPRINT_PROVIDER_KEY,
     FOOTPRINT_RELEASE_KEY,
+    GEOGRAPHIC_CRS,
     GROSS_AREA_KEY,
     HEIGHT_CLASS_KEY,
     LOCAL_GROSS_AREA_KEY,
@@ -134,6 +136,7 @@ from brails.imputers.residential_neighbor_year_sampler.residential_neighbor_year
     ResidentialNeighborYearSampler,
 )
 from brails.inferers.acs_unit_budget.acs_unit_budget import (
+    DEFAULT_MH_PARK_RADIUS_M,
     DROP_PROBABILITY,
     GAP_NO_ACS,
     GEOID_COLUMN,
@@ -173,6 +176,9 @@ from brails.inferers.stories_from_height_inferer.stories_from_height_inferer imp
     StoriesFromHeightInferer,
     parse_sources,
 )
+from brails.scrapers.mobile_home_park_scraper.mobile_home_park_scraper import (
+    MobileHomeParkScraper,
+)
 from brails.scrapers.overture_maps_scraper.overture_maps_scraper import (
     OVERTURE_PROVIDER,
     SOURCES_KEY,
@@ -209,8 +215,6 @@ from brails.validators.schema_validator import SchemaValidator
 if TYPE_CHECKING:
     import os
     from collections.abc import Sequence
-
-    import geopandas as gpd
 
 # The number of possible worlds compiled by default.
 DEFAULT_N_WORLDS = 10
@@ -485,11 +489,14 @@ class CompilerInputs(NamedTuple):
         b25127_tracts (pandas.DataFrame | None):
             Table B25127 per tract, in the same form. ``None``, the default, has the
             compiler read it, as for ``b25024_block_groups``.
-        mh_park_points (object):
+        mh_park_points (object | None):
             The mobile-home park points, in any form
             :class:`~brails.inferers.acs_unit_budget.acs_unit_budget.ACSUnitBudget`
-            accepts for ``mh_park_points``. Its default, ``None``, is not such a
-            form: the field takes a default only because the tables before it do.
+            accepts for ``mh_park_points``, or an ``AssetInventory`` of points such
+            as :class:`~brails.scrapers.MobileHomeParkScraper` returns. An empty
+            array compiles without park points. ``None``, the default, has the
+            compiler read the HIFLD points within the budget's ``mh_park_radius_m``
+            of the footprints' bounding box, which needs network access.
         footprint_release (str | None):
             The Overture release the footprints come from, written to every
             Overture footprint as ``overture_<release>``. ``None`` writes
@@ -1251,6 +1258,10 @@ class HazusEQInventoryCompiler:
         self._validator = SchemaValidator(DLML_DATASET)
         self.imputer_options = MappingProxyType(resolved['imputer_options'])
         self.budget_options = MappingProxyType(resolved['budget_options'])
+        # The distance from the footprints within which park points are read.
+        self._mh_park_radius_m = self.budget_options.get(
+            'mh_park_radius_m', DEFAULT_MH_PARK_RADIUS_M
+        )
         self.sampler_options = MappingProxyType(resolved['sampler_options'])
 
     def compile(self, inputs: CompilerInputs) -> CompilationResult:
@@ -1289,11 +1300,14 @@ class HazusEQInventoryCompiler:
             RuntimeError:
                 If a frozen stage changed during the run; or, for a census table
                 given as ``None``, if the Census Data API refuses the key or answers
-                a request with something other than the table asked.
+                a request with something other than the table asked; or, for park
+                points given as ``None``, if the HIFLD archive shows no complete
+                write.
             requests.exceptions.RequestException:
                 If the key check or a request for a census table fails, as
                 :meth:`~brails.scrapers.ACSTableScraper.get_table` raises, or the
-                download of a TIGER/Line file of block groups fails.
+                download of a TIGER/Line file of block groups or of the park points
+                fails.
         """
         not_strings = [
             a for a in inputs.footprints.inventory if not isinstance(a, str)
@@ -1653,9 +1667,9 @@ class HazusEQInventoryCompiler:
         self, inputs: CompilerInputs, report: CompilationReport
     ) -> tuple[CompilerInputs, ACSTableScraper | None]:
         """
-        Read the block groups left as ``None`` and check the key for the tables.
+        Read the park points and block groups left as ``None``, and check the key.
 
-        Both run before s01, so that a run without a usable key or without the files
+        All run before s01, so that a run without a usable key or without the files
         stops before any step. The census tables left as ``None`` are read after s01,
         by :meth:`_read_census_tables`.
 
@@ -1663,14 +1677,15 @@ class HazusEQInventoryCompiler:
             inputs (CompilerInputs):
                 The study area's data.
             report (CompilationReport):
-                The report, whose settings record the release of each input read,
-                whose notice names the states of the block groups, and which times
-                their reading as ``s01_block_groups``.
+                The report, whose settings record the release of each input read and
+                the write of the HIFLD archive, whose notices count the park points
+                and name the states of the block groups, and which times the two
+                reads as ``s01_mh_park_points`` and ``s01_block_groups``.
 
         Returns:
             tuple[CompilerInputs, ACSTableScraper | None]:
-                A copy of the inputs holding the block groups read, and the scraper
-                holding the checked key, or ``None`` when every table is given.
+                A copy of the inputs holding the inputs read, and the scraper holding
+                the checked key, or ``None`` when every table is given.
 
         Raises:
             ValueError:
@@ -1679,10 +1694,12 @@ class HazusEQInventoryCompiler:
                 :meth:`TIGERLineScraper.get_block_groups` raise.
             LookupError, RuntimeError, ValueError:
                 If no key is found, a store holds a value that cannot be one or the
-                API refuses it, with a sentence naming the tables that need it.
+                API refuses it, with a sentence naming the tables that need it; or,
+                for a RuntimeError, if the HIFLD archive shows no complete write.
             requests.exceptions.RequestException:
-                If the key check fails, or the download of a TIGER/Line file, with a
-                sentence naming the input that was being read.
+                If the key check fails, or the download of the park points or of a
+                TIGER/Line file, with a sentence naming the input that was being
+                read.
         """
         missing = [
             name for name in _ACS_TABLE_REQUESTS if getattr(inputs, name) is None
@@ -1717,6 +1734,41 @@ class HazusEQInventoryCompiler:
                 )
                 raise type(error)(msg) from error
             report.settings['acs_vintage'] = self.acs_vintage
+
+        if inputs.mh_park_points is None:
+            started = time.perf_counter()
+            radius = self._mh_park_radius_m
+            print(
+                f'Reading the mobile-home park points within {radius:g} m of the '
+                "footprints' bounding box from the HIFLD archive."
+            )
+            extent = gpd.GeoSeries(
+                [inputs.footprints.get_extent(buffer='none')], crs=GEOGRAPHIC_CRS
+            )
+            area = extent.to_crs(extent.estimate_utm_crs()).buffer(radius)
+            parks = MobileHomeParkScraper()
+            try:
+                points = parks.get_assets(
+                    GeometryRegion(area.to_crs(GEOGRAPHIC_CRS).iloc[0])
+                )
+            except (requests.RequestException, RuntimeError) as error:
+                msg = (
+                    'Reading the mobile-home park points from the HIFLD archive '
+                    f'failed: {error} To compile without the download, give the '
+                    'points as CompilerInputs.mh_park_points.'
+                )
+                raise type(error)(msg) from error
+            inputs = inputs._replace(mh_park_points=points)
+            report.settings['mh_park_write'] = {
+                'marker': parks.marker,
+                'written': parks.written,
+            }
+            report.note(
+                f'{len(points.inventory)} mobile-home park point(s) read from the '
+                f"HIFLD archive within {radius:g} m of the footprints' bounding "
+                f'box, from its write {parks.marker} of {parks.written}.'
+            )
+            report.set_timing('s01_mh_park_points', time.perf_counter() - started)
 
         if inputs.block_groups is None:
             started = time.perf_counter()
@@ -2057,9 +2109,15 @@ class HazusEQInventoryCompiler:
             for a, source in occupancy_source.items()
             if source in _RELABELED_SOURCES
         }
+        parks = inputs.mh_park_points
+        if isinstance(parks, AssetInventory):
+            # The budget takes the points' longitude and latitude.
+            parks = np.array(
+                [asset.coordinates[0] for asset in parks.inventory.values()]
+            )
         budget = ACSUnitBudget(
             inputs.b25024_block_groups,
-            inputs.mh_park_points,
+            parks,
             imputer=imputer,
             seed=self.seed,
             **self.budget_options,

@@ -42,6 +42,8 @@ import sys
 from typing import TYPE_CHECKING, Callable
 from unittest import mock
 
+import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pytest
 import requests
@@ -52,18 +54,21 @@ from brails.compilers.hazus_earthquake.hazus_eq_inventory_compiler import (
     CompilerInputs,
     HazusEQInventoryCompiler,
 )
-from brails.constants import BLOCK_GROUP_KEY
+from brails.constants import BLOCK_GROUP_KEY, GEOGRAPHIC_CRS
 from brails.scrapers.us_census_scrapers.acs_table_scraper import ACS5_URL
 from brails.scrapers.us_census_scrapers.tiger_line_scraper import STATE_NAME_COLUMN
+from brails.types.asset_inventory import Asset, AssetInventory
 from brails.utils.census_api_key import CENSUS_API_KEY_NAME
 from brails.utils.tiger_files import DEFAULT_TIGER_VINTAGE
 from tests.compilers.hazus_earthquake.compiler_fixtures import (
     BG_EAST,
     BG_WEST,
     METRIC_CRS,
+    MH_PARK,
     SEED,
     TRACT,
     build_inputs,
+    lonlat,
 )
 
 if TYPE_CHECKING:
@@ -577,3 +582,133 @@ class TestBlockGroups:
         # Given every table, the block groups alone are read without a refusal.
         compiler.compile(study_area._replace(block_groups=None))
         assert read.called
+
+
+class TestParkPoints:
+    """Park points given as None are read from the HIFLD archive."""
+
+    @pytest.fixture
+    def parks(self) -> AssetInventory:
+        """
+        Return the fixture's park point as MobileHomeParkScraper returns it.
+
+        Returns:
+            AssetInventory:
+                One point asset at the fixture's park.
+        """
+        inventory = AssetInventory()
+        inventory.add_asset(7, Asset(7, [lonlat(*MH_PARK)], {'MHPID': 7}))
+        return inventory
+
+    def test_park_points_read_compile_as_given(
+        self,
+        study_area: CompilerInputs,
+        compiled: Callable[[int], CompilationResult],
+        parks: AssetInventory,
+    ) -> None:
+        """Park points read from the archive give the run with the points given."""
+
+        def read(
+            scraper: hc.MobileHomeParkScraper, _region: object
+        ) -> AssetInventory:
+            scraper.marker, scraper.written = '_committed_7', '2025-11-17T21:19:11Z'
+            return parks
+
+        with mock.patch.object(
+            hc.MobileHomeParkScraper, 'get_assets', autospec=True, side_effect=read
+        ):
+            result = HazusEQInventoryCompiler(
+                seed=SEED, n_worlds=3, projected_crs=METRIC_CRS
+            ).compile(study_area._replace(mh_park_points=None))
+
+        assert_same_compilation(result, compiled(3))
+        summary = result.report.summary()
+        assert summary['settings']['mh_park_write'] == {
+            'marker': '_committed_7',
+            'written': '2025-11-17T21:19:11Z',
+        }
+        assert any(
+            notice.startswith('1 mobile-home park point(s)')
+            and '_committed_7' in notice
+            for notice in summary['notices']
+        )
+
+    def test_park_inventory_given_compiles_as_its_points(
+        self,
+        study_area: CompilerInputs,
+        compiled: Callable[[int], CompilationResult],
+        parks: AssetInventory,
+    ) -> None:
+        """An AssetInventory of park points compiles as the array of its points."""
+        result = HazusEQInventoryCompiler(
+            seed=SEED, n_worlds=1, projected_crs=METRIC_CRS
+        ).compile(study_area._replace(mh_park_points=parks))
+        assert_same_compilation(result, compiled(1))
+
+    def test_empty_park_points_compile_without_a_read(
+        self, study_area: CompilerInputs
+    ) -> None:
+        """An empty array of park points compiles, and no point is read."""
+        result = HazusEQInventoryCompiler(seed=SEED, n_worlds=1).compile(
+            study_area._replace(mh_park_points=np.zeros((0, 2)))
+        )
+        assert 'mh_park_write' not in result.report.summary()['settings']
+
+    @pytest.mark.parametrize(
+        ('budget_options', 'radius'),
+        [({}, 300.0), ({'mh_park_radius_m': 500.0}, 500.0)],
+    )
+    def test_area_is_the_bounding_box_widened_by_the_budget_radius(
+        self, study_area: CompilerInputs, budget_options: dict, radius: float
+    ) -> None:
+        """The points are read over the bounding box widened by the park radius."""
+        # The stand-in stops the run, so the test sees only the area it was given.
+        with (
+            mock.patch.object(
+                hc.MobileHomeParkScraper,
+                'get_assets',
+                autospec=True,
+                side_effect=LookupError,
+            ) as read,
+            pytest.raises(LookupError),
+        ):
+            HazusEQInventoryCompiler(
+                seed=SEED, budget_options=budget_options
+            ).compile(study_area._replace(mh_park_points=None))
+
+        ((_, area),) = [call.args for call in read.call_args_list]
+        extent = gpd.GeoSeries(
+            [study_area.footprints.get_extent(buffer='none')], crs=GEOGRAPHIC_CRS
+        ).to_crs(METRIC_CRS)
+        widened = gpd.GeoSeries([area.geometry], crs=GEOGRAPHIC_CRS).to_crs(
+            METRIC_CRS
+        )
+        assert widened.iloc[0].covers(extent.iloc[0])
+        gaps = [
+            abs(a - b) for a, b in zip(widened.total_bounds, extent.total_bounds)
+        ]
+        assert all(abs(gap - radius) < 1.0 for gap in gaps)
+
+    def test_failed_read_names_the_input_before_s01(
+        self, study_area: CompilerInputs
+    ) -> None:
+        """A failed park read stops the run before s01, naming the field."""
+        with (
+            mock.patch.object(
+                hc.MobileHomeParkScraper,
+                'get_assets',
+                autospec=True,
+                side_effect=requests.ConnectionError('no route'),
+            ),
+            mock.patch.object(
+                hc.CensusTractScraper, 'get_census_geographies'
+            ) as assign,
+            pytest.raises(
+                requests.ConnectionError,
+                match='no route.*CompilerInputs.mh_park_points',
+            ),
+        ):
+            HazusEQInventoryCompiler(seed=SEED).compile(
+                study_area._replace(mh_park_points=None)
+            )
+        assert not assign.called

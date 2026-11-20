@@ -133,6 +133,10 @@ RELABEL_CLASS = 'RES1'
 B25024_TABLE = 'B25024'
 GEOID_COLUMN = 'geoid'
 
+# The default distance in meters to a mobile-home park point within which a footprint
+# may become a mobile home.
+DEFAULT_MH_PARK_RADIUS_M = 300.0
+
 # Under drop_without_acs, a small target in a block group without a budget
 # is dropped when its residential probability is below this.
 DROP_PROBABILITY = 0.5
@@ -421,7 +425,7 @@ class ACSUnitBudget:
         imputer: ObservedDonorImputer,
         seed: int | None = None,
         threshold_sqft: float = 1000.0,
-        mh_park_radius_m: float = 300.0,
+        mh_park_radius_m: float = DEFAULT_MH_PARK_RADIUS_M,
         moe_factor: float = 2.0,
         min_unit_area_sqft: float = 300.0,
         drop_without_acs: bool = False,

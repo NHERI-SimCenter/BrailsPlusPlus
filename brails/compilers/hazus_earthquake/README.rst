@@ -52,7 +52,8 @@ The caller gives the data of the study area in a ``CompilerInputs``:
   housing units by the year their structure was built, per block group and per tract;
   and B25127, the occupied housing units by year built and structure size, per tract.
   A table left as ``None`` is read from the Census Data API (see ``s01_footprints``);
-- the points of the mobile-home parks;
+- optionally, the points of the mobile-home parks, which are read from HIFLD where
+  they are left as ``None`` (see ``s01_footprints``);
 - optionally, a local inventory of values known locally, which takes
   precedence over every other source (see "Local inputs" below);
 - optionally, the polygons of the census block groups (see "Block groups"
@@ -68,7 +69,8 @@ three components, whether to merge stacked footprints first, ``acs_vintage``, th
 release of the census tables the run reads, and ``block_group_vintage``, the
 TIGER/Line release of the block groups it reads. Given no
 seed, the compiler draws one, which ``CompilationResult.seed`` and the
-report's summary hold, so that the run can be repeated. The constructor
+report's summary hold, so that the run can be repeated with the same inputs (see
+``s01_footprints`` for those the compiler reads). The constructor
 checks the settings. It also builds four of the components, so that each can
 refuse its own settings and a bad setting raises an error in the
 constructor, before any data is read.
@@ -239,6 +241,16 @@ county totals it sums. The run stops if one of those rows holds an estimate the
 Census Bureau does not publish. The report records the release among its settings
 and, in a notice, the tables and the counties read, and it times the reading as
 ``s01_acs_tables``.
+
+Where ``CompilerInputs.mh_park_points`` is ``None``, ``MobileHomeParkScraper`` reads
+the mobile-home park points of HIFLD that lie within the unit budget's
+``mh_park_radius_m`` of the footprints' bounding box, before ``s01_footprints``. The
+read needs network access. The run passes the points' longitude and latitude to the
+budget, as it does for an ``AssetInventory`` of points given in the field. A notice
+counts the points, and the report times the reading as ``s01_mh_park_points``. The
+archive names no release, and a later write replaces its points. The settings
+therefore record the write that was read, and a run repeats exactly only with the
+points given in ``CompilerInputs``.
 
 ``s02_nsi_join``
 ~~~~~~~~~~~~~~~~
